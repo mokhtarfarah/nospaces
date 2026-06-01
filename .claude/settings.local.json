@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(ls /pkg/env/global/bin/ | head -30)",
+      "Bash(find /Users/farahmokhtar -name \"node\" -type f 2>/dev/null | head -5; find /usr -name \"node\" -type f 2>/dev/null | head -5)",
+      "Bash(which brew *)",
+      "Bash(mkdir -p /Users/farahmokhtar/nospaces/.claude)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh)",
+      "Bash(bash)",
+      "Bash(chmod +x /Users/farahmokhtar/nospaces/.claude/start-dev.sh)"
+    ]
+  }
+}

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nospaces — Library Preview</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: #fff;
+      color: #111;
+      max-width: 430px;
+      margin: 0 auto;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    button { font-family: inherit; cursor: pointer; }
+    ::-webkit-scrollbar { display: none; }
+
+    /* Header */
+    .header {
+      padding: 48px 16px 0;
+      background: #fff;
+      border-bottom: 1px solid #E8E8E8;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+    .header-icons { display: flex; gap: 8px; }
+    .icon-btn {
+      background: none; border: none; color: #333;
+      padding: 4px; display: flex; align-items: center;
+    }
+
+    /* Filter rows */
+    .filter-row {
+      display: flex; gap: 6px; overflow-x: auto;
+      scrollbar-width: none; padding-bottom: 8px;
+      align-items: center;
+    }
+    .chip {
+      flex-shrink: 0;
+      padding: 5px 12px;
+      border: 1.5px solid #E0E0E0;
+      border-radius: 20px;
+      background: #fff;
+      color: #555;
+      font-size: 13px;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+    .chip.active {
+      border-color: #002FA7;
+      background: #E6EBFA;
+      color: #002FA7;
+      font-weight: 600;
+    }
+    .divider-v { width: 1px; height: 16px; background: #DDD; flex-shrink: 0; }
+
+    /* Legend */
+    .legend {
+      display: flex; gap: 12px;
+      padding: 8px 16px;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+    .legend-label { font-size: 10px; color: #888; }
+
+    /* List */
+    .list { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+    .month-divider {
+      padding: 6px 16px;
+      background: #F6F6F6;
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      letter-spacing: 0.2px;
+    }
+    .item-row {
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid #F2F2F2;
+      padding: 10px 16px 10px 0;
+      margin-left: 16px;
+    }
+    .item-border { width: 3px; border-radius: 2px; flex-shrink: 0; margin-right: 12px; }
+    .item-title { font-size: 13px; font-weight: 500; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-sub { font-size: 11px; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Bottom nav */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      max-width: 430px; margin: 0 auto;
+      height: 56px;
+      background: #fff;
+      border-top: 1px solid #E8E8E8;
+      display: flex; justify-content: space-around; align-items: center;
+      z-index: 100;
+    }
+    .nav-tab {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 8px 24px;
+      font-size: 11px; font-weight: 500;
+      color: #999; text-decoration: none;
+      border: none; background: none; flex: 1;
+    }
+    .nav-tab.active { color: #002FA7; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-row">
+    <h1>Library</h1>
+    <div class="header-icons">
+      <button class="icon-btn" aria-label="Search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter row 1: category -->
+  <div class="filter-row" style="padding-bottom: 8px;">
+    <button class="chip active">All</button>
+    <button class="chip">Films</button>
+    <button class="chip">Books</button>
+    <button class="chip">Music</button>
+    <button class="chip">TV</button>
+    <button class="chip">Other</button>
+  </div>
+
+  <!-- Filter row 2: status + reaction -->
+  <div class="filter-row" style="padding-bottom: 10px;">
+    <button class="chip active">All</button>
+    <button class="chip">Want to</button>
+    <button class="chip">Done</button>
+    <div class="divider-v"></div>
+    <button class="chip">Loved it</button>
+    <button class="chip">Liked it</button>
+    <button class="chip">Eh</button>
+    <button class="chip">Not for me</button>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#002FA7"></div><span class="legend-label">Film</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#5A7A5A"></div><span class="legend-label">Book</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#C8612A"></div><span class="legend-label">Music</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#A0525A"></div><span class="legend-label">TV</span></div>
+</div>
+
+<!-- List -->
+<div class="list">
+  <div class="month-divider">June 2026</div>
+
+  <div class="item-row">
+    <div class="item-border" style="background:#002FA7"></div>
+    <div style="flex:1;min-width:0;">
+      <div class="item-title">Dune: Part Two</div>
+      <div class="item-sub">film · Denis Villeneuve · Ahmed</div>
+    </div>
+  </div>
+
+  <div class="month-divider">May 2026</div>
+
+  <div class="item-row">
+    <div class="item-border" style="background:#5A7A5A"></div>
+    <div style="flex:1;min-width:0;">
+      <div class="item-title">The Secret History</div>
+      <div class="item-sub">Donna Tartt · 1992 · Loved it</div>
+    </div>
+  </div>
+
+  <div class="item-row">
+    <div class="item-border" style="background:#C8612A"></div>
+    <div style="flex:1;min-width:0;">
+      <div class="item-title">Short n' Sweet</div>
+      <div class="item-sub">Sabrina Carpenter · 2024 · Liked it</div>
+    </div>
+  </div>
+
+  <div class="item-row">
+    <div class="item-border" style="background:#A0525A"></div>
+    <div style="flex:1;min-width:0;">
+      <div class="item-title">The Bear</div>
+      <div class="item-sub">tv · Christopher Storer · Vulture newsletter</div>
+    </div>
+  </div>
+
+  <div class="month-divider">April 2026</div>
+
+  <div class="item-row">
+    <div class="item-border" style="background:#002FA7"></div>
+    <div style="flex:1;min-width:0;">
+      <div class="item-title">Interstellar</div>
+      <div class="item-sub">Christopher Nolan · 2014 · Loved it</div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <button class="nav-tab">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Add
+  </button>
+  <button class="nav-tab active">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="4" height="16" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg>
+    Library
+  </button>
+</nav>
+
+</body>
+</html>
