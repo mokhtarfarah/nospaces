@@ -24,12 +24,23 @@ export function useItems() {
 
   useEffect(() => { fetch() }, [fetch])
 
-  async function addItem(title: string) {
+  async function addItem(
+    title: string,
+    type = 'other',
+    creator: string | null = null,
+    year: number | null = null,
+    metadata: Record<string, unknown> = {},
+    tags: string[] = [],
+  ) {
     if (!user) return
     await db().from('items').insert({
       user_id: user.id,
       title,
-      type: 'other',
+      type,
+      creator,
+      year,
+      metadata,
+      tags,
       status: 'want_to',
       source: 'quick_add',
     })
