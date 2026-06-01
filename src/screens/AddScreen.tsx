@@ -1,20 +1,24 @@
 import { useState } from 'react'
-import { SEED_ITEMS } from '../lib/seeds'
+import { useNavigate } from 'react-router-dom'
+import { useItems } from '../hooks/useItems'
 
 export function AddScreen() {
+  const { items, addItem } = useItems()
+  const navigate = useNavigate()
   const [title, setTitle] = useState('')
-  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
 
-  function handleSave(e: React.FormEvent) {
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim()) return
-    // Day 1: just show a confirmation. AI + real save comes Day 3.
-    setSaved(true)
+    if (!title.trim() || saving) return
+    setSaving(true)
+    await addItem(title.trim())
+    setSaving(false)
     setTitle('')
-    setTimeout(() => setSaved(false), 2500)
+    navigate('/library')
   }
 
-  const recent = SEED_ITEMS.slice(0, 4)
+  const recent = items.slice(0, 4)
 
   return (
     <div style={{ padding: '56px 16px 0', background: '#fff', minHeight: '100dvh' }}>
@@ -27,16 +31,10 @@ export function AddScreen() {
           placeholder="Title, name, or description..."
           rows={3}
           style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            padding: '12px',
-            fontSize: 16,
-            border: '1.5px solid #E0E0E0',
-            borderRadius: 12,
-            resize: 'none',
-            fontFamily: 'inherit',
-            outline: 'none',
-            lineHeight: 1.5,
+            width: '100%', boxSizing: 'border-box',
+            padding: '12px', fontSize: 16,
+            border: '1.5px solid #E0E0E0', borderRadius: 12,
+            resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
           }}
         />
 
@@ -48,28 +46,17 @@ export function AddScreen() {
 
         <button
           type="submit"
-          disabled={!title.trim()}
+          disabled={!title.trim() || saving}
           style={{
-            width: '100%',
-            marginTop: 16,
-            padding: '14px',
-            background: title.trim() ? '#002FA7' : '#ccc',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 12,
-            fontSize: 16,
-            fontWeight: 600,
-            cursor: title.trim() ? 'pointer' : 'default',
+            width: '100%', marginTop: 16, padding: '14px',
+            background: title.trim() && !saving ? '#002FA7' : '#ccc',
+            color: '#fff', border: 'none', borderRadius: 12,
+            fontSize: 16, fontWeight: 600,
+            cursor: title.trim() && !saving ? 'pointer' : 'default',
           }}
         >
-          Save
+          {saving ? 'Saving...' : 'Save'}
         </button>
-
-        {saved && (
-          <p style={{ textAlign: 'center', color: '#5A7A5A', marginTop: 12, fontSize: 14 }}>
-            Saved! (AI identification coming Day 3)
-          </p>
-        )}
       </form>
 
       {recent.length > 0 && (
@@ -79,13 +66,7 @@ export function AddScreen() {
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {recent.map(item => (
-              <span key={item.id} style={{
-                padding: '4px 10px',
-                background: '#F2F2F2',
-                borderRadius: 20,
-                fontSize: 12,
-                color: '#444',
-              }}>
+              <span key={item.id} style={{ padding: '4px 10px', background: '#F2F2F2', borderRadius: 20, fontSize: 12, color: '#444' }}>
                 {item.title}
               </span>
             ))}
@@ -101,18 +82,10 @@ function CaptureButton({ label, icon }: { label: string; icon: string }) {
     <button
       type="button"
       style={{
-        flex: 1,
-        padding: '10px 8px',
-        border: '1.5px solid #E0E0E0',
-        borderRadius: 10,
-        background: '#fff',
-        fontSize: 12,
-        color: '#555',
-        cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 4,
+        flex: 1, padding: '10px 8px',
+        border: '1.5px solid #E0E0E0', borderRadius: 10,
+        background: '#fff', fontSize: 12, color: '#555', cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
       }}
     >
       <span style={{ fontSize: 18 }}>{icon}</span>
