@@ -32,7 +32,11 @@
       "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('title:',d.get\\('title'\\),'| creator:',d.get\\('creator'\\),'| conf:',d.get\\('confidence'\\)\\)\")",
       "Bash(curl -s -X POST https://nospaces.vercel.app/api/identify -H \"Content-Type: application/json\" -d '{\"input\":\"my new band believe\"}')",
       "Bash(curl -s \"https://itunes.apple.com/search?term=my%20new%20band%20believe&entity=album&limit=4\")",
-      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);[print\\('-',r.get\\('collectionName'\\),'—',r.get\\('artistName'\\),'\\('+str\\(r.get\\('releaseDate',''\\)[:4]\\)+'\\)'\\) for r in d.get\\('results',[]\\)] or print\\('\\(no results\\)'\\)\")"
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);[print\\('-',r.get\\('collectionName'\\),'—',r.get\\('artistName'\\),'\\('+str\\(r.get\\('releaseDate',''\\)[:4]\\)+'\\)'\\) for r in d.get\\('results',[]\\)] or print\\('\\(no results\\)'\\)\")",
+      "Bash(curl -s \"https://www.googleapis.com/books/v1/volumes?q=The%20Secret%20History%20Donna%20Tartt&maxResults=3\")",
+      "Bash(curl -s \"https://www.googleapis.com/books/v1/volumes?q=secret+history+tartt&maxResults=2\")",
+      "Bash(curl -s \"https://itunes.apple.com/search?term=The%20Secret%20History%20Donna%20Tartt&entity=ebook&limit=1\")",
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);r=d.get\\('results',[]\\);print\\(r[0].get\\('trackName'\\),'—',r[0].get\\('artworkUrl100',''\\).replace\\('100x100bb','300x300bb'\\)\\) if r else print\\('\\(none\\)'\\)\")"
     ]
   }
 }

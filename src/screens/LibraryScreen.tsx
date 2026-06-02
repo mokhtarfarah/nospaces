@@ -41,7 +41,7 @@ function sortItems(items: Item[], sort: SortOption): Item[] {
         return ai - bi
       }
       case 'creator':
-        return (a.creator ?? '').localeCompare(b.creator ?? '')
+        return lastNameKey(a.creator).localeCompare(lastNameKey(b.creator))
       case 'year':
         return (b.year ?? 0) - (a.year ?? 0)
     }
@@ -59,6 +59,14 @@ function groupByMonth(items: Item[]): Map<string, Item[]> {
   return map
 }
 
+// Sort key for creators: by last name (last word), so authors/directors order by
+// surname (e.g. "Donna Tartt" -> "tartt"). "Unknown" sinks to the bottom.
+function lastNameKey(creator: string | null | undefined): string {
+  const name = creator?.trim()
+  if (!name) return '￿'
+  return (name.split(/\s+/).pop() ?? name).toLowerCase()
+}
+
 function groupByCreator(items: Item[]): Map<string, Item[]> {
   const map = new Map<string, Item[]>()
   for (const item of items) {
@@ -66,10 +74,10 @@ function groupByCreator(items: Item[]): Map<string, Item[]> {
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(item)
   }
-  // Alphabetical by creator, with "Unknown" last.
+  // Alphabetical by last name, with "Unknown" last.
   return new Map(
     [...map.entries()].sort((a, b) =>
-      a[0] === 'Unknown' ? 1 : b[0] === 'Unknown' ? -1 : a[0].localeCompare(b[0]),
+      a[0] === 'Unknown' ? 1 : b[0] === 'Unknown' ? -1 : lastNameKey(a[0]).localeCompare(lastNameKey(b[0])),
     ),
   )
 }

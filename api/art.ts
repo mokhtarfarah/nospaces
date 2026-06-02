@@ -40,6 +40,19 @@ async function openLibraryCover(title: string, creator: string): Promise<string 
   return cover ? `https://covers.openlibrary.org/b/id/${cover}-M.jpg` : null
 }
 
+// Apple Books fallback (Goodreads has no public API since 2020; Google Books' keyless
+// quota is unreliable). Same keyless source as music. Covers only.
+async function appleBookCover(title: string, creator: string): Promise<string | null> {
+  const term = [title, creator].filter(Boolean).join(' ')
+  const data = await (await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=ebook&limit=1`)).json()
+  const art: string | undefined = data?.results?.[0]?.artworkUrl100
+  return art ? art.replace('100x100bb', '300x300bb') : null
+}
+
+async function bookCover(title: string, creator: string): Promise<string | null> {
+  return (await openLibraryCover(title, creator)) ?? (await appleBookCover(title, creator))
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const type = one(req.query.type)
   const title = one(req.query.title)
@@ -52,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (type === 'film') url = await tmdbPoster('movie', title, year)
     else if (type === 'tv') url = await tmdbPoster('tv', title, year)
     else if (type === 'music') url = await itunesArt(title, creator)
-    else if (type === 'book') url = await openLibraryCover(title, creator)
+    else if (type === 'book') url = await bookCover(title, creator)
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate')
     return res.status(200).json({ url })
   } catch {
