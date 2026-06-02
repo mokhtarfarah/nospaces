@@ -48,7 +48,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Verify sender is an allowed user
   const fromEmail = (From ?? '').match(/<(.+)>/)?.[1] ?? From
+  console.log('[email] from:', fromEmail, 'subject:', Subject)
   if (!ALLOWED_EMAILS.some(e => fromEmail.toLowerCase().includes(e.toLowerCase()))) {
+    console.log('[email] unauthorized sender:', fromEmail)
     return res.status(403).json({ error: 'Unauthorized sender' })
   }
 
@@ -97,16 +99,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ...(parsed.items ?? []),
   ]
 
+  console.log('[email] items found:', allItems.length, JSON.stringify(allItems.map((i: {title: string}) => i.title)))
+
   if (allItems.length === 0) {
     return res.status(200).json({ saved: 0 })
   }
 
   // Get user_id for the sender
-  const { data: users } = await supabase.auth.admin.listUsers()
+  const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
+  console.log('[email] users error:', usersError, 'count:', users?.users?.length)
   const matchedUser = users?.users?.find(u =>
     ALLOWED_EMAILS.some(e => u.email?.toLowerCase() === e.toLowerCase() &&
       fromEmail.toLowerCase().includes(e.toLowerCase()))
   )
+  console.log('[email] matched user:', matchedUser?.email ?? 'none')
 
   if (!matchedUser) return res.status(200).json({ saved: 0, error: 'User not found' })
 
