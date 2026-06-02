@@ -23,13 +23,41 @@ Identify the item and return JSON only:
 If confidence is low, populate alternatives with up to 3 other possible matches with the same shape.
 If you cannot identify anything, return type "other" with the input as the title.`
 
+const MORE_PROMPT = (input: string, exclude: string[]) => `Given this input: "${input}", list up to 6 DIFFERENT real things it could plausibly refer to (films, books, music albums, or TV shows).
+${exclude.length ? `Do NOT include these, they were already shown: ${exclude.join('; ')}.` : ''}
+Return JSON only:
+{
+  "alternatives": [
+    { "title": "...", "creator": "...", "type": "film|book|music|tv|other", "year": 1234, "confidence": "high|medium|low", "metadata": {}, "tags": [], "ambiguous": false, "alternatives": [] }
+  ]
+}`
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { input, imageBase64, mimeType } = req.body as {
+  const { input, imageBase64, mimeType, more, exclude } = req.body as {
     input?: string
     imageBase64?: string
     mimeType?: string
+    more?: boolean
+    exclude?: string[]
+  }
+
+  // "Show more options" — return a list of additional candidate matches.
+  if (more) {
+    try {
+      const message = await client.messages.create({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: MORE_PROMPT(input ?? '', exclude ?? []) }],
+      })
+      const text = message.content[0].type === 'text' ? message.content[0].text : ''
+      const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
+      return res.status(200).json({ alternatives: json.alternatives ?? [] })
+    } catch {
+      return res.status(200).json({ alternatives: [] })
+    }
   }
 
   try {

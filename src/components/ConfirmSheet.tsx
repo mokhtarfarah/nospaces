@@ -25,7 +25,41 @@ const TYPES = ['film', 'book', 'music', 'tv', 'other']
 export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
   const [item, setItem] = useState<AiResult>(result)
   const [editing, setEditing] = useState(result.confidence !== 'high')
+  const [candidates, setCandidates] = useState<AiResult[]>(result.alternatives ?? [])
+  const [loadingMore, setLoadingMore] = useState(false)
   const color = typeColor(item.type)
+
+  const origQuery = [result.title, result.creator].filter(Boolean).join(' ')
+
+  const normalizeAlt = (a: AiResult): AiResult => ({
+    ...a,
+    metadata: a.metadata ?? {},
+    tags: a.tags ?? [],
+    confidence: a.confidence ?? 'medium',
+    ambiguous: false,
+    alternatives: [],
+  })
+
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const exclude = [item.title, ...candidates.map(c => c.title)]
+      const res = await fetch('/api/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: origQuery, more: true, exclude }),
+      })
+      const data = await res.json()
+      const more: AiResult[] = (data.alternatives ?? []).map(normalizeAlt)
+      setCandidates(prev => [...prev, ...more])
+    } catch {
+      /* ignore — leave list as-is */
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  const otherMatches = candidates.filter(c => c.title !== item.title)
 
   return (
     <>
@@ -115,22 +149,32 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
           {editing ? 'Done editing' : 'Edit details'}
         </button>
 
-        {/* Alternatives */}
-        {item.alternatives?.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#999', marginBottom: 8 }}>Did you mean?</p>
-            {item.alternatives.map((alt, i) => (
-              <button key={i} onClick={() => setItem({ ...alt, alternatives: [] })} style={{
-                display: 'block', width: '100%', textAlign: 'left',
-                padding: '10px 12px', border: '1px solid #EEE', borderRadius: 8,
-                background: '#FAFAFA', marginBottom: 6, cursor: 'pointer', fontSize: 13,
-              }}>
-                <strong>{alt.title}</strong>
-                <span style={{ color: '#888', fontSize: 11 }}> · {alt.creator} · {alt.year}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Alternatives — "Did you mean?" with a load-more */}
+        <div style={{ marginBottom: 16 }}>
+          {otherMatches.length > 0 && (
+            <>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#999', marginBottom: 8 }}>Did you mean?</p>
+              {otherMatches.map((alt, i) => (
+                <button key={i} onClick={() => setItem(normalizeAlt(alt))} style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '10px 12px', border: '1px solid #EEE', borderRadius: 8,
+                  background: '#FAFAFA', marginBottom: 6, cursor: 'pointer', fontSize: 13,
+                }}>
+                  <strong>{alt.title}</strong>
+                  {[alt.creator, alt.year].filter(Boolean).length > 0 && (
+                    <span style={{ color: '#888', fontSize: 11 }}> · {[alt.creator, alt.year].filter(Boolean).join(' · ')}</span>
+                  )}
+                </button>
+              ))}
+            </>
+          )}
+          <button onClick={loadMore} disabled={loadingMore} style={{
+            background: 'none', border: 'none', color: '#002FA7',
+            fontSize: 12, cursor: loadingMore ? 'default' : 'pointer', padding: 0,
+          }}>
+            {loadingMore ? 'Finding more…' : otherMatches.length > 0 ? 'Show more options' : 'Not the right one? See other matches'}
+          </button>
+        </div>
 
         <button
           onClick={() => onConfirm(item)}
