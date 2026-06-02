@@ -194,14 +194,24 @@ export function LibraryScreen() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.2px' }}>Library</h1>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button
-              onClick={() => setViewSheetOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
-            >
-              {VIEW_CONFIG[view].label}
-              {VIEW_CONFIG[view].directional && <span style={{ fontSize: 12, fontWeight: 600, color: '#111' }}>{dir === 'asc' ? '↑' : '↓'}</span>}
-              <span style={{ fontSize: 12 }}>▾</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <button
+                onClick={() => setViewSheetOpen(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                {VIEW_CONFIG[view].label}
+                <span style={{ fontSize: 12 }}>▾</span>
+              </button>
+              {VIEW_CONFIG[view].directional && (
+                <button
+                  onClick={() => setDir(d => (d === 'asc' ? 'desc' : 'asc'))}
+                  title="Reverse order"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#111', padding: '4px 4px', lineHeight: 1 }}
+                >
+                  {dir === 'asc' ? '↑' : '↓'}
+                </button>
+              )}
+            </div>
             <button
               onClick={() => setLayout(l => (l === 'list' ? 'grid' : 'list'))}
               title={layout === 'list' ? 'Grid view' : 'List view'}
