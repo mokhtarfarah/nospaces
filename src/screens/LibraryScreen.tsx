@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
@@ -123,6 +123,11 @@ function itemSource(item: Item): string {
 export function LibraryScreen() {
   const { items, loading, markDone, markWantTo, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
   const navigate = useNavigate()
+  // Anchors for the vibe/genre dropdown menus — the filter row scrolls
+  // horizontally (overflow clips absolutely-positioned children), so the menus
+  // position themselves `fixed` relative to these.
+  const vibeBtnRef = useRef<HTMLDivElement>(null)
+  const genreBtnRef = useRef<HTMLDivElement>(null)
 
   const handleSaveWiki = useCallback((id: string, wiki: WikiInfo) => {
     patchMetadata(id, { wikiUrl: wiki.url, wikiThumb: wiki.thumbnail, wikiSummary: wiki.summary })
@@ -315,7 +320,7 @@ export function LibraryScreen() {
         </div>
 
         {/* Filter row 2 — status + vibe/genre dropdowns (+ reaction chips when on "done") */}
-        <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {(['all', 'want_to', 'done'] as StatusFilter[]).map(s => (
             <FilterChip
               key={s}
@@ -328,7 +333,7 @@ export function LibraryScreen() {
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
               {availableTags.moods.length > 0 && (
-                <div style={{ position: 'relative' }}>
+                <div ref={vibeBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
                   <DropdownButton
                     label="vibe"
                     value={vibeFilter}
@@ -338,6 +343,7 @@ export function LibraryScreen() {
                   />
                   {openDropdown === 'vibe' && (
                     <DropdownMenu
+                      anchorRef={vibeBtnRef}
                       options={availableTags.moods}
                       selected={vibeFilter}
                       onSelect={v => { setVibeFilter(f => f === v ? null : v); setOpenDropdown(null) }}
@@ -346,7 +352,7 @@ export function LibraryScreen() {
                 </div>
               )}
               {availableTags.genres.length > 0 && (
-                <div style={{ position: 'relative' }}>
+                <div ref={genreBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
                   <DropdownButton
                     label="genre"
                     value={genreFilter}
@@ -356,6 +362,7 @@ export function LibraryScreen() {
                   />
                   {openDropdown === 'genre' && (
                     <DropdownMenu
+                      anchorRef={genreBtnRef}
                       options={availableTags.genres}
                       selected={genreFilter}
                       onSelect={g => { setGenreFilter(f => f === g ? null : g); setOpenDropdown(null) }}
@@ -389,7 +396,7 @@ export function LibraryScreen() {
               />
               <button
                 onClick={() => navigate('/shows')}
-                style={{ marginLeft: 'auto', flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
               >
                 📍 shows near you
               </button>
@@ -536,12 +543,24 @@ function DropdownButton({ label, value, active, onToggle, onClear }: {
   )
 }
 
-function DropdownMenu({ options, selected, onSelect }: {
+function DropdownMenu({ options, selected, onSelect, anchorRef }: {
   options: string[]; selected: string | null; onSelect: (v: string) => void
+  anchorRef: React.RefObject<HTMLDivElement>
 }) {
+  // The filter row scrolls horizontally, which clips absolutely-positioned
+  // children. Position the menu `fixed` to the button's on-screen rect instead.
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+  useLayoutEffect(() => {
+    const el = anchorRef.current
+    if (el) {
+      const r = el.getBoundingClientRect()
+      setPos({ left: r.left, top: r.bottom - 4 })
+    }
+  }, [anchorRef])
+  if (!pos) return null
   return (
     <div style={{
-      position: 'absolute', top: 'calc(100% - 4px)', left: 0,
+      position: 'fixed', top: pos.top, left: pos.left,
       background: '#fff', border: '1px solid #E8E8E8',
       borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
       zIndex: 200, minWidth: 160, maxHeight: 220, overflowY: 'auto',
