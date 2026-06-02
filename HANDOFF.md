@@ -48,39 +48,35 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 - ByteString error from earlier (bullet •) handled by cleanEnv()/sanitize() stripping non-ASCII; never reproduced after the prompt fixes.
 - Server-side Vercel env vars required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (not VITE_ prefixed).
 
-## Planned next (user requested)
-1. **Cosmetic + minor feature tweaks** — IN PROGRESS. User has specific UI tweaks and small features in mind (details being gathered).
-2. **Tom's login** — publish Google OAuth consent screen (console.cloud.google.com → APIs & Services → OAuth consent screen → Publish App)
-3. **Music organization** — ability to organize/filter by artist more prominently
-4. **Screenshot shortcut reliability** — clipboard approach is flaky, consider Supabase "pending items" approach instead
-5. **Day 4 review** — NOTE: no written Day 4 plan exists in the repo; was likely a verbal plan from an old session. Ask the user what it covered.
+## TODO / Roadmap (user-curated — last edited 2026-06-02)
 
-## Short-term TODOs (near-term, not full wishlist)
-- **Where-to-watch links** — v1 currently shows provider logos in a popup (api/watch.ts + WhereToWatchSheet.tsx, TMDB key set). LATER: replace the logos with direct clickable links that open the show on the relevant service. Easy to remove the whole feature: delete those 2 files + revert the 3-line hook in ItemActionSheet.
-- **Add/search improvements** — searching a string that isn't a famous work (e.g. "my new band believe") returns wrong famous results with no way to force the literal string. DONE so far: quotation marks now force an exact/literal match (api/identify.ts), and the confirm sheet has "show more options". STILL WANTED: a clearer in-UI way to force exact search / regenerate without quotes; revisit overall add-screen search UX.
-- DONE: ~~Sorting clarity~~ (single View menu + grid toggle). ~~Missing artwork~~ (TMDB/Deezer/iTunes/Open Library/Apple Books via api/art.ts).
+### 🔧 Short-term fixes (small, queued)
+1. **Want-to rows have no subtitle** — done items show year/reaction; want-to rows can be blank or just the media type. Add year, and BRAINSTORM other useful info (e.g. source, "added <when>", page count / runtime, tags, who added it). In LibraryScreen ItemRow.
+2. **Show your notes** — notes (item.note) are saved (mark-done / edit-reaction) but displayed nowhere. Plan: a "Your note" quote block on the action card (italic, left accent border, distinct from the grey Wikipedia blurb) + maybe a 💬 dot on the row. (Drafted once, reverted to do later.)
+3. **Remove duplicates** — find/clear duplicate items (same title + creator/type, case-insensitive); maybe block dupes on save too. (Some dupes may exist from dev test imports.)
+4. **Tom's login** — publish the Google OAuth consent screen (console.cloud.google.com → APIs & Services → OAuth consent screen → Publish App).
+5. **Action cards: tighter / sleeker / proportional** — clean up the tap card; "something about the pictures isn't totally working." (Same as the design-pass idea below — visual hierarchy, dividers, cover proportions, collapsible blurb. Sticky action footer already added.)
+6. **All lowercase?** — experiment: lowercase the whole UI, just for fun / aesthetic.
+7. **Where-to-watch → direct links** — replace the streaming logos with links that open the show on each service. Small/clean. (api/watch.ts + WhereToWatchSheet.tsx; whole feature is easy to remove.)
 
-## Short-term fixes (queued)
-- **Want-to items show no subtitle** — done items show year/reaction, but want-to rows show nothing when there's no type/seasons line. Add year (and maybe type) to the want_to subtitle in LibraryScreen ItemRow.
-- **Display item notes** — notes (item.note) are saved (mark-done sheet / edit reaction) but shown nowhere. Recommended: a "Your note" quote block on the action card main view (italic, left accent border, distinct from the grey Wikipedia blurb so it reads as the user's own words); optionally a small 💬 indicator on the row when a note exists. (Drafted then reverted per user — implement later.)
-- **Remove duplicates function** — detect duplicate library items (same title + creator/type, case-insensitive) and let the user clear them; consider preventing dupes on save too. (Some may exist from test imports during dev.)
+### 🎯 Bigger near-term
+1. **Spotify login integration** — OAuth; e.g. add-to-queue, listening history.
+2. **Letterboxd integration** — (one-time import and/or sync).
+3. **Genre / mood tags + trend analysis** — richer tags, then synthesis/analysis of patterns across the library.
+4. **Recommendations** — sourced from user-selected trusted websites/sources.
+5. **Add/search UX** — clearer in-app "force exact / try again" (quotes + "look it up online" exist); and/or a super-quick add page.
+6. **Screenshot shortcut reliability** — clipboard flow is flaky; improve (Supabase "pending items" approach) or retire it.
 
-## Code cleanup — DONE (dead-code pass)
-- ✅ Removed `identify.ts` `more` mode + `MORE_PROMPT` (frontend uses /api/lookup).
-- ✅ Deleted unused `src/components/SortSheet.tsx`; `SortOption` type now lives in ViewSheet.
-- ✅ Deleted `api/identify-upload.ts` (old iOS Shortcut endpoint, unreferenced).
-- ✅ Deleted stale `src/lib/seeds.ts`.
-- Not done (intentionally): consolidating the per-endpoint TMDB/iTunes/Deezer/Open Library fetchers — each serves a distinct purpose; book-match helpers are inlined in art.ts + blurb.ts (NOT a shared file — Vercel drops underscore-prefixed files from the bundle, which previously 500'd those endpoints).
+### 🧹 Code cleanup (ongoing)
+- Continuously evaluate and use best judgment on when to do cleanup. Also periodically double-check security (RLS, auth, exposed keys, input handling). (Dead-code pass already done: removed identify "more" mode, SortSheet, identify-upload, seeds.)
 
-## Future ideas (parked)
-- **TV season-specific ratings** — let each season in the checklist carry its own reaction, not just a watched tick + one show-level reaction.
-- **Optional multi-category select** — categories are single-select by default now (tap switches). Possibly allow selecting multiple via a non-default gesture (long-press to add, or a small "multi" toggle) without making multi the default.
-
-## Ideas to evaluate (not committed — revisit as we go)
-- **Import with notes/status (maybe)** — bulk email/paste import currently saves everything as "want to" and drops reactions/notes. A richer import could read a structured note (to-read vs past, with reactions) and set done + reaction + note per item. User will manually add her current books for now. Email import was crashing on long notes (now fixed: 8192 tokens + defensive parse).
-- **"+" quick-add in library header** — a + by the search bar. Evaluated as low value right now since the bottom-nav Add tab already covers it in one tap; only worth it as a true inline quick-add (type+save without leaving the library). Parked for reconsideration.
-- **Book blurbs / OCR jacket** — DONE: Open Library/Apple Books blurb fallback (api/blurb.ts). Still possible: snap a photo of the back-cover blurb → Claude vision OCR → save as the item's blurb/note.
-- **Action-card design pass** — make the tap card feel more polished/functional. Candidate tweaks: clearer visual hierarchy (bigger cover, title/meta block); group the quick-links + actions with light section separators; show reaction/status more prominently for done items; make the blurb collapsible if long; consider a small header row ("Edit"/close) instead of relying on the drag handle; tighten spacing. (Sticky action footer already added so buttons never get cut off.)
+### 💡 Small future ideas
+1. **TV season-specific ratings** — rate each season, not just tick-watched.
+2. **Optional multi-category** — bring back multi-select via long-press (not the default).
+3. **Import with notes/status** — bulk import that keeps reactions + done status (not just "want to"). Email import no longer crashes on long notes (8192 tokens + defensive parse).
+4. **Photo-blurb / OCR** — snap a back cover → Claude vision reads the blurb → save it.
+5. **Action-card design pass** — polish (see short-term #5).
+6. **"+" quick-add in library** — low value unless it's a true inline quick-add (Add tab already covers one-tap).
 
 ## Key files
 - `src/screens/LibraryScreen.tsx` — main library UI
