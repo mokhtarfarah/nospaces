@@ -128,7 +128,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[email] instruction:', parsed.instruction, 'specified:', parsed.specified_items)
   let itemsToSave = allItems
   if (parsed.instruction === 'specific' && parsed.specified_items?.length > 0) {
-    itemsToSave = parsed.specified_items.map((i: number) => allItems[i - 1]).filter(Boolean)
+    const specs = parsed.specified_items
+    if (typeof specs[0] === 'number') {
+      // Claude returned indices like [1, 2]
+      itemsToSave = specs.map((i: number) => allItems[i - 1]).filter(Boolean)
+    } else {
+      // Claude returned titles like ["Basic Instinct"] — match by title
+      itemsToSave = allItems.filter((item: { title: string }) =>
+        specs.some((s: string) => item.title?.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(item.title?.toLowerCase()))
+      )
+    }
   }
   console.log('[email] itemsToSave:', itemsToSave.length, JSON.stringify(itemsToSave))
 
