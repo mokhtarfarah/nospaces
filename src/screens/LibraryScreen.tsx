@@ -378,24 +378,24 @@ export function LibraryScreen() {
               ))}
             </>
           )}
+          {/* New Music Tuesday toggle + shows-near-you link — only in the Music category */}
+          {musicOnly && (
+            <>
+              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+              <FilterChip
+                label="new music tuesday"
+                active={newMusicOnly}
+                onClick={() => setNewMusicOnly(v => !v)}
+              />
+              <button
+                onClick={() => navigate('/shows')}
+                style={{ marginLeft: 'auto', flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+              >
+                📍 shows near you
+              </button>
+            </>
+          )}
         </div>
-
-        {/* New Music Tuesday toggle + shows-near-you link — only in the Music category */}
-        {musicOnly && (
-          <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center' }}>
-            <FilterChip
-              label="new music tuesday"
-              active={newMusicOnly}
-              onClick={() => setNewMusicOnly(v => !v)}
-            />
-            <button
-              onClick={() => navigate('/shows')}
-              style={{ marginLeft: 'auto', flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
-            >
-              📍 shows near you
-            </button>
-          </div>
-        )}
       </header>
 
       {/* List */}
