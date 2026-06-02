@@ -46,26 +46,20 @@ async function fetchInfo(query: string): Promise<{ title: string; url: string; t
     '&exsentences=2&explaintext=1' +
     `&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(query)}`
   try {
-    const resp = await fetch(url)
-    const data = await resp.json()
+    const data = await (await fetch(url)).json()
     const pages = data?.query?.pages
-    if (!pages) {
-      console.warn('[wiki] no pages for query:', query, '| response keys:', Object.keys(data ?? {}))
-      return null
-    }
+    if (!pages) return null
     const page = Object.values(pages)[0] as { title?: string; fullurl?: string; thumbnail?: { source?: string }; extract?: string } | undefined
-    if (!page?.title) {
-      console.warn('[wiki] no title in page for query:', query)
-      return null
-    }
+    if (!page?.title) return null
     return {
       title: page.title,
       url: page.fullurl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
       thumbnail: page.thumbnail?.source ?? null,
       summary: page.extract?.trim() || null,
     }
-  } catch (err) {
-    console.error('[wiki] fetch/parse error for query:', query, err)
+  } catch {
+    // Network error (e.g. service worker mid-update aborting in-flight requests).
+    // Caller handles retry.
     return null
   }
 }
@@ -92,16 +86,12 @@ async function fetchByTitle(title: string): Promise<{ title: string; url: string
   }
 }
 
-async function resolve(type: string, title: string, creator: string | null, year: number | null): Promise<WikiInfo> {
-  const key = `${type}|${title}|${creator ?? ''}|${year ?? ''}`
-  if (cache.has(key)) return cache.get(key)!
-
+// One full attempt: runs the search queries, then the direct-title fallbacks.
+// Returns EMPTY if nothing found (either no article or network error on every query).
+async function tryResolve(type: string, title: string, creator: string | null, year: number | null): Promise<WikiInfo> {
   const queries = wikiQueries(type, title, creator, year)
   let info: WikiInfo = EMPTY
 
-  // Books/music: guard against common-word false positives by checking title similarity.
-  // Films/TV: trust the search result — Wikipedia film searches are reliable enough,
-  // and a strict title check breaks legitimate hits like "The Favourite (film)".
   const guarded = type === 'book' || type === 'music'
   const a = normalize(title)
 
@@ -141,6 +131,23 @@ async function resolve(type: string, title: string, creator: string | null, year
         // try next
       }
     }
+  }
+
+  return info
+}
+
+async function resolve(type: string, title: string, creator: string | null, year: number | null): Promise<WikiInfo> {
+  const key = `${type}|${title}|${creator ?? ''}|${year ?? ''}`
+  if (cache.has(key)) return cache.get(key)!
+
+  let info = await tryResolve(type, title, creator, year)
+
+  // If everything came back empty (network errors abort all requests when the service
+  // worker updates mid-load), wait and retry once. This recovers Wikipedia links
+  // without the user needing to manually refresh.
+  if (info === EMPTY) {
+    await new Promise(r => setTimeout(r, 700))
+    info = await tryResolve(type, title, creator, year)
   }
 
   cache.set(key, info)
