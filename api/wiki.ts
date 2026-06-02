@@ -31,7 +31,9 @@ async function fetchInfo(query: string): Promise<{ title: string; url: string; t
     '&prop=pageimages|info|extracts&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
     '&exsentences=2&explaintext=1' +
     `&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(query)}`
-  const data = await (await fetch(url)).json()
+  const data = await (await fetch(url, {
+    headers: { 'User-Agent': 'Nospaces/1.0 (https://nospaces.vercel.app; farahmokhtar94@gmail.com) node-fetch' },
+  })).json()
   const pages = data?.query?.pages
   if (!pages) return null
   const page = Object.values(pages)[0] as { title?: string; fullurl?: string; thumbnail?: { source?: string }; extract?: string } | undefined
