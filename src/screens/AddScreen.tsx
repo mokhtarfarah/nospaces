@@ -42,7 +42,7 @@ export function AddScreen() {
 
   const recent = items.slice(0, 4)
 
-  // Handle results pre-filled from iOS Shortcut
+  // Handle results pre-filled from iOS Shortcut via URL params
   useEffect(() => {
     const t = searchParams.get('title')
     if (!t) return
@@ -59,6 +59,32 @@ export function AddScreen() {
     }
     setAiSource('photo')
     setAiResult(result)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle results from iOS Shortcut via clipboard
+  useEffect(() => {
+    if (!navigator.clipboard?.readText) return
+    navigator.clipboard.readText().then(text => {
+      if (!text.startsWith('https://nospaces.vercel.app/add?')) return
+      const url = new URL(text)
+      const t = url.searchParams.get('title')
+      if (!t) return
+      // Clear clipboard so we don't re-trigger
+      navigator.clipboard.writeText('')
+      const result: AiResult = {
+        title: t,
+        creator: url.searchParams.get('creator') ?? '',
+        type: url.searchParams.get('type') ?? 'other',
+        year: url.searchParams.get('year') ? parseInt(url.searchParams.get('year')!) : null,
+        confidence: (url.searchParams.get('confidence') ?? 'high') as AiResult['confidence'],
+        metadata: {},
+        tags: [],
+        ambiguous: false,
+        alternatives: [],
+      }
+      setAiSource('photo')
+      setAiResult(result)
+    }).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle images shared via iOS share sheet (Web Share Target)
