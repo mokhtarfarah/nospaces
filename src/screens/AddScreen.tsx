@@ -78,8 +78,7 @@ export function AddScreen() {
       setError('Could not identify from image.')
     } finally {
       setLoading(false)
-      if (cameraRef.current) cameraRef.current.value = ''
-      if (fileRef.current) fileRef.current.value = ''
+      if (imageRef.current) imageRef.current.value = ''
     }
   }
 
