@@ -7,21 +7,30 @@ export const config = {
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+const SUPPORTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  // Read raw body from stream
+  // Read raw body
   const chunks: Buffer[] = []
   for await (const chunk of req) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
   }
   const imageBuffer = Buffer.concat(chunks)
 
-  if (!imageBuffer.length) return res.status(400).json({ error: 'No image data' })
+  const rawType = (req.headers['content-type'] ?? 'image/jpeg').split(';')[0].trim()
+  console.log('[identify-upload] content-type:', rawType, 'bytes:', imageBuffer.length)
 
-  const rawType = req.headers['content-type'] ?? 'image/jpeg'
-  // Strip any params like "; boundary=..."
-  const mimeType = rawType.split(';')[0].trim() as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+  if (!imageBuffer.length) {
+    return res.status(400).json({ error: 'No image data received' })
+  }
+
+  // Claude only supports jpeg/png/gif/webp — treat anything else as jpeg
+  const mimeType = SUPPORTED_TYPES.includes(rawType)
+    ? rawType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+    : 'image/jpeg'
+
   const base64 = imageBuffer.toString('base64')
 
   try {
@@ -46,7 +55,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const text = message.content[0].type === 'text' ? message.content[0].text : ''
     const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
 
-    // Build a ready-to-open URL so the Shortcut only needs one dictionary lookup
     const params = new URLSearchParams({
       title: json.title ?? '',
       type: json.type ?? 'other',
@@ -56,9 +64,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     json.open_url = `https://nospaces.vercel.app/add?${params.toString()}`
 
+    console.log('[identify-upload] success:', json.title, json.type)
     res.status(200).json(json)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to identify image' })
+    console.error('[identify-upload] error:', err)
+    res.status(500).json({ error: String(err) })
   }
 }
