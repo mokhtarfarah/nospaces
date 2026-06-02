@@ -38,8 +38,7 @@ export function AddScreen() {
   const [error, setError] = useState('')
   const [aiResult, setAiResult] = useState<AiResult | null>(null)
   const [aiSource, setAiSource] = useState('quick add')
-  const cameraRef = useRef<HTMLInputElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const imageRef = useRef<HTMLInputElement>(null)
 
   const recent = items.slice(0, 4)
 
@@ -129,8 +128,7 @@ export function AddScreen() {
         />
 
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-          <CaptureButton label="Photo" icon={<CameraIcon />} onClick={() => cameraRef.current?.click()} />
-          <CaptureButton label="Screenshot" icon={<ScreenshotIcon />} onClick={() => fileRef.current?.click()} />
+          <CaptureButton label="Photo" icon={<CameraIcon />} onClick={() => imageRef.current?.click()} />
           <CaptureButton label="save@..." icon={<MailIcon />} onClick={() => {}} />
         </div>
 
@@ -151,12 +149,9 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error}</p>}
       </form>
 
-      {/* File inputs outside form to avoid iOS interference */}
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment"
+      {/* Single image input — iOS shows camera + photo library options */}
+      <input ref={imageRef} type="file" accept="image/*"
         onChange={e => { const f = e.target.files?.[0]; if (f) processImageFile(f, 'photo') }}
-        style={{ display: 'none' }} />
-      <input ref={fileRef} type="file" accept="image/*"
-        onChange={e => { const f = e.target.files?.[0]; if (f) processImageFile(f, 'screenshot') }}
         style={{ display: 'none' }} />
 
       {loading && (
@@ -213,9 +208,7 @@ function CaptureButton({ label, icon, onClick }: { label: string; icon: React.Re
 function CameraIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
 }
-function ScreenshotIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
-}
+
 function MailIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
 }
