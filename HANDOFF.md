@@ -133,6 +133,8 @@ Use ELI5 / caveman speak. Short sentences. No jargon. User is not an engineer. S
 - ANTHROPIC_API_KEY
 - SUPABASE_URL (server-side, for email API)
 - SUPABASE_SERVICE_ROLE_KEY (server-side, for email API — suspect this has a stray char)
+- POSTMARK_SERVER_TOKEN (server-side — **needed for email talkback / confirmation replies**; until set, replies just no-op and saving still works). Get from Postmark → Servers → [server] → API Tokens. Also requires nospaces.xyz verified for *sending* (DKIM + Return-Path DNS on Porkbun).
+- POSTMARK_FROM (optional override for the reply From address, e.g. `Nospaces <hello@nospaces.xyz>`; defaults to the @nospaces.xyz address the mail was sent to)
 
 ## Local dev
 ```bash
