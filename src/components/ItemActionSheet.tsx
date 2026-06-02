@@ -1,32 +1,54 @@
 import { useState } from 'react'
-import type { Item } from '../lib/database.types'
+import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 
 interface Props {
   item: Item
   onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null }) => void
+  onEditReaction: (reaction: ItemReaction, note: string) => void
   onDelete: () => void
   onClose: () => void
 }
 
 const TYPES = ['film', 'book', 'music', 'tv', 'other']
 
-export function ItemActionSheet({ item, onEdit, onDelete, onClose }: Props) {
-  const [editing, setEditing] = useState(false)
+const REACTIONS: { value: ItemReaction; label: string }[] = [
+  { value: 'loved_it',   label: 'Loved it'   },
+  { value: 'liked_it',   label: 'Liked it'   },
+  { value: 'eh',         label: 'Eh'         },
+  { value: 'not_for_me', label: 'Not for me' },
+]
+
+const REACTION_LABELS: Record<ItemReaction, string> = {
+  loved_it: 'Loved it', liked_it: 'Liked it', eh: 'Eh', not_for_me: 'Not for me',
+}
+
+type View = 'main' | 'edit' | 'reaction'
+
+export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClose }: Props) {
+  const [view, setView] = useState<View>('main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
   const [type, setType] = useState(item.type)
   const [year, setYear] = useState(item.year?.toString() ?? '')
+  const [reaction, setReaction] = useState<ItemReaction | null>(item.reaction)
+  const [note, setNote] = useState(item.note ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const color = typeColor(item.type)
 
-  function handleSave() {
+  function handleSaveDetails() {
     onEdit({
       title: title.trim() || item.title,
       creator: creator.trim() || null,
       type,
       year: year ? parseInt(year) : null,
     })
+    onClose()
+  }
+
+  function handleSaveReaction() {
+    if (!reaction) return
+    onEditReaction(reaction, note)
     onClose()
   }
 
@@ -38,10 +60,11 @@ export function ItemActionSheet({ item, onEdit, onDelete, onClose }: Props) {
         background: '#fff', borderRadius: '16px 16px 0 0',
         padding: '12px 20px 48px', zIndex: 201,
         maxWidth: 480, margin: '0 auto',
+        maxHeight: '85dvh', overflowY: 'auto',
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
 
-        {!editing ? (
+        {view === 'main' && (
           <>
             {/* Item preview */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
@@ -50,14 +73,20 @@ export function ItemActionSheet({ item, onEdit, onDelete, onClose }: Props) {
                 <div style={{ fontSize: 15, fontWeight: 600 }}>{item.title}</div>
                 <div style={{ fontSize: 12, color: '#888' }}>
                   {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year].filter(Boolean).join(' · ')}
+                  {item.reaction && ` · ${REACTION_LABELS[item.reaction]}`}
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <button onClick={() => setEditing(true)} style={actionBtn('#333')}>
+            <button onClick={() => setView('edit')} style={actionBtn('#333')}>
               Edit details
             </button>
+
+            {item.status === 'done' && (
+              <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), marginTop: 10 }}>
+                Edit reaction
+              </button>
+            )}
 
             {confirmDelete ? (
               <div style={{ marginTop: 10 }}>
@@ -65,12 +94,8 @@ export function ItemActionSheet({ item, onEdit, onDelete, onClose }: Props) {
                   Delete "{item.title}"? This cannot be undone.
                 </p>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setConfirmDelete(false)} style={{ ...actionBtn('#333'), flex: 1 }}>
-                    Cancel
-                  </button>
-                  <button onClick={onDelete} style={{ ...actionBtn('#fff'), flex: 1, background: '#C0392B', border: 'none' }}>
-                    Delete
-                  </button>
+                  <button onClick={() => setConfirmDelete(false)} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
+                  <button onClick={onDelete} style={{ ...actionBtn('#fff'), flex: 1, background: '#C0392B', border: 'none' }}>Delete</button>
                 </div>
               </div>
             ) : (
@@ -79,17 +104,16 @@ export function ItemActionSheet({ item, onEdit, onDelete, onClose }: Props) {
               </button>
             )}
           </>
-        ) : (
+        )}
+
+        {view === 'edit' && (
           <>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>Edit details</p>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={inputStyle} />
               <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={inputStyle} />
               <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={inputStyle} />
             </div>
-
-            {/* Type chips */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
               {TYPES.map(t => {
                 const c = typeColor(t)
@@ -108,10 +132,42 @@ export function ItemActionSheet({ item, onEdit, onDelete, onClose }: Props) {
                 )
               })}
             </div>
-
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setEditing(false)} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
-              <button onClick={handleSave} style={{ ...actionBtn('#fff'), flex: 1, background: '#002FA7', border: 'none' }}>Save</button>
+              <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
+              <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#002FA7', border: 'none' }}>Save</button>
+            </div>
+          </>
+        )}
+
+        {view === 'reaction' && (
+          <>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>Edit reaction</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+              {REACTIONS.map(r => (
+                <button key={r.value} onClick={() => setReaction(r.value)} style={{
+                  padding: '12px 8px',
+                  border: reaction === r.value ? `2px solid ${color.border}` : '1.5px solid #E0E0E0',
+                  borderRadius: 10,
+                  background: reaction === r.value ? color.bg : '#fff',
+                  fontSize: 14,
+                  fontWeight: reaction === r.value ? 600 : 400,
+                  color: reaction === r.value ? color.border : '#444',
+                  cursor: 'pointer',
+                }}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Any thoughts..."
+              rows={2}
+              style={{ ...inputStyle, resize: 'none', marginBottom: 16 }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
+              <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#002FA7' : '#ccc', border: 'none' }}>Save</button>
             </div>
           </>
         )}
@@ -122,7 +178,7 @@ export function ItemActionSheet({ item, onEdit, onDelete, onClose }: Props) {
 
 function actionBtn(color: string): React.CSSProperties {
   return {
-    width: '100%', padding: '13px', border: `1.5px solid #E0E0E0`,
+    width: '100%', padding: '13px', border: '1.5px solid #E0E0E0',
     borderRadius: 12, background: '#fff', fontSize: 15,
     fontWeight: 500, color, cursor: 'pointer',
   }

@@ -236,6 +236,7 @@ export function LibraryScreen() {
         <ItemActionSheet
           item={actionItem}
           onEdit={fields => { editItem(actionItem.id, fields); setActionItem(null) }}
+          onEditReaction={(reaction, note) => { editItem(actionItem.id, { reaction, note: note || null }); setActionItem(null) }}
           onDelete={() => { deleteItem(actionItem.id); setActionItem(null) }}
           onClose={() => setActionItem(null)}
         />

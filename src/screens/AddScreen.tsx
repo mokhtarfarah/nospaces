@@ -38,6 +38,7 @@ export function AddScreen() {
   const [aiResult, setAiResult] = useState<AiResult | null>(null)
   const [aiSource, setAiSource] = useState('quick add')
   const photoRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const recent = items.slice(0, 4)
 
@@ -60,20 +61,21 @@ export function AddScreen() {
     }
   }
 
-  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImageFile(e: React.ChangeEvent<HTMLInputElement>, source: string) {
     const file = e.target.files?.[0]
     if (!file) return
     setError('')
     setLoading(true)
     try {
       const result = await identifyImage(file)
-      setAiSource('photo')
+      setAiSource(source)
       setAiResult(result)
     } catch {
-      setError('Could not identify from photo.')
+      setError('Could not identify from image.')
     } finally {
       setLoading(false)
       if (photoRef.current) photoRef.current.value = ''
+      if (fileRef.current) fileRef.current.value = ''
     }
   }
 
@@ -104,19 +106,16 @@ export function AddScreen() {
 
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
           <CaptureButton label="Photo" icon={<CameraIcon />} onClick={() => photoRef.current?.click()} />
-          <CaptureButton label="Screenshot" icon={<ScreenshotIcon />} onClick={() => photoRef.current?.click()} />
+          <CaptureButton label="Screenshot" icon={<ScreenshotIcon />} onClick={() => fileRef.current?.click()} />
           <CaptureButton label="save@..." icon={<MailIcon />} onClick={() => {}} />
         </div>
 
-        {/* Hidden file input */}
-        <input
-          ref={photoRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handlePhoto}
-          style={{ display: 'none' }}
-        />
+        {/* Camera input — mobile only */}
+        <input ref={photoRef} type="file" accept="image/*" capture="environment"
+          onChange={e => handleImageFile(e, 'photo')} style={{ display: 'none' }} />
+        {/* File picker — screenshots and desktop */}
+        <input ref={fileRef} type="file" accept="image/*"
+          onChange={e => handleImageFile(e, 'screenshot')} style={{ display: 'none' }} />
 
         <button
           type="submit"

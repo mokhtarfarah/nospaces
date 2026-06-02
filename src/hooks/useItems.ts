@@ -78,6 +78,7 @@ export function useItems() {
     type?: string
     year?: number | null
     note?: string | null
+    reaction?: ItemReaction | null
   }) {
     await db().from('items').update(fields).eq('id', id)
     await fetch()
