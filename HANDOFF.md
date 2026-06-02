@@ -79,7 +79,16 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 7 end)
+## TODO / Roadmap (last edited 2026-06-02, updated session 8 end)
+
+### 📌 Session 8 summary (2026-06-02) — quick wins
+All shipped to `main` / live (commit `3a747c8`):
+1. ✅ **Shows / all tours collapsible** — each artist row collapses, **collapsed by default**, so you scan who's touring without scrolling every band's dates. Tap `▸` to expand. (`ShowsScreen.tsx`)
+2. ✅ **Re-identify match picker** (was Farah's queue) — on the action card, re-identify now surfaces the other candidates in a "got the wrong one? pick the right match" panel + a "look it up online" catalog search (`/api/lookup`). Picking applies instantly, keeping the existing type. Fixes the silent wrong-match grab. (`ItemActionSheet.tsx`)
+3. ✅ **Scratch entry always visible** (Seamless capture #9) — "can't identify it? jot a description for later" link always shows on Add (was hidden until you typed). (`AddScreen.tsx`)
+4. ✅ **Hide "from: quick add" label** (Action card #12) — only shows meaningful sources now. (`ItemActionSheet.tsx`)
+
+**Next up (Farah's queue):** recommendations (Taste arc #3, the big one) — its own session + design pass. Descriptive search is the smaller adjacent option.
 
 ### 📌 Session 7 summary (2026-06-02) — touring bands / "shows near you"
 All shipped to `main` / live unless noted (5 commits: `61e1399`, `8a99f26`, `b1ee3f8`, `badaaf0`, + this doc):
