@@ -191,8 +191,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const subject = sanitize(Subject ?? '')
   console.log('[email] from:', fromEmail, 'subject:', subject)
   if (!ALLOWED_EMAILS.some(e => fromEmail.toLowerCase().includes(e.toLowerCase()))) {
-    console.log('[email] unauthorized sender:', fromEmail)
-    return res.status(403).json({ error: 'Unauthorized sender' })
+    // Return 200 (not 403) so Postmark treats it as handled and doesn't retry the
+    // webhook 40+ times. Postmark's own notification emails hit this address too.
+    console.log('[email] ignoring unauthorized sender:', fromEmail)
+    return res.status(200).json({ ignored: true, reason: 'Unauthorized sender' })
   }
 
   // Sanitize body — strip non-latin characters that break ByteString conversion
