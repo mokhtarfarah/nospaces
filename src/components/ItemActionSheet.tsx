@@ -3,6 +3,7 @@ import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
+import { WhereToWatchSheet } from './WhereToWatchSheet'
 
 interface Props {
   item: Item
@@ -38,6 +39,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
   const [note, setNote] = useState(item.note ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
+  const [watchOpen, setWatchOpen] = useState(false)
   const color = typeColor(item.type)
 
   // Persist the season checklist (kept in local state for instant feedback).
@@ -83,7 +85,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
   if (item.type === 'film' || item.type === 'tv') {
     links.push({
       key: 'watch', label: 'Watch', icon: <span style={{ fontSize: 12, color: '#333' }}>▶</span>,
-      onClick: () => window.open(`https://www.justwatch.com/us/search?q=${encodeURIComponent([item.title, item.year].filter(Boolean).join(' '))}`, '_blank'),
+      onClick: () => setWatchOpen(true),
     })
   }
   const quickLinks = links.length > 0 && (
@@ -281,6 +283,12 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
           </>
         )}
       </div>
+      {watchOpen && (
+        <WhereToWatchSheet
+          item={{ title: item.title, year: item.year, type: item.type }}
+          onClose={() => setWatchOpen(false)}
+        />
+      )}
     </>
   )
 }
