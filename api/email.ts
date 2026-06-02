@@ -2,10 +2,13 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Strip any non-ASCII chars that may have crept in via copy-paste
+const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
+
+const anthropic = new Anthropic({ apiKey: cleanEnv(process.env.ANTHROPIC_API_KEY) })
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  cleanEnv(process.env.SUPABASE_URL),
+  cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY),
 )
 
 const ALLOWED_EMAILS = [
