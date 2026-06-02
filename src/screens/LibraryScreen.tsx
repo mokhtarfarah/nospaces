@@ -305,8 +305,8 @@ export function LibraryScreen() {
           )}
         </div>
 
-        {/* Filter row 2 — status (+ reaction chips when on "done") */}
-        <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {/* Filter row 2 — status + vibe/genre dropdowns (+ reaction chips when on "done") */}
+        <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {(['all', 'want_to', 'done'] as StatusFilter[]).map(s => (
             <FilterChip
               key={s}
@@ -315,6 +315,47 @@ export function LibraryScreen() {
               onClick={() => { setStatusFilter(s); if (s === 'want_to') setReactionFilter('all') }}
             />
           ))}
+          {(availableTags.moods.length > 0 || availableTags.genres.length > 0) && (
+            <>
+              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+              {availableTags.moods.length > 0 && (
+                <div style={{ position: 'relative' }}>
+                  <DropdownButton
+                    label="vibe"
+                    value={vibeFilter}
+                    active={openDropdown === 'vibe'}
+                    onToggle={() => setOpenDropdown(d => d === 'vibe' ? null : 'vibe')}
+                    onClear={() => { setVibeFilter(null); setOpenDropdown(null) }}
+                  />
+                  {openDropdown === 'vibe' && (
+                    <DropdownMenu
+                      options={availableTags.moods}
+                      selected={vibeFilter}
+                      onSelect={v => { setVibeFilter(f => f === v ? null : v); setOpenDropdown(null) }}
+                    />
+                  )}
+                </div>
+              )}
+              {availableTags.genres.length > 0 && (
+                <div style={{ position: 'relative' }}>
+                  <DropdownButton
+                    label="genre"
+                    value={genreFilter}
+                    active={openDropdown === 'genre'}
+                    onToggle={() => setOpenDropdown(d => d === 'genre' ? null : 'genre')}
+                    onClear={() => { setGenreFilter(null); setOpenDropdown(null) }}
+                  />
+                  {openDropdown === 'genre' && (
+                    <DropdownMenu
+                      options={availableTags.genres}
+                      selected={genreFilter}
+                      onSelect={g => { setGenreFilter(f => f === g ? null : g); setOpenDropdown(null) }}
+                    />
+                  )}
+                </div>
+              )}
+            </>
+          )}
           {statusFilter === 'done' && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
@@ -329,46 +370,6 @@ export function LibraryScreen() {
             </>
           )}
         </div>
-
-        {/* Filter row 3 — vibe + genre dropdowns (only when the view has tagged items) */}
-        {(availableTags.moods.length > 0 || availableTags.genres.length > 0) && (
-          <div style={{ position: 'relative', paddingBottom: 10 }}>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              {availableTags.moods.length > 0 && (
-                <DropdownButton
-                  label="vibe"
-                  value={vibeFilter}
-                  active={openDropdown === 'vibe'}
-                  onToggle={() => setOpenDropdown(d => d === 'vibe' ? null : 'vibe')}
-                  onClear={() => { setVibeFilter(null); setOpenDropdown(null) }}
-                />
-              )}
-              {availableTags.genres.length > 0 && (
-                <DropdownButton
-                  label="genre"
-                  value={genreFilter}
-                  active={openDropdown === 'genre'}
-                  onToggle={() => setOpenDropdown(d => d === 'genre' ? null : 'genre')}
-                  onClear={() => { setGenreFilter(null); setOpenDropdown(null) }}
-                />
-              )}
-            </div>
-            {openDropdown === 'vibe' && (
-              <DropdownMenu
-                options={availableTags.moods}
-                selected={vibeFilter}
-                onSelect={v => { setVibeFilter(f => f === v ? null : v); setOpenDropdown(null) }}
-              />
-            )}
-            {openDropdown === 'genre' && (
-              <DropdownMenu
-                options={availableTags.genres}
-                selected={genreFilter}
-                onSelect={g => { setGenreFilter(f => f === g ? null : g); setOpenDropdown(null) }}
-              />
-            )}
-          </div>
-        )}
 
         {/* New Music Tuesday toggle — only in the Music category */}
         {musicOnly && (
