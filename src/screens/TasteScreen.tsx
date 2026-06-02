@@ -103,8 +103,22 @@ export function TasteScreen() {
   const [backfillTotal, setBackfillTotal] = useState(0)
   const cancelRef = useRef(false)
 
+  const [rtBackfilling, setRtBackfilling] = useState(false)
+  const [rtProgress, setRtProgress] = useState(0)
+  const [rtTotal, setRtTotal] = useState(0)
+  const rtCancelRef = useRef(false)
+
   const untagged = useMemo(() =>
     items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type)),
+    [items],
+  )
+
+  const needsRuntime = useMemo(() =>
+    items.filter(i => {
+      if (i.type === 'film' || i.type === 'tv') return !i.metadata?.runtime
+      if (i.type === 'book') return !i.metadata?.pages
+      return false
+    }),
     [items],
   )
 
@@ -135,6 +149,40 @@ export function TasteScreen() {
 
     setBackfilling(false)
     cancelRef.current = false
+  }
+
+  async function runRtBackfill() {
+    if (rtBackfilling || needsRuntime.length === 0) return
+    rtCancelRef.current = false
+    setRtBackfilling(true)
+    setRtProgress(0)
+    setRtTotal(needsRuntime.length)
+
+    const BATCH = 5
+    for (let i = 0; i < needsRuntime.length; i += BATCH) {
+      if (rtCancelRef.current) break
+      const batch = needsRuntime.slice(i, i + BATCH)
+      await Promise.all(batch.map(async item => {
+        try {
+          const res = await fetch('/api/runtime', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }),
+          })
+          const data = await res.json()
+          const patch: Record<string, unknown> = { ...item.metadata }
+          if (item.type === 'book' && typeof data.pages === 'number') patch.pages = data.pages
+          if ((item.type === 'film' || item.type === 'tv') && typeof data.runtime === 'number') patch.runtime = data.runtime
+          if (patch.pages !== item.metadata?.pages || patch.runtime !== item.metadata?.runtime) {
+            await editItem(item.id, { metadata: patch })
+          }
+        } catch { /* skip on error */ }
+      }))
+      setRtProgress(Math.min(i + BATCH, needsRuntime.length))
+    }
+
+    setRtBackfilling(false)
+    rtCancelRef.current = false
   }
 
   const doneWithReaction = useMemo(() => items.filter(i => i.status === 'done' && i.reaction), [items])
@@ -269,6 +317,54 @@ export function TasteScreen() {
                   }}
                 >
                   tag my library
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Runtime/pages backfill */}
+      {needsRuntime.length > 0 && (
+        <>
+          <Divider />
+          <div style={{ paddingBottom: 4 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>
+              runtime &amp; pages
+            </div>
+            {rtBackfilling ? (
+              <div>
+                <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
+                  filling in {Math.min(rtProgress + 5, rtTotal)} of {rtTotal}…
+                </div>
+                <div style={{ background: '#F0F0F0', borderRadius: 4, height: 4, overflow: 'hidden', marginBottom: 10 }}>
+                  <div style={{
+                    height: '100%', borderRadius: 4, background: '#111',
+                    width: `${rtTotal ? (rtProgress / rtTotal) * 100 : 0}%`,
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                <button
+                  onClick={() => { rtCancelRef.current = true }}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
+                >
+                  cancel
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, color: '#888' }}>
+                  {needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or page count
+                </span>
+                <button
+                  onClick={runRtBackfill}
+                  style={{
+                    padding: '7px 16px', borderRadius: 20, cursor: 'pointer',
+                    border: '1.5px solid #111', background: '#111',
+                    color: '#fff', fontSize: 12, fontWeight: 600,
+                  }}
+                >
+                  fill in
                 </button>
               </div>
             )}
