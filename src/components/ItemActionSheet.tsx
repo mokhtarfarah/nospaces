@@ -231,8 +231,8 @@ function WikiIcon() {
 
 function actionBtn(color: string): React.CSSProperties {
   return {
-    width: '100%', padding: '13px', border: '1.5px solid #E0E0E0',
-    borderRadius: 12, background: '#fff', fontSize: 15,
+    width: '100%', padding: '9px', border: '1.5px solid #E0E0E0',
+    borderRadius: 10, background: '#fff', fontSize: 13,
     fontWeight: 500, color, cursor: 'pointer',
   }
 }
