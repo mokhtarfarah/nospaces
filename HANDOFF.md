@@ -64,7 +64,8 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 2. **Letterboxd integration** — (one-time import and/or sync).
 3. **Genre / mood tags + trend analysis** — richer tags, then synthesis/analysis of patterns across the library.
 4. **Recommendations** — sourced from user-selected trusted websites/sources.
-5. **Add/search UX** — clearer in-app "force exact / try again" (quotes + "look it up online" exist); and/or a super-quick add page.
+5. **Add/search UX** — clearer in-app "force exact / try again" (quotes + "look it up online" + Re-run exist); and/or a super-quick add page.
+   - **Descriptive/relative queries** (NEXT, designed, not built): e.g. "rosalía latest album", "newest Nolan movie" — AI can't reliably name "latest" (knowledge cutoff). Plan: identify prompt also returns an `intent` { creator, type, ordinal: latest|newest|first|debut }; server resolves the real title from a LIVE catalog — music via Deezer (artist → albums sorted by release_date; verified: Rosalía → "LUX" 2025), film/TV via TMDB person credits. Fall back to the AI guess if resolution fails. Implement in api/identify.ts.
 6. **Screenshot shortcut reliability** — clipboard flow is flaky; improve (Supabase "pending items" approach) or retire it.
 
 ### 🧹 Code cleanup (ongoing)
@@ -78,6 +79,7 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 5. **Action-card design pass** — polish (see short-term #5).
 6. **"+" quick-add in library** — low value unless it's a true inline quick-add (Add tab already covers one-tap).
 7. **"Want to reread/rewatch" button** — flag a *done* item to revisit, keeping its done status + reaction/note. Eval: good value, low effort. Store as metadata.revisit boolean (no schema change); button on the action card for done items (label adapts: reread/rewatch/relisten by type); add a "Revisit" filter chip. Recommended.
+8. **Manually link an item to a specific online/Wikipedia entry** — when auto-resolution picks the wrong entry (wrong edition/cover/blurb), let the user set the correct source. Eval: useful for accuracy, medium effort. Plan: a "link" field in Edit details (paste a Wikipedia/URL) stored in metadata (e.g. metadata.wikiUrl); the action card's link/cover/blurb prefer the manual override; ideally fetch cover+blurb from that exact Wikipedia page. Could also offer a "pick the right one" chooser from search results.
 
 ## Key files
 - `src/screens/LibraryScreen.tsx` — main library UI
