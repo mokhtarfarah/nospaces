@@ -12,12 +12,16 @@ export const VIBES: string[] = [
   'dark',
   'melancholic',
   'intense',
+  'epic',
   'off-kilter',
   'earnest',
   'tearjerker',
+  'romantic',
   'artsy',
   'nostalgic',
   'cozy',
+  'relaxed',
+  'upbeat',
   'funny',
 ]
 
