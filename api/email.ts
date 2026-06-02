@@ -46,17 +46,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Postmark sends inbound emails as JSON
   const { From, Subject, TextBody, HtmlBody, Attachments } = req.body
 
+  // Strip non-latin chars that break ByteString conversion
+  const sanitize = (s: string) => (s ?? '').replace(/[^\x00-\xFF]/g, ' ')
+
   // Verify sender is an allowed user
-  const fromEmail = (From ?? '').match(/<(.+)>/)?.[1] ?? From
-  console.log('[email] from:', fromEmail, 'subject:', Subject)
+  const fromEmail = sanitize((From ?? '').match(/<(.+)>/)?.[1] ?? From)
+  const subject = sanitize(Subject ?? '')
+  console.log('[email] from:', fromEmail, 'subject:', subject)
   if (!ALLOWED_EMAILS.some(e => fromEmail.toLowerCase().includes(e.toLowerCase()))) {
     console.log('[email] unauthorized sender:', fromEmail)
     return res.status(403).json({ error: 'Unauthorized sender' })
   }
 
   // Sanitize body — strip non-latin characters that break ByteString conversion
-  const rawBody = TextBody ?? HtmlBody?.replace(/<[^>]+>/g, ' ') ?? ''
-  const body = rawBody.replace(/[^\x00-\xFF]/g, ' ')
+  const body = sanitize(TextBody ?? HtmlBody?.replace(/<[^>]+>/g, ' ') ?? '')
 
   // Check for image attachments
   let imageResult = null
@@ -90,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-5',
     max_tokens: 2048,
-    messages: [{ role: 'user', content: EMAIL_PROMPT(Subject ?? '', body) }],
+    messages: [{ role: 'user', content: EMAIL_PROMPT(subject, body) }],
   })
 
   const txt = message.content[0].type === 'text' ? message.content[0].text : ''
