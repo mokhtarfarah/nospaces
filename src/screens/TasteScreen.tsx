@@ -269,35 +269,38 @@ export function TasteScreen() {
     [doneWithReaction],
   )
 
-  // Era lean — which decades you gravitate to, reaction-weighted, from `year`.
-  const eraLean = useMemo(() => {
-    const map = new Map<string, { score: number; count: number }>()
-    for (const i of items) {
-      if (i.status !== 'done' || !i.reaction || !i.year) continue
-      const decade = `${Math.floor(i.year / 10) * 10}s`
-      const w = WEIGHTS[i.reaction]
-      const e = map.get(decade) ?? { score: 0, count: 0 }
-      map.set(decade, { score: e.score + w, count: e.count + 1 })
-    }
-    return Array.from(map.entries())
-      .map(([label, v]) => ({ label, score: v.score, count: v.count }))
-      .sort((a, b) => b.score - a.score)
+  // Era lean per type — decades you gravitate to, reaction-weighted, from `year`. tv last.
+  const eraByType = useMemo(() => {
+    return (['film', 'book', 'music', 'tv'] as const).map(type => {
+      const map = new Map<string, { score: number; count: number }>()
+      for (const i of items) {
+        if (i.type !== type || i.status !== 'done' || !i.reaction || !i.year) continue
+        const decade = `${Math.floor(i.year / 10) * 10}s`
+        const w = WEIGHTS[i.reaction]
+        const e = map.get(decade) ?? { score: 0, count: 0 }
+        map.set(decade, { score: e.score + w, count: e.count + 1 })
+      }
+      const scored = Array.from(map.entries())
+        .map(([label, v]) => ({ label, score: v.score, count: v.count }))
+        .sort((a, b) => b.score - a.score)
+      return { type, scored }
+    }).filter(({ scored }) => scored.length > 0)
   }, [items])
 
-  // Backlog vs taste gap — what you keep saving vs what you actually rate highest.
-  const backlogGenres = useMemo(() => {
-    const map = new Map<string, number>()
-    items.filter(i => i.status === 'want_to').forEach(i =>
-      i.tags?.forEach(t => map.set(t, (map.get(t) ?? 0) + 1)))
-    return Array.from(map.entries())
-      .map(([label, count]) => ({ label, score: count, count }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6)
+  // Backlog vs taste gap per type — what you keep saving vs what you rate highest. tv last.
+  const backlogVsTasteByType = useMemo(() => {
+    return (['film', 'book', 'music', 'tv'] as const).map(type => {
+      const map = new Map<string, number>()
+      items.filter(i => i.status === 'want_to' && i.type === type).forEach(i =>
+        i.tags?.forEach(t => map.set(t, (map.get(t) ?? 0) + 1)))
+      const backlog = Array.from(map.entries())
+        .map(([label, count]) => ({ label, score: count, count }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+      const loved = scoreTags(items, 'tags', type).filter(s => s.score > 0).slice(0, 5)
+      return { type, backlog, loved }
+    }).filter(({ backlog, loved }) => backlog.length > 0 || loved.length > 0)
   }, [items])
-  const lovedGenres = useMemo(() =>
-    scoreTags(items, 'tags').filter(s => s.score > 0).slice(0, 6),
-    [items],
-  )
 
   const hasNegative = lowGenresByType.length > 0 || lowVibes.length > 0
 
@@ -353,24 +356,42 @@ export function TasteScreen() {
         )}
       </Section>
 
-      {/* Era lean — which decades land best */}
-      {eraLean.length > 0 && (
+      {/* Era lean per type — which decades land best. tv last. */}
+      {eraByType.length > 0 && (
         <Section title="era">
-          <p style={{ fontSize: 11, color: '#CCC', margin: '0 0 12px' }}>decades you lean toward</p>
-          <RankedChips scored={eraLean} />
+          <p style={{ fontSize: 11, color: '#CCC', margin: '0 0 14px' }}>decades you lean toward</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {eraByType.map(({ type, scored }) => (
+              <div key={type}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 8 }}>{TYPE_LABEL[type]}</div>
+                <RankedChips scored={scored} />
+              </div>
+            ))}
+          </div>
         </Section>
       )}
 
-      {/* Backlog vs taste — what you save vs what you love */}
-      {(backlogGenres.length > 0 && lovedGenres.length > 0) && (
+      {/* Backlog vs taste per type — what you save vs what you love. tv last. */}
+      {backlogVsTasteByType.length > 0 && (
         <Section title="backlog vs taste">
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 8 }}>most in your backlog</div>
-            <RankedChips scored={backlogGenres} />
-          </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 8 }}>what you rate highest</div>
-            <RankedChips scored={lovedGenres} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {backlogVsTasteByType.map(({ type, backlog, loved }) => (
+              <div key={type}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 10 }}>{TYPE_LABEL[type]}</div>
+                {backlog.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, color: '#CCC', marginBottom: 6 }}>most in backlog</div>
+                    <RankedChips scored={backlog} />
+                  </div>
+                )}
+                {loved.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#CCC', marginBottom: 6 }}>rate highest</div>
+                    <RankedChips scored={loved} />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </Section>
       )}
