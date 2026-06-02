@@ -104,8 +104,11 @@ export function LibraryScreen() {
   // Empty array = all categories. Single-select: tapping a type switches to just that
   // one (tap it again to clear back to All). Array kept so multi-select can return later.
   const [categories, setCategories] = useState<string[]>([])
-  const selectCategory = (t: string) =>
+  const [scratchOnly, setScratchOnly] = useState(false)
+  const selectCategory = (t: string) => {
+    setScratchOnly(false)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
+  }
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
@@ -126,6 +129,8 @@ export function LibraryScreen() {
 
   const filtered = useMemo(() => {
     const result = items.filter(item => {
+      if (scratchOnly) return !!item.metadata?.scratch
+      if (item.metadata?.scratch) return false  // hide scratch from normal views
       if (categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
@@ -145,12 +150,14 @@ export function LibraryScreen() {
     return groupByMonth(filtered)
   }, [filtered, group])
 
-  // Unique types from real data for filter row
+  // Unique types from real data for filter row (excluding scratch items)
   const types = useMemo(() => {
     const seen = new Set<string>()
-    items.forEach(i => seen.add(i.type))
+    items.filter(i => !i.metadata?.scratch).forEach(i => seen.add(i.type))
     return Array.from(seen).sort()
   }, [items])
+
+  const hasScratch = useMemo(() => items.some(i => !!i.metadata?.scratch), [items])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
@@ -202,17 +209,20 @@ export function LibraryScreen() {
 
         {/* Filter row 1 — category */}
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 8 }}>
-          <FilterChip label="all" active={categories.length === 0} onClick={() => setCategories([])} />
+          <FilterChip label="all" active={categories.length === 0 && !scratchOnly} onClick={() => { setCategories([]); setScratchOnly(false) }} />
           {['film', 'book', 'music', 'tv', ...types.filter(t => !['film','book','music','tv'].includes(t))].map(t => (
             <FilterChip
               key={t}
               label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
-              active={categories.includes(t)}
+              active={categories.includes(t) && !scratchOnly}
               onClick={() => selectCategory(t)}
             />
           ))}
           {!types.includes('other') && (
-            <FilterChip label="Other" active={categories.includes('other')} onClick={() => selectCategory('other')} />
+            <FilterChip label="other" active={categories.includes('other') && !scratchOnly} onClick={() => selectCategory('other')} />
+          )}
+          {hasScratch && (
+            <FilterChip label="? scratch" active={scratchOnly} onClick={() => { setScratchOnly(v => !v); setCategories([]) }} />
           )}
         </div>
 
@@ -419,6 +429,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
           {item.creator && <span style={{ fontWeight: 400, color: '#A0A0A0' }}>{'  ·  '}{item.creator}</span>}
           {item.note && <span title="Has a note" style={{ fontWeight: 400, color: '#C0C0C0', fontSize: 11 }}>{'  '}✎</span>}
           {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: '#999', fontSize: 11 }}>{'  '}⌂</span>}
+          {!!item.metadata?.scratch && <span title="Needs identifying" style={{ fontWeight: 500, color: '#BBBBBB', fontSize: 11 }}>{'  '}?</span>}
         </div>
         {subtitle && (
           <div style={{ fontSize: 11, color: '#999', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

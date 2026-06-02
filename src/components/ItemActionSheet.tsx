@@ -122,12 +122,14 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   )
 
   function handleSaveDetails() {
+    const metadata: Record<string, unknown> = { ...item.metadata, coverUrl: coverUrl.trim() || null }
+    delete metadata.scratch  // clear scratch flag when user confirms the identity
     onEdit({
       title: title.trim() || item.title,
       creator: creator.trim() || null,
       type,
       year: year ? parseInt(year) : null,
-      metadata: { ...item.metadata, coverUrl: coverUrl.trim() || null },
+      metadata,
     })
     onClose()
   }
@@ -146,6 +148,11 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
       if (r.creator) setCreator(r.creator)
       if (r.type) setType(r.type)
       if (r.year) setYear(String(r.year))
+      // For scratch items, clear the flag and drop into edit view to review + save.
+      if (item.metadata?.scratch) {
+        setCoverUrl('')
+        setView('edit')
+      }
     } catch {
       // ignore — fields stay as-is
     } finally {
@@ -273,6 +280,14 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             )}
 
+            {/* Scratch prompt — shown instead of normal content for unidentified items */}
+            {item.metadata?.scratch && (
+              <div style={{ background: '#F7F7F7', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 6 }}>description saved</div>
+                <div style={{ fontSize: 13, color: '#444', lineHeight: 1.5, fontStyle: 'italic' }}>{item.title}</div>
+              </div>
+            )}
+
             {/* Genre tags (auto-tagged at identify time) */}
             {item.tags && item.tags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
@@ -308,6 +323,17 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   <button onClick={() => setConfirmDelete(false)} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
                   <button onClick={onDelete} style={{ ...actionBtn('#fff'), flex: 1, background: '#C0392B', border: 'none' }}>delete</button>
                 </div>
+              </div>
+            ) : item.metadata?.scratch ? (
+              <div style={{ ...footer, display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleReidentify}
+                  disabled={reidentifying}
+                  style={{ ...actionBtn('#fff'), flex: 2, background: reidentifying ? '#CCC' : '#111', border: 'none' }}
+                >
+                  {reidentifying ? 'identifying…' : 'identify now'}
+                </button>
+                <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
               </div>
             ) : (
               <div style={{ ...footer, display: 'flex', gap: 8 }}>

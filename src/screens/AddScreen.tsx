@@ -161,9 +161,15 @@ export function AddScreen() {
 
   async function handleConfirm(item: AiResult, done: { reaction: ItemReaction | null; note: string } | null) {
     await addItem(item.title, item.type, item.creator, item.year, item.metadata, item.tags, done ?? undefined)
-    // Clear clipboard now that we've saved
     navigator.clipboard?.writeText('').catch(() => {})
     setAiResult(null)
+    setTitle('')
+    navigate('/library')
+  }
+
+  async function handleSaveAsScratch() {
+    if (!title.trim()) return
+    await addItem(title.trim(), 'other', null, null, { scratch: true }, [])
     setTitle('')
     navigate('/library')
   }
@@ -235,6 +241,18 @@ export function AddScreen() {
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <CaptureButton label="add from a photo" icon={<CameraIcon />} onClick={() => imageRef.current?.click()} />
         </div>
+
+        {title.trim() && !loading && (
+          <div style={{ textAlign: 'center', marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={handleSaveAsScratch}
+              style={{ border: 'none', background: 'none', color: '#AAA', fontSize: 12, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+            >
+              can't identify it? save description for later
+            </button>
+          </div>
+        )}
 
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
       </form>

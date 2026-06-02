@@ -79,16 +79,17 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 **Next:** Farah tests with her real export. No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 2)
+## TODO / Roadmap (last edited 2026-06-02, updated session 3)
 
 ### 📥 Seamless capture
 1. ✅ **Mark-as-done at identify time** — "want to / already did" toggle on confirm screen; saves status+reaction in one step.
-2. **Bulk picture upload** — pick many photos → AI runs each → batch confirm/save.
-3. **Manual source field** — set where an item came from (person/site/newsletter). Decide where it surfaces.
-4. **Music / songs** — today albums-only. Figure out adding individual songs + cleanest flow.
-5. **Descriptive queries** (PARKED — separate body of work, not part of the taste arc): "rosalía latest album" → AI returns intent {creator, type, ordinal}; server resolves via live catalog (Deezer for music, TMDB for film/TV). Two-stage in `api/identify.ts`: classify direct-title vs descriptive-intent, then resolve against live API. Start music-only (Deezer, no key). Revisit after the taste arc.
-6. **Screenshot shortcut reliability** — clipboard flow flaky. Improve or retire.
-7. **Photo-blurb / OCR** — snap back cover → Claude reads blurb → save.
+2. ✅ **Scratch sheet** — "save a description" path on the Add screen for things you can't identify yet. Saves as `metadata.scratch=true, type='other'` with raw text as title. Appears under a "scratch" filter chip in the library. Action card shows a prominent "identify now" button for scratch items. No schema change — uses existing columns. Built session 3.
+3. **Bulk picture upload** — pick many photos → AI runs each → batch confirm/save.
+4. **Manual source field** — set where an item came from (person/site/newsletter). Decide where it surfaces.
+5. **Music / songs** — today albums-only. Figure out adding individual songs + cleanest flow.
+6. **Descriptive queries** (PARKED — separate body of work, not part of the taste arc): "rosalía latest album" → AI returns intent {creator, type, ordinal}; server resolves via live catalog (Deezer for music, TMDB for film/TV). Two-stage in `api/identify.ts`: classify direct-title vs descriptive-intent, then resolve against live API. Start music-only (Deezer, no key). Revisit after the taste arc.
+7. **Screenshot shortcut reliability** — clipboard flow flaky. Improve or retire.
+8. **Photo-blurb / OCR** — snap back cover → Claude reads blurb → save.
 
 ### 🎬 Integrations
 1. ✅ **Spotify** — saved-albums sync live (built 2026-06-02). See "Spotify sync" section above. Still TODO/v2: top artists/tracks "insights" view, ongoing auto-sync, individual songs.
