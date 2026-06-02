@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
@@ -121,6 +122,7 @@ function itemSource(item: Item): string {
 
 export function LibraryScreen() {
   const { items, loading, markDone, markWantTo, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
+  const navigate = useNavigate()
 
   const handleSaveWiki = useCallback((id: string, wiki: WikiInfo) => {
     patchMetadata(id, { wikiUrl: wiki.url, wikiThumb: wiki.thumbnail, wikiSummary: wiki.summary })
@@ -378,7 +380,7 @@ export function LibraryScreen() {
           )}
         </div>
 
-        {/* New Music Tuesday toggle — only in the Music category */}
+        {/* New Music Tuesday toggle + shows-near-you link — only in the Music category */}
         {musicOnly && (
           <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center' }}>
             <FilterChip
@@ -386,6 +388,12 @@ export function LibraryScreen() {
               active={newMusicOnly}
               onClick={() => setNewMusicOnly(v => !v)}
             />
+            <button
+              onClick={() => navigate('/shows')}
+              style={{ marginLeft: 'auto', flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+            >
+              📍 shows near you
+            </button>
           </div>
         )}
       </header>

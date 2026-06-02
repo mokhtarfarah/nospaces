@@ -37,6 +37,7 @@ cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (server-side, email API)
 - `POSTMARK_SERVER_TOKEN` — **needed to activate email talkback** (get from Postmark → Servers → API Tokens). Not set yet → talkback silently no-ops, saving still works.
 - `POSTMARK_FROM` — optional reply-from override (e.g. `Nospaces <hello@nospaces.xyz>`)
+- `BANDSINTOWN_APP_ID` — for the "shows near you" tour-dates feature. Any string works for light use; register a real one for reliability (https://artists.bandsintown.com/support/api-installation). Falls back to `nospaces` if unset.
 
 ## Email capture
 Forward anything to `anything@nospaces.xyz` from an allowed address. AI finds every media item + saves as `want_to`. Photo attachments (incl. HEIC) work.
@@ -100,6 +101,7 @@ All shipped to `main` / live unless noted:
 6. **Descriptive queries** (PARKED): "rosalía latest album" → AI returns intent {creator, type, ordinal}; server resolves via live catalog. Revisit after taste arc.
 7. **Screenshot shortcut reliability** — clipboard flow flaky. Improve or retire.
 8. **Photo-blurb / OCR** — snap back cover → Claude reads blurb → save.
+9. **🐛 Scratch page not reachable from Add** (flagged session 7) — the scratch "save a description" path exists but there's no obvious way into it from the Add screen. Add a clear entry point / button on AddScreen so scratch is accessible. (Defer to its own session.)
 
 ### 🎬 Integrations
 1. ✅ **Spotify** — saved-albums sync live (built 2026-06-02). Spotify buttons now deep-link directly to the album page (`open.spotify.com/album/ID`) for synced items; falls back to search for manually added music. See "Spotify sync" section above. Still TODO/v2: top artists/tracks "insights" view, ongoing auto-sync, individual songs.
@@ -134,6 +136,7 @@ All shipped to `main` / live unless noted:
 9. ✅ **Re-identify** — on main card (auto-saves title/creator/type/year/tags/runtime/pages, sheet stays open) + in edit view (populates fields for review) + prominent "identify now" for scratch items.
 10. ✅ **Re-identify type anchor** — re-identify now passes `typeHint: item.type` + year in the input string, preventing a film from silently reverting to the book it was adapted from. Auto-save never overrides the stored type. `clearWikiCache` called after re-identify so Wikipedia re-fetches with updated values.
 11. ✅ **Vibe chips condensed** — mood chips in both main view and mark-done flow are now a single horizontal scrollable row (same pattern as header filter chips).
+12. **🧹 Remove "from: quick add" on the card** (flagged session 7) — the source label "from: quick add" is noise (it's the obvious default). Hide it on the action card (and any row subtitle) when `source === 'quick_add'`. Keep meaningful sources (letterboxd, spotify, email, etc.) visible. (Defer to its own session.)
 
 ### 🔗 Wikipedia coverage
 - ✅ Multi-fallback cascade: tries up to 4 queries per film (with year → without year → drop "The" → bare title). Films/TV trust search result; books/music use title guard.
@@ -168,7 +171,16 @@ All shipped to `main` / live unless noted:
 6. ✅ **Action card header tightened** — reduced top padding + ✕ row margin on both ItemActionSheet and MarkDoneSheet.
 
 ### 🎵 Music
-- **Touring dates** — pull upcoming tour dates for liked/loved music artists and surface a small notice in the app. API: Bandsintown or Ticketmaster (Songkick dead). Location-aware (device GPS), with fallback to a few saved home-base cities if location sharing is declined. Design call: where it surfaces (action card? separate section? taste screen?). **Queued for next session.**
+- ✅ **Touring dates / "shows near you"** — built session 7. Entry point: a `📍 shows near you` button in the **music category** filter row (only shows when viewing music alone), → `/shows` (`ShowsScreen.tsx`).
+  - Pulls upcoming tour dates for every artist you've **liked or loved** (positive-reaction music only; `likedArtists()` in `src/lib/shows.ts`). Whole-backlog music is intentionally excluded.
+  - API: **Bandsintown**, proxied through `api/shows.ts` (attaches `BANDSINTOWN_APP_ID`, normalises to `{id, artist, datetime, venue, city, lat, lng, url}`, caches 12h). Songkick is dead; Ticketmaster not used.
+  - Client fetches all artists with concurrency 5 and **streams results in** with a live `done/total` count (`fetchAllShows`).
+  - **Two modes (tabs at top):**
+    - **near me** — location-first. Primary = device GPS (`📍 use my location`); fallback = preset home cities with hardcoded lat/lng (`HOME_CITIES` — edit freely) so no geocoding API needed. Distance filter via haversine (`milesBetween`); radius chips 25/50/100/250 mi + "anywhere" (default 100 mi). Shows with no venue coords are dropped when a radius is active. Grouped by month.
+    - **all tours** — band-first, for *planning a trip around a band* (no location needed). Every upcoming show worldwide, **grouped by artist**, with **loved bands floated to the top** (♥). A `♥ loved only` filter and an optional free-text **place filter** (matches the venue city string — "spain", "japan", "berlin") narrow it. Each artist block lists its full run of dates + cities. This is the answer to "where is my favourite band playing, maybe I'll travel to see them."
+  - Every row links to the Bandsintown ticket/event URL.
+  - **Not yet verified in-app with live data** — needs a logged-in session + `vercel dev`/prod to exercise `/api/shows`. Spot-check in prod: load music → shows near you, set a city, confirm dates appear.
+  - v2 ideas: badge on the music action card ("on tour near you"), notify on new dates, per-show "interested" save.
 
 ### 🌱 Bigger / later
 - Genre/mood tags + taste analysis → now the active "Taste arc" above

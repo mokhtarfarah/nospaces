@@ -7,6 +7,7 @@ import { AddScreen } from './screens/AddScreen'
 import { ImportScreen } from './screens/ImportScreen'
 import { SpotifyScreen } from './screens/SpotifyScreen'
 import { TasteScreen } from './screens/TasteScreen'
+import { ShowsScreen } from './screens/ShowsScreen'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/import" element={<ImportScreen />} />
         <Route path="/spotify" element={<SpotifyScreen />} />
         <Route path="/taste" element={<TasteScreen />} />
+        <Route path="/shows" element={<ShowsScreen />} />
       </Routes>
       <BottomNav />
     </>
