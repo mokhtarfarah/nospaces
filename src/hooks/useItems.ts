@@ -26,6 +26,18 @@ export function useItems() {
 
   useEffect(() => { fetch() }, [fetch])
 
+  // Re-fetch whenever another device (or tab) writes to this user's items.
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase
+      .channel(`items:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: `user_id=eq.${user.id}` }, () => {
+        fetch({ silent: true })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [user, fetch])
+
   async function addItem(
     title: string,
     type = 'other',
