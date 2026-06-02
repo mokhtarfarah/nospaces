@@ -130,7 +130,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#fff', borderRadius: '16px 16px 0 0',
-        padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201,
+        padding: '12px 20px 0', zIndex: 201,
         maxWidth: 480, margin: '0 auto',
         maxHeight: '90dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
@@ -207,7 +207,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
             {quickLinks}
 
             {confirmDelete ? (
-              <div>
+              <div style={footer}>
                 <p style={{ fontSize: 13, color: '#C0392B', textAlign: 'center', marginBottom: 10 }}>
                   Delete "{item.title}"? This cannot be undone.
                 </p>
@@ -217,7 +217,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ ...footer, display: 'flex', gap: 8 }}>
                 <button onClick={() => setView('edit')} style={{ ...actionBtn('#333'), flex: 1 }}>Edit</button>
                 {(item.status === 'done' || item.reaction != null) && (
                   <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>Reaction</button>
@@ -255,7 +255,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
               })}
             </div>
             {quickLinks}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ ...footer, display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
               <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>Save</button>
             </div>
@@ -288,7 +288,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
               rows={2}
               style={{ ...inputStyle, resize: 'none', marginBottom: 16 }}
             />
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ ...footer, display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
               <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#111111' : '#ccc', border: 'none' }}>Save</button>
             </div>
@@ -315,6 +315,12 @@ function SpotifyIcon() {
 
 function WikiIcon() {
   return <span style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#202122', lineHeight: 1 }}>W</span>
+}
+
+// Pinned footer so action buttons stay visible even when the sheet scrolls.
+const footer: React.CSSProperties = {
+  position: 'sticky', bottom: 0, background: '#fff', zIndex: 1,
+  paddingTop: 10, paddingBottom: 'calc(14px + env(safe-area-inset-bottom))', marginTop: 6,
 }
 
 function actionBtn(color: string): React.CSSProperties {

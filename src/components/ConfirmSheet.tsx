@@ -76,7 +76,7 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#fff', borderRadius: '16px 16px 0 0',
-        padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201,
+        padding: '12px 20px 0', zIndex: 201,
         maxWidth: 480, margin: '0 auto',
         maxHeight: '90dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
@@ -214,16 +214,18 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
           )}
         </div>
 
-        <button
-          onClick={() => onConfirm(item)}
-          style={{
-            width: '100%', padding: 14, background: '#111111',
-            color: '#fff', border: 'none', borderRadius: 12,
-            fontSize: 16, fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          Save
-        </button>
+        <div style={{ position: 'sticky', bottom: 0, background: '#fff', paddingTop: 10, paddingBottom: 'calc(14px + env(safe-area-inset-bottom))' }}>
+          <button
+            onClick={() => onConfirm(item)}
+            style={{
+              width: '100%', padding: 14, background: '#111111',
+              color: '#fff', border: 'none', borderRadius: 12,
+              fontSize: 16, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Save
+          </button>
+        </div>
       </div>
     </>
   )
