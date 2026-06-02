@@ -125,10 +125,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!matchedUser) return res.status(200).json({ saved: 0, error: 'User not found' })
 
   // Determine which items to save
+  console.log('[email] instruction:', parsed.instruction, 'specified:', parsed.specified_items)
   let itemsToSave = allItems
   if (parsed.instruction === 'specific' && parsed.specified_items?.length > 0) {
     itemsToSave = parsed.specified_items.map((i: number) => allItems[i - 1]).filter(Boolean)
   }
+  console.log('[email] itemsToSave:', itemsToSave.length, JSON.stringify(itemsToSave))
 
   // Save items
   const rows = itemsToSave.map((item: {
