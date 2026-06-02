@@ -5,6 +5,7 @@ import { BottomNav } from './components/BottomNav'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { AddScreen } from './screens/AddScreen'
 import { ImportScreen } from './screens/ImportScreen'
+import { SpotifyScreen } from './screens/SpotifyScreen'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/library" element={<LibraryScreen />} />
         <Route path="/add" element={<AddScreen />} />
         <Route path="/import" element={<ImportScreen />} />
+        <Route path="/spotify" element={<SpotifyScreen />} />
       </Routes>
       <BottomNav />
     </>

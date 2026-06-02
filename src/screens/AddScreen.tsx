@@ -210,13 +210,20 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error}</p>}
       </form>
 
-      <div style={{ textAlign: 'center', marginTop: 20 }}>
+      <div style={{ textAlign: 'center', marginTop: 20, display: 'flex', gap: 16, justifyContent: 'center' }}>
         <button
           type="button"
           onClick={() => navigate('/import')}
           style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
         >
           Import from Letterboxd
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/spotify')}
+          style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+        >
+          Sync from Spotify
         </button>
       </div>
 
