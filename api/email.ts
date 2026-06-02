@@ -20,6 +20,35 @@ const ALLOWED_EMAILS = [
   'tom.effland@gmail.com',
 ]
 
+// Talkback: reply to the sender with what happened (saved / nothing / error) so a silent
+// failure can never go unnoticed again. No-ops safely until POSTMARK_SERVER_TOKEN is set,
+// so deploying this never breaks capture even before the Postmark sending setup is done.
+const POSTMARK_TOKEN = cleanEnv(process.env.POSTMARK_SERVER_TOKEN)
+const REPLY_FROM_OVERRIDE = cleanEnv(process.env.POSTMARK_FROM)
+
+async function sendReply(to: string, fromAddress: string, subject: string, text: string) {
+  if (!POSTMARK_TOKEN) {
+    console.log('[email] POSTMARK_SERVER_TOKEN not set — skipping reply')
+    return
+  }
+  const from = REPLY_FROM_OVERRIDE || `Nospaces <${fromAddress}>`
+  try {
+    const r = await fetch('https://api.postmarkapp.com/email', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-Postmark-Server-Token': POSTMARK_TOKEN,
+      },
+      body: JSON.stringify({ From: from, To: to, Subject: subject, TextBody: text, MessageStream: 'outbound' }),
+    })
+    if (!r.ok) console.error('[email] reply send failed:', r.status, await r.text())
+    else console.log('[email] reply sent to', to)
+  } catch (err) {
+    console.error('[email] reply error:', err instanceof Error ? err.message : err)
+  }
+}
+
 // Anthropic only accepts these image media types.
 const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
@@ -149,9 +178,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
   // Postmark sends inbound emails as JSON
-  const { From, Subject, TextBody, HtmlBody, Attachments } = req.body
+  const { From, Subject, TextBody, HtmlBody, Attachments, OriginalRecipient, ToFull } = req.body
+  // Reply from the exact @nospaces.xyz address they wrote to (it's on our verified domain).
+  const replyFrom = ((OriginalRecipient ?? ToFull?.[0]?.Email ?? 'inbox@nospaces.xyz') as string).trim()
 
   // Strip non-latin chars that break ByteString conversion
+  // eslint-disable-next-line no-control-regex -- intentionally strips non-Latin/control chars
   const sanitize = (s: string) => (s ?? '').replace(/[^\x00-\xFF]/g, ' ')
 
   // Verify sender is an allowed user
@@ -219,6 +251,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[email] items found:', allItems.length, JSON.stringify(allItems.map((i: {title: string}) => i.title)))
 
   if (allItems.length === 0) {
+    const hadPhotos = imageAttachments.length > 0
+    await sendReply(fromEmail, replyFrom, 'Nospaces: nothing saved',
+      hadPhotos
+        ? `I got your email but couldn't read any film/book/music/TV from the photo${imageAttachments.length > 1 ? 's' : ''} attached. Clear screenshots, posters, or covers work best — try sending it again.`
+        : `I went through "${subject}" but didn't spot any films, books, music, or TV to save. If something's there, forward it again with the title in the note.`)
     return res.status(200).json({ saved: 0 })
   }
 
@@ -231,7 +268,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   )
   console.log('[email] matched user:', matchedUser?.email ?? 'none')
 
-  if (!matchedUser) return res.status(200).json({ saved: 0, error: 'User not found' })
+  if (!matchedUser) {
+    await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
+      `I found ${allItems.length} item${allItems.length > 1 ? 's' : ''} but couldn't match your account, so nothing was saved. (Tech note: user not found.)`)
+    return res.status(200).json({ saved: 0, error: 'User not found' })
+  }
 
   // Determine which items to save
   console.log('[email] instruction:', parsed.instruction, 'specified:', parsed.specified_items)
@@ -274,6 +315,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: insertError } = await (supabase as any).from('items').insert(rows)
   console.log('[email] insert error:', insertError, 'rows:', rows.length)
+
+  // Talk back with the result so failures are never silent.
+  if (insertError) {
+    await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
+      `I found ${rows.length} item${rows.length > 1 ? 's' : ''} but hit an error saving them — nothing was added. (Tech note: ${insertError.message})`)
+  } else {
+    const list = rows.map(r => `• ${r.title}${r.year ? ` (${r.year})` : ''}`).join('\n')
+    await sendReply(fromEmail, replyFrom, `Nospaces: saved ${rows.length} to your library`,
+      `Added to your library:\n\n${list}`)
+  }
 
   return res.status(200).json({ saved: insertError ? 0 : rows.length, error: insertError?.message })
 }

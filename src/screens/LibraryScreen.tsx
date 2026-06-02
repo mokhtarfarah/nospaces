@@ -116,7 +116,7 @@ export function LibraryScreen() {
   const musicOnly = categories.length === 1 && categories[0] === 'music'
 
   const filtered = useMemo(() => {
-    let result = items.filter(item => {
+    const result = items.filter(item => {
       if (categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
