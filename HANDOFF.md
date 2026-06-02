@@ -77,6 +77,7 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 4. **Photo-blurb / OCR** — snap a back cover → Claude vision reads the blurb → save it.
 5. **Action-card design pass** — polish (see short-term #5).
 6. **"+" quick-add in library** — low value unless it's a true inline quick-add (Add tab already covers one-tap).
+7. **"Want to reread/rewatch" button** — flag a *done* item to revisit, keeping its done status + reaction/note. Eval: good value, low effort. Store as metadata.revisit boolean (no schema change); button on the action card for done items (label adapts: reread/rewatch/relisten by type); add a "Revisit" filter chip. Recommended.
 
 ## Key files
 - `src/screens/LibraryScreen.tsx` — main library UI
