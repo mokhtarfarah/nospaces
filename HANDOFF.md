@@ -20,11 +20,14 @@ cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 ## Key files
 - `src/screens/LibraryScreen.tsx` — library UI
 - `src/screens/AddScreen.tsx` — add screen (AI, photo, shortcut)
+- `src/screens/TasteScreen.tsx` — taste snapshot (3rd nav tab)
 - `src/screens/ImportScreen.tsx` — Letterboxd CSV import
 - `src/lib/letterboxd.ts` — Letterboxd parsing + mapping logic (pure, unit-tested)
-- `src/components/{MarkDoneSheet,ItemActionSheet,ConfirmSheet,ViewSheet}.tsx`
+- `src/lib/genres.ts` — **editable** genre vocab per type (film/tv/book/music). Edit here to add/remove genres.
+- `src/lib/moods.ts` — **editable** mood/vibe list. Edit here to add/remove moods.
+- `src/components/{MarkDoneSheet,ItemActionSheet,ConfirmSheet,ViewSheet,NoteInput}.tsx`
 - `src/hooks/{useItems,useAuth}.tsx`
-- `api/{identify,email,art,blurb,lookup,watch}.ts`
+- `api/{identify,genres,email,art,blurb,lookup,watch}.ts`
 - `src/lib/{artwork,blurb,wikipedia,seasons}.ts`
 - `supabase/schema.sql`
 
@@ -79,7 +82,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 **Next:** Farah tests with her real export. No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 3)
+## TODO / Roadmap (last edited 2026-06-02, updated session 3 end)
 
 ### 📥 Seamless capture
 1. ✅ **Mark-as-done at identify time** — "want to / already did" toggle on confirm screen; saves status+reaction in one step.
@@ -95,23 +98,32 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 1. ✅ **Spotify** — saved-albums sync live (built 2026-06-02). See "Spotify sync" section above. Still TODO/v2: top artists/tracks "insights" view, ongoing auto-sync, individual songs.
 2. ✅ **Letterboxd** — CSV import live. See "Letterboxd import" section above.
 
-### 🌟 Taste arc (session 3 focus — the throughline: tags → taste → recommendations)
-This is the current main thread. Build order matters: each step feeds the next.
-1. **Genre + mood tags (foundation).** Two parallel dimensions:
-   - **Genre** = what it *is* (drama, sci-fi, indie rock). Objective. AI picks 1–3 from a fixed per-type vocab at identify time. Stored in existing `tags text[]` column.
-   - **Mood/vibe** = how it *felt* ("comfort watch", "so bad it's good", "artsy"). Personal. Captured at **mark-done** time (mood chips next to the reaction), AI may pre-suggest. Stored in a new `moods text[]` column (one-line migration; mirrors `tags`).
-   - Fixed curated lists for both (no free-text → no "artsy/Artsy/arty" fragmentation). Display as chips on the action card. Filters live in the view sheet. One-time "tag my library" backfill button for old items (else taste view is blank).
-2. **Taste snapshot screen** (a mirror, NOT trends over time). Client-side from items already loaded. "what you love" (top genres+moods weighted by reaction: loved +2, liked +1, eh −1, not-for-me −2, ranked bars — hand-rolled CSS, no chart lib), "what doesn't land", counts by type. Empty without step 1.
-3. **Recommendations page** (the destination; its own design pass). Pick trusted sources → pull their lists → check off "want to". v1 manual pull (ask for a named list e.g. "NYT best books summer 2026" → AI+web fetch → parse → dedupe vs library → selectable checklist → save as want_to). v2 saved sources. v3 rank against taste snapshot.
+### 🌟 Taste arc (throughline: tags → taste → recommendations)
+1. ✅ **Genre + mood tags (foundation).** Built session 3.
+   - **Genre** = what it *is*. AI auto-picks 1–3 from a fixed vocab per type at identify time. Stored in `tags text[]`. Vocab in `src/lib/genres.ts` — edit freely.
+   - **Mood/vibe** = how it *felt* ("comfort", "gripping", "project", "nostalgia", "classic", etc). Tap chips on the action card main view (saves immediately) or at mark-done time. Stored in `moods text[]` column — **requires Supabase migration if not yet run:** `alter table public.items add column if not exists moods text[] not null default '{}';`. Vocab in `src/lib/moods.ts` — edit freely.
+   - Genre chips (light grey) and mood chips (black) displayed on action card main view.
+   - **Backfill:** "tag my library" button on the Taste screen runs all untagged items through `/api/genres` (Haiku model, cheap) in batches of 5 with live progress + cancel. Run this once after the first deploy to populate historical items.
+2. ✅ **Taste snapshot screen** (`/taste`, 3rd nav tab). Built session 3.
+   - Genres split by type (films / tv / books / music) — ranked chips, top = filled black.
+   - Vibes cross-type — same ranked chips.
+   - "How you rate" — thin reaction bar per type.
+   - "What doesn't land" — collapsible, same per-type grouping.
+   - Scoring: loved +2, liked +1, eh 0, not-for-me −1. Minimum 1 data point to show.
+   - All client-side from `useItems`, no extra API calls.
+   - **Still thin until backfill runs + moods accumulate through use.**
+3. **Recommendations page** (next big thing — its own design pass). Pick trusted sources → pull their lists → check off "want to". v1: manual pull (ask for a named list e.g. "NYT best books summer 2026" → AI+web fetch → parse → dedupe vs library → selectable checklist → save as want_to). v2: saved sources. v3: rank against taste snapshot.
 
 ### 🃏 Action card
 1. ✅ **Mark done / edit reaction inline** — "mark as done" in action sheet footer for want_to items; transitions to reaction view inside the sheet (no second overlay). "edit reaction" for done items.
-2. ✅ **Notes display** — note renders below the blurb in the action card, with bullet-list support (lines starting with -, *, • become a list). Done session 3.
-3. **Design polish** — editorial identity pass done (all-lowercase, 3-col grid, square music grid). Needs eye on real covers.
-4. **Manual link** — paste Wikipedia/URL to fix wrong cover/blurb. Store in `metadata.wikiUrl`.
-5. **"Want to reread/rewatch" button** — `metadata.revisit` boolean; label adapts by type; Revisit filter chip.
-6. ✅ **Manual cover art edit** — paste image URL in edit view → stored in `metadata.coverUrl`; `useArtwork` returns it immediately, skipping API. Live in edit view.
-7. ✅ **Re-identify** — "re-identify" button in edit view fires `/api/identify` with current title and pre-fills fields. User reviews and saves.
+2. ✅ **Notes display** — note renders below the blurb. Bullet-list support: lines starting with -, *, • render as a list. `NoteInput` component (shared) has a "• bullet" button that inserts at cursor. Font 14px, 3-row textarea.
+3. ✅ **Genre + mood chips on action card** — genre chips (light grey), mood chips (black), fully interactive (tap to toggle, saves immediately). Works on want_to and done items.
+4. ✅ **"Owned" toggle** — `⌂ own it?` pill on action card header. Saves as `metadata.owned=true`. `⌂` marker on list rows. `⌂ owned` filter chip in library header.
+5. ✅ **✕ close button** — top-right of both ItemActionSheet and MarkDoneSheet. Action card opens to 96dvh.
+6. **Design polish** — editorial identity pass done (all-lowercase, 3-col grid, square music grid). Needs eye on real covers.
+7. **Manual link** — paste Wikipedia/URL to fix wrong cover/blurb. Store in `metadata.wikiUrl`.
+8. ✅ **Manual cover art edit** — paste image URL in edit view → stored in `metadata.coverUrl`.
+9. ✅ **Re-identify** — button in edit view + prominent "identify now" for scratch items.
 
 ### 🔗 Wikipedia coverage
 - ✅ Multi-fallback cascade: tries up to 4 queries per film (with year → without year → drop "The" → bare title). Films/TV trust search result; books/music use title guard. Deployed 2026-06-02 session 2.
@@ -130,7 +142,7 @@ This is the current main thread. Build order matters: each step feeds the next.
 4. **Subtitle extras** — pages/runtime, added date, source, who added.
 
 ### 🎨 Polish
-0. ✅ **Header declutter (session 3)** — reaction filter moved out of the always-on header row into the view sheet (shows "view · loved it" on the button when active; hidden while viewing "want to"). Category → want-to/done fast path kept. Removed "recently added" chips from the Add screen.
+0. ✅ **Header declutter (session 3)** — reaction chips only show when "done" status is active (hidden for "all" and "want to"). Category → want-to/done fast path kept. Removed "recently added" chips from the Add screen.
 1. ✅ **All lowercase** — done; h1/h2/h3 via CSS, all chips/buttons/sheet copy updated.
 2. ✅ **Grid card** — 3 columns, square for music-only view, bigger title + creator line, reaction dot on done items.
 3. **Letterboxd source label** — small "from Letterboxd" badge in the action card for imported items (`source_detail === 'letterboxd'`). Helps spot anything that imported wrong.
