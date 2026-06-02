@@ -20,6 +20,13 @@ Identify the item and return JSON only:
   "alternatives": []
 }
 
+IMPORTANT — always fill in creator:
+- film: the director's full name (e.g. "Sofia Coppola"). Never leave null.
+- book: the author's full name.
+- music: the primary artist / band name.
+- tv: the creator or showrunner's full name.
+Only leave creator null if the item is truly unknown (type "other") or you genuinely cannot identify the creator despite knowing the title.
+
 If confidence is low, populate alternatives with up to 3 other possible matches with the same shape.
 If the input is wrapped in quotation marks, treat the quoted text as an EXACT, literal title — do not substitute a more famous or differently-spelled work. Match that exact title even if it's obscure; if you can't, set type "other" and use the quoted text verbatim as the title.
 If you cannot identify anything, return type "other" with the input as the title.`
@@ -50,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       content.push({
         type: 'text',
-        text: 'Identify the film, book, music album, or TV show in this image. Return JSON only:\n{\n  "title": "...",\n  "creator": "...",\n  "type": "film|book|music|tv|other",\n  "year": 1234,\n  "confidence": "high|medium|low",\n  "metadata": {},\n  "tags": [],\n  "ambiguous": false,\n  "alternatives": []\n}' + hintLine,
+        text: 'Identify the film, book, music album, or TV show in this image. Always fill in creator (director for films, author for books, artist for music, showrunner for TV). Return JSON only:\n{\n  "title": "...",\n  "creator": "...",\n  "type": "film|book|music|tv|other",\n  "year": 1234,\n  "confidence": "high|medium|low",\n  "metadata": {},\n  "tags": [],\n  "ambiguous": false,\n  "alternatives": []\n}' + hintLine,
       })
     } else {
       content.push({ type: 'text', text: USER_PROMPT(input ?? '') + hintLine })

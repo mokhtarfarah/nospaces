@@ -10,6 +10,7 @@ import { WhereToWatchSheet } from './WhereToWatchSheet'
 interface Props {
   item: Item
   onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null }) => void
+  onMarkDone: (reaction: ItemReaction, note: string) => void
   onEditReaction: (reaction: ItemReaction, note: string) => void
   onSetSeasons: (seasons: Season[]) => void
   onDelete: () => void
@@ -33,7 +34,7 @@ const REACTION_LABELS: Record<ItemReaction, string> = {
 
 type View = 'main' | 'edit' | 'reaction'
 
-export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, onDelete, onClose }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onDelete, onClose }: Props) {
   const [view, setView] = useState<View>('main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -120,8 +121,11 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
 
   function handleSaveReaction() {
     if (!reaction) return
-    onEditReaction(reaction, note)
-    onClose()
+    if (item.status === 'want_to') {
+      onMarkDone(reaction, note)
+    } else {
+      onEditReaction(reaction, note)
+    }
   }
 
   return (
@@ -236,9 +240,9 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
             ) : (
               <div style={{ ...footer, display: 'flex', gap: 8 }}>
                 <button onClick={() => setView('edit')} style={{ ...actionBtn('#333'), flex: 1 }}>edit</button>
-                {(item.status === 'done' || item.reaction != null) && (
-                  <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>reaction</button>
-                )}
+                <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
+                  {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
+                </button>
                 <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
               </div>
             )}
@@ -281,7 +285,9 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
 
         {view === 'reaction' && (
           <>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>edit reaction</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>
+              {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
+            </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
               {REACTIONS.map(r => (
                 <button key={r.value} onClick={() => setReaction(r.value)} style={{

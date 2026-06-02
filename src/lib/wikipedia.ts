@@ -12,14 +12,27 @@ export interface WikiInfo {
 const EMPTY: WikiInfo = { url: null, thumbnail: null, summary: null }
 const cache = new Map<string, WikiInfo>()
 
-// Build the search query per media type. Returns null for types we don't look up.
-function wikiQuery(type: string, title: string, creator: string | null, year: number | null): string | null {
+// Ordered list of queries to try for each media type. First hit wins.
+function wikiQueries(type: string, title: string, creator: string | null, year: number | null): string[] {
+  // Drop a leading "The " / "A " for fallback attempts — Wikipedia often disambiguates
+  // without the article (e.g. "Favourite" → "The Favourite (film)").
+  const bare = title.replace(/^(the|a|an)\s+/i, '').trim()
   switch (type) {
-    case 'film':  return [title, year, 'film'].filter(Boolean).join(' ')
-    case 'tv':    return [title, 'TV series'].filter(Boolean).join(' ')
-    case 'book':  return [title, creator].filter(Boolean).join(' ')
-    case 'music': return [title, creator, 'album'].filter(Boolean).join(' ')
-    default:      return null
+    case 'film':
+      return [
+        ...(year ? [`${title} ${year} film`] : []),
+        `${title} film`,
+        ...(bare !== title ? [`${bare} film`] : []),
+        title,
+      ]
+    case 'tv':
+      return [`${title} TV series`, `${title} television series`, title]
+    case 'book':
+      return [[title, creator].filter(Boolean).join(' '), title]
+    case 'music':
+      return [[title, creator, 'album'].filter(Boolean).join(' '), `${title} album`, title]
+    default:
+      return []
   }
 }
 
@@ -49,24 +62,30 @@ async function resolve(type: string, title: string, creator: string | null, year
   const key = `${type}|${title}|${creator ?? ''}|${year ?? ''}`
   if (cache.has(key)) return cache.get(key)!
 
-  const query = wikiQuery(type, title, creator, year)
+  const queries = wikiQueries(type, title, creator, year)
   let info: WikiInfo = EMPTY
-  if (query) {
+
+  // Try each query in order, stopping at the first result whose title is a
+  // plausible match. Books/music need a strict match (common words return junk);
+  // films/tv use a loose check so "The Favourite (film)" still matches "The Favourite".
+  const strict = type === 'book' || type === 'music'
+  const a = normalize(title)
+
+  for (const query of queries) {
     try {
       const found = await fetchInfo(query)
-      if (found) {
-        // Books/albums are ambiguous — guard against an unrelated top hit (wrong page
-        // and wrong cover). Films/TV reliably resolve, so accept their top result.
-        const guarded = type === 'book' || type === 'music'
-        const a = normalize(title)
-        const b = normalize(found.title)
-        const ok = !guarded || b.includes(a) || a.includes(b)
-        if (ok) info = { url: found.url, thumbnail: found.thumbnail, summary: found.summary }
+      if (!found) continue
+      const b = normalize(found.title)
+      const ok = strict ? (b.includes(a) || a.includes(b)) : (b.includes(a) || a.includes(b) || b.includes(a.replace(/^(the|a|an)\s+/i, '').trim()))
+      if (ok) {
+        info = { url: found.url, thumbnail: found.thumbnail, summary: found.summary }
+        break
       }
     } catch {
-      info = EMPTY
+      // network error on this attempt — try next query
     }
   }
+
   cache.set(key, info)
   return info
 }

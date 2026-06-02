@@ -319,6 +319,7 @@ export function LibraryScreen() {
           <ItemActionSheet
             item={fresh}
             onEdit={fields => { editItem(fresh.id, fields); setActionItem(null) }}
+            onMarkDone={(reaction, note) => { markDone(fresh.id, reaction, note); setActionItem(null) }}
             onEditReaction={(reaction, note) => { editItem(fresh.id, { reaction, note: note || null }); setActionItem(null) }}
             onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
             onDelete={() => { deleteItem(fresh.id); setActionItem(null) }}
