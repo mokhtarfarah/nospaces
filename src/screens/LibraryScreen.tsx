@@ -128,13 +128,15 @@ export function LibraryScreen() {
   const [scratchOnly, setScratchOnly] = useState(false)
   const selectCategory = (t: string) => {
     setScratchOnly(false)
-    setTagFilter(null)
+    setVibeFilter(null); setGenreFilter(null); setOpenDropdown(null)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   }
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
-  const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const [vibeFilter, setVibeFilter] = useState<string | null>(null)
+  const [genreFilter, setGenreFilter] = useState<string | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<'vibe' | 'genre' | null>(null)
   const [view, setView] = useState<ViewMode>('recent')
   const [dir, setDir] = useState<SortDir>(VIEW_CONFIG.recent.defaultDir)
   const [layout, setLayout] = useState<'list' | 'grid'>('list')
@@ -182,13 +184,10 @@ export function LibraryScreen() {
 
   const filtered = useMemo(() => {
     let result = baseFiltered
-    if (tagFilter) {
-      result = result.filter(item =>
-        item.moods?.includes(tagFilter) || item.tags?.includes(tagFilter)
-      )
-    }
+    if (vibeFilter)  result = result.filter(item => item.moods?.includes(vibeFilter))
+    if (genreFilter) result = result.filter(item => item.tags?.includes(genreFilter))
     return sortItems(result, sort, dir)
-  }, [baseFiltered, tagFilter, sort, dir])
+  }, [baseFiltered, vibeFilter, genreFilter, sort, dir])
 
   // Vibes and genres present in the current base-filtered set, for filter chips.
   const availableTags = useMemo(() => {
@@ -204,8 +203,8 @@ export function LibraryScreen() {
     }
   }, [baseFiltered])
 
-  // Reset tag filter when base filters change so a stale tag doesn't silently hide results.
-  useEffect(() => { setTagFilter(null) }, [categories, statusFilter, reactionFilter, scratchOnly])
+  // Reset vibe/genre filters when base filters change so they don't silently hide results.
+  useEffect(() => { setVibeFilter(null); setGenreFilter(null); setOpenDropdown(null) }, [categories, statusFilter, reactionFilter, scratchOnly])
 
   const grouped = useMemo(() => {
     if (group === 'creator') return groupByCreator(filtered)
@@ -327,18 +326,43 @@ export function LibraryScreen() {
           )}
         </div>
 
-        {/* Filter row 3 — vibe + genre chips (only shown when the current view has any) */}
+        {/* Filter row 3 — vibe + genre dropdowns (only when the view has tagged items) */}
         {(availableTags.moods.length > 0 || availableTags.genres.length > 0) && (
-          <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
-            {availableTags.moods.map(m => (
-              <FilterChip key={m} label={m} active={tagFilter === m} onClick={() => setTagFilter(f => f === m ? null : m)} />
-            ))}
-            {availableTags.moods.length > 0 && availableTags.genres.length > 0 && (
-              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+          <div style={{ position: 'relative', paddingBottom: 10 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {availableTags.moods.length > 0 && (
+                <DropdownButton
+                  label="vibe"
+                  value={vibeFilter}
+                  active={openDropdown === 'vibe'}
+                  onToggle={() => setOpenDropdown(d => d === 'vibe' ? null : 'vibe')}
+                  onClear={() => { setVibeFilter(null); setOpenDropdown(null) }}
+                />
+              )}
+              {availableTags.genres.length > 0 && (
+                <DropdownButton
+                  label="genre"
+                  value={genreFilter}
+                  active={openDropdown === 'genre'}
+                  onToggle={() => setOpenDropdown(d => d === 'genre' ? null : 'genre')}
+                  onClear={() => { setGenreFilter(null); setOpenDropdown(null) }}
+                />
+              )}
+            </div>
+            {openDropdown === 'vibe' && (
+              <DropdownMenu
+                options={availableTags.moods}
+                selected={vibeFilter}
+                onSelect={v => { setVibeFilter(f => f === v ? null : v); setOpenDropdown(null) }}
+              />
             )}
-            {availableTags.genres.map(g => (
-              <FilterChip key={g} label={g} active={tagFilter === g} onClick={() => setTagFilter(f => f === g ? null : g)} />
-            ))}
+            {openDropdown === 'genre' && (
+              <DropdownMenu
+                options={availableTags.genres}
+                selected={genreFilter}
+                onSelect={g => { setGenreFilter(f => f === g ? null : g); setOpenDropdown(null) }}
+              />
+            )}
           </div>
         )}
 
@@ -457,6 +481,66 @@ export function LibraryScreen() {
           onClose={() => setDupesOpen(false)}
         />
       )}
+    </div>
+  )
+}
+
+function DropdownButton({ label, value, active, onToggle, onClear }: {
+  label: string; value: string | null; active: boolean
+  onToggle: () => void; onClear: () => void
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+        padding: '5px 12px', borderRadius: 20,
+        border: (value || active) ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+        background: value ? '#EDEDED' : active ? '#F4F4F4' : '#fff',
+        color: (value || active) ? '#111' : '#555',
+        fontSize: 13, fontWeight: value ? 600 : 400,
+        cursor: 'pointer', whiteSpace: 'nowrap',
+      }}
+    >
+      <span>{value ?? label}</span>
+      {value ? (
+        <span
+          onClickCapture={e => { e.stopPropagation(); onClear() }}
+          style={{ fontSize: 11, color: '#666', lineHeight: 1, marginLeft: 1 }}
+        >✕</span>
+      ) : (
+        <span style={{ fontSize: 10, color: '#888', lineHeight: 1 }}>{active ? '▴' : '▾'}</span>
+      )}
+    </button>
+  )
+}
+
+function DropdownMenu({ options, selected, onSelect }: {
+  options: string[]; selected: string | null; onSelect: (v: string) => void
+}) {
+  return (
+    <div style={{
+      position: 'absolute', top: 'calc(100% - 4px)', left: 0,
+      background: '#fff', border: '1px solid #E8E8E8',
+      borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
+      zIndex: 200, minWidth: 160, maxHeight: 220, overflowY: 'auto',
+      padding: '4px 0',
+    }}>
+      {options.map(opt => (
+        <button
+          key={opt}
+          onClick={() => onSelect(opt)}
+          style={{
+            display: 'block', width: '100%', textAlign: 'left',
+            padding: '9px 14px', background: selected === opt ? '#F4F4F4' : 'none',
+            border: 'none', fontSize: 13, cursor: 'pointer',
+            fontWeight: selected === opt ? 600 : 400,
+            color: selected === opt ? '#111' : '#444',
+          }}
+        >
+          {opt}
+        </button>
+      ))}
     </div>
   )
 }
