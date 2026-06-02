@@ -109,6 +109,7 @@ export function LibraryScreen() {
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
   const [view, setView] = useState<ViewMode>('recent')
+  const [layout, setLayout] = useState<'list' | 'grid'>('list')
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [viewSheetOpen, setViewSheetOpen] = useState(false)
@@ -169,6 +170,13 @@ export function LibraryScreen() {
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
             >
               {VIEW_CONFIG[view].label} <span style={{ fontSize: 12 }}>▾</span>
+            </button>
+            <button
+              onClick={() => setLayout(l => (l === 'list' ? 'grid' : 'list'))}
+              title={layout === 'list' ? 'Grid view' : 'List view'}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: 4, display: 'flex', alignItems: 'center' }}
+            >
+              {layout === 'list' ? <GridIcon /> : <ListIcon />}
             </button>
             <button
               onClick={() => setSearchOpen(v => !v)}
@@ -259,17 +267,25 @@ export function LibraryScreen() {
                   {month}
                 </div>
               )}
-              {monthItems.map(item => (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  showType={categories.length !== 1}
-                  sourceLabel={canonicalSources.get(itemSource(item)) ?? itemSource(item)}
-                  onTap={() => setActionItem(item)}
-                  onMarkDone={() => setDoneItem(item)}
-                  onMarkWantTo={() => markWantTo(item.id)}
-                />
-              ))}
+              {layout === 'grid' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: '4px 16px 12px' }}>
+                  {monthItems.map(item => (
+                    <GridCard key={item.id} item={item} onTap={() => setActionItem(item)} />
+                  ))}
+                </div>
+              ) : (
+                monthItems.map(item => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    showType={categories.length !== 1}
+                    sourceLabel={canonicalSources.get(itemSource(item)) ?? itemSource(item)}
+                    onTap={() => setActionItem(item)}
+                    onMarkDone={() => setDoneItem(item)}
+                    onMarkWantTo={() => markWantTo(item.id)}
+                  />
+                ))
+              )}
             </div>
           ))
         )}
@@ -467,6 +483,41 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
     <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
       {TYPE_EMOJI[type] ?? '✦'}
     </div>
+  )
+}
+
+// Grid layout cover card.
+function GridCard({ item, onTap }: { item: Item; onTap: () => void }) {
+  const color = typeColor(item.type)
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year)
+  return (
+    <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
+      <div style={{ width: '100%', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #EEE' }}>
+        {artwork
+          ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <span style={{ fontSize: 26 }}>{TYPE_EMOJI[item.type] ?? '✦'}</span>}
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 500, color: '#111', marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+      {item.creator && <div style={{ fontSize: 10, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>}
+    </div>
+  )
+}
+
+function GridIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  )
+}
+
+function ListIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
   )
 }
 
