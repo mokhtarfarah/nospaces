@@ -29,9 +29,33 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
   const [candidates, setCandidates] = useState<AiResult[]>(result.alternatives ?? [])
   const [loadingMore, setLoadingMore] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [queryText, setQueryText] = useState(query || result.title)
+  const [requerying, setRequerying] = useState(false)
   const color = typeColor(item.type)
 
-  const origQuery = query || [result.title, result.creator].filter(Boolean).join(' ')
+  const origQuery = queryText
+
+  // Edit the search text and re-run the AI without leaving the sheet.
+  async function rerun() {
+    if (!queryText.trim() || requerying) return
+    setRequerying(true)
+    try {
+      const res = await fetch('/api/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: queryText.trim() }),
+      })
+      const r = (await res.json()) as AiResult
+      setItem({ ...r, metadata: r.metadata ?? {}, tags: r.tags ?? [], alternatives: [] })
+      setCandidates(r.alternatives ?? [])
+      setEditing(r.confidence !== 'high')
+      setCollapsed(false)
+    } catch {
+      /* ignore — keep current result */
+    } finally {
+      setRequerying(false)
+    }
+  }
 
   // Force the literal text the user typed, skipping the AI's substitution.
   function useTyped() {
@@ -99,6 +123,24 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
           }}>
             {item.confidence === 'high' ? 'High confidence' : item.confidence === 'medium' ? 'Double-check' : 'Low confidence'}
           </span>
+        </div>
+
+        {/* Edit the search and re-run the AI without leaving the sheet */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <input
+            value={queryText}
+            onChange={e => setQueryText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); rerun() } }}
+            placeholder="Edit search…"
+            style={{ ...inputStyle, flex: 1 }}
+          />
+          <button
+            onClick={rerun}
+            disabled={requerying || !queryText.trim()}
+            style={{ flexShrink: 0, padding: '0 14px', borderRadius: 10, border: 'none', background: requerying ? '#ccc' : '#111111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: requerying ? 'default' : 'pointer' }}
+          >
+            {requerying ? '…' : 'Re-run'}
+          </button>
         </div>
 
         {/* Item preview / edit */}

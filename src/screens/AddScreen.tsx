@@ -144,25 +144,8 @@ export function AddScreen() {
       <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 24px', letterSpacing: '-0.2px' }}>Add</h1>
 
       <form onSubmit={handleSubmit}>
-        <textarea
-          ref={inputRef}
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) }
-          }}
-          placeholder="A film, book, album, or show — or describe it"
-          rows={2}
-          style={{
-            width: '100%', boxSizing: 'border-box',
-            padding: '14px', fontSize: 16,
-            border: '1px solid #E4E4E4', borderRadius: 12,
-            resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
-          }}
-        />
-
-        {/* Optional type hint — helps the AI pick the right category */}
-        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+        {/* Optional type hint (above the box) — helps the AI pick the right category */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
           {(['film', 'book', 'music', 'tv'] as const).map(t => {
             const active = typeHint === t
             return (
@@ -182,6 +165,23 @@ export function AddScreen() {
             )
           })}
         </div>
+
+        <textarea
+          ref={inputRef}
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) }
+          }}
+          placeholder="A film, book, album, or show — or describe it"
+          rows={2}
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            padding: '14px', fontSize: 16,
+            border: '1px solid #E4E4E4', borderRadius: 12,
+            resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
+          }}
+        />
 
         <button
           type="submit"
