@@ -6,9 +6,10 @@ import { useEffect, useState } from 'react'
 export interface WikiInfo {
   url: string | null
   thumbnail: string | null
+  summary: string | null
 }
 
-const EMPTY: WikiInfo = { url: null, thumbnail: null }
+const EMPTY: WikiInfo = { url: null, thumbnail: null, summary: null }
 const cache = new Map<string, WikiInfo>()
 
 // Build the search query per media type. Returns null for types we don't look up.
@@ -25,20 +26,22 @@ function wikiQuery(type: string, title: string, creator: string | null, year: nu
 // Strip disambiguation parens and lowercase, for loose title comparison.
 const normalize = (s: string) => s.toLowerCase().replace(/\s*\([^)]*\)\s*/g, '').trim()
 
-async function fetchInfo(query: string): Promise<{ title: string; url: string; thumbnail: string | null } | null> {
+async function fetchInfo(query: string): Promise<{ title: string; url: string; thumbnail: string | null; summary: string | null } | null> {
   const url =
     'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*' +
-    '&prop=pageimages|info&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
+    '&prop=pageimages|info|extracts&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
+    '&exsentences=2&explaintext=1' +
     `&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(query)}`
   const data = await (await fetch(url)).json()
   const pages = data?.query?.pages
   if (!pages) return null
-  const page = Object.values(pages)[0] as { title?: string; fullurl?: string; thumbnail?: { source?: string } } | undefined
+  const page = Object.values(pages)[0] as { title?: string; fullurl?: string; thumbnail?: { source?: string }; extract?: string } | undefined
   if (!page?.title) return null
   return {
     title: page.title,
     url: page.fullurl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
     thumbnail: page.thumbnail?.source ?? null,
+    summary: page.extract?.trim() || null,
   }
 }
 
@@ -58,7 +61,7 @@ async function resolve(type: string, title: string, creator: string | null, year
         const a = normalize(title)
         const b = normalize(found.title)
         const ok = !guarded || b.includes(a) || a.includes(b)
-        if (ok) info = { url: found.url, thumbnail: found.thumbnail }
+        if (ok) info = { url: found.url, thumbnail: found.thumbnail, summary: found.summary }
       }
     } catch {
       info = EMPTY

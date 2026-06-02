@@ -39,7 +39,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
 
   // Wikipedia article link (null if no page exists / type not linked).
   // Music resolves a page (for the cover) but keeps Spotify as its button.
-  const { url } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
+  const { url, summary } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
   const wikiUrl = item.type === 'music' ? null : url
 
   // Spotify (music) + Wikipedia (film/tv/book) quick links — shown on both main and edit views.
@@ -142,6 +142,12 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
         {view === 'edit' && (
           <>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>Edit details</p>
+            {summary && (
+              <div style={{ fontSize: 12, color: '#777', lineHeight: 1.5, marginBottom: 16, background: '#F7F7F7', borderRadius: 8, padding: '10px 12px' }}>
+                {summary}
+                <span style={{ display: 'block', marginTop: 4, fontSize: 10, color: '#AAA' }}>via Wikipedia</span>
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={inputStyle} />
               <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={inputStyle} />
