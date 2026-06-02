@@ -13,17 +13,47 @@ async function identifyText(input: string, typeHint?: string | null): Promise<Ai
   return res.json()
 }
 
-async function identifyImage(file: File, typeHint?: string | null): Promise<AiResult> {
-  const base64 = await new Promise<string>((resolve, reject) => {
+function fileToBase64(file: File): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve((reader.result as string).split(',')[1])
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+}
+
+// Shrink large photos in the browser before upload. Keeps the request under the
+// host's body-size limit AND speeds up identification, with no loss for recognition
+// (the AI doesn't need full resolution to read a poster/cover). Re-encoding to JPEG
+// also normalizes iPhone HEIC photos, the only types the AI accepts. Falls back to
+// the raw file if the browser can't decode it.
+async function prepareImage(file: File): Promise<{ base64: string; mimeType: string }> {
+  const MAX_EDGE = 1600
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height))
+    const w = Math.round(bitmap.width * scale)
+    const h = Math.round(bitmap.height * scale)
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('no 2d context')
+    ctx.drawImage(bitmap, 0, 0, w, h)
+    bitmap.close?.()
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+    return { base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' }
+  } catch {
+    return { base64: await fileToBase64(file), mimeType: file.type || 'image/png' }
+  }
+}
+
+async function identifyImage(file: File, typeHint?: string | null): Promise<AiResult> {
+  const { base64, mimeType } = await prepareImage(file)
   const res = await fetch('/api/identify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBase64: base64, mimeType: file.type || 'image/png', typeHint: typeHint || undefined }),
+    body: JSON.stringify({ imageBase64: base64, mimeType, typeHint: typeHint || undefined }),
   })
   if (!res.ok) throw new Error('AI request failed')
   return res.json()
