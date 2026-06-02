@@ -56,40 +56,34 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
   const { url, summary } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
   const wikiUrl = item.type === 'music' ? null : url
 
-  // Spotify (music) + Wikipedia (film/tv/book) quick links — shown on both main and edit views.
-  const quickLinks = (
-    <>
-      {item.type === 'music' && (
-        <button
-          onClick={() => {
-            const q = encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))
-            window.open(`https://open.spotify.com/search/${q}`, '_blank')
-          }}
-          style={{ ...actionBtn('#fff'), background: '#1DB954', border: 'none', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-        >
-          <SpotifyIcon /> Open in Spotify
+  // Quick links (Spotify / Wikipedia / Where to watch) as one row of soft pills.
+  const links: { key: string; label: string; icon: React.ReactNode; onClick: () => void }[] = []
+  if (item.type === 'music') {
+    links.push({
+      key: 'spotify', label: 'Spotify', icon: <SpotifyIcon />,
+      onClick: () => window.open(`https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`, '_blank'),
+    })
+  }
+  if (wikiUrl) {
+    links.push({
+      key: 'wiki', label: 'Wikipedia', icon: <WikiIcon />,
+      onClick: () => window.open(wikiUrl, '_blank'),
+    })
+  }
+  if (item.type === 'film' || item.type === 'tv') {
+    links.push({
+      key: 'watch', label: 'Watch', icon: <span style={{ fontSize: 12, color: '#C99700' }}>▶</span>,
+      onClick: () => window.open(`https://www.justwatch.com/us/search?q=${encodeURIComponent([item.title, item.year].filter(Boolean).join(' '))}`, '_blank'),
+    })
+  }
+  const quickLinks = links.length > 0 && (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+      {links.map(l => (
+        <button key={l.key} onClick={l.onClick} style={linkPill}>
+          {l.icon}<span>{l.label}</span>
         </button>
-      )}
-      {wikiUrl && (
-        <button
-          onClick={() => window.open(wikiUrl, '_blank')}
-          style={{ ...actionBtn('#fff'), background: '#202122', border: 'none', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-        >
-          <WikiIcon /> Open Wikipedia page
-        </button>
-      )}
-      {(item.type === 'film' || item.type === 'tv') && (
-        <button
-          onClick={() => {
-            const q = encodeURIComponent([item.title, item.year].filter(Boolean).join(' '))
-            window.open(`https://www.justwatch.com/us/search?q=${q}`, '_blank')
-          }}
-          style={{ ...actionBtn('#1A1A1A'), background: '#FAD22B', border: 'none', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-        >
-          <span style={{ fontSize: 13 }}>▶</span> Where to watch
-        </button>
-      )}
-    </>
+      ))}
+    </div>
   )
 
   function handleSaveDetails() {
@@ -188,18 +182,8 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
 
             {quickLinks}
 
-            <button onClick={() => setView('edit')} style={actionBtn('#333')}>
-              Edit details
-            </button>
-
-            {(item.status === 'done' || item.reaction != null) && (
-              <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), marginTop: 10 }}>
-                Edit reaction
-              </button>
-            )}
-
             {confirmDelete ? (
-              <div style={{ marginTop: 10 }}>
+              <div>
                 <p style={{ fontSize: 13, color: '#C0392B', textAlign: 'center', marginBottom: 10 }}>
                   Delete "{item.title}"? This cannot be undone.
                 </p>
@@ -209,9 +193,13 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
                 </div>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), marginTop: 10 }}>
-                Delete
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setView('edit')} style={{ ...actionBtn('#333'), flex: 1 }}>Edit</button>
+                {(item.status === 'done' || item.reaction != null) && (
+                  <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>Reaction</button>
+                )}
+                <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>Delete</button>
+              </div>
             )}
           </>
         )}
@@ -289,14 +277,14 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
 
 function SpotifyIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.59 14.42a.62.62 0 0 1-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.62.62 0 1 1-.28-1.21c3.82-.87 7.09-.5 9.72 1.1a.62.62 0 0 1 .21.86zm1.23-2.74a.78.78 0 0 1-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 1 1-.45-1.49c3.63-1.1 8.15-.56 11.23 1.33.37.22.49.7.26 1.07zm.11-2.85C14.81 8.98 9.5 8.8 6.44 9.73a.94.94 0 1 1-.54-1.8c3.52-1.07 9.38-.86 13.08 1.34a.94.94 0 0 1-.96 1.61z" />
     </svg>
   )
 }
 
 function WikiIcon() {
-  return <span style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 17, fontWeight: 700, color: '#fff', lineHeight: 1 }}>W</span>
+  return <span style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 15, fontWeight: 700, color: '#202122', lineHeight: 1 }}>W</span>
 }
 
 function actionBtn(color: string): React.CSSProperties {
@@ -305,6 +293,13 @@ function actionBtn(color: string): React.CSSProperties {
     borderRadius: 10, background: '#fff', fontSize: 13,
     fontWeight: 500, color, cursor: 'pointer',
   }
+}
+
+// Compact pill for the quick-link row (Spotify / Wikipedia / Watch).
+const linkPill: React.CSSProperties = {
+  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+  padding: '8px 6px', border: '1px solid #E6E6E6', borderRadius: 10,
+  background: '#FAFAFA', fontSize: 12, fontWeight: 500, color: '#333', cursor: 'pointer',
 }
 
 const inputStyle: React.CSSProperties = {
