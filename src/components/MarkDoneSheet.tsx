@@ -42,6 +42,8 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         zIndex: 201,
         maxWidth: 480,
         margin: '0 auto',
+        maxHeight: '70dvh',
+        overflowY: 'auto',
       }}>
         {/* Handle */}
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />

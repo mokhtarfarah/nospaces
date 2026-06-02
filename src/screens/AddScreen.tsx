@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
 
@@ -23,7 +23,7 @@ async function identifyImage(file: File): Promise<AiResult> {
   const res = await fetch('/api/identify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+    body: JSON.stringify({ imageBase64: base64, mimeType: file.type || 'image/png' }),
   })
   if (!res.ok) throw new Error('AI request failed')
   return res.json()
@@ -32,15 +32,57 @@ async function identifyImage(file: File): Promise<AiResult> {
 export function AddScreen() {
   const { items, addItem } = useItems()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [aiResult, setAiResult] = useState<AiResult | null>(null)
   const [aiSource, setAiSource] = useState('quick add')
-  const photoRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const recent = items.slice(0, 4)
+
+  // Handle images shared via iOS share sheet (Web Share Target)
+  useEffect(() => {
+    if (searchParams.get('shared') !== 'true') return
+    caches.open('nospaces-share-target').then(async cache => {
+      const response = await cache.match('shared-image')
+      if (!response) return
+      const blob = await response.blob()
+      const file = new File([blob], 'shared.png', { type: blob.type || 'image/png' })
+      await cache.delete('shared-image')
+      processImageFile(file, 'screenshot')
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Desktop paste support (Ctrl+V / Cmd+V)
+  useEffect(() => {
+    function handlePaste(e: ClipboardEvent) {
+      const item = Array.from(e.clipboardData?.items ?? []).find(i => i.type.startsWith('image/'))
+      if (!item) return
+      const file = item.getAsFile()
+      if (file) processImageFile(file, 'screenshot')
+    }
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function processImageFile(file: File, source: string) {
+    setError('')
+    setLoading(true)
+    try {
+      const result = await identifyImage(file)
+      setAiSource(source)
+      setAiResult(result)
+    } catch {
+      setError('Could not identify from image.')
+    } finally {
+      setLoading(false)
+      if (cameraRef.current) cameraRef.current.value = ''
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -58,24 +100,6 @@ export function AddScreen() {
       navigate('/library')
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function handleImageFile(e: React.ChangeEvent<HTMLInputElement>, source: string) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setError('')
-    setLoading(true)
-    try {
-      const result = await identifyImage(file)
-      setAiSource(source)
-      setAiResult(result)
-    } catch {
-      setError('Could not identify from image.')
-    } finally {
-      setLoading(false)
-      if (photoRef.current) photoRef.current.value = ''
-      if (fileRef.current) fileRef.current.value = ''
     }
   }
 
@@ -105,17 +129,10 @@ export function AddScreen() {
         />
 
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-          <CaptureButton label="Photo" icon={<CameraIcon />} onClick={() => photoRef.current?.click()} />
+          <CaptureButton label="Photo" icon={<CameraIcon />} onClick={() => cameraRef.current?.click()} />
           <CaptureButton label="Screenshot" icon={<ScreenshotIcon />} onClick={() => fileRef.current?.click()} />
           <CaptureButton label="save@..." icon={<MailIcon />} onClick={() => {}} />
         </div>
-
-        {/* Camera input — mobile only */}
-        <input ref={photoRef} type="file" accept="image/*" capture="environment"
-          onChange={e => handleImageFile(e, 'photo')} style={{ display: 'none' }} />
-        {/* File picker — screenshots and desktop */}
-        <input ref={fileRef} type="file" accept="image/*"
-          onChange={e => handleImageFile(e, 'screenshot')} style={{ display: 'none' }} />
 
         <button
           type="submit"
@@ -133,6 +150,20 @@ export function AddScreen() {
 
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error}</p>}
       </form>
+
+      {/* File inputs outside form to avoid iOS interference */}
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment"
+        onChange={e => { const f = e.target.files?.[0]; if (f) processImageFile(f, 'photo') }}
+        style={{ display: 'none' }} />
+      <input ref={fileRef} type="file" accept="image/*"
+        onChange={e => { const f = e.target.files?.[0]; if (f) processImageFile(f, 'screenshot') }}
+        style={{ display: 'none' }} />
+
+      {loading && (
+        <p style={{ textAlign: 'center', color: '#888', fontSize: 13, marginTop: 16 }}>
+          Identifying...
+        </p>
+      )}
 
       {recent.length > 0 && (
         <div style={{ marginTop: 32 }}>

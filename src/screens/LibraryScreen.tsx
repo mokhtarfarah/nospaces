@@ -232,15 +232,19 @@ export function LibraryScreen() {
       )}
 
       {/* Item action sheet */}
-      {actionItem && (
-        <ItemActionSheet
-          item={actionItem}
-          onEdit={fields => { editItem(actionItem.id, fields); setActionItem(null) }}
-          onEditReaction={(reaction, note) => { editItem(actionItem.id, { reaction, note: note || null }); setActionItem(null) }}
-          onDelete={() => { deleteItem(actionItem.id); setActionItem(null) }}
-          onClose={() => setActionItem(null)}
-        />
-      )}
+      {actionItem && (() => {
+        // Always read fresh item from state so status/reaction are current
+        const fresh = items.find(i => i.id === actionItem.id) ?? actionItem
+        return (
+          <ItemActionSheet
+            item={fresh}
+            onEdit={fields => { editItem(fresh.id, fields); setActionItem(null) }}
+            onEditReaction={(reaction, note) => { editItem(fresh.id, { reaction, note: note || null }); setActionItem(null) }}
+            onDelete={() => { deleteItem(fresh.id); setActionItem(null) }}
+            onClose={() => setActionItem(null)}
+          />
+        )
+      })()}
 
       {/* Sort sheet */}
       {sortSheetOpen && (
