@@ -36,13 +36,16 @@ Return JSON only:
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { input, imageBase64, mimeType, more, exclude } = req.body as {
+  const { input, imageBase64, mimeType, more, exclude, typeHint } = req.body as {
     input?: string
     imageBase64?: string
     mimeType?: string
     more?: boolean
     exclude?: string[]
+    typeHint?: string
   }
+
+  const hintLine = typeHint ? `\nThe user indicates this is a ${typeHint}. Strongly prefer that type.` : ''
 
   // "Show more options" — return a list of additional candidate matches.
   if (more) {
@@ -75,10 +78,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       content.push({
         type: 'text',
-        text: 'Identify the film, book, music album, or TV show in this image. Return JSON only:\n{\n  "title": "...",\n  "creator": "...",\n  "type": "film|book|music|tv|other",\n  "year": 1234,\n  "confidence": "high|medium|low",\n  "metadata": {},\n  "tags": [],\n  "ambiguous": false,\n  "alternatives": []\n}',
+        text: 'Identify the film, book, music album, or TV show in this image. Return JSON only:\n{\n  "title": "...",\n  "creator": "...",\n  "type": "film|book|music|tv|other",\n  "year": 1234,\n  "confidence": "high|medium|low",\n  "metadata": {},\n  "tags": [],\n  "ambiguous": false,\n  "alternatives": []\n}' + hintLine,
       })
     } else {
-      content.push({ type: 'text', text: USER_PROMPT(input ?? '') })
+      content.push({ type: 'text', text: USER_PROMPT(input ?? '') + hintLine })
     }
 
     const message = await client.messages.create({

@@ -3,17 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
 
-async function identifyText(input: string): Promise<AiResult> {
+async function identifyText(input: string, typeHint?: string | null): Promise<AiResult> {
   const res = await fetch('/api/identify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input }),
+    body: JSON.stringify({ input, typeHint: typeHint || undefined }),
   })
   if (!res.ok) throw new Error('AI request failed')
   return res.json()
 }
 
-async function identifyImage(file: File): Promise<AiResult> {
+async function identifyImage(file: File, typeHint?: string | null): Promise<AiResult> {
   const base64 = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve((reader.result as string).split(',')[1])
@@ -23,7 +23,7 @@ async function identifyImage(file: File): Promise<AiResult> {
   const res = await fetch('/api/identify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBase64: base64, mimeType: file.type || 'image/png' }),
+    body: JSON.stringify({ imageBase64: base64, mimeType: file.type || 'image/png', typeHint: typeHint || undefined }),
   })
   if (!res.ok) throw new Error('AI request failed')
   return res.json()
@@ -39,7 +39,11 @@ export function AddScreen() {
   const [aiResult, setAiResult] = useState<AiResult | null>(null)
   const [aiSource, setAiSource] = useState('quick add')
   const [aiQuery, setAiQuery] = useState('') // the exact text the user typed (for "use as typed")
+  const [typeHint, setTypeHint] = useState<string | null>(null)
   const imageRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
 
   const recent = items.slice(0, 4)
 
@@ -93,7 +97,7 @@ export function AddScreen() {
     setError('')
     setLoading(true)
     try {
-      const result = await identifyImage(file)
+      const result = await identifyImage(file, typeHint)
       setAiSource(source)
       setAiQuery('')
       setAiResult(result)
@@ -105,13 +109,13 @@ export function AddScreen() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent | React.KeyboardEvent) {
     e.preventDefault()
     if (!title.trim() || loading) return
     setError('')
     setLoading(true)
     try {
-      const result = await identifyText(title.trim())
+      const result = await identifyText(title.trim(), typeHint)
       setAiSource('quick add')
       setAiQuery(title.trim())
       setAiResult(result)
@@ -141,8 +145,12 @@ export function AddScreen() {
 
       <form onSubmit={handleSubmit}>
         <textarea
+          ref={inputRef}
           value={title}
           onChange={e => setTitle(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) }
+          }}
           placeholder="A film, book, album, or show — or describe it"
           rows={2}
           style={{
@@ -152,6 +160,28 @@ export function AddScreen() {
             resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
           }}
         />
+
+        {/* Optional type hint — helps the AI pick the right category */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+          {(['film', 'book', 'music', 'tv'] as const).map(t => {
+            const active = typeHint === t
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTypeHint(active ? null : t)}
+                style={{
+                  padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
+                  border: active ? '1.5px solid #111111' : '1.5px solid #E4E4E4',
+                  background: active ? '#F0F0F0' : '#fff',
+                  color: active ? '#111111' : '#777', fontWeight: active ? 600 : 400,
+                }}
+              >
+                {t === 'tv' ? 'TV' : t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            )
+          })}
+        </div>
 
         <button
           type="submit"
