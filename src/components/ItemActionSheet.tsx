@@ -358,5 +358,5 @@ const linkPill: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
   padding: '10px 12px', border: '1.5px solid #E0E0E0',
-  borderRadius: 10, fontSize: 14, fontFamily: 'inherit', outline: 'none',
+  borderRadius: 10, fontSize: 16, fontFamily: 'inherit', outline: 'none',
 }

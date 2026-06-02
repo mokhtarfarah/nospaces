@@ -124,9 +124,8 @@ function ProviderGroup({ label, providers, title, fallback }: { label: string; p
             href={providerUrl(p.name, title, fallback)}
             target="_blank"
             rel="noreferrer"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px 5px 5px', border: '1px solid #EEE', borderRadius: 8, background: '#FAFAFA', textDecoration: 'none', color: '#333' }}
+            style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', border: '1px solid #EEE', borderRadius: 8, background: '#FAFAFA', textDecoration: 'none', color: '#333' }}
           >
-            {p.logo && <img src={p.logo} alt="" width={24} height={24} style={{ borderRadius: 5 }} />}
             <span style={{ fontSize: 12 }}>{p.name} ↗</span>
           </a>
         ))}

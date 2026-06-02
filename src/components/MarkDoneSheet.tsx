@@ -93,7 +93,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
             padding: '10px 12px',
             border: '1.5px solid #E0E0E0',
             borderRadius: 10,
-            fontSize: 14,
+            fontSize: 16,
             fontFamily: 'inherit',
             resize: 'none',
             outline: 'none',

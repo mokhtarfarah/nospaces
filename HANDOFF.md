@@ -43,8 +43,8 @@ Share screenshot → POST to `/api/identify-upload` → copy URL to clipboard �
 
 ### 🚨 Quick fixes
 1. ✅ Email picture upload broken — fixed 2026-06-02 (HEIC conversion, media-type normalization)
-2. **iOS zoom-on-type** — inputs zoom on tap. Fix: font-size ≥16px. Small.
-3. **Revert scroll position after editing action card** — loses your place. Small.
+2. ✅ iOS zoom-on-type — fixed 2026-06-02 (bumped all text inputs/textareas to font-size 16).
+3. ✅ Revert scroll position after editing action card — fixed 2026-06-02 (edits do a silent refetch in `useItems`, list stays mounted).
 
 ### 📥 Seamless capture
 1. **Mark-as-done at identify time** — log done + reaction in 1 step on confirm page (not 2).
@@ -79,7 +79,7 @@ Share screenshot → POST to `/api/identify-upload` → copy URL to clipboard �
 
 ### 🎨 Polish
 1. **All lowercase** UI experiment.
-2. ✅ Where-to-watch → provider logo links.
+2. ✅ Where-to-watch → text-only provider links (logos removed 2026-06-02 for a cleaner look).
 3. ✅ Remove-duplicates banner. (Block-on-save optional.)
 
 ### 🌱 Bigger / later

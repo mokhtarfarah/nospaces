@@ -183,7 +183,7 @@ export function LibraryScreen() {
             style={{
               width: '100%', boxSizing: 'border-box',
               padding: '8px 12px', border: '1px solid #ddd',
-              borderRadius: 8, fontSize: 14, marginBottom: 8, outline: 'none',
+              borderRadius: 8, fontSize: 16, marginBottom: 8, outline: 'none',
             }}
           />
         )}

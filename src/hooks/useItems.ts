@@ -11,9 +11,11 @@ export function useItems() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
+  // `silent` refetches (after edits) skip the loading flag so the list stays
+  // mounted and keeps the user's scroll position.
+  const fetch = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user) { setItems([]); setLoading(false); return }
-    setLoading(true)
+    if (!opts?.silent) setLoading(true)
     const { data } = await db().from('items')
       .select('*')
       .eq('user_id', user.id)
@@ -54,7 +56,7 @@ export function useItems() {
       note: note || null,
       date_done: new Date().toISOString(),
     }).eq('id', id)
-    await fetch()
+    await fetch({ silent: true })
   }
 
   async function markWantTo(id: string) {
@@ -64,12 +66,12 @@ export function useItems() {
       note: null,
       date_done: null,
     }).eq('id', id)
-    await fetch()
+    await fetch({ silent: true })
   }
 
   async function deleteItem(id: string) {
     await db().from('items').delete().eq('id', id)
-    await fetch()
+    await fetch({ silent: true })
   }
 
   // Count duplicate items (same type + title + creator, ignoring case/punctuation).
@@ -118,7 +120,7 @@ export function useItems() {
     metadata?: Record<string, unknown>
   }) {
     await db().from('items').update(fields).eq('id', id)
-    await fetch()
+    await fetch({ silent: true })
   }
 
   return { items, loading, addItem, markDone, markWantTo, deleteItem, editItem, duplicateCount, removeDuplicates, refetch: fetch }
