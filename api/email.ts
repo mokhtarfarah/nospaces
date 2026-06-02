@@ -17,20 +17,30 @@ const ALLOWED_EMAILS = [
 ]
 
 const EMAIL_PROMPT = (subject: string, body: string) => `
-Find any media recommendations (films, books, music, TV shows) mentioned in this email.
+This is an email or newsletter that was forwarded to be saved into a media library.
 Subject: ${subject}
 
 Body:
-${body.slice(0, 4000)}
+${body.slice(0, 12000)}
 
-For EACH item you find, IDENTIFY it using your own knowledge — do not just copy words from
-the email. Fill in the correct creator (director / author / artist / showrunner), the release
-year, and the type, even if the email does not state them. Use the exact, canonical title.
-Only leave a field null if you genuinely cannot identify the item.
+YOUR MAIN JOB: list EVERY film, book, music album, or TV show mentioned anywhere in this
+email into the "items" array. Always include everything you find, even if there are many and
+even if the email contains no explicit request to add them — a forwarded newsletter with ten
+albums means all ten go in "items". Never return an empty "items" list when media is mentioned.
+
+For EACH item, IDENTIFY it using your own knowledge — do not just copy words from the email.
+Fill in the correct creator (director / author / artist / showrunner), the release year, and
+the type, even if the email does not state them. Use the exact, canonical title. Only leave a
+field null if you genuinely cannot identify the item.
+
+The "instruction" field is only for the rare case where the reader added their own note saying
+WHICH items to save (e.g. "add the second one" or "save Brat"). If there is such a note, set
+instruction to "specific" and list those in "specified_items". Otherwise set instruction to
+"all". Either way, "items" must still contain every media item you found.
 
 Return JSON only:
 {
-  "instruction": "all | specific | none",
+  "instruction": "all | specific",
   "specified_items": [],
   "newsletter_name": "name of newsletter or sender if detectable, else null",
   "items": [
