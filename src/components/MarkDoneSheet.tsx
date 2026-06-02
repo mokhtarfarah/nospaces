@@ -117,14 +117,14 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
           value={note}
           onChange={e => setNote(e.target.value)}
           placeholder="Any thoughts..."
-          rows={2}
+          rows={3}
           style={{
             width: '100%',
             boxSizing: 'border-box',
             padding: '10px 12px',
             border: '1.5px solid #E0E0E0',
             borderRadius: 10,
-            fontSize: 16,
+            fontSize: 14,
             fontFamily: 'inherit',
             resize: 'none',
             outline: 'none',

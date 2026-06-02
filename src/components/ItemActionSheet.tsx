@@ -169,7 +169,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         background: '#fff', borderRadius: '16px 16px 0 0',
         padding: '12px 20px 0', zIndex: 201,
         maxWidth: 480, margin: '0 auto',
-        maxHeight: '90dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+        maxHeight: '96dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
 
@@ -426,7 +426,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               value={note}
               onChange={e => setNote(e.target.value)}
               placeholder="Any thoughts..."
-              rows={2}
+              rows={3}
               style={{ ...inputStyle, resize: 'none', marginBottom: 16 }}
             />
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
@@ -510,5 +510,5 @@ const linkPill: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
   padding: '10px 12px', border: '1.5px solid #E0E0E0',
-  borderRadius: 10, fontSize: 16, fontFamily: 'inherit', outline: 'none',
+  borderRadius: 10, fontSize: 14, fontFamily: 'inherit', outline: 'none',
 }
