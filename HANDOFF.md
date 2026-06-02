@@ -37,7 +37,7 @@ cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (server-side, email API)
 - `POSTMARK_SERVER_TOKEN` — **needed to activate email talkback** (get from Postmark → Servers → API Tokens). Not set yet → talkback silently no-ops, saving still works.
 - `POSTMARK_FROM` — optional reply-from override (e.g. `Nospaces <hello@nospaces.xyz>`)
-- `TICKETMASTER_API_KEY` — for the "shows near you" tour-dates feature. Free, instant key (no approval) at https://developer.ticketmaster.com (Discovery API). Without it `/api/shows` returns empty. ⚠️ Coverage is Ticketmaster/Live Nation inventory only — indie + non-TM-ticketed shows won't appear (see Music section for the Bandsintown follow-up).
+- `TICKETMASTER_API_KEY` — ✅ **set.** Powers the "shows near you" tour-dates feature (Discovery API key from https://developer.ticketmaster.com). ⚠️ Coverage is Ticketmaster/Live Nation inventory only — indie + non-TM-ticketed shows won't appear (see Music section for the Bandsintown follow-up).
 
 ## Email capture
 Forward anything to `anything@nospaces.xyz` from an allowed address. AI finds every media item + saves as `want_to`. Photo attachments (incl. HEIC) work.
@@ -84,10 +84,11 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 ### 📌 Session 7 summary (2026-06-02) — touring bands / "shows near you"
 All shipped to `main` / live unless noted (5 commits: `61e1399`, `8a99f26`, `b1ee3f8`, `badaaf0`, + this doc):
 1. **New "shows near you" feature** — `/shows` (`ShowsScreen.tsx`), entry from the **music** category filter row. Two tabs: **near me** (location + radius) and **all tours** (band-first, every show worldwide grouped by artist, loved bands first — for planning a trip around a band). Full details in **Music** section below.
-2. **Provider = Ticketmaster Discovery** (`api/shows.ts`), not Bandsintown — Bandsintown's API is now gated (unregistered app_id → "explicit deny"). ⚠️ Ticketmaster covers TM/Live Nation only (misses indie/intl). **Needs `TICKETMASTER_API_KEY` in Vercel** (free, instant key). Bandsintown-merge left as a future TODO.
-3. **Editable, device-synced city list** — near-me cities are add/removable (tap **edit**). New `public.user_prefs` table (⚠️ **migration required** — run the `user_prefs` block in `supabase/schema.sql`), `usePrefs` hook, `/api/geocode` (OpenStreetMap, no key) to resolve typed cities → lat/lng.
+2. **Provider = Ticketmaster Discovery** (`api/shows.ts`), not Bandsintown — Bandsintown's API is now gated (unregistered app_id → "explicit deny"). ⚠️ Ticketmaster covers TM/Live Nation only (misses indie/intl). ✅ **`TICKETMASTER_API_KEY` set in Vercel.** Bandsintown-merge left as a future TODO.
+3. **Editable, device-synced city list** — near-me cities are add/removable (tap **edit**). New `public.user_prefs` table (✅ **migration run in Supabase**), `usePrefs` hook, `/api/geocode` (OpenStreetMap, no key) to resolve typed cities → lat/lng.
 4. **Library:** moved `new music tuesday` + `📍 shows near you` onto the same row as the status/vibe/genre filters (music view only).
-5. ⏳ **Not yet verified in-app with live data** (behind login + live APIs). Spot-check once `TICKETMASTER_API_KEY` is set + `user_prefs` migration is run + deploy lands.
+5. ✅ **Live endpoint confirmed returning data** (`/api/shows?artist=Coldplay` returns events). Still needs Farah's in-app eyeball.
+6. **🐛 Known issue — tribute/cover-band noise.** The Ticketmaster keyword search + our loose attraction match (`name.includes(artist)` in `api/shows.ts`) lets through acts like "Ultimate Coldplay" when searching "Coldplay" — these can even outrank/replace the real artist. **Fix options:** tighten to exact normalized attraction-name equality (risk: drops legit variants like "Coldplay (Band)"), or do a proper attraction lookup (`/discovery/v2/attractions` → get `attractionId` → query events by `attractionId` instead of `keyword`, which is the precise way). The attractionId approach is the right long-term fix.
 
 **Two small TODOs flagged this session (deferred):** remove "from: quick add" source label on the card (Action card #12); make the scratch page reachable from Add (Seamless capture #9).
 
@@ -193,8 +194,8 @@ All shipped to `main` / live unless noted:
     - **near me** — location-first. Primary = device GPS (`📍 use my location`); fallback = a **user-editable city list** (tap **edit** → add/remove cities). `HOME_CITIES` in `src/lib/shows.ts` is just the default seed; once edited, the full list is **persisted per-user and synced across devices** via the new `user_prefs` table (`usePrefs` hook, `prefs.cities`). Adding a city geocodes it via `/api/geocode` (OpenStreetMap Nominatim — free, no key). Distance filter via haversine (`milesBetween`); radius chips 25/50/100/250 mi + "anywhere" (default 100 mi). Shows with no venue coords are dropped when a radius is active. Grouped by month.
     - **all tours** — band-first, for *planning a trip around a band* (no location needed). Every upcoming show worldwide, **grouped by artist**, with **loved bands floated to the top** (♥). A `♥ loved only` filter and an optional free-text **place filter** (matches the venue city string — "spain", "japan", "berlin") narrow it. Each artist block lists its full run of dates + cities. This is the answer to "where is my favourite band playing, maybe I'll travel to see them."
   - Every row links to the Bandsintown ticket/event URL.
-  - **⚠️ Requires Supabase migration** for the synced city list: run the `public.user_prefs` table block in `supabase/schema.sql` (table + RLS + updated_at trigger) in the Supabase SQL editor. Until then, editing cities silently fails (reads fall back to defaults).
-  - **Not yet verified in-app with live data** — needs a logged-in session + `vercel dev`/prod to exercise `/api/shows`. Spot-check in prod: load music → shows near you, set a city, confirm dates appear.
+  - ✅ **Supabase migration run** — the `public.user_prefs` table (in `supabase/schema.sql`) is live, so the synced city list works.
+  - **Not yet eyeballed in-app by Farah** (key + migration both done) — needs a logged-in session + `vercel dev`/prod to exercise `/api/shows`. Spot-check in prod: load music → shows near you, set a city, confirm dates appear.
   - v2 ideas: badge on the music action card ("on tour near you"), notify on new dates, per-show "interested" save.
 
 ### 🌱 Bigger / later
