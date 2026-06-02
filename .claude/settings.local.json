@@ -56,7 +56,11 @@
       "Bash(pkill -f \"sleep 115\")",
       "Bash(python3 -c \"import urllib.parse;print\\(urllib.parse.quote\\(\\\\\"Johnny's Dreamworld\\\\\"\\)\\)\")",
       "Bash(curl -s \"https://nospaces.vercel.app/api/art?type=music&title=$\\(python3 -c \"import urllib.parse;print\\(urllib.parse.quote\\(\\\\\"Johnny's Dreamworld\\\\\"\\)\\)\"\\)&creator=Modern%20Woman\")",
-      "Bash(curl -s \"https://nospaces.vercel.app/api/art?type=book&title=O%20Sinners&creator=Nicole%20Cuffy\")"
+      "Bash(curl -s \"https://nospaces.vercel.app/api/art?type=book&title=O%20Sinners&creator=Nicole%20Cuffy\")",
+      "Bash(git commit *)",
+      "Bash(curl -s \"https://nospaces.vercel.app/api/art?type=book&title=O%20Sinners&creator=Nicole%20Cuffy&year=2025\")",
+      "Bash(curl -s \"https://nospaces.vercel.app/api/blurb?title=O%20Sinners&creator=Nicole%20Cuffy\")",
+      "Bash(curl -s \"https://nospaces.vercel.app/api/art?type=music&title=Brat&creator=Charli%20XCX\")"
     ]
   }
 }
