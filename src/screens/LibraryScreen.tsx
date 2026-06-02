@@ -6,6 +6,7 @@ import { MarkDoneSheet } from '../components/MarkDoneSheet'
 import { SortSheet, type SortOption } from '../components/SortSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { useWikipediaInfo } from '../lib/wikipedia'
+import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
 
 type StatusFilter = 'all' | ItemStatus
@@ -367,8 +368,10 @@ function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo 
 }) {
   const color = typeColor(item.type)
 
-  // Wikipedia article link + cover/poster thumbnail.
-  const { url: wikiUrl, thumbnail } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
+  // Wikipedia article link (+ image as a fallback); best cover comes from /api/art.
+  const { url: wikiUrl, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year)
+  const thumbnail = artwork ?? wikiThumb
 
   // Season progress for TV shows that have a checklist.
   const tvSeasons = item.type === 'tv' ? getSeasons(item.metadata) : []
