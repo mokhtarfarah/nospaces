@@ -63,6 +63,7 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 ## Short-term fixes (queued)
 - **Want-to items show no subtitle** — done items show year/reaction, but want-to rows show nothing when there's no type/seasons line. Add year (and maybe type) to the want_to subtitle in LibraryScreen ItemRow.
 - **Display item notes** — notes (item.note) are saved (mark-done sheet / edit reaction) but shown nowhere. Recommended: a "Your note" quote block on the action card main view (italic, left accent border, distinct from the grey Wikipedia blurb so it reads as the user's own words); optionally a small 💬 indicator on the row when a note exists. (Drafted then reverted per user — implement later.)
+- **Remove duplicates function** — detect duplicate library items (same title + creator/type, case-insensitive) and let the user clear them; consider preventing dupes on save too. (Some may exist from test imports during dev.)
 
 ## Code cleanup candidates (light refactor pass)
 - `api/identify.ts` `more` mode + `MORE_PROMPT` — dead (frontend uses /api/lookup now). Remove.
