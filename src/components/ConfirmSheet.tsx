@@ -16,13 +16,14 @@ export interface AiResult {
 interface Props {
   result: AiResult
   source: string
+  query?: string
   onConfirm: (item: AiResult) => void
   onClose: () => void
 }
 
 const TYPES = ['film', 'book', 'music', 'tv', 'other']
 
-export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
+export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Props) {
   const [item, setItem] = useState<AiResult>(result)
   const [editing, setEditing] = useState(result.confidence !== 'high')
   const [candidates, setCandidates] = useState<AiResult[]>(result.alternatives ?? [])
@@ -30,7 +31,14 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
   const [collapsed, setCollapsed] = useState(false)
   const color = typeColor(item.type)
 
-  const origQuery = [result.title, result.creator].filter(Boolean).join(' ')
+  const origQuery = query || [result.title, result.creator].filter(Boolean).join(' ')
+
+  // Force the literal text the user typed, skipping the AI's substitution.
+  function useTyped() {
+    if (!query) return
+    setItem({ title: query, creator: '', type: 'other', year: null, confidence: 'high', metadata: {}, tags: [], ambiguous: false, alternatives: [] })
+    setEditing(true)
+  }
 
   const normalizeAlt = (a: AiResult): AiResult => ({
     ...a,
@@ -196,6 +204,14 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
               </button>
             )}
           </div>
+          {query && query !== item.title && (
+            <button
+              onClick={useTyped}
+              style={{ display: 'block', marginTop: 10, background: 'none', border: 'none', color: '#111111', fontSize: 12, cursor: 'pointer', padding: 0, textAlign: 'left' }}
+            >
+              None of these — use exactly what I typed: “{query}”
+            </button>
+          )}
         </div>
 
         <button

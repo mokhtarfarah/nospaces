@@ -38,6 +38,7 @@ export function AddScreen() {
   const [error, setError] = useState('')
   const [aiResult, setAiResult] = useState<AiResult | null>(null)
   const [aiSource, setAiSource] = useState('quick add')
+  const [aiQuery, setAiQuery] = useState('') // the exact text the user typed (for "use as typed")
   const imageRef = useRef<HTMLInputElement>(null)
 
   const recent = items.slice(0, 4)
@@ -94,6 +95,7 @@ export function AddScreen() {
     try {
       const result = await identifyImage(file)
       setAiSource(source)
+      setAiQuery('')
       setAiResult(result)
     } catch {
       setError('Could not identify from image.')
@@ -111,6 +113,7 @@ export function AddScreen() {
     try {
       const result = await identifyText(title.trim())
       setAiSource('quick add')
+      setAiQuery(title.trim())
       setAiResult(result)
     } catch {
       setError('Could not reach AI — saved as typed.')
@@ -201,6 +204,7 @@ export function AddScreen() {
         <ConfirmSheet
           result={aiResult}
           source={aiSource}
+          query={aiQuery}
           onConfirm={handleConfirm}
           onClose={() => setAiResult(null)}
         />
