@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useWikipediaInfo } from '../lib/wikipedia'
+import { useArtwork } from '../lib/artwork'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
 import { WhereToWatchSheet } from './WhereToWatchSheet'
 
@@ -15,6 +16,8 @@ interface Props {
 }
 
 const TYPES = ['film', 'book', 'music', 'tv', 'other']
+
+const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'loved_it',   label: 'Loved it'   },
@@ -65,8 +68,10 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
 
   // Wikipedia article link (null if no page exists / type not linked).
   // Music resolves a page (for the cover) but keeps Spotify as its button.
-  const { url, summary } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
+  const { url, summary, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
   const wikiUrl = item.type === 'music' ? null : url
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year)
+  const cover = artwork ?? wikiThumb
 
   // Quick links (Spotify / Wikipedia / Where to watch) as one row of soft pills.
   const links: { key: string; label: string; icon: React.ReactNode; onClick: () => void }[] = []
@@ -129,9 +134,11 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
         {view === 'main' && (
           <>
             {/* Item preview */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-              <div style={{ width: 4, height: 40, borderRadius: 2, background: color.border, flexShrink: 0 }} />
-              <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+              {cover
+                ? <img src={cover} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
+                : <div style={{ width: 48, height: 48, borderRadius: 8, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{TYPE_EMOJI[item.type] ?? '✦'}</div>}
+              <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 600 }}>{item.title}</div>
                 <div style={{ fontSize: 12, color: '#888' }}>
                   {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year].filter(Boolean).join(' · ')}

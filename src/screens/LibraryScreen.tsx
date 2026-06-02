@@ -268,7 +268,7 @@ export function LibraryScreen() {
                 </div>
               )}
               {layout === 'grid' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: '4px 16px 12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: '4px 12px 12px' }}>
                   {monthItems.map(item => (
                     <GridCard key={item.id} item={item} onTap={() => setActionItem(item)} />
                   ))}
@@ -492,13 +492,12 @@ function GridCard({ item, onTap }: { item: Item; onTap: () => void }) {
   const artwork = useArtwork(item.type, item.title, item.creator, item.year)
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
-      <div style={{ width: '100%', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #EEE' }}>
+      <div style={{ width: '100%', aspectRatio: '2 / 3', borderRadius: 6, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #EEE' }}>
         {artwork
           ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <span style={{ fontSize: 26 }}>{TYPE_EMOJI[item.type] ?? '✦'}</span>}
+          : <span style={{ fontSize: 20 }}>{TYPE_EMOJI[item.type] ?? '✦'}</span>}
       </div>
-      <div style={{ fontSize: 12, fontWeight: 500, color: '#111', marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
-      {item.creator && <div style={{ fontSize: 10, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>}
+      <div style={{ fontSize: 10, color: '#444', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
     </div>
   )
 }

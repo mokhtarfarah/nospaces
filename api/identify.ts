@@ -21,6 +21,7 @@ Identify the item and return JSON only:
 }
 
 If confidence is low, populate alternatives with up to 3 other possible matches with the same shape.
+If the input is wrapped in quotation marks, treat the quoted text as an EXACT, literal title — do not substitute a more famous or differently-spelled work. Match that exact title even if it's obscure; if you can't, set type "other" and use the quoted text verbatim as the title.
 If you cannot identify anything, return type "other" with the input as the title.`
 
 const MORE_PROMPT = (input: string, exclude: string[]) => `Given this input: "${input}", list up to 6 DIFFERENT real things it could plausibly refer to (films, books, music albums, or TV shows).

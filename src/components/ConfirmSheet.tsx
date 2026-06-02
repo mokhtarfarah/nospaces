@@ -73,6 +73,13 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
         maxHeight: '85dvh', overflowY: 'auto',
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 16px' }} />
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          style={{ position: 'absolute', top: 12, right: 16, background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, lineHeight: 1, color: '#999', padding: 4 }}
+        >
+          ×
+        </button>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: '#444', margin: 0 }}>Save to library</p>

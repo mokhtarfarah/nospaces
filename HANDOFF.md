@@ -57,8 +57,8 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 
 ## Short-term TODOs (near-term, not full wishlist)
 - **Where-to-watch links** — v1 currently shows provider logos in a popup (api/watch.ts + WhereToWatchSheet.tsx, TMDB key set). LATER: replace the logos with direct clickable links that open the show on the relevant service. Easy to remove the whole feature: delete those 2 files + revert the 3-line hook in ItemActionSheet.
-- **Sorting/grouping clarity** — the separate "By month / By creator" toggle vs the sort sheet is confusing. Brainstorming a clearer single "View" concept + possible grid view (see session notes).
-- **Missing artwork** — many album covers and TV posters don't resolve from Wikipedia. Plan: albums → iTunes Search API (keyless), film/TV → TMDB posters (key set), book → keep Wikipedia; fall back to S1/season image for TV when no series poster.
+- **Add/search improvements** — searching a string that isn't a famous work (e.g. "my new band believe") returns wrong famous results with no way to force the literal string. DONE so far: quotation marks now force an exact/literal match (api/identify.ts), and the confirm sheet has "show more options". STILL WANTED: a clearer in-UI way to force exact search / regenerate without quotes; revisit overall add-screen search UX.
+- DONE: ~~Sorting clarity~~ (single View menu + grid toggle). ~~Missing artwork~~ (TMDB/iTunes/Open Library via api/art.ts).
 
 ## Key files
 - `src/screens/LibraryScreen.tsx` — main library UI
