@@ -54,7 +54,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: 'Unauthorized sender' })
   }
 
-  const body = TextBody ?? HtmlBody?.replace(/<[^>]+>/g, ' ') ?? ''
+  // Sanitize body — strip non-latin characters that break ByteString conversion
+  const rawBody = TextBody ?? HtmlBody?.replace(/<[^>]+>/g, ' ') ?? ''
+  const body = rawBody.replace(/[^\x00-\xFF]/g, ' ')
 
   // Check for image attachments
   let imageResult = null
