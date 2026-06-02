@@ -62,11 +62,7 @@ Add screen → "Sync from Spotify" → `/spotify`. Pulls your **Saved Albums** o
 - Deduped vs existing music by title+artist key AND by `metadata.spotifyId`.
 - Stored as `type:'music'`, `source:'manual'`, `source_detail:'spotify'`, `metadata.{spotifyId,spotifyUrl,coverUrl}`. Posters resolve via `/api/art` (Deezer/iTunes) at display time.
 
-**To activate (Farah's 2-min setup):**
-1. developer.spotify.com → Dashboard → Create app. Name anything. **Redirect URIs:** add `https://nospaces.vercel.app/spotify` and (for local dev) `http://127.0.0.1:5173/spotify` (Spotify rejects `localhost` now — use 127.0.0.1). API: Web API.
-2. Copy the **Client ID** → add `VITE_SPOTIFY_CLIENT_ID` to Vercel env vars → redeploy. (No secret needed — PKCE.)
-3. App is in "development mode" by default — allows up to 25 users; add Farah + Tom under Settings → User Management. Plenty for now.
-- Local testing: open the app at `http://127.0.0.1:5173` (not localhost) so the redirect URI matches.
+✅ **Fully activated** — Spotify dev app created, Client ID in Vercel, users added. Working in prod.
 
 ## iOS Shortcut (flaky)
 Share screenshot → POST to `/api/identify-upload` → copy URL to clipboard → open app → tap "From Shortcut" → paste → confirm. Clipboard sometimes empty on second run.
@@ -80,14 +76,14 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 - Stored as `type:film`, `source:'manual'`, `source_detail:'letterboxd'`, `metadata.letterboxdRating`
 - Posters/blurbs resolve via `/api/art` at display time — nothing extra to do
 
-**Next:** Farah tests with her real export. No public Letterboxd API exists for sync — CSV is the only path.
+✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
 ## TODO / Roadmap (last edited 2026-06-02, updated session 3 end)
 
 ### 📥 Seamless capture
 1. ✅ **Mark-as-done at identify time** — "want to / already did" toggle on confirm screen; saves status+reaction in one step.
 2. ✅ **Scratch sheet** — "save a description" path on the Add screen for things you can't identify yet. Saves as `metadata.scratch=true, type='other'` with raw text as title. Appears under a "scratch" filter chip in the library. Action card shows a prominent "identify now" button for scratch items. No schema change — uses existing columns. Built session 3.
-3. **Bulk picture upload** — pick many photos → AI runs each → batch confirm/save.
+3. **Bulk picture upload** — pick many photos → AI runs each → batch confirm/save. **(in progress)**
 4. **Manual source field** — set where an item came from (person/site/newsletter). Decide where it surfaces.
 5. **Music / songs** — today albums-only. Figure out adding individual songs + cleanest flow.
 6. **Descriptive queries** (PARKED — separate body of work, not part of the taste arc): "rosalía latest album" → AI returns intent {creator, type, ordinal}; server resolves via live catalog (Deezer for music, TMDB for film/TV). Two-stage in `api/identify.ts`: classify direct-title vs descriptive-intent, then resolve against live API. Start music-only (Deezer, no key). Revisit after the taste arc.
@@ -136,10 +132,10 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 3. **TV season ratings** — per-season, not just whole show.
 
 ### 🔀 Sort & filter
-1. **Recently edited** sort option.
-2. **By year** ascending + descending.
+1. ✅ **Recently edited** sort option — sorts by `updated_at`, reversible.
+2. ✅ **By year** ascending + descending — tap ↑/↓ arrow in header to flip any directional sort.
 3. ✅ **Split "want to" / "done"** — "Want to / Done" view mode added 2026-06-02.
-4. **Subtitle extras** — pages/runtime, added date, source, who added.
+4. **Subtitle extras** — pages/runtime, added date, source, who added. (in progress)
 
 ### 🎨 Polish
 0. ✅ **Header declutter (session 3)** — reaction chips only show when "done" status is active (hidden for "all" and "want to"). Category → want-to/done fast path kept. Removed "recently added" chips from the Add screen.
@@ -147,10 +143,10 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 2. ✅ **Grid card** — 3 columns, square for music-only view, bigger title + creator line, reaction dot on done items.
 3. **Letterboxd source label** — small "from Letterboxd" badge in the action card for imported items (`source_detail === 'letterboxd'`). Helps spot anything that imported wrong.
 4. **Dedup after Letterboxd import** — slight title variants can slip through. Worth running remove-duplicates after first import.
-5. **Remove-duplicates: show before deleting** — today auto-deletes by scoring heuristic. Should surface groups for case-by-case review instead.
+5. ✅ **Remove-duplicates: show before deleting** — review sheet shows each duplicate group; pick which to keep before deleting.
 
-### 🎵 Music (later)
-- **Touring dates** — for a music artist in the library, surface upcoming live shows (ideally "near me"). New integration: Bandsintown or Ticketmaster (Songkick public API is dead). Bigger item, own design call (which API, where it shows, location handling).
+### 🎵 Music
+- **Touring dates** — pull upcoming tour dates for liked/loved music artists and surface a small notice somewhere in the app. API: Bandsintown or Ticketmaster (Songkick public API is dead). Design call: where it shows, location handling. **Active next feature.**
 
 ### 🌱 Bigger / later
 - Genre/mood tags + taste analysis → now the active "Taste arc" above
