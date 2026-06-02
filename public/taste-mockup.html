@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Taste — type mockup v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;1,6..96,400;1,6..96,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1C1B19; --graphite:#6F6B64; --mute:#ABA69C; --hair:#ECEAE6;
+    --paper:#FFFFFF;
+  }
+  body.ivory{ --paper:#FBFAF7; --hair:#E7E2D8; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    background:#E9E9E9; color:var(--ink);
+    -webkit-font-smoothing:antialiased; padding:28px 16px 80px;
+  }
+  body.ivory{background:#EDEAE3}
+  .toolbar{
+    max-width:1640px;margin:0 auto 26px;display:flex;gap:10px;align-items:center;
+    font-size:13px;color:#555;flex-wrap:wrap;
+  }
+  .toolbar button{
+    font-family:inherit;font-size:12px;padding:7px 14px;border-radius:20px;
+    border:1px solid #bbb;background:#fff;cursor:pointer;
+  }
+  .toolbar button.active{background:#1C1B19;color:#fff;border-color:#1C1B19}
+  .row{
+    max-width:1640px;margin:0 auto;display:flex;gap:22px;
+    flex-wrap:wrap;justify-content:center;align-items:flex-start;
+  }
+  .col{flex:1 1 360px;max-width:390px}
+  .tag{
+    text-align:center;font-size:11px;letter-spacing:.8px;text-transform:uppercase;
+    color:#999;margin-bottom:10px;font-family:'Helvetica Neue',sans-serif;
+  }
+  .phone{
+    background:var(--paper);border-radius:18px;padding:34px 28px 40px;
+    box-shadow:0 8px 40px rgba(0,0,0,.10);min-height:560px;
+  }
+  h1.title{font-size:26px;font-weight:500;letter-spacing:-.2px;margin-bottom:30px;color:var(--ink)}
+  .shead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  .shead .name{color:var(--ink)}
+  .shead .count{font-family:'Helvetica Neue',sans-serif;font-size:12px;color:var(--mute);letter-spacing:.3px}
+  .line{line-height:1.85;color:var(--graphite)}
+  .line .lead{color:var(--ink)}
+  .line .dot{color:var(--mute);padding:0 2px}
+  .sub{font-family:'Helvetica Neue',sans-serif;font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--mute);margin:22px 0 7px}
+  .rule{height:1px;background:var(--hair);margin:26px 0}
+  .ratings{font-family:'Helvetica Neue',sans-serif;font-size:13px;color:var(--graphite);letter-spacing:.2px}
+  .ratings .strong{color:var(--ink)}
+
+  /* Shared "B treatment": roman heads, italic lead term. Only the face changes. */
+  .serif h1.title{font-weight:500}
+  .serif .shead .name{font-weight:500}
+  .serif .line .lead{font-style:italic;font-weight:600}
+
+  /* S1 Bodoni Moda — sharpest Vogue didone */
+  .bodoni h1.title{font-family:'Bodoni Moda',serif;font-size:30px}
+  .bodoni .shead .name{font-family:'Bodoni Moda',serif;font-size:23px}
+  .bodoni .line{font-family:'Bodoni Moda',serif;font-size:18px}
+
+  /* S2 Cormorant Garamond — elegant luxe, softer contrast */
+  .cormorant h1.title{font-family:'Cormorant Garamond',serif;font-size:36px}
+  .cormorant .shead .name{font-family:'Cormorant Garamond',serif;font-size:27px;font-weight:600}
+  .cormorant .line{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500}
+  .cormorant .line .lead{font-weight:600}
+
+  /* S3 Playfair Display — familiar editorial didone */
+  .playfair h1.title{font-family:'Playfair Display',serif;font-size:29px}
+  .playfair .shead .name{font-family:'Playfair Display',serif;font-size:22px}
+  .playfair .line{font-family:'Playfair Display',serif;font-size:17px}
+
+  /* C refined sans (your fallback) */
+  .optC h1.title{font-weight:600;font-size:24px;letter-spacing:-.4px}
+  .optC .shead .name{font-size:15px;font-weight:600;letter-spacing:.2px}
+  .optC .line{font-size:15px;letter-spacing:-.1px}
+  .optC .line .lead{font-weight:600;color:var(--ink)}
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <span>paper:</span>
+    <button id="bWhite" class="active" onclick="setPaper('white')">crisp white</button>
+    <button id="bIvory" onclick="setPaper('ivory')">warm ivory</button>
+    <span style="margin-left:12px;color:#999">same "B" treatment · different face · monochrome · no pills</span>
+  </div>
+
+  <div class="row" id="row"></div>
+
+<script>
+  const content = (heads) => `
+    <h1 class="title">taste</h1>
+    <div class="shead"><span class="name">${heads('vibes')}</span></div>
+    <div class="line"><span class="lead">atmospheric</span><span class="dot"> · </span>dark<span class="dot"> · </span>nostalgic<span class="dot"> · </span>intense<span class="dot"> · </span>melancholic<span class="dot"> · </span>cozy<span class="dot"> · </span>romantic</div>
+    <div class="rule"></div>
+    <div class="shead"><span class="name">${heads('films')}</span><span class="count">142 rated</span></div>
+    <div class="ratings"><span class="strong">88</span> loved · 41 liked · 9 eh · 4 not for me</div>
+    <div class="sub">genres you love</div>
+    <div class="line"><span class="lead">drama</span><span class="dot"> · </span>thriller<span class="dot"> · </span>crime<span class="dot"> · </span>comedy<span class="dot"> · </span>romance</div>
+    <div class="sub">era</div>
+    <div class="line"><span class="lead">2000s</span><span class="dot"> · </span>1990s<span class="dot"> · </span>1970s<span class="dot"> · </span>2010s</div>`;
+
+  const lower = (s)=>s, upper = (s)=>s.toUpperCase();
+  const cols = [
+    {cls:'serif bodoni',    label:'S1 · Bodoni Moda (sharp Vogue)',  heads:lower},
+    {cls:'serif cormorant', label:'S2 · Cormorant (luxe, soft)',     heads:lower},
+    {cls:'serif playfair',  label:'S3 · Playfair (familiar)',        heads:lower},
+    {cls:'optC',            label:'C · refined sans (fallback)',     heads:upper},
+  ];
+  document.getElementById('row').innerHTML = cols.map(c =>
+    `<div class="col ${c.cls}"><div class="tag">${c.label}</div><div class="phone">${content(c.heads)}</div></div>`
+  ).join('');
+
+  function setPaper(p){
+    document.body.classList.toggle('ivory', p==='ivory');
+    document.getElementById('bIvory').classList.toggle('active', p==='ivory');
+    document.getElementById('bWhite').classList.toggle('active', p==='white');
+  }
+</script>
+</body>
+</html>

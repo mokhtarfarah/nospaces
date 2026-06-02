@@ -4,6 +4,12 @@ import type { Item, ItemReaction } from '../lib/database.types'
 import { VIBES, VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 
+// Editorial palette — monochrome, warm ink on white. Low-contrast, print-like.
+const INK = '#1C1B19'      // primary text / lead term
+const GRAPHITE = '#6F6B64' // secondary text / non-lead terms
+const MUTE = '#ABA69C'     // tertiary — captions, separators, counts
+const HAIR = '#ECEAE6'     // hairline rules
+
 const WEIGHTS: Record<ItemReaction, number> = {
   loved_it: 2, liked_it: 1, eh: 0, not_for_me: -1,
 }
@@ -38,25 +44,20 @@ function scoreTags(items: Item[], field: 'tags' | 'moods', type?: string): Score
     .sort((a, b) => b.score - a.score)
 }
 
-// Chips ranked by score. Two tiers only: #1 filled black, rest a clean outline.
-// Order (left→right) carries the ranking, so we skip the faded gradient tail.
-// `limit` caps how many chips show — drops the long low-signal tail.
-function RankedChips({ scored, limit }: { scored: Scored[]; limit?: number }) {
+// Ranked tags as a flowing typographic line (editorial, no pills). The lead
+// term is emphasized in ink; the rest are graphite, middot-separated. Order
+// carries the ranking. `limit` drops the low-signal tail.
+function RankedLine({ scored, limit }: { scored: Scored[]; limit?: number }) {
   if (!scored.length) return null
   const shown = limit ? scored.slice(0, limit) : scored
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+    <div style={{ fontSize: 15, lineHeight: 1.85, color: GRAPHITE, letterSpacing: '-0.1px' }}>
       {shown.map((s, i) => {
-        const isTop = i === 0 && s.score > 0
+        const isLead = i === 0 && s.score > 0
         return (
-          <span key={s.label} style={{
-            padding: '4px 12px', borderRadius: 20, fontSize: 12,
-            background: isTop ? '#111' : '#fff',
-            color: isTop ? '#fff' : '#444',
-            border: `1.5px solid ${isTop ? '#111' : '#DDD'}`,
-            fontWeight: isTop ? 600 : 400,
-          }}>
-            {s.label}
+          <span key={s.label}>
+            {i > 0 && <span style={{ color: MUTE }}> · </span>}
+            <span style={{ color: isLead ? INK : GRAPHITE, fontWeight: isLead ? 600 : 400 }}>{s.label}</span>
           </span>
         )
       })}
@@ -70,49 +71,39 @@ function Section({ title, defaultOpen = false, count, children }: {
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div style={{ borderBottom: '1px solid #F0F0F0' }}>
+    <div style={{ borderBottom: `1px solid ${HAIR}` }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'none', border: 'none', cursor: 'pointer', padding: '17px 0',
+          background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0',
         }}
       >
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase' }}>
-          {title}{count != null && <span style={{ color: '#D5D5D5', fontWeight: 600 }}> · {count}</span>}
+        <span style={{ fontSize: 12, fontWeight: 600, color: INK, letterSpacing: '1.2px', textTransform: 'uppercase' }}>
+          {title}{count != null && <span style={{ color: MUTE, fontWeight: 500 }}>  {count}</span>}
         </span>
-        <span style={{ fontSize: 10, color: '#CCC' }}>{open ? '▾' : '▸'}</span>
+        <span style={{ fontSize: 10, color: MUTE }}>{open ? '▾' : '▸'}</span>
       </button>
-      {open && <div style={{ paddingBottom: 24 }}>{children}</div>}
+      {open && <div style={{ paddingBottom: 26 }}>{children}</div>}
     </div>
   )
 }
 
-function ReactionBar({ items, type, compact }: { items: Item[]; type: string; compact?: boolean }) {
+// How you rate, as a quiet typographic line: "88 loved · 41 liked · 9 eh".
+function ReactionBar({ items, type }: { items: Item[]; type: string }) {
   const done = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
   if (!done.length) return null
-  const counts = Object.fromEntries(REACTION_ORDER.map(r => [r, done.filter(i => i.reaction === r).length]))
+  const parts = REACTION_ORDER
+    .map(r => ({ r, n: done.filter(i => i.reaction === r).length }))
+    .filter(p => p.n > 0)
   return (
-    <div style={{ marginBottom: 16 }}>
-      {!compact && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#222' }}>{TYPE_LABEL[type] ?? type}</span>
-          <span style={{ fontSize: 11, color: '#BBB' }}>{done.length} rated</span>
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: 2, borderRadius: 3, overflow: 'hidden', height: 5 }}>
-        {REACTION_ORDER.map(r => {
-          const pct = counts[r] / done.length * 100
-          if (!pct) return null
-          const bg = r === 'loved_it' ? '#111' : r === 'liked_it' ? '#777' : r === 'eh' ? '#DDD' : '#F0F0F0'
-          return <div key={r} style={{ width: `${pct}%`, background: bg }} />
-        })}
-      </div>
-      <div style={{ display: 'flex', gap: 10, marginTop: 5 }}>
-        {REACTION_ORDER.filter(r => counts[r]).map(r => (
-          <span key={r} style={{ fontSize: 10, color: '#BBB' }}>{counts[r]} {REACTION_LABEL[r]}</span>
-        ))}
-      </div>
+    <div style={{ fontSize: 13, color: GRAPHITE, letterSpacing: '0.2px' }}>
+      {parts.map((p, i) => (
+        <span key={p.r}>
+          {i > 0 && <span style={{ color: MUTE }}> · </span>}
+          <span style={{ color: INK, fontWeight: 500 }}>{p.n}</span> {REACTION_LABEL[p.r]}
+        </span>
+      ))}
     </div>
   )
 }
@@ -120,7 +111,7 @@ function ReactionBar({ items, type, compact }: { items: Item[]; type: string; co
 // Small uppercase sub-label inside a category card.
 function SubLabel({ children }: { children: ReactNode }) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: '#C5C5C5', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }}>
+    <div style={{ fontSize: 10, fontWeight: 700, color: MUTE, letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 7 }}>
       {children}
     </div>
   )
@@ -169,31 +160,31 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
     <Section title={TYPE_LABEL[type] ?? type} count={ratedCount || undefined}>
       {ratedCount > 0 && (
         <div style={{ marginBottom: 18 }}>
-          <ReactionBar items={items} type={type} compact />
+          <ReactionBar items={items} type={type} />
         </div>
       )}
       {genres.length > 0 && (
         <div style={{ marginBottom: 18 }}>
           <SubLabel>genres you love</SubLabel>
-          <RankedChips scored={genres} limit={6} />
+          <RankedLine scored={genres} limit={6} />
         </div>
       )}
       {era.length > 0 && (
         <div style={{ marginBottom: 18 }}>
           <SubLabel>era</SubLabel>
-          <RankedChips scored={era} limit={6} />
+          <RankedLine scored={era} limit={6} />
         </div>
       )}
       {backlog.length > 0 && (
         <div style={{ marginBottom: lowGenres.length > 0 ? 18 : 0 }}>
           <SubLabel>most in backlog</SubLabel>
-          <RankedChips scored={backlog} limit={6} />
+          <RankedLine scored={backlog} limit={6} />
         </div>
       )}
       {lowGenres.length > 0 && (
         <div>
           <SubLabel>doesn't land</SubLabel>
-          <RankedChips scored={lowGenres} limit={6} />
+          <RankedLine scored={lowGenres} limit={6} />
         </div>
       )}
     </Section>
@@ -338,29 +329,29 @@ export function TasteScreen() {
   )
 
   if (!doneWithReaction.length) return (
-    <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 28px', letterSpacing: '-0.2px' }}>taste</h1>
+    <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 28px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#222', marginBottom: 6 }}>nothing to show yet</div>
-        <div style={{ fontSize: 13, color: '#999', lineHeight: 1.6 }}>mark items as done and add reactions — your taste profile builds up here.</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 6 }}>nothing to show yet</div>
+        <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.6 }}>mark items as done and add reactions — your taste profile builds up here.</div>
       </div>
     </div>
   )
 
   return (
-    <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 8px', letterSpacing: '-0.2px' }}>taste</h1>
+    <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 10px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
 
       {/* OVERALL — vibes + verdicts are cross-type (a vibe doesn't belong to a medium). */}
       {/* Vibes (feel) — your taste fingerprint. Top of the page, open by default. */}
       <Section title="vibes" defaultOpen>
         {topVibes.length > 0
-          ? <RankedChips scored={topVibes} limit={8} />
-          : <p style={{ fontSize: 13, color: '#CCC', margin: 0 }}>tag a vibe when you mark things done.</p>}
+          ? <RankedLine scored={topVibes} limit={8} />
+          : <p style={{ fontSize: 13, color: MUTE, margin: 0 }}>tag a vibe when you mark things done.</p>}
         {lowVibes.length > 0 && (
-          <div style={{ marginTop: 14 }}>
+          <div style={{ marginTop: 16 }}>
             <SubLabel>rarely lands</SubLabel>
-            <RankedChips scored={lowVibes} limit={6} />
+            <RankedLine scored={lowVibes} limit={6} />
           </div>
         )}
       </Section>
@@ -368,8 +359,8 @@ export function TasteScreen() {
       {/* Verdicts (how it landed) — ranked by how often you reach for each, not by reaction. */}
       {verdictTally.length > 0 && (
         <Section title="your verdicts">
-          <p style={{ fontSize: 11, color: '#CCC', margin: '0 0 12px' }}>how often you reach for each</p>
-          <RankedChips scored={verdictTally} />
+          <p style={{ fontSize: 11, color: MUTE, margin: '0 0 12px' }}>how often you reach for each</p>
+          <RankedLine scored={verdictTally} />
         </Section>
       )}
 
