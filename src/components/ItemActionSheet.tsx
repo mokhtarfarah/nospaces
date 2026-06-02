@@ -202,7 +202,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year].filter(Boolean).join(' · ')}
                   {item.reaction && ` · ${REACTION_LABELS[item.reaction]}`}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   <div style={{ fontSize: 11, color: '#B0B0B0' }}>
                     From {item.source_detail?.trim() || item.source.replace(/_/g, ' ')}
                   </div>
@@ -218,6 +218,15 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   >
                     {item.metadata?.owned ? '⌂ owned' : '⌂ own it?'}
                   </button>
+                  {!item.metadata?.scratch && (
+                    <button
+                      onClick={handleReidentify}
+                      disabled={reidentifying}
+                      style={{ background: 'none', border: 'none', fontSize: 11, color: reidentifying ? '#CCC' : '#B0B0B0', cursor: reidentifying ? 'default' : 'pointer', padding: 0, flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                    >
+                      {reidentifying ? 'identifying…' : 're-identify'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
