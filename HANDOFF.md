@@ -79,7 +79,19 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 6 end)
+## TODO / Roadmap (last edited 2026-06-02, updated session 7 end)
+
+### 📌 Session 7 summary (2026-06-02) — touring bands / "shows near you"
+All shipped to `main` / live unless noted (5 commits: `61e1399`, `8a99f26`, `b1ee3f8`, `badaaf0`, + this doc):
+1. **New "shows near you" feature** — `/shows` (`ShowsScreen.tsx`), entry from the **music** category filter row. Two tabs: **near me** (location + radius) and **all tours** (band-first, every show worldwide grouped by artist, loved bands first — for planning a trip around a band). Full details in **Music** section below.
+2. **Provider = Ticketmaster Discovery** (`api/shows.ts`), not Bandsintown — Bandsintown's API is now gated (unregistered app_id → "explicit deny"). ⚠️ Ticketmaster covers TM/Live Nation only (misses indie/intl). **Needs `TICKETMASTER_API_KEY` in Vercel** (free, instant key). Bandsintown-merge left as a future TODO.
+3. **Editable, device-synced city list** — near-me cities are add/removable (tap **edit**). New `public.user_prefs` table (⚠️ **migration required** — run the `user_prefs` block in `supabase/schema.sql`), `usePrefs` hook, `/api/geocode` (OpenStreetMap, no key) to resolve typed cities → lat/lng.
+4. **Library:** moved `new music tuesday` + `📍 shows near you` onto the same row as the status/vibe/genre filters (music view only).
+5. ⏳ **Not yet verified in-app with live data** (behind login + live APIs). Spot-check once `TICKETMASTER_API_KEY` is set + `user_prefs` migration is run + deploy lands.
+
+**Two small TODOs flagged this session (deferred):** remove "from: quick add" source label on the card (Action card #12); make the scratch page reachable from Add (Seamless capture #9).
+
+**Next up (Farah's queue):** recommendations (Taste arc #3, the big one) + re-identify manual-pick bug fix (let user pick the right result/Wikipedia page when it grabs the wrong one).
 
 ### 📌 Session 6 summary (2026-06-02) — taste page deep work
 All shipped to `main` / live unless noted:
