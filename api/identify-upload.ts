@@ -13,7 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
   // Read raw body
-  const chunks: Buffer[] = []
+  const chunks: Uint8Array[] = []
   for await (const chunk of req) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
   }
