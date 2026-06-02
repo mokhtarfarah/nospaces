@@ -7,7 +7,6 @@ import { SortSheet, type SortOption } from '../components/SortSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { useWikipediaInfo } from '../lib/wikipedia'
 
-type CategoryFilter = 'all' | string
 type StatusFilter = 'all' | ItemStatus
 type ReactionFilter = 'all' | ItemReaction
 
@@ -60,7 +59,10 @@ function groupByMonth(items: Item[]): Map<string, Item[]> {
 export function LibraryScreen() {
   const { items, loading, markDone, markWantTo, deleteItem, editItem } = useItems()
 
-  const [category, setCategory] = useState<CategoryFilter>('all')
+  // Empty array = all categories. Otherwise only the selected types are shown.
+  const [categories, setCategories] = useState<string[]>([])
+  const toggleCategory = (t: string) =>
+    setCategories(prev => (prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]))
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
   const [sort, setSort] = useState<SortOption>('date_added')
@@ -81,7 +83,7 @@ export function LibraryScreen() {
 
   const filtered = useMemo(() => {
     let result = items.filter(item => {
-      if (category !== 'all' && item.type !== category) return false
+      if (categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
       if (query && !item.title.toLowerCase().includes(query.toLowerCase()) &&
@@ -89,7 +91,7 @@ export function LibraryScreen() {
       return true
     })
     return sortItems(result, sort)
-  }, [items, category, statusFilter, reactionFilter, query, sort])
+  }, [items, categories, statusFilter, reactionFilter, query, sort])
 
   const grouped = useMemo(() => groupByMonth(filtered), [filtered])
 
@@ -143,17 +145,17 @@ export function LibraryScreen() {
 
         {/* Filter row 1 — category */}
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 8 }}>
-          <FilterChip label="All" active={category === 'all'} onClick={() => setCategory('all')} />
+          <FilterChip label="All" active={categories.length === 0} onClick={() => setCategories([])} />
           {['film', 'book', 'music', 'tv', ...types.filter(t => !['film','book','music','tv'].includes(t))].map(t => (
             <FilterChip
               key={t}
               label={TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
-              active={category === t}
-              onClick={() => setCategory(t)}
+              active={categories.includes(t)}
+              onClick={() => toggleCategory(t)}
             />
           ))}
           {!types.includes('other') && (
-            <FilterChip label="Other" active={category === 'other'} onClick={() => setCategory('other')} />
+            <FilterChip label="Other" active={categories.includes('other')} onClick={() => toggleCategory('other')} />
           )}
         </div>
 
@@ -180,8 +182,8 @@ export function LibraryScreen() {
         </div>
       </header>
 
-      {/* Legend — only when category = all */}
-      {category === 'all' && (
+      {/* Legend — only when no specific categories are selected */}
+      {categories.length === 0 && (
         <div style={{ display: 'flex', gap: 12, padding: '8px 16px', borderBottom: '1px solid #F0F0F0' }}>
           {(['film', 'book', 'music', 'tv'] as const).map(k => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -210,7 +212,7 @@ export function LibraryScreen() {
                 <ItemRow
                   key={item.id}
                   item={item}
-                  showType={category === 'all'}
+                  showType={categories.length !== 1}
                   onTap={() => setActionItem(item)}
                   onMarkDone={() => setDoneItem(item)}
                   onMarkWantTo={() => markWantTo(item.id)}
