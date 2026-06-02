@@ -27,6 +27,7 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
   const [editing, setEditing] = useState(result.confidence !== 'high')
   const [candidates, setCandidates] = useState<AiResult[]>(result.alternatives ?? [])
   const [loadingMore, setLoadingMore] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const color = typeColor(item.type)
 
   const origQuery = [result.title, result.creator].filter(Boolean).join(' ')
@@ -149,9 +150,9 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
           {editing ? 'Done editing' : 'Edit details'}
         </button>
 
-        {/* Alternatives — "Did you mean?" with a load-more */}
+        {/* Alternatives — "Did you mean?" with show more / show less */}
         <div style={{ marginBottom: 16 }}>
-          {otherMatches.length > 0 && (
+          {otherMatches.length > 0 && !collapsed && (
             <>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#999', marginBottom: 8 }}>Did you mean?</p>
               {otherMatches.map((alt, i) => (
@@ -168,12 +169,26 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
               ))}
             </>
           )}
-          <button onClick={loadMore} disabled={loadingMore} style={{
-            background: 'none', border: 'none', color: '#111111',
-            fontSize: 12, cursor: loadingMore ? 'default' : 'pointer', padding: 0,
-          }}>
-            {loadingMore ? 'Finding more…' : otherMatches.length > 0 ? 'Show more options' : 'Not the right one? See other matches'}
-          </button>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <button
+              onClick={collapsed ? () => setCollapsed(false) : loadMore}
+              disabled={loadingMore}
+              style={{ background: 'none', border: 'none', color: '#111111', fontSize: 12, cursor: loadingMore ? 'default' : 'pointer', padding: 0 }}
+            >
+              {loadingMore ? 'Finding more…'
+                : collapsed ? `Show options (${otherMatches.length})`
+                : otherMatches.length > 0 ? 'Show more options'
+                : 'Not the right one? See other matches'}
+            </button>
+            {otherMatches.length > 0 && !collapsed && (
+              <button
+                onClick={() => setCollapsed(true)}
+                style={{ background: 'none', border: 'none', color: '#999', fontSize: 12, cursor: 'pointer', padding: 0 }}
+              >
+                Show less
+              </button>
+            )}
+          </div>
         </div>
 
         <button
