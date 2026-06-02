@@ -126,7 +126,6 @@ export function AddScreen() {
     if (!navigator.clipboard?.readText) return
     try {
       const text = await navigator.clipboard.readText()
-      alert('Clipboard: ' + (text?.substring(0, 120) || '(empty)')) // DEBUG
       if (!text.trim().startsWith('https://nospaces.vercel.app/add?')) return
       const url = new URL(text)
       const t = url.searchParams.get('title')
