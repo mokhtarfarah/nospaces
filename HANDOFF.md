@@ -38,6 +38,8 @@ cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 ## Email capture
 Forward anything to `anything@nospaces.xyz` from an allowed address. AI finds every media item + saves as `want_to`. Photo attachments (incl. HEIC) work.
 
+**Big photo attachments don't work via email (by design, 2026-06-02).** Vercel caps inbound requests at 4.5MB (hard limit, not configurable); Postmark always inlines the full attachment; Gmail can't shrink attachments. So a full-res photo email → HTTP 413, whole email rejected (all-or-nothing). Text/newsletters and small screenshots always work. **For big photos use the in-app "Add from a photo" button** — it now downscales to 1600px/JPEG client-side (`prepareImage` in AddScreen.tsx), so it always fits, runs faster, and handles HEIC. No email re-architecture planned.
+
 **Talkback** (code live, not yet active): replies to sender with what was saved. To activate:
 1. Get Postmark DKIM to go green — **see DKIM fix below** (Return-Path ✅, MX ✅, DKIM blocked)
 2. Add `POSTMARK_SERVER_TOKEN` to Vercel env vars → redeploy
@@ -115,6 +117,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 1. **All lowercase** UI experiment.
 2. **Letterboxd source label** — small "from Letterboxd" badge in the action card for imported items (`source_detail === 'letterboxd'`). Helps spot anything that imported wrong.
 3. **Dedup after Letterboxd import** — title+year dedup catches exact matches, but slight title variants (e.g. "Anatomy of a Fall" vs "The Anatomy of a Fall") can slip through. Worth running the existing remove-duplicates tool after first import.
+4. **Remove-duplicates: show before deleting** (added 2026-06-02) — today `removeDuplicates()` in `src/hooks/useItems.ts` auto-deletes by a scoring heuristic (done > note/reaction > earliest). Farah wants it to **surface the duplicate groups for case-by-case review** (see which items it considers dupes, pick what to keep) instead of silently deleting. Build a review sheet/preview before the delete.
 
 ### 🌱 Bigger / later
 - Genre/mood tags + trend analysis
