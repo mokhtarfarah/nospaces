@@ -85,6 +85,15 @@ function groupNone(items: Item[]): Map<string, Item[]> {
   return new Map([['', items]])
 }
 
+function groupByStatus(items: Item[]): Map<string, Item[]> {
+  const wantTo = items.filter(i => i.status === 'want_to')
+  const done   = items.filter(i => i.status === 'done')
+  const map = new Map<string, Item[]>()
+  if (wantTo.length > 0) map.set('Want to', wantTo)
+  if (done.length > 0)   map.set('Done', done)
+  return map
+}
+
 function itemSource(item: Item): string {
   return item.source_detail?.trim() || item.source.replace(/_/g, ' ')
 }
@@ -128,10 +137,12 @@ export function LibraryScreen() {
     return sortItems(result, sort)
   }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, sort])
 
-  const grouped = useMemo(
-    () => (group === 'creator' ? groupByCreator(filtered) : group === 'none' ? groupNone(filtered) : groupByMonth(filtered)),
-    [filtered, group],
-  )
+  const grouped = useMemo(() => {
+    if (group === 'creator') return groupByCreator(filtered)
+    if (group === 'status')  return groupByStatus(filtered)
+    if (group === 'none')    return groupNone(filtered)
+    return groupByMonth(filtered)
+  }, [filtered, group])
 
   // Unique types from real data for filter row
   const types = useMemo(() => {

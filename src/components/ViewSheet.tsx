@@ -3,17 +3,18 @@ export type SortOption = 'date_added' | 'alpha' | 'status' | 'reaction' | 'creat
 
 // A "view" bundles ordering + grouping into one coherent choice, instead of two
 // separate (and conflicting) sort/group controls.
-export type ViewMode = 'recent' | 'creator' | 'alpha' | 'year' | 'rating'
+export type ViewMode = 'recent' | 'status' | 'creator' | 'alpha' | 'year' | 'rating'
 
-export const VIEW_CONFIG: Record<ViewMode, { sort: SortOption; group: 'month' | 'creator' | 'none'; label: string; hint: string }> = {
-  recent:  { sort: 'date_added', group: 'month',   label: 'Recent',     hint: 'Newest first, grouped by month' },
-  creator: { sort: 'creator',    group: 'creator', label: 'By creator', hint: 'Grouped by director / author / artist' },
-  alpha:   { sort: 'alpha',      group: 'none',    label: 'A → Z',      hint: 'Alphabetical' },
-  year:    { sort: 'year',       group: 'none',    label: 'By year',    hint: 'Newest first' },
-  rating:  { sort: 'reaction',   group: 'none',    label: 'By rating',  hint: 'Loved it first' },
+export const VIEW_CONFIG: Record<ViewMode, { sort: SortOption; group: 'month' | 'creator' | 'none' | 'status'; label: string; hint: string }> = {
+  recent:  { sort: 'date_added', group: 'month',   label: 'Recent',        hint: 'Newest first, grouped by month' },
+  status:  { sort: 'date_added', group: 'status',  label: 'Want to / Done', hint: 'Your list split by status' },
+  creator: { sort: 'creator',    group: 'creator', label: 'By creator',    hint: 'Grouped by director / author / artist' },
+  alpha:   { sort: 'alpha',      group: 'none',    label: 'A → Z',         hint: 'Alphabetical' },
+  year:    { sort: 'year',       group: 'none',    label: 'By year',       hint: 'Newest first' },
+  rating:  { sort: 'reaction',   group: 'none',    label: 'By rating',     hint: 'Loved it first' },
 }
 
-const ORDER: ViewMode[] = ['recent', 'creator', 'alpha', 'year', 'rating']
+const ORDER: ViewMode[] = ['recent', 'status', 'creator', 'alpha', 'year', 'rating']
 
 interface Props {
   current: ViewMode
