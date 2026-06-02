@@ -36,7 +36,16 @@ export function ShowsScreen() {
   // all-tours controls
   const [lovedOnly, setLovedOnly] = useState(false)
   const [place, setPlace] = useState('')
+  const [expanded, setExpanded] = useState<Set<string>>(new Set()) // artists shown open on "all tours"
   const ran = useRef(false)
+
+  function toggleArtist(artist: string) {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      next.has(artist) ? next.delete(artist) : next.add(artist)
+      return next
+    })
+  }
 
   // Kick off the scan once items have loaded and we have artists to look up.
   useEffect(() => {
@@ -273,15 +282,22 @@ export function ShowsScreen() {
             ? `none of your artists have shows matching “${place.trim()}”.`
             : lovedOnly ? 'no upcoming shows for your loved artists right now.' : 'no upcoming shows found for your artists.'} />
         ) : (
-          byArtist.map(({ artist, loved, shows }) => (
-            <div key={artist} style={{ marginBottom: 18 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 0 4px', borderBottom: '1px solid #EEE' }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{loved && <span style={{ color: '#111' }}>♥ </span>}{artist}</span>
-                <span style={{ fontSize: 12, color: '#AAA', marginLeft: 'auto' }}>{shows.length} date{shows.length === 1 ? '' : 's'}</span>
+          byArtist.map(({ artist, loved, shows }) => {
+            const open = expanded.has(artist)
+            return (
+              <div key={artist} style={{ marginBottom: open ? 18 : 0 }}>
+                <button
+                  onClick={() => toggleArtist(artist)}
+                  style={{ display: 'flex', alignItems: 'baseline', gap: 8, width: '100%', textAlign: 'left', padding: '12px 0 10px', borderBottom: '1px solid #EEE', background: 'none', border: 'none', borderBottomStyle: 'solid', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: 11, color: '#BBB', alignSelf: 'center', width: 10, flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{loved && <span style={{ color: '#111' }}>♥ </span>}{artist}</span>
+                  <span style={{ fontSize: 12, color: '#AAA', marginLeft: 'auto', alignSelf: 'center' }}>{shows.length} date{shows.length === 1 ? '' : 's'}</span>
+                </button>
+                {open && shows.map(s => <ShowRow key={s.id} show={s} origin={null} showDate />)}
               </div>
-              {shows.map(s => <ShowRow key={s.id} show={s} origin={null} showDate />)}
-            </div>
-          ))
+            )
+          })
         )
       )}
     </div>

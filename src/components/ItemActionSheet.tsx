@@ -38,6 +38,9 @@ const REACTION_LABELS: Record<ItemReaction, string> = {
 
 type View = 'main' | 'edit' | 'reaction'
 
+// A candidate match offered after re-identify (from the AI's alternatives or a catalog lookup).
+type Candidate = { title: string; creator: string | null; year: number | null; metadata?: Record<string, unknown>; tags?: string[] }
+
 export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onToggleOwned, onDelete, onClose }: Props) {
   const [view, setView] = useState<View>('main')
   const [title, setTitle] = useState(item.title)
@@ -55,6 +58,10 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   }
   const [coverUrl, setCoverUrl] = useState((item.metadata?.coverUrl as string | null) ?? '')
   const [reidentifying, setReidentifying] = useState(false)
+  // After a re-identify, hold the other candidates so the user can pick the right
+  // one if the AI grabbed the wrong match. null = picker hidden.
+  const [picks, setPicks] = useState<Candidate[] | null>(null)
+  const [lookingUp, setLookingUp] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
@@ -169,31 +176,63 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         if (r.year) setYear(String(r.year))
         if (item.metadata?.scratch) { setCoverUrl(''); setView('edit') }
       } else {
-        // Auto-save path: merge result directly onto the item. Never override the
-        // existing type — if the AI returned a different form (e.g. book instead of
-        // film), we silently keep what the user already had.
-        const metadata: Record<string, unknown> = { ...item.metadata }
-        if (r.metadata?.runtime) metadata.runtime = r.metadata.runtime
-        if (r.metadata?.pages) metadata.pages = r.metadata.pages
-        const newTitle   = r.title   || item.title
-        const newCreator = r.creator || item.creator
-        const newYear    = r.year    || item.year
-        // Clear cache for both the old and new keys so the Wikipedia hook re-fetches.
-        clearWikiCache(item.type, item.title,  item.creator,  item.year)
-        clearWikiCache(item.type, newTitle,    newCreator,    newYear)
-        onEdit({
-          title:   newTitle,
-          creator: newCreator,
-          type:    item.type,   // always keep existing type on auto-save
-          year:    newYear,
-          tags:    r.tags?.length ? r.tags : item.tags,
-          metadata,
-        })
+        // Auto-save path: apply the top result, then surface the AI's other
+        // candidates so the user can correct it if it grabbed the wrong match.
+        applyCandidate({ title: r.title, creator: r.creator, year: r.year, metadata: r.metadata, tags: r.tags })
+        const alts: Candidate[] = (Array.isArray(r.alternatives) ? r.alternatives : [])
+          .filter((a: Candidate) => a?.title && a.title.toLowerCase() !== (r.title || item.title).toLowerCase())
+          .map((a: Candidate) => ({ title: a.title, creator: a.creator ?? null, year: a.year ?? null, metadata: a.metadata, tags: a.tags }))
+        setPicks(alts) // [] still opens the panel so "look it up online" is reachable
       }
     } catch {
       // ignore — item stays as-is
     } finally {
       setReidentifying(false)
+    }
+  }
+
+  // Apply one chosen match onto the item. Never override the existing type — if the
+  // AI returned a different form (e.g. book instead of film), keep what the user had.
+  function applyCandidate(c: Candidate) {
+    const metadata: Record<string, unknown> = { ...item.metadata }
+    if (c.metadata?.runtime) metadata.runtime = c.metadata.runtime
+    if (c.metadata?.pages) metadata.pages = c.metadata.pages
+    const newTitle   = c.title   || item.title
+    const newCreator = c.creator || item.creator
+    const newYear    = c.year    ?? item.year
+    // Clear cache for both old and new keys so the Wikipedia hook re-fetches.
+    clearWikiCache(item.type, item.title, item.creator, item.year)
+    clearWikiCache(item.type, newTitle,   newCreator,   newYear)
+    onEdit({
+      title:   newTitle,
+      creator: newCreator,
+      type:    item.type, // always keep existing type
+      year:    newYear,
+      tags:    c.tags?.length ? c.tags : item.tags,
+      metadata,
+    })
+  }
+
+  // Search real catalogs (iTunes / TMDB / Open Library) for more matches to choose from.
+  async function lookUpOnline() {
+    if (lookingUp) return
+    setLookingUp(true)
+    try {
+      const q = year ? `${title.trim() || item.title} (${year})` : (title.trim() || item.title)
+      const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}`)
+      const data = await res.json()
+      const more: Candidate[] = (data.results ?? [])
+        .filter((r: Candidate) => r?.title)
+        .map((r: Candidate) => ({ title: r.title, creator: r.creator ?? null, year: r.year ?? null, metadata: r.metadata, tags: r.tags }))
+      setPicks(prev => {
+        const base = prev ?? []
+        const seen = new Set(base.map(p => p.title.toLowerCase()))
+        return [...base, ...more.filter(m => !seen.has(m.title.toLowerCase()))]
+      })
+    } catch {
+      /* ignore — leave list as-is */
+    } finally {
+      setLookingUp(false)
     }
   }
 
@@ -239,9 +278,15 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   {item.reaction && ` · ${REACTION_LABELS[item.reaction]}`}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 11, color: '#B0B0B0' }}>
-                    From {item.source_detail?.trim() || item.source.replace(/_/g, ' ')}
-                  </div>
+                  {(() => {
+                    // "quick add" is the obvious default — it's noise, so hide it.
+                    // Keep meaningful sources (letterboxd, spotify, email, photo, …) visible.
+                    const label = item.source_detail?.trim()
+                      || (item.source === 'quick_add' ? '' : item.source.replace(/_/g, ' '))
+                    return label
+                      ? <div style={{ fontSize: 11, color: '#B0B0B0' }}>From {label}</div>
+                      : null
+                  })()}
                   <button
                     onClick={() => onToggleOwned(!item.metadata?.owned)}
                     style={{
@@ -266,6 +311,34 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </div>
               </div>
             </div>
+
+            {picks !== null && (
+              <div style={{ marginBottom: 16, border: '1px solid #EEE', borderRadius: 10, padding: '10px 12px', background: '#FAFAFA' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#777' }}>got the wrong one? pick the right match</span>
+                  <button onClick={() => setPicks(null)} style={{ background: 'none', border: 'none', color: '#AAA', fontSize: 11, cursor: 'pointer', padding: 0 }}>dismiss</button>
+                </div>
+                {picks.map((c, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { applyCandidate(c); setPicks(null) }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 11px', border: '1px solid #EEE', borderRadius: 8, background: '#fff', marginBottom: 6, cursor: 'pointer', fontSize: 13 }}
+                  >
+                    <strong>{c.title}</strong>
+                    {[c.creator, c.year].filter(Boolean).length > 0 && (
+                      <span style={{ color: '#888', fontSize: 11 }}> · {[c.creator, c.year].filter(Boolean).join(' · ')}</span>
+                    )}
+                  </button>
+                ))}
+                <button
+                  onClick={lookUpOnline}
+                  disabled={lookingUp}
+                  style={{ background: 'none', border: 'none', color: '#111', fontSize: 12, cursor: lookingUp ? 'default' : 'pointer', padding: 0, marginTop: 2 }}
+                >
+                  {lookingUp ? 'searching…' : picks.length > 0 ? 'look up more online' : 'look it up online'}
+                </button>
+              </div>
+            )}
 
             {blurb && (
               <div style={{ fontSize: 12, color: '#777', lineHeight: 1.5, marginBottom: 16, background: '#F7F7F7', borderRadius: 8, padding: '10px 12px' }}>

@@ -212,7 +212,8 @@ export function AddScreen() {
   }
 
   async function handleSaveAsScratch() {
-    if (!title.trim()) return
+    // Empty box → just guide them into typing the description (the scratch text IS the title).
+    if (!title.trim()) { inputRef.current?.focus(); return }
     await addItem(title.trim(), 'other', null, null, { scratch: true }, [])
     setTitle('')
     navigate('/library')
@@ -290,14 +291,14 @@ export function AddScreen() {
           />
         </div>
 
-        {title.trim() && !loading && (
-          <div style={{ textAlign: 'center', marginTop: 8 }}>
+        {!loading && (
+          <div style={{ textAlign: 'center', marginTop: 12 }}>
             <button
               type="button"
               onClick={handleSaveAsScratch}
-              style={{ border: 'none', background: 'none', color: '#AAA', fontSize: 12, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+              style={{ border: 'none', background: 'none', color: title.trim() ? '#777' : '#AAA', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
             >
-              can't identify it? save description for later
+              can't identify it? jot a description for later
             </button>
           </div>
         )}
