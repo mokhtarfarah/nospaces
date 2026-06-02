@@ -79,10 +79,10 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 **Next:** Farah tests with her real export. No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02)
+## TODO / Roadmap (last edited 2026-06-02, updated session 2)
 
 ### 📥 Seamless capture
-1. **Mark-as-done at identify time** — log done + reaction in 1 step on confirm page (not 2).
+1. ✅ **Mark-as-done at identify time** — "want to / already did" toggle on confirm screen; saves status+reaction in one step.
 2. **Bulk picture upload** — pick many photos → AI runs each → batch confirm/save.
 3. **Manual source field** — set where an item came from (person/site/newsletter). Decide where it surfaces.
 4. **Music / songs** — today albums-only. Figure out adding individual songs + cleanest flow.
@@ -95,15 +95,18 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 2. ✅ **Letterboxd** — CSV import live. See "Letterboxd import" section above.
 
 ### 🃏 Action card
-1. **Mark done / edit reaction inline** — not just via row action sheet.
+1. ✅ **Mark done / edit reaction inline** — "mark as done" in action sheet footer for want_to items; transitions to reaction view inside the sheet (no second overlay). "edit reaction" for done items.
 2. **Fix notes display** — show note below blurb, user-friendly format.
-3. **Design polish** — first pass done; needs user eye on real covers.
+3. **Design polish** — editorial identity pass done (all-lowercase, 3-col grid, square music grid). Needs eye on real covers.
 4. **Manual link** — paste Wikipedia/URL to fix wrong cover/blurb. Store in `metadata.wikiUrl`.
 5. **"Want to reread/rewatch" button** — `metadata.revisit` boolean; label adapts by type; Revisit filter chip.
-6. **Manual cover art edit** — let user override the auto-picked cover (paste image URL or pick from candidates). Store in `metadata.coverUrl`; display layer prefers it over auto-resolved art. (added 2026-06-02)
+6. ✅ **Manual cover art edit** — paste image URL in edit view → stored in `metadata.coverUrl`; `useArtwork` returns it immediately, skipping API. Live in edit view.
+7. ✅ **Re-identify** — "re-identify" button in edit view fires `/api/identify` with current title and pre-fills fields. User reviews and saves.
 
-### 🔗 Wikipedia coverage (added 2026-06-02)
-- **Push harder on Wikipedia links.** Many films that *should* have a Wikipedia page don't get one linked. Improve `src/lib/wikipedia.ts` resolution — better title+year matching, fallback queries (drop "The", try original title, disambiguation by media type), and backfill existing items missing a link. Wikipedia link is core to the "one source of truth" north star.
+### 🔗 Wikipedia coverage
+- ✅ Multi-fallback cascade: tries up to 4 queries per film (with year → without year → drop "The" → bare title). Films/TV trust search result; books/music use title guard. Deployed 2026-06-02 session 2.
+- **Backfill missing directors** — Letterboxd imports arrive with null creator (CSV has no director column). Re-identify button handles this one at a time. Bulk backfill not built yet.
+- **Still missing:** foreign-language titles where Wikipedia article name differs entirely from item title.
 
 ### 📚 Content / types
 1. **Book & movie series** — group like TV seasons.
@@ -117,18 +120,19 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 4. **Subtitle extras** — pages/runtime, added date, source, who added.
 
 ### 🎨 Polish
-1. **All lowercase** UI experiment.
-2. **Letterboxd source label** — small "from Letterboxd" badge in the action card for imported items (`source_detail === 'letterboxd'`). Helps spot anything that imported wrong.
-3. **Dedup after Letterboxd import** — title+year dedup catches exact matches, but slight title variants (e.g. "Anatomy of a Fall" vs "The Anatomy of a Fall") can slip through. Worth running the existing remove-duplicates tool after first import.
-4. **Remove-duplicates: show before deleting** (added 2026-06-02) — today `removeDuplicates()` in `src/hooks/useItems.ts` auto-deletes by a scoring heuristic (done > note/reaction > earliest). Farah wants it to **surface the duplicate groups for case-by-case review** (see which items it considers dupes, pick what to keep) instead of silently deleting. Build a review sheet/preview before the delete.
+1. ✅ **All lowercase** — done; h1/h2/h3 via CSS, all chips/buttons/sheet copy updated.
+2. ✅ **Grid card** — 3 columns, square for music-only view, bigger title + creator line, reaction dot on done items.
+3. **Letterboxd source label** — small "from Letterboxd" badge in the action card for imported items (`source_detail === 'letterboxd'`). Helps spot anything that imported wrong.
+4. **Dedup after Letterboxd import** — slight title variants can slip through. Worth running remove-duplicates after first import.
+5. **Remove-duplicates: show before deleting** — today auto-deletes by scoring heuristic. Should surface groups for case-by-case review instead.
 
 ### 🌱 Bigger / later
 - Genre/mood tags + trend analysis
 - Recommendations from trusted sources
 - Tom's login (publish Google OAuth consent screen)
 - Optional multi-category select (long-press)
-- **`diary.csv` rewatches** — Letterboxd diary has per-watch dates and logs repeat viewings. Not imported yet. Relevant if Farah wants rewatch history.
-- **Descriptive queries for films** — "rosalía latest album" style intent resolution already in roadmap; same pattern applies to films via TMDB.
+- **`diary.csv` rewatches** — Letterboxd diary has per-watch dates and logs repeat viewings. Not imported yet.
+- **Descriptive queries for films** — same TMDB-resolution pattern as music, not built yet.
 
 ### 🧹 Cleanup (ongoing)
 Security + dead code. Check RLS, auth, exposed keys periodically.
