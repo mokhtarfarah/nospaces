@@ -10,33 +10,34 @@ const EMPTY: WikiInfo = { url: null, thumbnail: null, summary: null }
 const cache = new Map<string, WikiInfo>()
 
 // Two lookup strategies:
-//   title — direct page lookup by name, with redirects=1 (reliable for well-known articles)
-//   search — full-text search (broader, but ranking can miss the right article)
-type WikiQuery = { kind: 'title'; t: string } | { kind: 'search'; q: string }
+//   search — full-text search (broad, works for most well-known articles)
+//   title  — direct page lookup by name, following redirects (precise fallback
+//            for films that don't rank well in search, e.g. foreign-language titles)
+type WikiQuery = { kind: 'search'; q: string } | { kind: 'title'; t: string }
 
 function wikiQueries(type: string, title: string, creator: string | null, year: number | null): WikiQuery[] {
   const bare = title.replace(/^(the|a|an)\s+/i, '').trim()
   switch (type) {
     case 'film':
       return [
-        // Direct title lookups first — Wikipedia follows redirects, so
-        // "Ponyo (film)" → "Ponyo", "Almost Famous (film)" → "Almost Famous", etc.
-        ...(year ? [{ kind: 'title' as const, t: `${title} (${year} film)` }] : []),
-        { kind: 'title' as const, t: `${title} (film)` },
-        ...(bare !== title ? [{ kind: 'title' as const, t: `${bare} (film)` }] : []),
-        // Full-text search fallbacks
+        // Full-text search first — reliable for the vast majority of films.
         ...(year ? [{ kind: 'search' as const, q: `${title} ${year} film` }] : []),
         { kind: 'search' as const, q: `${title} film` },
         ...(bare !== title ? [{ kind: 'search' as const, q: `${bare} film` }] : []),
         { kind: 'search' as const, q: title },
+        // Direct title lookups as fallback — catches films whose Wikipedia article
+        // doesn't rank #1 in search (e.g. Ponyo, foreign-language adaptations).
+        ...(year ? [{ kind: 'title' as const, t: `${title} (${year} film)` }] : []),
+        { kind: 'title' as const, t: `${title} (film)` },
+        ...(bare !== title ? [{ kind: 'title' as const, t: `${bare} (film)` }] : []),
       ]
     case 'tv':
       return [
-        { kind: 'title' as const, t: `${title} (TV series)` },
-        { kind: 'title' as const, t: `${title} (television series)` },
         { kind: 'search' as const, q: `${title} TV series` },
         { kind: 'search' as const, q: `${title} television series` },
         { kind: 'search' as const, q: title },
+        { kind: 'title' as const, t: `${title} (TV series)` },
+        { kind: 'title' as const, t: `${title} (television series)` },
       ]
     case 'book':
       return [
@@ -56,44 +57,33 @@ function wikiQueries(type: string, title: string, creator: string | null, year: 
 
 const normalize = (s: string) => s.toLowerCase().replace(/\s*\([^)]*\)\s*/g, '').trim()
 
-const PROPS =
+const BASE =
+  'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*' +
   '&prop=pageimages|info|extracts&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
   '&exsentences=2&explaintext=1'
 
 type PageResult = { title: string; url: string; thumbnail: string | null; summary: string | null }
 
-async function fetchByTitle(titleParam: string): Promise<PageResult | null> {
-  const url =
-    'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*' +
-    PROPS + '&redirects=1' +
-    `&titles=${encodeURIComponent(titleParam)}`
-  const data = await (await fetch(url)).json()
-  const pages = data?.query?.pages
-  if (!pages) return null
-  const page = Object.values(pages)[0] as Record<string, unknown> | undefined
-  // Wikipedia returns { "missing": "" } on the page object for unknown titles.
-  if (!page?.title || 'missing' in page) return null
-  return {
-    title: page.title as string,
-    url: (page.fullurl as string | undefined) ?? `https://en.wikipedia.org/wiki/${encodeURIComponent((page.title as string).replace(/ /g, '_'))}`,
-    thumbnail: (page.thumbnail as { source?: string } | undefined)?.source ?? null,
-    summary: ((page.extract as string | undefined)?.trim()) || null,
-  }
+async function fetchBySearch(q: string): Promise<PageResult | null> {
+  const data = await (await fetch(`${BASE}&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(q)}`)).json()
+  return parsePage(data?.query?.pages)
 }
 
-async function fetchBySearch(query: string): Promise<PageResult | null> {
-  const url =
-    'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*' +
-    PROPS +
-    `&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(query)}`
-  const data = await (await fetch(url)).json()
-  const pages = data?.query?.pages
-  if (!pages) return null
-  const page = Object.values(pages)[0] as Record<string, unknown> | undefined
-  if (!page?.title) return null
+async function fetchByTitle(t: string): Promise<PageResult | null> {
+  const data = await (await fetch(`${BASE}&redirects=1&titles=${encodeURIComponent(t)}`)).json()
+  return parsePage(data?.query?.pages)
+}
+
+function parsePage(pages: unknown): PageResult | null {
+  if (!pages || typeof pages !== 'object') return null
+  const page = Object.values(pages as Record<string, unknown>)[0] as Record<string, unknown> | undefined
+  if (!page) return null
+  // Wikipedia marks missing/unknown titles with a "missing" property.
+  if (!page.title || Object.prototype.hasOwnProperty.call(page, 'missing')) return null
   return {
     title: page.title as string,
-    url: (page.fullurl as string | undefined) ?? `https://en.wikipedia.org/wiki/${encodeURIComponent((page.title as string).replace(/ /g, '_'))}`,
+    url: (page.fullurl as string | undefined) ??
+      `https://en.wikipedia.org/wiki/${encodeURIComponent((page.title as string).replace(/ /g, '_'))}`,
     thumbnail: (page.thumbnail as { source?: string } | undefined)?.source ?? null,
     summary: ((page.extract as string | undefined)?.trim()) || null,
   }
@@ -106,8 +96,8 @@ async function resolve(type: string, title: string, creator: string | null, year
   const queries = wikiQueries(type, title, creator, year)
   let info: WikiInfo = EMPTY
 
-  // Books/music: guard against false positives by checking title similarity.
-  // Films/TV: accept the result — title-based lookups are already precise.
+  // Books/music: guard against common-word false positives by checking title similarity.
+  // Films/TV: trust the result — explicit search terms and year anchoring are precise enough.
   const guarded = type === 'book' || type === 'music'
   const a = normalize(title)
 
@@ -122,7 +112,7 @@ async function resolve(type: string, title: string, creator: string | null, year
       info = { url: found.url, thumbnail: found.thumbnail, summary: found.summary }
       break
     } catch {
-      // network error on this attempt — try next
+      // network error — try next query
     }
   }
 
