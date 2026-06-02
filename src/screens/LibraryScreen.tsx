@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
@@ -6,7 +6,7 @@ import { MarkDoneSheet } from '../components/MarkDoneSheet'
 import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption, type SortDir, type ReactionFilter } from '../components/ViewSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { DuplicatesSheet } from '../components/DuplicatesSheet'
-import { useWikipediaInfo } from '../lib/wikipedia'
+import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
 import { MOODS } from '../lib/moods'
@@ -119,7 +119,11 @@ function itemSource(item: Item): string {
 }
 
 export function LibraryScreen() {
-  const { items, loading, markDone, markWantTo, deleteItem, editItem, toggleOwned, duplicateCount, duplicateGroups, deleteMany } = useItems()
+  const { items, loading, markDone, markWantTo, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
+
+  const handleSaveWiki = useCallback((id: string, wiki: WikiInfo) => {
+    patchMetadata(id, { wikiUrl: wiki.url, wikiThumb: wiki.thumbnail, wikiSummary: wiki.summary })
+  }, [patchMetadata])
   const dupes = duplicateCount()
 
   // Empty array = all categories. Single-select: tapping a type switches to just that
@@ -420,6 +424,7 @@ export function LibraryScreen() {
                     onTap={() => setActionItem(item)}
                     onMarkDone={() => setDoneItem(item)}
                     onMarkWantTo={() => markWantTo(item.id)}
+                    onSaveWiki={handleSaveWiki}
                   />
                 ))
               )}
@@ -582,17 +587,31 @@ function FilterChip({ label, active, onClick, disabled }: { label: string; activ
   )
 }
 
-function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
+function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki }: {
   item: Item
   showType: boolean
   onTap: () => void
   onMarkDone: () => void
   onMarkWantTo: () => void
+  onSaveWiki?: (id: string, wiki: WikiInfo) => void
 }) {
   const color = typeColor(item.type)
 
-  // Wikipedia article link (+ image as a fallback); best cover comes from /api/art.
-  const { url: wikiUrl, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
+  // Use cached wiki data from metadata when available — skips the API call entirely.
+  const metaWiki: WikiInfo | null = item.metadata?.wikiUrl
+    ? { url: item.metadata.wikiUrl as string, thumbnail: (item.metadata.wikiThumb as string) ?? null, summary: (item.metadata.wikiSummary as string) ?? null }
+    : null
+
+  const { url: wikiUrl, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year, metaWiki)
+
+  // Persist newly-resolved wiki data so future loads skip the API call.
+  const wikiSaved = useRef(false)
+  useEffect(() => {
+    if (wikiUrl && !metaWiki && !wikiSaved.current) {
+      wikiSaved.current = true
+      onSaveWiki?.(item.id, { url: wikiUrl, thumbnail: wikiThumb, summary: null })
+    }
+  }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const thumbnail = artwork ?? wikiThumb
 

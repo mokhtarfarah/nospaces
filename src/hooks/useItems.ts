@@ -145,6 +145,17 @@ export function useItems() {
     return ids.length
   }
 
+  // Patch a subset of metadata fields and update local state immediately — no
+  // full refetch, so callers like the Wikipedia cache-write don't fan out into
+  // 50 round-trips when many items resolve at once.
+  async function patchMetadata(id: string, patch: Record<string, unknown>) {
+    const item = items.find(i => i.id === id)
+    if (!item) return
+    const newMeta = { ...item.metadata, ...patch }
+    setItems(prev => prev.map(i => i.id === id ? { ...i, metadata: newMeta } : i))
+    await db().from('items').update({ metadata: newMeta }).eq('id', id)
+  }
+
   async function toggleOwned(id: string, owned: boolean) {
     const item = items.find(i => i.id === id)
     if (!item) return
@@ -170,5 +181,5 @@ export function useItems() {
     await fetch({ silent: true })
   }
 
-  return { items, loading, addItem, importItems, markDone, markWantTo, deleteItem, editItem, toggleOwned, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
+  return { items, loading, addItem, importItems, markDone, markWantTo, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
 }

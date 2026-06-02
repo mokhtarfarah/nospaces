@@ -65,16 +65,23 @@ export function clearWikiCache(type: string, title: string, creator: string | nu
 
 // Resolves the Wikipedia article URL + thumbnail for an item. Both may be null when
 // no suitable page exists (or the type isn't looked up).
-export function useWikipediaInfo(type: string, title: string, creator: string | null, year: number | null): WikiInfo {
-  const [info, setInfo] = useState<WikiInfo>(EMPTY)
+// Pass `seed` (from item metadata) to skip the network call entirely when we
+// already have a cached result from a previous session.
+export function useWikipediaInfo(
+  type: string,
+  title: string,
+  creator: string | null,
+  year: number | null,
+  seed?: WikiInfo | null,
+): WikiInfo {
+  const [info, setInfo] = useState<WikiInfo>(seed?.url ? seed : EMPTY)
   useEffect(() => {
+    if (seed?.url) return // already cached in DB — no fetch needed
     let cancelled = false
     resolve(type, title, creator, year).then(i => {
       if (!cancelled) setInfo(i)
     })
-    return () => {
-      cancelled = true
-    }
-  }, [type, title, creator, year])
+    return () => { cancelled = true }
+  }, [type, title, creator, year, seed?.url])
   return info
 }
