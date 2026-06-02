@@ -40,6 +40,10 @@ export function BottomNav() {
         <LibraryIcon />
         library
       </NavLink>
+      <NavLink to="/taste" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
+        <TasteIcon />
+        taste
+      </NavLink>
     </nav>
   )
 }
@@ -60,6 +64,17 @@ function LibraryIcon() {
       <rect x="3" y="4" width="4" height="16" rx="1" />
       <rect x="10" y="4" width="4" height="16" rx="1" />
       <rect x="17" y="4" width="4" height="16" rx="1" />
+    </svg>
+  )
+}
+
+function TasteIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+      <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="3" />
+      <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="3" />
     </svg>
   )
 }
