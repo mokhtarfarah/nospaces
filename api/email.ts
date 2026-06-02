@@ -17,11 +17,16 @@ const ALLOWED_EMAILS = [
 ]
 
 const EMAIL_PROMPT = (subject: string, body: string) => `
-Parse this email and extract any media recommendations (films, books, music, TV shows).
+Find any media recommendations (films, books, music, TV shows) mentioned in this email.
 Subject: ${subject}
 
 Body:
 ${body.slice(0, 4000)}
+
+For EACH item you find, IDENTIFY it using your own knowledge — do not just copy words from
+the email. Fill in the correct creator (director / author / artist / showrunner), the release
+year, and the type, even if the email does not state them. Use the exact, canonical title.
+Only leave a field null if you genuinely cannot identify the item.
 
 Return JSON only:
 {
@@ -30,10 +35,10 @@ Return JSON only:
   "newsletter_name": "name of newsletter or sender if detectable, else null",
   "items": [
     {
-      "title": "...",
-      "creator": "...",
+      "title": "exact canonical title",
+      "creator": "director / author / artist / showrunner",
       "type": "film|book|music|tv|other",
-      "year": null,
+      "year": 1234,
       "summary": "One sentence about why this was recommended",
       "confidence": "high|medium|low",
       "metadata": {},
