@@ -154,7 +154,7 @@ export function AddScreen() {
 
   return (
     <div style={{ padding: '56px 16px 0', background: '#fff', minHeight: '100dvh' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 24px', letterSpacing: '-0.3px' }}>Add</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 24px', letterSpacing: '-0.2px' }}>Add</h1>
 
       <form onSubmit={handleSubmit}>
         <textarea

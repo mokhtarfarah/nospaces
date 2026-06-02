@@ -164,7 +164,7 @@ export function LibraryScreen() {
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.3px' }}>Library</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.2px' }}>Library</h1>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
               onClick={() => setGroupBy(g => (g === 'month' ? 'creator' : 'month'))}
@@ -256,18 +256,6 @@ export function LibraryScreen() {
         )}
       </header>
 
-      {/* Legend — only when no specific categories are selected */}
-      {categories.length === 0 && (
-        <div style={{ display: 'flex', gap: 12, padding: '8px 16px', borderBottom: '1px solid #F0F0F0' }}>
-          {(['film', 'book', 'music', 'tv'] as const).map(k => (
-            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, background: TYPE_COLORS[k].border }} />
-              <span style={{ fontSize: 10, color: '#888' }}>{TYPE_COLORS[k].label}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
         {loading ? (
@@ -279,7 +267,7 @@ export function LibraryScreen() {
         ) : (
           Array.from(grouped.entries()).map(([month, monthItems]) => (
             <div key={month}>
-              <div style={{ padding: '6px 16px', background: '#F6F6F6', fontSize: 12, fontWeight: 600, color: '#666', letterSpacing: '0.2px' }}>
+              <div style={{ padding: '22px 16px 8px', fontSize: 11, fontWeight: 600, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase' }}>
                 {month}
               </div>
               {monthItems.map(item => (
@@ -400,17 +388,16 @@ function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo 
   return (
     <div
       onClick={onTap}
-      style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #F2F2F2', padding: '8px 16px 8px 0', marginLeft: 16, cursor: 'pointer' }}
+      style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #F4F4F4', padding: '12px 16px 12px', cursor: 'pointer' }}
     >
-      <div style={{ width: 3, borderRadius: 2, background: color.border, flexShrink: 0, marginRight: 10, alignSelf: 'stretch' }} />
       <Thumb src={thumbnail} type={item.type} color={color} />
       <div style={{ flex: 1, minWidth: 0, alignSelf: 'center' }}>
-        <div style={{ fontSize: 13, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
           <span style={{ fontWeight: 500 }}>{item.title}</span>
-          {item.creator && <span style={{ fontWeight: 400, color: '#999' }}>{'  ·  '}{item.creator}</span>}
+          {item.creator && <span style={{ fontWeight: 400, color: '#A0A0A0' }}>{'  ·  '}{item.creator}</span>}
         </div>
         {subtitle && (
-          <div style={{ fontSize: 11, color: '#888', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 11, color: '#999', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {subtitle}
           </div>
         )}
@@ -481,12 +468,12 @@ const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '�
 
 // Small cover/poster thumbnail. Falls back to a type-colored tile so rows stay aligned.
 function Thumb({ src, type, color }: { src: string | null; type: string; color: { bg: string; border: string } }) {
-  const box: React.CSSProperties = { width: 34, height: 34, borderRadius: 6, flexShrink: 0, marginRight: 12, alignSelf: 'center' }
+  const box: React.CSSProperties = { width: 46, height: 46, borderRadius: 9, flexShrink: 0, marginRight: 14, alignSelf: 'center' }
   if (src) {
     return <img src={src} alt="" loading="lazy" style={{ ...box, objectFit: 'cover', border: '1px solid #EEE', background: '#F4F4F4' }} />
   }
   return (
-    <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+    <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
       {TYPE_EMOJI[type] ?? '✦'}
     </div>
   )
