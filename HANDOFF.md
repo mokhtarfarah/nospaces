@@ -58,7 +58,11 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 ## Short-term TODOs (near-term, not full wishlist)
 - **Where-to-watch links** — v1 currently shows provider logos in a popup (api/watch.ts + WhereToWatchSheet.tsx, TMDB key set). LATER: replace the logos with direct clickable links that open the show on the relevant service. Easy to remove the whole feature: delete those 2 files + revert the 3-line hook in ItemActionSheet.
 - **Add/search improvements** — searching a string that isn't a famous work (e.g. "my new band believe") returns wrong famous results with no way to force the literal string. DONE so far: quotation marks now force an exact/literal match (api/identify.ts), and the confirm sheet has "show more options". STILL WANTED: a clearer in-UI way to force exact search / regenerate without quotes; revisit overall add-screen search UX.
-- DONE: ~~Sorting clarity~~ (single View menu + grid toggle). ~~Missing artwork~~ (TMDB/iTunes/Open Library via api/art.ts).
+- DONE: ~~Sorting clarity~~ (single View menu + grid toggle). ~~Missing artwork~~ (TMDB/Deezer/iTunes/Open Library/Apple Books via api/art.ts).
+
+## Ideas to evaluate (not committed — revisit as we go)
+- **"+" quick-add in library header** — a + by the search bar. Evaluated as low value right now since the bottom-nav Add tab already covers it in one tap; only worth it as a true inline quick-add (type+save without leaving the library). Parked for reconsideration.
+- **Book blurbs / OCR jacket** — for books with no Wikipedia summary, pull a blurb (Open Library work description is cleanest; Apple Books description as backup). Possible feature: snap a photo of the back-cover blurb → Claude vision OCR → save as the item's blurb/note.
 
 ## Key files
 - `src/screens/LibraryScreen.tsx` — main library UI
