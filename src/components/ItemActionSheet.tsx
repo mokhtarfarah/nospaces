@@ -11,7 +11,7 @@ import { WhereToWatchSheet } from './WhereToWatchSheet'
 
 interface Props {
   item: Item
-  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; metadata?: Record<string, unknown> }) => void
+  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; metadata?: Record<string, unknown> }) => void
   onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
   onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
@@ -135,7 +135,10 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     onClose()
   }
 
-  async function handleReidentify() {
+  // autoSave=true (main card): save result immediately, no edit view.
+  // autoSave=false (edit view header): populate edit fields for review.
+  // Scratch items always drop into edit regardless.
+  async function handleReidentify(autoSave = false) {
     if (reidentifying) return
     setReidentifying(true)
     try {
@@ -145,17 +148,29 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         body: JSON.stringify({ input: title.trim() || item.title }),
       })
       const r = await res.json()
-      if (r.title) setTitle(r.title)
-      if (r.creator) setCreator(r.creator)
-      if (r.type) setType(r.type)
-      if (r.year) setYear(String(r.year))
-      // For scratch items, clear the flag and drop into edit view to review + save.
-      if (item.metadata?.scratch) {
-        setCoverUrl('')
-        setView('edit')
+      if (item.metadata?.scratch || !autoSave) {
+        // Edit-view path: populate fields and let user review before saving.
+        if (r.title) setTitle(r.title)
+        if (r.creator) setCreator(r.creator)
+        if (r.type) setType(r.type)
+        if (r.year) setYear(String(r.year))
+        if (item.metadata?.scratch) { setCoverUrl(''); setView('edit') }
+      } else {
+        // Auto-save path: merge result directly onto the item.
+        const metadata: Record<string, unknown> = { ...item.metadata }
+        if (r.metadata?.runtime) metadata.runtime = r.metadata.runtime
+        if (r.metadata?.pages) metadata.pages = r.metadata.pages
+        onEdit({
+          title: r.title || item.title,
+          creator: r.creator || item.creator,
+          type: r.type || item.type,
+          year: r.year || item.year,
+          tags: r.tags?.length ? r.tags : item.tags,
+          metadata,
+        })
       }
     } catch {
-      // ignore — fields stay as-is
+      // ignore — item stays as-is
     } finally {
       setReidentifying(false)
     }
@@ -220,7 +235,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   </button>
                   {!item.metadata?.scratch && (
                     <button
-                      onClick={handleReidentify}
+                      onClick={() => handleReidentify(true)}
                       disabled={reidentifying}
                       style={{ background: 'none', border: 'none', fontSize: 11, color: reidentifying ? '#CCC' : '#B0B0B0', cursor: reidentifying ? 'default' : 'pointer', padding: 0, flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
                     >
@@ -360,7 +375,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             ) : item.metadata?.scratch ? (
               <div style={{ ...footer, display: 'flex', gap: 8 }}>
                 <button
-                  onClick={handleReidentify}
+                  onClick={() => handleReidentify(false)}
                   disabled={reidentifying}
                   style={{ ...actionBtn('#fff'), flex: 2, background: reidentifying ? '#CCC' : '#111', border: 'none' }}
                 >
@@ -385,7 +400,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: '#444', margin: 0 }}>edit details</p>
               <button
-                onClick={handleReidentify}
+                onClick={() => handleReidentify(false)}
                 disabled={reidentifying}
                 style={{ background: 'none', border: 'none', fontSize: 12, color: reidentifying ? '#BBB' : '#111', cursor: reidentifying ? 'default' : 'pointer', padding: 0 }}
               >
