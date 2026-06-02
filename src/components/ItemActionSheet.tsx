@@ -97,7 +97,12 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   if (item.type === 'music') {
     links.push({
       key: 'spotify', label: 'spotify', icon: <SpotifyIcon />,
-      onClick: () => window.open(`https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`, '_blank'),
+      onClick: () => {
+        const url = (item.metadata?.spotifyUrl as string | undefined)
+          ?? (item.metadata?.spotifyId ? `https://open.spotify.com/album/${item.metadata.spotifyId}` : null)
+          ?? `https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`
+        window.open(url, '_blank')
+      },
     })
   }
   if (wikiUrl) {

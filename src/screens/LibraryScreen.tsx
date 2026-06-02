@@ -632,8 +632,10 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
         <button
           onClick={e => {
             e.stopPropagation()
-            const q = encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))
-            window.open(`https://open.spotify.com/search/${q}`, '_blank')
+            const url = (item.metadata?.spotifyUrl as string | undefined)
+              ?? (item.metadata?.spotifyId ? `https://open.spotify.com/album/${item.metadata.spotifyId}` : null)
+              ?? `https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`
+            window.open(url, '_blank')
           }}
           title="Open in Spotify"
           style={{
