@@ -1,0 +1,54 @@
+import { useEffect, useState, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from './useAuth'
+import { HOME_CITIES, type City } from '../lib/shows'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = () => (supabase as any)
+
+interface Prefs {
+  cities?: City[]
+}
+
+// Per-user preferences, synced across devices via the public.user_prefs table.
+// Falls back to in-memory defaults until the row loads / when signed out.
+export function usePrefs() {
+  const { user } = useAuth()
+  const [prefs, setPrefs] = useState<Prefs>({})
+  const [loaded, setLoaded] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!user) { setPrefs({}); setLoaded(true); return }
+    const { data } = await db().from('user_prefs').select('prefs').eq('user_id', user.id).maybeSingle()
+    setPrefs((data?.prefs as Prefs) ?? {})
+    setLoaded(true)
+  }, [user])
+
+  useEffect(() => { load() }, [load])
+
+  // Keep in sync if another device changes prefs.
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase
+      .channel(`user_prefs:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_prefs', filter: `user_id=eq.${user.id}` },
+        () => { load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [user, load])
+
+  async function patch(next: Partial<Prefs>) {
+    if (!user) return
+    const merged = { ...prefs, ...next }
+    setPrefs(merged) // optimistic
+    await db().from('user_prefs').upsert({ user_id: user.id, prefs: merged }, { onConflict: 'user_id' })
+  }
+
+  // The user's city list — their saved one, or the built-in defaults until they
+  // customise it. Once they edit, the full list is persisted.
+  const cities: City[] = prefs.cities ?? HOME_CITIES
+
+  const setCities = (next: City[]) => patch({ cities: next })
+
+  return { cities, setCities, prefsLoaded: loaded }
+}

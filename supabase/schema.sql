@@ -59,3 +59,32 @@ create trigger items_updated_at
 create index items_user_id_date_added on public.items (user_id, date_added desc);
 create index items_user_id_status on public.items (user_id, status);
 create index items_type on public.items (type);
+
+-- ---------------------------------------------------------------------------
+-- Per-user preferences (synced across devices). One row per user; `prefs` is a
+-- free-form JSON bag. Currently holds the "shows near you" custom city list
+-- under prefs.cities = [{ name, lat, lng }, ...].
+-- ---------------------------------------------------------------------------
+create table if not exists public.user_prefs (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  prefs      jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_prefs enable row level security;
+
+create policy "Users can read own prefs"
+  on public.user_prefs for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own prefs"
+  on public.user_prefs for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own prefs"
+  on public.user_prefs for update
+  using (auth.uid() = user_id);
+
+create trigger user_prefs_updated_at
+  before update on public.user_prefs
+  for each row execute function public.set_updated_at();

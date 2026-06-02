@@ -57,6 +57,18 @@ export function likedArtists(items: Item[]): string[] {
   return [...names.values()].sort((a, b) => a.localeCompare(b))
 }
 
+// Resolve a typed place to a city with coordinates (via /api/geocode). Returns
+// null if nothing matches.
+export async function geocodeCity(q: string): Promise<City | null> {
+  try {
+    const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`)
+    const data = await res.json()
+    return data.result ?? null
+  } catch {
+    return null
+  }
+}
+
 // Lowercased names of artists the user *loved* (not just liked). Used to float
 // favourites to the top and power the "loved only" filter in the by-artist view.
 export function lovedArtistKeys(items: Item[]): Set<string> {

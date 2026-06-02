@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
+import { usePrefs } from '../hooks/usePrefs'
 import {
-  likedArtists, lovedArtistKeys, fetchAllShows, milesBetween,
-  HOME_CITIES, RADIUS_OPTIONS,
+  likedArtists, lovedArtistKeys, fetchAllShows, milesBetween, geocodeCity,
+  RADIUS_OPTIONS,
   type Show, type City,
 } from '../lib/shows'
 
@@ -12,6 +13,7 @@ type Mode = 'near' | 'all'
 
 export function ShowsScreen() {
   const { items, loading: itemsLoading } = useItems()
+  const { cities, setCities } = usePrefs()
   const navigate = useNavigate()
 
   const artists = useMemo(() => likedArtists(items), [items])
@@ -26,6 +28,11 @@ export function ShowsScreen() {
   const [radius, setRadius] = useState<number | null>(100) // miles
   const [locating, setLocating] = useState(false)
   const [locError, setLocError] = useState('')
+  // editing the saved city list
+  const [editCities, setEditCities] = useState(false)
+  const [newCity, setNewCity] = useState('')
+  const [addingCity, setAddingCity] = useState(false)
+  const [cityError, setCityError] = useState('')
   // all-tours controls
   const [lovedOnly, setLovedOnly] = useState(false)
   const [place, setPlace] = useState('')
@@ -66,6 +73,25 @@ export function ShowsScreen() {
   function pickCity(c: City) {
     setLocError('')
     setOrigin({ name: c.name, lat: c.lat, lng: c.lng })
+  }
+
+  async function addCity() {
+    const q = newCity.trim()
+    if (!q || addingCity) return
+    setCityError('')
+    if (cities.some(c => c.name.toLowerCase() === q.toLowerCase())) { setNewCity(''); return }
+    setAddingCity(true)
+    const found = await geocodeCity(q)
+    setAddingCity(false)
+    if (!found) { setCityError(`couldn’t find “${q}” — try a city name`); return }
+    if (cities.some(c => c.name.toLowerCase() === found.name.toLowerCase())) { setNewCity(''); return }
+    setCities([...cities, found])
+    setNewCity('')
+  }
+
+  function removeCity(c: City) {
+    setCities(cities.filter(x => x.name !== c.name))
+    if (origin?.name === c.name) setOrigin(null)
   }
 
   // Upcoming-only base list (drop anything in the past), shared by both modes.
@@ -156,10 +182,47 @@ export function ShowsScreen() {
               {locating ? 'locating…' : '📍 use my location'}
             </button>
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-            {HOME_CITIES.map(c => (
-              <Chip key={c.name} label={c.name.toLowerCase()} active={origin?.name === c.name} onClick={() => pickCity(c)} />
-            ))}
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {cities.map(c => (
+                editCities ? (
+                  <button
+                    key={c.name}
+                    onClick={() => removeCity(c)}
+                    style={{ padding: '5px 11px', borderRadius: 16, fontSize: 12, cursor: 'pointer', border: '1px solid #E0B4B4', background: '#FCF3F3', color: '#B0392B' }}
+                  >
+                    {c.name.toLowerCase()} ✕
+                  </button>
+                ) : (
+                  <Chip key={c.name} label={c.name.toLowerCase()} active={origin?.name === c.name} onClick={() => pickCity(c)} />
+                )
+              ))}
+              <button
+                onClick={() => { setEditCities(v => !v); setCityError(''); setNewCity('') }}
+                style={{ border: 'none', background: 'none', color: '#999', fontSize: 12, cursor: 'pointer', padding: '5px 4px', textDecoration: 'underline', textUnderlineOffset: 2 }}
+              >
+                {editCities ? 'done' : 'edit'}
+              </button>
+            </div>
+            {editCities && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <input
+                  value={newCity}
+                  onChange={e => setNewCity(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addCity() }}
+                  placeholder="add a city — e.g. barcelona"
+                  style={{ flex: 1, minWidth: 0, padding: '8px 10px', border: '1px solid #ddd', borderRadius: 10, fontSize: 13, outline: 'none' }}
+                />
+                <button
+                  onClick={addCity}
+                  disabled={addingCity || !newCity.trim()}
+                  style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 10, border: 'none', background: addingCity || !newCity.trim() ? '#E2E2E2' : '#111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: addingCity || !newCity.trim() ? 'default' : 'pointer' }}
+                >
+                  {addingCity ? 'adding…' : 'add'}
+                </button>
+              </div>
+            )}
+            {cityError && <p style={{ color: '#C0392B', fontSize: 12, margin: '8px 0 0' }}>{cityError}</p>}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: '#AAA', marginRight: 2 }}>within</span>
