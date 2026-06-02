@@ -16,6 +16,7 @@ create table if not exists public.items (
   recommended_by    text,
   metadata          jsonb not null default '{}',
   tags              text[] not null default '{}',
+  moods             text[] not null default '{}',
   date_added        timestamptz not null default now(),
   date_done         timestamptz,
   created_at        timestamptz not null default now(),

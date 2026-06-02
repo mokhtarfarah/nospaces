@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor } from '../lib/colors'
+import { MOODS } from '../lib/moods'
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'loved_it',   label: 'loved it'   },
@@ -11,14 +12,21 @@ const REACTIONS: { value: ItemReaction; label: string }[] = [
 
 interface Props {
   item: Item
-  onConfirm: (reaction: ItemReaction, note: string) => void
+  onConfirm: (reaction: ItemReaction, note: string, moods: string[]) => void
   onClose: () => void
 }
 
 export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
   const [reaction, setReaction] = useState<ItemReaction | null>(null)
   const [note, setNote] = useState('')
+  const [selectedMoods, setSelectedMoods] = useState<string[]>([])
   const color = typeColor(item.type)
+
+  function toggleMood(mood: string) {
+    setSelectedMoods(prev =>
+      prev.includes(mood) ? prev.filter(m => m !== mood) : [...prev, mood]
+    )
+  }
 
   return (
     <>
@@ -81,6 +89,29 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
           ))}
         </div>
 
+        {/* Moods */}
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 10 }}>vibe? <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+          {MOODS.map(mood => {
+            const active = selectedMoods.includes(mood)
+            return (
+              <button
+                key={mood}
+                onClick={() => toggleMood(mood)}
+                style={{
+                  padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
+                  border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+                  background: active ? '#EDEDED' : '#fff',
+                  color: active ? '#111' : '#666',
+                  fontWeight: active ? 600 : 400,
+                }}
+              >
+                {mood}
+              </button>
+            )
+          })}
+        </div>
+
         {/* Note */}
         <textarea
           value={note}
@@ -104,7 +135,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
 
         <button
           disabled={!reaction}
-          onClick={() => reaction && onConfirm(reaction, note)}
+          onClick={() => reaction && onConfirm(reaction, note, selectedMoods)}
           style={{
             width: '100%',
             padding: 14,

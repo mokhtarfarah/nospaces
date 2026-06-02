@@ -86,7 +86,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 2. **Bulk picture upload** — pick many photos → AI runs each → batch confirm/save.
 3. **Manual source field** — set where an item came from (person/site/newsletter). Decide where it surfaces.
 4. **Music / songs** — today albums-only. Figure out adding individual songs + cleanest flow.
-5. **Descriptive queries** (designed, not built): "rosalía latest album" → AI returns intent {creator, type, ordinal}; server resolves via live catalog (Deezer for music, TMDB for film/TV). Implement in `api/identify.ts`.
+5. **Descriptive queries** (PARKED — separate body of work, not part of the taste arc): "rosalía latest album" → AI returns intent {creator, type, ordinal}; server resolves via live catalog (Deezer for music, TMDB for film/TV). Two-stage in `api/identify.ts`: classify direct-title vs descriptive-intent, then resolve against live API. Start music-only (Deezer, no key). Revisit after the taste arc.
 6. **Screenshot shortcut reliability** — clipboard flow flaky. Improve or retire.
 7. **Photo-blurb / OCR** — snap back cover → Claude reads blurb → save.
 
@@ -94,9 +94,18 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 1. ✅ **Spotify** — saved-albums sync live (built 2026-06-02). See "Spotify sync" section above. Still TODO/v2: top artists/tracks "insights" view, ongoing auto-sync, individual songs.
 2. ✅ **Letterboxd** — CSV import live. See "Letterboxd import" section above.
 
+### 🌟 Taste arc (session 3 focus — the throughline: tags → taste → recommendations)
+This is the current main thread. Build order matters: each step feeds the next.
+1. **Genre + mood tags (foundation).** Two parallel dimensions:
+   - **Genre** = what it *is* (drama, sci-fi, indie rock). Objective. AI picks 1–3 from a fixed per-type vocab at identify time. Stored in existing `tags text[]` column.
+   - **Mood/vibe** = how it *felt* ("comfort watch", "so bad it's good", "artsy"). Personal. Captured at **mark-done** time (mood chips next to the reaction), AI may pre-suggest. Stored in a new `moods text[]` column (one-line migration; mirrors `tags`).
+   - Fixed curated lists for both (no free-text → no "artsy/Artsy/arty" fragmentation). Display as chips on the action card. Filters live in the view sheet. One-time "tag my library" backfill button for old items (else taste view is blank).
+2. **Taste snapshot screen** (a mirror, NOT trends over time). Client-side from items already loaded. "what you love" (top genres+moods weighted by reaction: loved +2, liked +1, eh −1, not-for-me −2, ranked bars — hand-rolled CSS, no chart lib), "what doesn't land", counts by type. Empty without step 1.
+3. **Recommendations page** (the destination; its own design pass). Pick trusted sources → pull their lists → check off "want to". v1 manual pull (ask for a named list e.g. "NYT best books summer 2026" → AI+web fetch → parse → dedupe vs library → selectable checklist → save as want_to). v2 saved sources. v3 rank against taste snapshot.
+
 ### 🃏 Action card
 1. ✅ **Mark done / edit reaction inline** — "mark as done" in action sheet footer for want_to items; transitions to reaction view inside the sheet (no second overlay). "edit reaction" for done items.
-2. **Fix notes display** — show note below blurb, user-friendly format.
+2. ✅ **Notes display** — note renders below the blurb in the action card, with bullet-list support (lines starting with -, *, • become a list). Done session 3.
 3. **Design polish** — editorial identity pass done (all-lowercase, 3-col grid, square music grid). Needs eye on real covers.
 4. **Manual link** — paste Wikipedia/URL to fix wrong cover/blurb. Store in `metadata.wikiUrl`.
 5. **"Want to reread/rewatch" button** — `metadata.revisit` boolean; label adapts by type; Revisit filter chip.
@@ -120,15 +129,19 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 4. **Subtitle extras** — pages/runtime, added date, source, who added.
 
 ### 🎨 Polish
+0. ✅ **Header declutter (session 3)** — reaction filter moved out of the always-on header row into the view sheet (shows "view · loved it" on the button when active; hidden while viewing "want to"). Category → want-to/done fast path kept. Removed "recently added" chips from the Add screen.
 1. ✅ **All lowercase** — done; h1/h2/h3 via CSS, all chips/buttons/sheet copy updated.
 2. ✅ **Grid card** — 3 columns, square for music-only view, bigger title + creator line, reaction dot on done items.
 3. **Letterboxd source label** — small "from Letterboxd" badge in the action card for imported items (`source_detail === 'letterboxd'`). Helps spot anything that imported wrong.
 4. **Dedup after Letterboxd import** — slight title variants can slip through. Worth running remove-duplicates after first import.
 5. **Remove-duplicates: show before deleting** — today auto-deletes by scoring heuristic. Should surface groups for case-by-case review instead.
 
+### 🎵 Music (later)
+- **Touring dates** — for a music artist in the library, surface upcoming live shows (ideally "near me"). New integration: Bandsintown or Ticketmaster (Songkick public API is dead). Bigger item, own design call (which API, where it shows, location handling).
+
 ### 🌱 Bigger / later
-- Genre/mood tags + trend analysis
-- Recommendations from trusted sources
+- Genre/mood tags + taste analysis → now the active "Taste arc" above
+- Recommendations from trusted sources → now in the "Taste arc" above
 - Tom's login (publish Google OAuth consent screen)
 - Optional multi-category select (long-press)
 - **`diary.csv` rewatches** — Letterboxd diary has per-watch dates and logs repeat viewings. Not imported yet.

@@ -17,6 +17,7 @@ export interface Item {
   recommended_by: string | null
   metadata: Record<string, unknown>
   tags: string[]
+  moods: string[]
   date_added: string
   date_done: string | null
   created_at: string

@@ -61,7 +61,7 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
 }
 
 export function AddScreen() {
-  const { items, addItem } = useItems()
+  const { addItem } = useItems()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [title, setTitle] = useState('')
@@ -75,8 +75,6 @@ export function AddScreen() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
-
-  const recent = items.slice(0, 4)
 
   // Handle results pre-filled from iOS Shortcut via URL params
   useEffect(() => {
@@ -262,21 +260,6 @@ export function AddScreen() {
       <input ref={imageRef} type="file" accept="image/*"
         onChange={e => { const f = e.target.files?.[0]; if (f) processImageFile(f, 'photo') }}
         style={{ display: 'none' }} />
-
-      {recent.length > 0 && (
-        <div style={{ marginTop: 32 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: '#999', letterSpacing: '0.5px', marginBottom: 8, textTransform: 'uppercase' }}>
-            recently added
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {recent.map(item => (
-              <span key={item.id} style={{ padding: '4px 10px', background: '#F2F2F2', borderRadius: 20, fontSize: 12, color: '#444' }}>
-                {item.title}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {aiResult && (
         <ConfirmSheet

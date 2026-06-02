@@ -1,11 +1,20 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
+// Genre vocab — keep in sync with src/lib/genres.ts (server-side copy, Vercel
+// functions can't import from src/).
+const GENRE_VOCAB: Record<string, string[]> = {
+  film:  ['action','animation','comedy','crime','documentary','drama','fantasy','horror','musical','romance','sci-fi','thriller','western'],
+  tv:    ['animation','comedy','crime','documentary','drama','fantasy','horror','reality','sci-fi','thriller'],
+  book:  ['biography','business','classics','crime','essay','fantasy','history','horror','literary fiction','mystery','philosophy','poetry','romance','sci-fi','self-help','short stories','thriller','travel'],
+  music: ['afrobeats','ambient','classical','country','electronic','folk','hip-hop','indie','jazz','latin','metal','pop','punk','r&b','rock','soul'],
+}
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const SYSTEM_PROMPT = `You are an assistant that identifies films, books, music albums, and TV shows from text descriptions or titles. Return JSON only, no preamble, no markdown.`
 
-const USER_PROMPT = (input: string) => `Given this input: "${input}"
+const USER_PROMPT = (input: string, genreList: string) => `Given this input: "${input}"
 
 Identify the item and return JSON only:
 {
@@ -27,6 +36,10 @@ IMPORTANT — always fill in creator:
 - tv: the creator or showrunner's full name.
 Only leave creator null if the item is truly unknown (type "other") or you genuinely cannot identify the creator despite knowing the title.
 
+GENRES — populate "tags" with 1–3 genres from this list only (no other values):
+${genreList}
+If type is "other" or you don't recognise the item, leave tags as [].
+
 If confidence is low, populate alternatives with up to 3 other possible matches with the same shape.
 If the input is wrapped in quotation marks, treat the quoted text as an EXACT, literal title — do not substitute a more famous or differently-spelled work. Match that exact title even if it's obscure; if you can't, set type "other" and use the quoted text verbatim as the title.
 If you cannot identify anything, return type "other" with the input as the title.`
@@ -42,6 +55,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const hintLine = typeHint ? `\nThe user indicates this is a ${typeHint}. Strongly prefer that type.` : ''
+  const knownType = typeHint && GENRE_VOCAB[typeHint] ? typeHint : null
+  const genreList = knownType
+    ? GENRE_VOCAB[knownType].join(', ')
+    : Object.entries(GENRE_VOCAB).map(([t, g]) => `${t}: ${g.join(', ')}`).join('\n')
 
   try {
     const content: Anthropic.MessageParam['content'] = []
@@ -57,10 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       content.push({
         type: 'text',
-        text: 'Identify the film, book, music album, or TV show in this image. Always fill in creator (director for films, author for books, artist for music, showrunner for TV). Return JSON only:\n{\n  "title": "...",\n  "creator": "...",\n  "type": "film|book|music|tv|other",\n  "year": 1234,\n  "confidence": "high|medium|low",\n  "metadata": {},\n  "tags": [],\n  "ambiguous": false,\n  "alternatives": []\n}' + hintLine,
+        text: `Identify the film, book, music album, or TV show in this image. Always fill in creator (director for films, author for books, artist for music, showrunner for TV). Populate "tags" with 1–3 genres from this list only:\n${genreList}\nReturn JSON only:\n{\n  "title": "...",\n  "creator": "...",\n  "type": "film|book|music|tv|other",\n  "year": 1234,\n  "confidence": "high|medium|low",\n  "metadata": {},\n  "tags": [],\n  "ambiguous": false,\n  "alternatives": []\n}` + hintLine,
       })
     } else {
-      content.push({ type: 'text', text: USER_PROMPT(input ?? '') + hintLine })
+      content.push({ type: 'text', text: USER_PROMPT(input ?? '', genreList) + hintLine })
     }
 
     const message = await client.messages.create({

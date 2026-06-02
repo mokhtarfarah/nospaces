@@ -55,11 +55,12 @@ export function useItems() {
     await fetch()
   }
 
-  async function markDone(id: string, reaction: ItemReaction, note: string) {
+  async function markDone(id: string, reaction: ItemReaction, note: string, moods: string[] = []) {
     await db().from('items').update({
       status: 'done',
       reaction,
       note: note || null,
+      moods,
       date_done: new Date().toISOString(),
     }).eq('id', id)
     await fetch({ silent: true })
@@ -130,6 +131,16 @@ export function useItems() {
     return toDelete.length
   }
 
+  async function toggleOwned(id: string, owned: boolean) {
+    const item = items.find(i => i.id === id)
+    if (!item) return
+    const metadata = { ...item.metadata }
+    if (owned) metadata.owned = true
+    else delete metadata.owned
+    await db().from('items').update({ metadata }).eq('id', id)
+    await fetch({ silent: true })
+  }
+
   async function editItem(id: string, fields: {
     title?: string
     creator?: string | null
@@ -137,11 +148,12 @@ export function useItems() {
     year?: number | null
     note?: string | null
     reaction?: ItemReaction | null
+    moods?: string[]
     metadata?: Record<string, unknown>
   }) {
     await db().from('items').update(fields).eq('id', id)
     await fetch({ silent: true })
   }
 
-  return { items, loading, addItem, importItems, markDone, markWantTo, deleteItem, editItem, duplicateCount, removeDuplicates, refetch: fetch }
+  return { items, loading, addItem, importItems, markDone, markWantTo, deleteItem, editItem, toggleOwned, duplicateCount, removeDuplicates, refetch: fetch }
 }

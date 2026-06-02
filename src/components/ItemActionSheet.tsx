@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
+import { MOODS } from '../lib/moods'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { useBookBlurb } from '../lib/blurb'
@@ -10,9 +11,10 @@ import { WhereToWatchSheet } from './WhereToWatchSheet'
 interface Props {
   item: Item
   onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; metadata?: Record<string, unknown> }) => void
-  onMarkDone: (reaction: ItemReaction, note: string) => void
-  onEditReaction: (reaction: ItemReaction, note: string) => void
+  onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
+  onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
+  onToggleOwned: (owned: boolean) => void
   onDelete: () => void
   onClose: () => void
 }
@@ -34,7 +36,7 @@ const REACTION_LABELS: Record<ItemReaction, string> = {
 
 type View = 'main' | 'edit' | 'reaction'
 
-export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onDelete, onClose }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onDelete, onClose }: Props) {
   const [view, setView] = useState<View>('main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -42,6 +44,13 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [year, setYear] = useState(item.year?.toString() ?? '')
   const [reaction, setReaction] = useState<ItemReaction | null>(item.reaction)
   const [note, setNote] = useState(item.note ?? '')
+  const [selectedMoods, setSelectedMoods] = useState<string[]>(item.moods ?? [])
+
+  function toggleMood(mood: string) {
+    setSelectedMoods(prev =>
+      prev.includes(mood) ? prev.filter(m => m !== mood) : [...prev, mood]
+    )
+  }
   const [coverUrl, setCoverUrl] = useState((item.metadata?.coverUrl as string | null) ?? '')
   const [reidentifying, setReidentifying] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -146,9 +155,9 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   function handleSaveReaction() {
     if (!reaction) return
     if (item.status === 'want_to') {
-      onMarkDone(reaction, note)
+      onMarkDone(reaction, note, selectedMoods)
     } else {
-      onEditReaction(reaction, note)
+      onEditReaction(reaction, note, selectedMoods)
     }
   }
 
@@ -182,25 +191,39 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year].filter(Boolean).join(' · ')}
                   {item.reaction && ` · ${REACTION_LABELS[item.reaction]}`}
                 </div>
-                <div style={{ fontSize: 11, color: '#B0B0B0', marginTop: 4 }}>
-                  From {item.source_detail?.trim() || item.source.replace(/_/g, ' ')}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  <div style={{ fontSize: 11, color: '#B0B0B0' }}>
+                    From {item.source_detail?.trim() || item.source.replace(/_/g, ' ')}
+                  </div>
+                  <button
+                    onClick={() => onToggleOwned(!item.metadata?.owned)}
+                    style={{
+                      padding: '2px 8px', borderRadius: 20, cursor: 'pointer', fontSize: 11,
+                      border: item.metadata?.owned ? '1.5px solid #111' : '1.5px solid #DDD',
+                      background: item.metadata?.owned ? '#111' : '#fff',
+                      color: item.metadata?.owned ? '#fff' : '#AAA',
+                      fontWeight: 500, flexShrink: 0,
+                    }}
+                  >
+                    {item.metadata?.owned ? '⌂ owned' : '⌂ own it?'}
+                  </button>
                 </div>
               </div>
             </div>
-
-            {item.note && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 5 }}>your note</div>
-                <div style={{ fontSize: 13, color: '#333', lineHeight: 1.5, paddingLeft: 12, borderLeft: '3px solid #111', fontStyle: 'italic' }}>
-                  {item.note}
-                </div>
-              </div>
-            )}
 
             {blurb && (
               <div style={{ fontSize: 12, color: '#777', lineHeight: 1.5, marginBottom: 16, background: '#F7F7F7', borderRadius: 8, padding: '10px 12px' }}>
                 {blurb}
                 {blurbSource && <span style={{ display: 'block', marginTop: 4, fontSize: 10, color: '#AAA' }}>via {blurbSource}</span>}
+              </div>
+            )}
+
+            {item.note && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 5 }}>your note</div>
+                <div style={{ fontSize: 13, color: '#333', lineHeight: 1.5, paddingLeft: 12, borderLeft: '3px solid #111', fontStyle: 'italic' }}>
+                  {renderNote(item.note)}
+                </div>
               </div>
             )}
 
@@ -246,6 +269,30 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     </button>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Genre tags (auto-tagged at identify time) */}
+            {item.tags && item.tags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {item.tags.map(tag => (
+                  <span key={tag} style={{
+                    padding: '3px 10px', borderRadius: 20, fontSize: 11,
+                    background: '#F2F2F2', color: '#555', fontWeight: 500,
+                  }}>{tag}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Mood tags (set at mark-done time) */}
+            {item.moods && item.moods.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {item.moods.map(mood => (
+                  <span key={mood} style={{
+                    padding: '3px 10px', borderRadius: 20, fontSize: 11,
+                    background: '#111', color: '#fff', fontWeight: 500,
+                  }}>{mood}</span>
+                ))}
               </div>
             )}
 
@@ -353,6 +400,28 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </button>
               ))}
             </div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 10 }}>vibe? <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+              {MOODS.map(mood => {
+                const active = selectedMoods.includes(mood)
+                return (
+                  <button
+                    key={mood}
+                    onClick={() => toggleMood(mood)}
+                    style={{
+                      padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
+                      border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+                      background: active ? '#EDEDED' : '#fff',
+                      color: active ? '#111' : '#666',
+                      fontWeight: active ? 600 : 400,
+                    }}
+                  >
+                    {mood}
+                  </button>
+                )
+              })}
+            </div>
+
             <textarea
               value={note}
               onChange={e => setNote(e.target.value)}
@@ -375,6 +444,34 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
       )}
     </>
   )
+}
+
+// Render a note. Lines that start with "-", "*", or "•" become a bullet list;
+// other non-empty lines render as paragraphs. Lets you jot a quick list in a note.
+function renderNote(note: string) {
+  const lines = note.split('\n')
+  const blocks: React.ReactNode[] = []
+  let bullets: string[] = []
+  const flush = () => {
+    if (!bullets.length) return
+    blocks.push(
+      <ul key={`u${blocks.length}`} style={{ margin: '0 0 4px', paddingLeft: 18 }}>
+        {bullets.map((b, i) => <li key={i} style={{ marginBottom: 2 }}>{b}</li>)}
+      </ul>,
+    )
+    bullets = []
+  }
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (/^[-*•]\s+/.test(line)) {
+      bullets.push(line.replace(/^[-*•]\s+/, ''))
+    } else {
+      flush()
+      if (line) blocks.push(<p key={`p${blocks.length}`} style={{ margin: '0 0 4px' }}>{line}</p>)
+    }
+  }
+  flush()
+  return blocks
 }
 
 function SpotifyIcon() {

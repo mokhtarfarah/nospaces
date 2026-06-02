@@ -3,14 +3,13 @@ import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
-import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption } from '../components/ViewSheet'
+import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption, type ReactionFilter } from '../components/ViewSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
 
 type StatusFilter = 'all' | ItemStatus
-type ReactionFilter = 'all' | ItemReaction
 
 const REACTION_LABELS: Record<ItemReaction, string> = {
   loved_it:   'loved it',
@@ -99,7 +98,7 @@ function itemSource(item: Item): string {
 }
 
 export function LibraryScreen() {
-  const { items, loading, markDone, markWantTo, deleteItem, editItem, duplicateCount, removeDuplicates } = useItems()
+  const { items, loading, markDone, markWantTo, deleteItem, editItem, toggleOwned, duplicateCount, removeDuplicates } = useItems()
   const dupes = duplicateCount()
 
   // Empty array = all categories. Single-select: tapping a type switches to just that
@@ -110,6 +109,7 @@ export function LibraryScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
+  const [ownedOnly, setOwnedOnly] = useState(false)
   const [view, setView] = useState<ViewMode>('recent')
   const [layout, setLayout] = useState<'list' | 'grid'>('list')
   const [query, setQuery] = useState('')
@@ -130,6 +130,7 @@ export function LibraryScreen() {
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
       if (newMusicOnly && musicOnly && !itemSource(item).toLowerCase().includes('new music tuesday')) return false
+      if (ownedOnly && !item.metadata?.owned) return false
       if (query && !item.title.toLowerCase().includes(query.toLowerCase()) &&
           !item.creator?.toLowerCase().includes(query.toLowerCase())) return false
       return true
@@ -167,7 +168,7 @@ export function LibraryScreen() {
               onClick={() => setViewSheetOpen(true)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
             >
-              {VIEW_CONFIG[view].label} <span style={{ fontSize: 12 }}>▾</span>
+              {VIEW_CONFIG[view].label}{reactionFilter !== 'all' ? ` · ${REACTION_LABELS[reactionFilter]}` : ''} <span style={{ fontSize: 12 }}>▾</span>
             </button>
             <button
               onClick={() => setLayout(l => (l === 'list' ? 'grid' : 'list'))}
@@ -215,7 +216,7 @@ export function LibraryScreen() {
           )}
         </div>
 
-        {/* Filter row 2 — status + reaction */}
+        {/* Filter row 2 — status + owned */}
         <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {(['all', 'want_to', 'done'] as StatusFilter[]).map(s => (
             <FilterChip
@@ -226,15 +227,7 @@ export function LibraryScreen() {
             />
           ))}
           <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-          {REACTION_ORDER.map(r => (
-            <FilterChip
-              key={r}
-              label={REACTION_LABELS[r]}
-              active={reactionFilter === r}
-              disabled={statusFilter === 'want_to'}
-              onClick={() => setReactionFilter(reactionFilter === r ? 'all' : r)}
-            />
-          ))}
+          <FilterChip label="⌂ owned" active={ownedOnly} onClick={() => setOwnedOnly(v => !v)} />
         </div>
 
         {/* New Music Tuesday toggle — only in the Music category */}
@@ -303,8 +296,8 @@ export function LibraryScreen() {
       {doneItem && (
         <MarkDoneSheet
           item={doneItem}
-          onConfirm={(reaction, note) => {
-            markDone(doneItem.id, reaction, note)
+          onConfirm={(reaction, note, moods) => {
+            markDone(doneItem.id, reaction, note, moods)
             setDoneItem(null)
           }}
           onClose={() => setDoneItem(null)}
@@ -319,8 +312,9 @@ export function LibraryScreen() {
           <ItemActionSheet
             item={fresh}
             onEdit={fields => { editItem(fresh.id, fields); setActionItem(null) }}
-            onMarkDone={(reaction, note) => { markDone(fresh.id, reaction, note); setActionItem(null) }}
-            onEditReaction={(reaction, note) => { editItem(fresh.id, { reaction, note: note || null }); setActionItem(null) }}
+            onToggleOwned={owned => toggleOwned(fresh.id, owned)}
+            onMarkDone={(reaction, note, moods) => { markDone(fresh.id, reaction, note, moods); setActionItem(null) }}
+            onEditReaction={(reaction, note, moods) => { editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }}
             onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
             onDelete={() => { deleteItem(fresh.id); setActionItem(null) }}
             onClose={() => setActionItem(null)}
@@ -333,6 +327,9 @@ export function LibraryScreen() {
         <ViewSheet
           current={view}
           onChange={setView}
+          reactionFilter={reactionFilter}
+          onReactionChange={setReactionFilter}
+          showReactionFilter={statusFilter !== 'want_to'}
           onClose={() => setViewSheetOpen(false)}
         />
       )}
@@ -411,6 +408,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
           <span style={{ fontWeight: 500 }}>{item.title}</span>
           {item.creator && <span style={{ fontWeight: 400, color: '#A0A0A0' }}>{'  ·  '}{item.creator}</span>}
           {item.note && <span title="Has a note" style={{ fontWeight: 400, color: '#C0C0C0', fontSize: 11 }}>{'  '}✎</span>}
+          {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: '#999', fontSize: 11 }}>{'  '}⌂</span>}
         </div>
         {subtitle && (
           <div style={{ fontSize: 11, color: '#999', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
