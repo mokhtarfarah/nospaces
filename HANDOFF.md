@@ -60,6 +60,16 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 - **Add/search improvements** — searching a string that isn't a famous work (e.g. "my new band believe") returns wrong famous results with no way to force the literal string. DONE so far: quotation marks now force an exact/literal match (api/identify.ts), and the confirm sheet has "show more options". STILL WANTED: a clearer in-UI way to force exact search / regenerate without quotes; revisit overall add-screen search UX.
 - DONE: ~~Sorting clarity~~ (single View menu + grid toggle). ~~Missing artwork~~ (TMDB/Deezer/iTunes/Open Library/Apple Books via api/art.ts).
 
+## Short-term fixes (queued)
+- **Want-to items show no subtitle** — done items show year/reaction, but want-to rows show nothing when there's no type/seasons line. Add year (and maybe type) to the want_to subtitle in LibraryScreen ItemRow.
+
+## Code cleanup candidates (light refactor pass)
+- `api/identify.ts` `more` mode + `MORE_PROMPT` — dead (frontend uses /api/lookup now). Remove.
+- `src/components/SortSheet.tsx` — component unused (replaced by ViewSheet); only its `SortOption` type is imported. Move the type, delete the component.
+- `api/identify-upload.ts` — was for the iOS Shortcut, which we removed. Verify unused, then delete.
+- `src/lib/seeds.ts` — check if still referenced; likely stale.
+- External-data fetchers (TMDB/iTunes/Deezer/Open Library) are spread across api/art, api/lookup, api/blurb, api/watch, api/_bookMatch with some duplicated search logic — could consolidate shared helpers, but each endpoint serves a distinct purpose so keep light.
+
 ## Future ideas (parked)
 - **TV season-specific ratings** — let each season in the checklist carry its own reaction, not just a watched tick + one show-level reaction.
 - **Optional multi-category select** — categories are single-select by default now (tap switches). Possibly allow selecting multiple via a non-default gesture (long-press to add, or a small "multi" toggle) without making multi the default.
