@@ -4,6 +4,7 @@ import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
 import { SortSheet, type SortOption } from '../components/SortSheet'
+import { ItemActionSheet } from '../components/ItemActionSheet'
 
 type CategoryFilter = 'all' | string
 type StatusFilter = 'all' | ItemStatus
@@ -56,7 +57,7 @@ function groupByMonth(items: Item[]): Map<string, Item[]> {
 }
 
 export function LibraryScreen() {
-  const { items, loading, markDone, markWantTo } = useItems()
+  const { items, loading, markDone, markWantTo, deleteItem, editItem } = useItems()
 
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -66,6 +67,7 @@ export function LibraryScreen() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [sortSheetOpen, setSortSheetOpen] = useState(false)
   const [doneItem, setDoneItem] = useState<Item | null>(null)
+  const [actionItem, setActionItem] = useState<Item | null>(null)
 
   const SORT_LABELS: Record<SortOption, string> = {
     date_added: 'Date added',
@@ -207,6 +209,7 @@ export function LibraryScreen() {
                   key={item.id}
                   item={item}
                   showType={category === 'all'}
+                  onTap={() => setActionItem(item)}
                   onMarkDone={() => setDoneItem(item)}
                   onMarkWantTo={() => markWantTo(item.id)}
                 />
@@ -225,6 +228,16 @@ export function LibraryScreen() {
             setDoneItem(null)
           }}
           onClose={() => setDoneItem(null)}
+        />
+      )}
+
+      {/* Item action sheet */}
+      {actionItem && (
+        <ItemActionSheet
+          item={actionItem}
+          onEdit={fields => { editItem(actionItem.id, fields); setActionItem(null) }}
+          onDelete={() => { deleteItem(actionItem.id); setActionItem(null) }}
+          onClose={() => setActionItem(null)}
         />
       )}
 
@@ -278,9 +291,10 @@ function FilterChip({ label, active, onClick }: { label: string; active: boolean
   )
 }
 
-function ItemRow({ item, showType, onMarkDone, onMarkWantTo }: {
+function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
   item: Item
   showType: boolean
+  onTap: () => void
   onMarkDone: () => void
   onMarkWantTo: () => void
 }) {
@@ -293,7 +307,8 @@ function ItemRow({ item, showType, onMarkDone, onMarkWantTo }: {
 
   return (
     <div
-      style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #F2F2F2', padding: '10px 16px 10px 0', marginLeft: 16 }}
+      onClick={onTap}
+      style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #F2F2F2', padding: '10px 16px 10px 0', marginLeft: 16, cursor: 'pointer' }}
     >
       <div style={{ width: 3, borderRadius: 2, background: color.border, flexShrink: 0, marginRight: 12, alignSelf: 'stretch' }} />
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -306,7 +321,7 @@ function ItemRow({ item, showType, onMarkDone, onMarkWantTo }: {
       </div>
       {/* Action button */}
       <button
-        onClick={item.status === 'want_to' ? onMarkDone : onMarkWantTo}
+        onClick={e => { e.stopPropagation(); item.status === 'want_to' ? onMarkDone() : onMarkWantTo() }}
         title={item.status === 'want_to' ? 'Mark as done' : 'Move back to want to'}
         style={{
           flexShrink: 0,

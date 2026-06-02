@@ -9,7 +9,11 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh)",
       "Bash(bash)",
-      "Bash(chmod +x /Users/farahmokhtar/nospaces/.claude/start-dev.sh)"
+      "Bash(chmod +x /Users/farahmokhtar/nospaces/.claude/start-dev.sh)",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "mcp__Claude_in_Chrome__computer"
     ]
   }
 }

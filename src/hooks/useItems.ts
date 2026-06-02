@@ -67,5 +67,21 @@ export function useItems() {
     await fetch()
   }
 
-  return { items, loading, addItem, markDone, markWantTo, refetch: fetch }
+  async function deleteItem(id: string) {
+    await db().from('items').delete().eq('id', id)
+    await fetch()
+  }
+
+  async function editItem(id: string, fields: {
+    title?: string
+    creator?: string | null
+    type?: string
+    year?: number | null
+    note?: string | null
+  }) {
+    await db().from('items').update(fields).eq('id', id)
+    await fetch()
+  }
+
+  return { items, loading, addItem, markDone, markWantTo, deleteItem, editItem, refetch: fetch }
 }
