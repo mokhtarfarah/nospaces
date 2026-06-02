@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { MOODS } from '../lib/moods'
+import { NoteInput } from './NoteInput'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { useBookBlurb } from '../lib/blurb'
@@ -422,13 +423,9 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               })}
             </div>
 
-            <textarea
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="Any thoughts..."
-              rows={3}
-              style={{ ...inputStyle, resize: 'none', marginBottom: 16 }}
-            />
+            <div style={{ marginBottom: 16 }}>
+              <NoteInput value={note} onChange={setNote} />
+            </div>
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
               <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#111111' : '#ccc', border: 'none' }}>save</button>

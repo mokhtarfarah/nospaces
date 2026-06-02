@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor } from '../lib/colors'
 import { MOODS } from '../lib/moods'
+import { NoteInput } from './NoteInput'
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'loved_it',   label: 'loved it'   },
@@ -112,26 +113,9 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
           })}
         </div>
 
-        {/* Note */}
-        <textarea
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          placeholder="Any thoughts..."
-          rows={3}
-          style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            padding: '10px 12px',
-            border: '1.5px solid #E0E0E0',
-            borderRadius: 10,
-            fontSize: 14,
-            fontFamily: 'inherit',
-            resize: 'none',
-            outline: 'none',
-            marginBottom: 16,
-            color: '#333',
-          }}
-        />
+        <div style={{ marginBottom: 16 }}>
+          <NoteInput value={note} onChange={setNote} />
+        </div>
 
         <button
           disabled={!reaction}
