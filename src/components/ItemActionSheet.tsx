@@ -134,11 +134,11 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
         {view === 'main' && (
           <>
             {/* Item preview */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24 }}>
               {cover
                 ? <img src={cover} alt="" style={{ width: 46, height: 69, borderRadius: 0, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
                 : <div style={{ width: 46, height: 69, borderRadius: 0, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{TYPE_EMOJI[item.type] ?? '✦'}</div>}
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, paddingTop: 2 }}>
                 <div style={{ fontSize: 15, fontWeight: 600 }}>{item.title}</div>
                 <div style={{ fontSize: 12, color: '#888' }}>
                   {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year].filter(Boolean).join(' · ')}

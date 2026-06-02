@@ -25,11 +25,39 @@ async function tmdbPoster(media: 'movie' | 'tv', title: string, year: string): P
   return null
 }
 
-async function itunesArt(title: string, creator: string): Promise<string | null> {
+const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+
+// Pick the best album from a list by title (exact preferred) + artist match.
+function pickAlbum<T>(results: T[], title: string, creator: string, getTitle: (r: T) => string, getArtist: (r: T) => string): T | null {
+  const t = norm(title)
+  const c = creator ? norm(creator) : ''
+  const artistOk = (r: T) => !c || norm(getArtist(r)).includes(c) || c.includes(norm(getArtist(r)))
+  return (
+    results.find(r => norm(getTitle(r)) === t && artistOk(r)) ??
+    results.find(r => norm(getTitle(r)).includes(t) && artistOk(r)) ??
+    (c ? null : results[0] ?? null)
+  )
+}
+
+// Deezer first (best coverage), then iTunes.
+async function deezerArt(title: string, creator: string): Promise<string | null> {
+  const q = [creator, title].filter(Boolean).join(' ')
+  const data = await (await fetch(`https://api.deezer.com/search/album?q=${encodeURIComponent(q)}&limit=8`)).json()
+  const results: { title?: string; artist?: { name?: string }; cover_big?: string; cover_xl?: string }[] = data?.data ?? []
+  const m = pickAlbum(results, title, creator, r => r.title ?? '', r => r.artist?.name ?? '')
+  return m?.cover_big ?? m?.cover_xl ?? null
+}
+
+async function itunesAlbumArt(title: string, creator: string): Promise<string | null> {
   const term = [creator, title].filter(Boolean).join(' ')
-  const data = await (await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=album&limit=1`)).json()
-  const art: string | undefined = data?.results?.[0]?.artworkUrl100
-  return art ? art.replace('100x100bb', '300x300bb') : null
+  const data = await (await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=album&limit=8`)).json()
+  const results: { collectionName?: string; artistName?: string; artworkUrl100?: string }[] = data?.results ?? []
+  const m = pickAlbum(results, title, creator, r => r.collectionName ?? '', r => r.artistName ?? '')
+  return m?.artworkUrl100 ? m.artworkUrl100.replace('100x100bb', '600x600bb') : null
+}
+
+async function musicArt(title: string, creator: string): Promise<string | null> {
+  return (await deezerArt(title, creator)) ?? (await itunesAlbumArt(title, creator))
 }
 
 async function openLibraryCover(title: string, creator: string): Promise<string | null> {
@@ -64,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let url: string | null = null
     if (type === 'film') url = await tmdbPoster('movie', title, year)
     else if (type === 'tv') url = await tmdbPoster('tv', title, year)
-    else if (type === 'music') url = await itunesArt(title, creator)
+    else if (type === 'music') url = await musicArt(title, creator)
     else if (type === 'book') url = await bookCover(title, creator)
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate')
     return res.status(200).json({ url })
