@@ -55,6 +55,11 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 4. **Screenshot shortcut reliability** — clipboard approach is flaky, consider Supabase "pending items" approach instead
 5. **Day 4 review** — NOTE: no written Day 4 plan exists in the repo; was likely a verbal plan from an old session. Ask the user what it covered.
 
+## Short-term TODOs (near-term, not full wishlist)
+- **Where-to-watch links** — v1 currently shows provider logos in a popup (api/watch.ts + WhereToWatchSheet.tsx, TMDB key set). LATER: replace the logos with direct clickable links that open the show on the relevant service. Easy to remove the whole feature: delete those 2 files + revert the 3-line hook in ItemActionSheet.
+- **Sorting/grouping clarity** — the separate "By month / By creator" toggle vs the sort sheet is confusing. Brainstorming a clearer single "View" concept + possible grid view (see session notes).
+- **Missing artwork** — many album covers and TV posters don't resolve from Wikipedia. Plan: albums → iTunes Search API (keyless), film/TV → TMDB posters (key set), book → keep Wikipedia; fall back to S1/season image for TV when no series poster.
+
 ## Key files
 - `src/screens/LibraryScreen.tsx` — main library UI
 - `src/screens/AddScreen.tsx` — add screen with AI, photo, shortcut button
