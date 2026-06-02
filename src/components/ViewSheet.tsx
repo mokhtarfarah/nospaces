@@ -27,7 +27,8 @@ export function ViewSheet({ current, onChange, onClose }: Props) {
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#fff', borderRadius: '16px 16px 0 0',
-        padding: '12px 20px 48px', zIndex: 201, maxWidth: 480, margin: '0 auto',
+        padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201, maxWidth: 480, margin: '0 auto',
+        maxHeight: '90dvh', overflowY: 'auto',
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
         <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 12 }}>View</p>
