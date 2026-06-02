@@ -256,9 +256,6 @@ export function LibraryScreen() {
 function EmptyState({ hasItems }: { hasItems: boolean }) {
   return (
     <div style={{ padding: '64px 32px', textAlign: 'center' }}>
-      <div style={{ fontSize: 36, marginBottom: 12 }}>
-        {hasItems ? '🔍' : '📚'}
-      </div>
       <div style={{ fontSize: 16, fontWeight: 600, color: '#222', marginBottom: 6 }}>
         {hasItems ? 'Nothing matches' : 'Your library is empty'}
       </div>

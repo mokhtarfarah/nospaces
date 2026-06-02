@@ -103,9 +103,9 @@ export function AddScreen() {
         />
 
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-          <CaptureButton label="Photo" icon="📷" onClick={() => photoRef.current?.click()} />
-          <CaptureButton label="Screenshot" icon="✂️" onClick={() => photoRef.current?.click()} />
-          <CaptureButton label="save@..." icon="✉️" onClick={() => {}} />
+          <CaptureButton label="Photo" icon={<CameraIcon />} onClick={() => photoRef.current?.click()} />
+          <CaptureButton label="Screenshot" icon={<ScreenshotIcon />} onClick={() => photoRef.current?.click()} />
+          <CaptureButton label="save@..." icon={<MailIcon />} onClick={() => {}} />
         </div>
 
         {/* Hidden file input */}
@@ -162,7 +162,7 @@ export function AddScreen() {
   )
 }
 
-function CaptureButton({ label, icon, onClick }: { label: string; icon: string; onClick: () => void }) {
+function CaptureButton({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -171,11 +171,21 @@ function CaptureButton({ label, icon, onClick }: { label: string; icon: string; 
         flex: 1, padding: '10px 8px',
         border: '1.5px solid #E0E0E0', borderRadius: 10,
         background: '#fff', fontSize: 12, color: '#555', cursor: 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
       }}
     >
-      <span style={{ fontSize: 18 }}>{icon}</span>
+      {icon}
       {label}
     </button>
   )
+}
+
+function CameraIcon() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+}
+function ScreenshotIcon() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+}
+function MailIcon() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
 }

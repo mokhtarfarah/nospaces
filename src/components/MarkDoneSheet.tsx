@@ -2,11 +2,11 @@ import { useState } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor } from '../lib/colors'
 
-const REACTIONS: { value: ItemReaction; label: string; emoji: string }[] = [
-  { value: 'loved_it',   label: 'Loved it',    emoji: '♥' },
-  { value: 'liked_it',   label: 'Liked it',    emoji: '👍' },
-  { value: 'eh',         label: 'Eh',          emoji: '😐' },
-  { value: 'not_for_me', label: 'Not for me',  emoji: '✕' },
+const REACTIONS: { value: ItemReaction; label: string }[] = [
+  { value: 'loved_it',   label: 'Loved it'   },
+  { value: 'liked_it',   label: 'Liked it'   },
+  { value: 'eh',         label: 'Eh'         },
+  { value: 'not_for_me', label: 'Not for me' },
 ]
 
 interface Props {
@@ -72,13 +72,8 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
                 fontWeight: reaction === r.value ? 600 : 400,
                 color: reaction === r.value ? color.border : '#444',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
               }}
             >
-              <span style={{ fontSize: 16 }}>{r.emoji}</span>
               {r.label}
             </button>
           ))}
