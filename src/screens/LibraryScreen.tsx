@@ -321,6 +321,24 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
           {subtitle}
         </div>
       </div>
+      {/* Spotify quick-link — music only */}
+      {item.type === 'music' && (
+        <button
+          onClick={e => {
+            e.stopPropagation()
+            const q = encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))
+            window.open(`https://open.spotify.com/search/${q}`, '_blank')
+          }}
+          title="Open in Spotify"
+          style={{
+            flexShrink: 0, marginLeft: 8, width: 28, height: 28, borderRadius: '50%',
+            border: 'none', background: '#1DB954', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
+          }}
+        >
+          <SpotifyGlyph />
+        </button>
+      )}
       {/* Action button */}
       <button
         onClick={e => { e.stopPropagation(); item.status === 'want_to' ? onMarkDone() : onMarkWantTo() }}
@@ -345,6 +363,14 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
         ✓
       </button>
     </div>
+  )
+}
+
+function SpotifyGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.59 14.42a.62.62 0 0 1-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.62.62 0 1 1-.28-1.21c3.82-.87 7.09-.5 9.72 1.1a.62.62 0 0 1 .21.86zm1.23-2.74a.78.78 0 0 1-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 1 1-.45-1.49c3.63-1.1 8.15-.56 11.23 1.33.37.22.49.7.26 1.07zm.11-2.85C14.81 8.98 9.5 8.8 6.44 9.73a.94.94 0 1 1-.54-1.8c3.52-1.07 9.38-.86 13.08 1.34a.94.94 0 0 1-.96 1.61z" />
+    </svg>
   )
 }
 
