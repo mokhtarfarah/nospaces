@@ -388,7 +388,7 @@ function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo 
   return (
     <div
       onClick={onTap}
-      style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #F4F4F4', padding: '6px 16px', cursor: 'pointer' }}
+      style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #F4F4F4', padding: '4px 16px', cursor: 'pointer' }}
     >
       <Thumb src={thumbnail} type={item.type} color={color} />
       <div style={{ flex: 1, minWidth: 0, alignSelf: 'center' }}>
@@ -468,7 +468,7 @@ const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '�
 
 // Small cover/poster thumbnail. Falls back to a type-colored tile so rows stay aligned.
 function Thumb({ src, type, color }: { src: string | null; type: string; color: { bg: string; border: string } }) {
-  const box: React.CSSProperties = { width: 46, height: 46, borderRadius: 9, flexShrink: 0, marginRight: 14, alignSelf: 'center' }
+  const box: React.CSSProperties = { width: 42, height: 42, borderRadius: 8, flexShrink: 0, marginRight: 14, alignSelf: 'center' }
   if (src) {
     return <img src={src} alt="" loading="lazy" style={{ ...box, objectFit: 'cover', border: '1px solid #EEE', background: '#F4F4F4' }} />
   }
