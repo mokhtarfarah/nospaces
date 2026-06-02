@@ -151,7 +151,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     tags: item.tags ?? [],
   }))
 
-  await supabase.from('items').insert(rows)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: insertError } = await (supabase as any).from('items').insert(rows)
+  console.log('[email] insert error:', insertError, 'rows:', rows.length)
 
-  return res.status(200).json({ saved: rows.length })
+  return res.status(200).json({ saved: insertError ? 0 : rows.length, error: insertError?.message })
 }
