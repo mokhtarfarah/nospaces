@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor } from '../lib/colors'
-import { MOODS } from '../lib/moods'
 import { NoteInput } from './NoteInput'
+import { MoodChips } from './MoodChips'
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'loved_it',   label: 'loved it'   },
@@ -94,25 +94,8 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
 
         {/* Moods */}
         <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 10 }}>vibe? <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-          {MOODS.map(mood => {
-            const active = selectedMoods.includes(mood)
-            return (
-              <button
-                key={mood}
-                onClick={() => toggleMood(mood)}
-                style={{
-                  padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
-                  border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-                  background: active ? '#EDEDED' : '#fff',
-                  color: active ? '#111' : '#666',
-                  fontWeight: active ? 600 : 400,
-                }}
-              >
-                {mood}
-              </button>
-            )
-          })}
+        <div style={{ marginBottom: 16 }}>
+          <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
         </div>
 
         <div style={{ marginBottom: 16 }}>

@@ -1,6 +1,7 @@
-import { useMemo, useState, useRef } from 'react'
+import { useMemo, useState, useRef, type ReactNode } from 'react'
 import { useItems } from '../hooks/useItems'
 import type { Item, ItemReaction } from '../lib/database.types'
+import { VIBES, VERDICTS } from '../lib/moods'
 
 const WEIGHTS: Record<ItemReaction, number> = {
   loved_it: 2, liked_it: 1, eh: 0, not_for_me: -1,
@@ -68,6 +69,30 @@ function Divider() {
   return <div style={{ height: 1, background: '#F0F0F0', margin: '24px 0' }} />
 }
 
+// Collapsible section with the uppercase label header + chevron.
+function Section({ title, defaultOpen = false, count, children }: {
+  title: string; defaultOpen?: boolean; count?: number; children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div style={{ borderBottom: '1px solid #F0F0F0' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'none', border: 'none', cursor: 'pointer', padding: '17px 0',
+        }}
+      >
+        <span style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase' }}>
+          {title}{count != null && <span style={{ color: '#D5D5D5', fontWeight: 600 }}> · {count}</span>}
+        </span>
+        <span style={{ fontSize: 10, color: '#CCC' }}>{open ? '▾' : '▸'}</span>
+      </button>
+      {open && <div style={{ paddingBottom: 24 }}>{children}</div>}
+    </div>
+  )
+}
+
 function ReactionBar({ items, type }: { items: Item[]; type: string }) {
   const done = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
   if (!done.length) return null
@@ -97,7 +122,6 @@ function ReactionBar({ items, type }: { items: Item[]; type: string }) {
 
 export function TasteScreen() {
   const { items, loading, editItem } = useItems()
-  const [showNegative, setShowNegative] = useState(false)
   const [backfilling, setBackfilling] = useState(false)
   const [backfillProgress, setBackfillProgress] = useState(0)
   const [backfillTotal, setBackfillTotal] = useState(0)
@@ -107,6 +131,29 @@ export function TasteScreen() {
   const [rtProgress, setRtProgress] = useState(0)
   const [rtTotal, setRtTotal] = useState(0)
   const rtCancelRef = useRef(false)
+
+  const [migrating, setMigrating] = useState(false)
+  const [migrateProgress, setMigrateProgress] = useState(0)
+
+  // Items still tagged with retired mood words. gripping→intense; project/easy dropped.
+  const needsMoodMigration = useMemo(() =>
+    items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy')),
+    [items],
+  )
+
+  async function runMoodMigration() {
+    if (migrating || needsMoodMigration.length === 0) return
+    setMigrating(true)
+    setMigrateProgress(0)
+    for (const item of needsMoodMigration) {
+      const next = (item.moods ?? [])
+        .map(m => (m === 'gripping' ? 'intense' : m))
+        .filter(m => m !== 'project' && m !== 'easy')
+      try { await editItem(item.id, { moods: [...new Set(next)] }) } catch { /* skip on error */ }
+      setMigrateProgress(p => p + 1)
+    }
+    setMigrating(false)
+  }
 
   const untagged = useMemo(() =>
     items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type)),
@@ -187,21 +234,32 @@ export function TasteScreen() {
 
   const doneWithReaction = useMemo(() => items.filter(i => i.status === 'done' && i.reaction), [items])
 
-  // Genres per type
+  // Genres per type — tv last
   const genresByType = useMemo(() => {
-    return (['film', 'tv', 'book', 'music'] as const)
+    return (['film', 'book', 'music', 'tv'] as const)
       .map(type => ({ type, scored: scoreTags(items, 'tags', type) }))
       .filter(({ scored }) => scored.length > 0)
   }, [items])
 
-  // Moods cross-type (moods are personal, not media-type-specific)
+  // Moods cross-type (moods are personal, not media-type-specific).
+  // Two axes share the moods[] array: VIBES (feel) and VERDICTS (how it landed).
   const moodScores = useMemo(() => scoreTags(items, 'moods'), [items])
-  const topMoods = moodScores.filter(s => s.score >= 0)
-  const lowMoods = moodScores.filter(s => s.score < 0)
+  // Vibes = taste fingerprint → ranked by reaction.
+  const topVibes = moodScores.filter(s => VIBES.includes(s.label) && s.score >= 0)
+  const lowVibes = moodScores.filter(s => VIBES.includes(s.label) && s.score < 0)
+  // Verdicts = how things land → ranked by how often you reach for them (count),
+  // NOT by reaction (that'd be circular: you only call something "overhyped" if you disliked it).
+  const verdictTally = useMemo(() =>
+    moodScores
+      .filter(s => VERDICTS.includes(s.label))
+      .map(s => ({ label: s.label, score: s.count, count: s.count }))
+      .sort((a, b) => b.score - a.score),
+    [moodScores],
+  )
 
   // "What doesn't land" — genres with negative scores, per type
   const lowGenresByType = useMemo(() => {
-    return (['film', 'tv', 'book', 'music'] as const)
+    return (['film', 'book', 'music', 'tv'] as const)
       .map(type => ({ type, scored: scoreTags(items, 'tags', type).filter(s => s.score < 0) }))
       .filter(({ scored }) => scored.length > 0)
   }, [items])
@@ -211,7 +269,37 @@ export function TasteScreen() {
     [doneWithReaction],
   )
 
-  const hasNegative = lowGenresByType.length > 0 || lowMoods.length > 0
+  // Era lean — which decades you gravitate to, reaction-weighted, from `year`.
+  const eraLean = useMemo(() => {
+    const map = new Map<string, { score: number; count: number }>()
+    for (const i of items) {
+      if (i.status !== 'done' || !i.reaction || !i.year) continue
+      const decade = `${Math.floor(i.year / 10) * 10}s`
+      const w = WEIGHTS[i.reaction]
+      const e = map.get(decade) ?? { score: 0, count: 0 }
+      map.set(decade, { score: e.score + w, count: e.count + 1 })
+    }
+    return Array.from(map.entries())
+      .map(([label, v]) => ({ label, score: v.score, count: v.count }))
+      .sort((a, b) => b.score - a.score)
+  }, [items])
+
+  // Backlog vs taste gap — what you keep saving vs what you actually rate highest.
+  const backlogGenres = useMemo(() => {
+    const map = new Map<string, number>()
+    items.filter(i => i.status === 'want_to').forEach(i =>
+      i.tags?.forEach(t => map.set(t, (map.get(t) ?? 0) + 1)))
+    return Array.from(map.entries())
+      .map(([label, count]) => ({ label, score: count, count }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+  }, [items])
+  const lovedGenres = useMemo(() =>
+    scoreTags(items, 'tags').filter(s => s.score > 0).slice(0, 6),
+    [items],
+  )
+
+  const hasNegative = lowGenresByType.length > 0 || lowVibes.length > 0
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh' }}>
@@ -232,14 +320,26 @@ export function TasteScreen() {
 
   return (
     <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 32px', letterSpacing: '-0.2px' }}>taste</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 8px', letterSpacing: '-0.2px' }}>taste</h1>
 
-      {/* Genres — split by type */}
-      {genresByType.length > 0 ? (
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 18 }}>
-            genres
-          </div>
+      {/* Vibes (feel) — cross-type; vibes don't belong to a medium. Top of the page. */}
+      <Section title="vibes" defaultOpen>
+        {topVibes.length > 0
+          ? <RankedChips scored={topVibes} />
+          : <p style={{ fontSize: 13, color: '#CCC', margin: 0 }}>tag a vibe when you mark things done.</p>}
+      </Section>
+
+      {/* Verdicts (how it landed) — ranked by how often you reach for each, not by reaction. */}
+      {verdictTally.length > 0 && (
+        <Section title="your verdicts">
+          <p style={{ fontSize: 11, color: '#CCC', margin: '0 0 12px' }}>how often you reach for each</p>
+          <RankedChips scored={verdictTally} />
+        </Section>
+      )}
+
+      {/* Genres — split by type, tv last */}
+      <Section title="genres">
+        {genresByType.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {genresByType.map(({ type, scored }) => (
               <div key={type}>
@@ -248,32 +348,56 @@ export function TasteScreen() {
               </div>
             ))}
           </div>
-        </div>
-      ) : (
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>genres</div>
+        ) : (
           <p style={{ fontSize: 13, color: '#CCC', margin: 0 }}>genres will appear here as you add and rate new items.</p>
-        </div>
+        )}
+      </Section>
+
+      {/* Era lean — which decades land best */}
+      {eraLean.length > 0 && (
+        <Section title="era">
+          <p style={{ fontSize: 11, color: '#CCC', margin: '0 0 12px' }}>decades you lean toward</p>
+          <RankedChips scored={eraLean} />
+        </Section>
       )}
 
-      <Divider />
-
-      {/* Moods — cross-type is fine, vibes don't belong to a medium */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 14 }}>vibes</div>
-        {topMoods.length > 0
-          ? <RankedChips scored={topMoods} />
-          : <p style={{ fontSize: 13, color: '#CCC', margin: 0 }}>tag vibes when you mark things done.</p>}
-      </div>
-
-      <Divider />
+      {/* Backlog vs taste — what you save vs what you love */}
+      {(backlogGenres.length > 0 && lovedGenres.length > 0) && (
+        <Section title="backlog vs taste">
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 8 }}>most in your backlog</div>
+            <RankedChips scored={backlogGenres} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 8 }}>what you rate highest</div>
+            <RankedChips scored={lovedGenres} />
+          </div>
+        </Section>
+      )}
 
       {/* How you rate — reaction bar per type */}
       {ratedTypes.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 14 }}>how you rate</div>
+        <Section title="how you rate">
           {ratedTypes.map(t => <ReactionBar key={t} items={items} type={t} />)}
-        </div>
+        </Section>
+      )}
+
+      {/* What doesn't land */}
+      {hasNegative && (
+        <Section title="what doesn't land">
+          {lowGenresByType.map(({ type, scored }) => (
+            <div key={type} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#DDDDDD', marginBottom: 8 }}>{TYPE_LABEL[type]}</div>
+              <RankedChips scored={scored} />
+            </div>
+          ))}
+          {lowVibes.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#DDDDDD', marginBottom: 8 }}>vibes</div>
+              <RankedChips scored={lowVibes} />
+            </div>
+          )}
+        </Section>
       )}
 
       {/* Backfill — shown when untagged items exist */}
@@ -372,32 +496,34 @@ export function TasteScreen() {
         </>
       )}
 
-      {/* What doesn't land — collapsible */}
-      {hasNegative && (
+      {/* One-time mood-vocab cleanup — gripping→intense, drop project/easy */}
+      {needsMoodMigration.length > 0 && (
         <>
           <Divider />
-          <div>
-            <button
-              onClick={() => setShowNegative(v => !v)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#CCC', padding: 0, display: 'flex', alignItems: 'center', gap: 5 }}
-            >
-              <span style={{ fontSize: 9 }}>{showNegative ? '▾' : '▸'}</span>
-              what doesn't land
-            </button>
-            {showNegative && (
-              <div style={{ marginTop: 16 }}>
-                {lowGenresByType.map(({ type, scored }) => (
-                  <div key={type} style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#DDDDDD', marginBottom: 8 }}>{TYPE_LABEL[type]}</div>
-                    <RankedChips scored={scored} />
-                  </div>
-                ))}
-                {lowMoods.length > 0 && (
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#DDDDDD', marginBottom: 8 }}>vibes</div>
-                    <RankedChips scored={lowMoods} />
-                  </div>
-                )}
+          <div style={{ paddingBottom: 4 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>
+              vibe cleanup
+            </div>
+            {migrating ? (
+              <div style={{ fontSize: 13, color: '#555' }}>
+                updating {migrateProgress} of {needsMoodMigration.length}…
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <span style={{ fontSize: 13, color: '#888' }}>
+                  {needsMoodMigration.length} item{needsMoodMigration.length !== 1 ? 's' : ''} use old vibe words
+                </span>
+                <button
+                  onClick={runMoodMigration}
+                  style={{
+                    flexShrink: 0,
+                    padding: '7px 16px', borderRadius: 20, cursor: 'pointer',
+                    border: '1.5px solid #111', background: '#111',
+                    color: '#fff', fontSize: 12, fontWeight: 600,
+                  }}
+                >
+                  clean up
+                </button>
               </div>
             )}
           </div>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
-import { MOODS } from '../lib/moods'
 import { NoteInput } from './NoteInput'
+import { MoodChips } from './MoodChips'
 import { useWikipediaInfo, clearWikiCache } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { useBookBlurb } from '../lib/blurb'
@@ -351,34 +351,18 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             {/* Mood chips — interactive on main view, tap to toggle + save immediately */}
             {!item.metadata?.scratch && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 6 }}>vibe</div>
-                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
-                  {MOODS.map(mood => {
+                <MoodChips
+                  size="sm"
+                  isActive={m => (item.moods ?? []).includes(m)}
+                  onToggle={mood => {
                     const active = (item.moods ?? []).includes(mood)
-                    return (
-                      <button
-                        key={mood}
-                        onClick={() => {
-                          const next = active
-                            ? (item.moods ?? []).filter(m => m !== mood)
-                            : [...(item.moods ?? []), mood]
-                          setSelectedMoods(next)
-                          onSetMoods(next)
-                        }}
-                        style={{
-                          flexShrink: 0,
-                          padding: '3px 10px', borderRadius: 20, cursor: 'pointer', fontSize: 11,
-                          border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-                          background: active ? '#111' : '#fff',
-                          color: active ? '#fff' : '#AAA',
-                          fontWeight: active ? 600 : 400,
-                        }}
-                      >
-                        {mood}
-                      </button>
-                    )
-                  })}
-                </div>
+                    const next = active
+                      ? (item.moods ?? []).filter(m => m !== mood)
+                      : [...(item.moods ?? []), mood]
+                    setSelectedMoods(next)
+                    onSetMoods(next)
+                  }}
+                />
               </div>
             )}
 
@@ -498,26 +482,8 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               ))}
             </div>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 10 }}>vibe? <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></p>
-            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 16 }}>
-              {MOODS.map(mood => {
-                const active = selectedMoods.includes(mood)
-                return (
-                  <button
-                    key={mood}
-                    onClick={() => toggleMood(mood)}
-                    style={{
-                      flexShrink: 0,
-                      padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
-                      border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-                      background: active ? '#EDEDED' : '#fff',
-                      color: active ? '#111' : '#666',
-                      fontWeight: active ? 600 : 400,
-                    }}
-                  >
-                    {mood}
-                  </button>
-                )
-              })}
+            <div style={{ marginBottom: 16 }}>
+              <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
             </div>
 
             <div style={{ marginBottom: 16 }}>
