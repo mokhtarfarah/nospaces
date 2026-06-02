@@ -78,7 +78,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 4 end)
+## TODO / Roadmap (last edited 2026-06-02, updated session 5 end)
 
 ### 📥 Seamless capture
 1. ✅ **Mark-as-done at identify time** — "want to / already did" toggle on confirm screen; saves status+reaction in one step.
@@ -91,7 +91,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 8. **Photo-blurb / OCR** — snap back cover → Claude reads blurb → save.
 
 ### 🎬 Integrations
-1. ✅ **Spotify** — saved-albums sync live (built 2026-06-02). See "Spotify sync" section above. Still TODO/v2: top artists/tracks "insights" view, ongoing auto-sync, individual songs.
+1. ✅ **Spotify** — saved-albums sync live (built 2026-06-02). Spotify buttons now deep-link directly to the album page (`open.spotify.com/album/ID`) for synced items; falls back to search for manually added music. See "Spotify sync" section above. Still TODO/v2: top artists/tracks "insights" view, ongoing auto-sync, individual songs.
 2. ✅ **Letterboxd** — CSV import live. See "Letterboxd import" section above.
 
 ### 🌟 Taste arc (throughline: tags → taste → recommendations)
@@ -121,14 +121,14 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 7. **Manual link** — paste Wikipedia/URL to fix wrong cover/blurb. Store in `metadata.wikiUrl`.
 8. ✅ **Manual cover art edit** — paste image URL in edit view → stored in `metadata.coverUrl`.
 9. ✅ **Re-identify** — on main card (auto-saves title/creator/type/year/tags/runtime/pages, sheet stays open) + in edit view (populates fields for review) + prominent "identify now" for scratch items.
-10. **🐛 Re-identify wrong-form revert** — re-identify on a film that was adapted from a book (e.g. Pride & Prejudice 2005) sometimes resolves to the novel instead of the film, with no disambiguation offered. Fix: when an item already has `type:'film'` and a year, the identify call should strongly anchor to that type+year and not silently switch forms. If the AI returns a different type than what's stored, surface a disambiguation prompt rather than auto-saving.
-11. **🐛 Vibe section too large in action card** — mood chip grid takes up too much vertical space, especially with many moods. Explore condensing: e.g. wrap into a scrollable single row, collapse to "tap to expand" initially, or reduce chip padding/font size without reducing the number of options.
+10. ✅ **Re-identify type anchor** — re-identify now passes `typeHint: item.type` + year in the input string, preventing a film from silently reverting to the book it was adapted from. Auto-save never overrides the stored type. `clearWikiCache` called after re-identify so Wikipedia re-fetches with updated values.
+11. ✅ **Vibe chips condensed** — mood chips in both main view and mark-done flow are now a single horizontal scrollable row (same pattern as header filter chips).
 
 ### 🔗 Wikipedia coverage
-- ✅ Multi-fallback cascade: tries up to 4 queries per film (with year → without year → drop "The" → bare title). Films/TV trust search result; books/music use title guard. Deployed 2026-06-02 session 2.
+- ✅ Multi-fallback cascade: tries up to 4 queries per film (with year → without year → drop "The" → bare title). Films/TV trust search result; books/music use title guard.
+- ✅ **SW-abort retry** — PWA `clientsClaim()` was aborting all in-flight Wikipedia fetches on every new deploy (all 100+ requests failing simultaneously). Fix: if first round returns EMPTY, wait 700ms and retry once. Cached after that; no repeated overhead.
 - **Backfill missing directors** — Letterboxd imports arrive with null creator (CSV has no director column). Re-identify button handles this one at a time. Bulk backfill not built yet.
-- **Still missing:** foreign-language titles where Wikipedia article name differs entirely from item title.
-- **🐛 Re-identify Wikipedia gap** — re-identify sometimes fails to populate Wikipedia even when year + director are correct. Inconsistent; needs investigation into why the fallback cascade doesn't always fire post-re-identify.
+- **Still missing:** foreign-language titles where Wikipedia article name differs entirely from item title (e.g. Ponyo). `fetchByTitle` with `&titles=` + `&redirects=1` was attempted but caused CORS errors via HTTP redirects without CORS headers — removed. Needs a different approach if this becomes a priority.
 
 ### 📚 Content / types
 1. **Book & movie series** — group like TV seasons.
@@ -142,7 +142,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 4. ✅ **Subtitle extras** — both done and want-to rows now show: type · year · first mood (if any) · runtime/pages (if available) · reaction (done only). `api/runtime.ts` (Haiku) captures runtime/pages at identify time going forward. Taste screen has a "fill in" backfill button to populate existing items.
 5. **Added date / source in subtitle** — still open if wanted.
 6. **🐛 Subtitle mood display logic unclear** — when an item has multiple moods, which one shows in the subtitle? Currently appears to be the first in the array, but this isn't intentional/documented. Decide the rule (e.g. first selected, highest priority, most recently added) and make it explicit.
-7. **Sort by vibe / genre in library** — needs design thought. Options: (a) add vibe + genre as filter chips in the library header (like the existing type/reaction chips), so you can narrow to e.g. "gripping" or "sci-fi"; (b) add sort options for "by genre" or "by vibe" (alphabetical within the tag); (c) both. Chips approach (a) is probably the right v1 — it's consistent with existing UI patterns and "at a glance" fits better than a sort.
+7. ✅ **Filter by vibe / genre in library** — two compact dropdown buttons (`vibe ▾` / `genre ▾`) in the header. Only shown when the current view has tagged items. Both can be active simultaneously (cross-filter). Auto-resets when category/status changes. Real-time sync also added so mobile changes appear on desktop without refresh (Supabase `postgres_changes` subscription in `useItems.ts`).
 
 ### 🎨 Polish
 0. ✅ **Header declutter (session 3)** — reaction chips only show when "done" status is active (hidden for "all" and "want to"). Category → want-to/done fast path kept. Removed "recently added" chips from the Add screen.
