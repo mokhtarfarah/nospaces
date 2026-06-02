@@ -388,7 +388,7 @@ function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo 
   return (
     <div
       onClick={onTap}
-      style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #F4F4F4', padding: '12px 16px 12px', cursor: 'pointer' }}
+      style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #F4F4F4', padding: '6px 16px', cursor: 'pointer' }}
     >
       <Thumb src={thumbnail} type={item.type} color={color} />
       <div style={{ flex: 1, minWidth: 0, alignSelf: 'center' }}>
