@@ -5,7 +5,7 @@ export const MOODS: string[] = [
   'so bad it\'s good',
   'artsy',
   'easy',
-  'vibey',
+  'atmospheric',
   'tearjerker',
   'gripping',
   'project',
@@ -13,4 +13,9 @@ export const MOODS: string[] = [
   'overhyped',
   'life-changing',
   'nostalgia',
+  'classic',
+  'dark',
+  'melancholic',
+  'off-kilter',
+  'earnest',
 ]

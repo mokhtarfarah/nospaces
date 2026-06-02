@@ -44,18 +44,18 @@ Forward anything to `anything@nospaces.xyz` from an allowed address. AI finds ev
 **Big photo attachments don't work via email (by design, 2026-06-02).** Vercel caps inbound requests at 4.5MB (hard limit, not configurable); Postmark always inlines the full attachment; Gmail can't shrink attachments. So a full-res photo email → HTTP 413, whole email rejected (all-or-nothing). Text/newsletters and small screenshots always work. **For big photos use the in-app "Add from a photo" button** — it now downscales to 1600px/JPEG client-side (`prepareImage` in AddScreen.tsx), so it always fits, runs faster, and handles HEIC. No email re-architecture planned.
 
 **Talkback** (code live, not yet active): replies to sender with what was saved. To activate:
-1. Get Postmark DKIM to go green — **see DKIM fix below** (Return-Path ✅, MX ✅, DKIM blocked)
+1. ✅ Postmark DKIM verified (Return-Path ✅, MX ✅, DKIM ✅ — see DKIM fix below, now resolved)
 2. Add `POSTMARK_SERVER_TOKEN` to Vercel env vars → redeploy
-3. Postmark account approval request submitted 2026-06-02 (needed to send to gmail)
+3. ⏳ **Waiting on Postmark account approval** (submitted 2026-06-02, needed to send to gmail). Talkback goes live once approved.
 
-### DKIM not propagating — root cause found 2026-06-02
+### DKIM verified ✅ (root cause found + fixed 2026-06-02)
 DKIM wasn't slow, it was **blocked**. Porkbun has a **wildcard CNAME** (`*.nospaces.xyz → pixie.porkbun.com`, their URL-forwarding/parking). It intercepts the DKIM lookup (`*._domainkey.nospaces.xyz`) and answers with parking junk, so Postmark never sees the signing key. Confirmed: a made-up subdomain still resolves to pixie.porkbun.com. MX (`inbound.postmarkapp.com`) and Return-Path (`pm-bounces → pm.mtasv.net`) work because they have explicit records that override the wildcard.
 **Fix:** In Porkbun DNS, (1) delete the wildcard `*` record, (2) add Postmark's exact DKIM record (hostname + `k=rsa;p=...` value from Postmark → Sending → Domains → nospaces.xyz → DKIM). Then DKIM goes green.
 
-**Status as of 2026-06-02:** ✅ Wildcard deleted. ✅ DKIM TXT record added clean — selector `20260602022450pm._domainkey`, exactly one record, value matches Postmark char-for-char (an earlier attempt had a duplicate + a `0`-for-`O` typo, both fixed; verified via `dig`). ⏳ **But Postmark still shows DKIM "Unverified"** — likely just DNS propagation (Postmark says up to 48h, auto-rechecks). **TODO: check Postmark → Sending → Domains → nospaces.xyz later; it should flip to green on its own.** Return-Path already ✅ verified. Talkback reply needs BOTH this DKIM green AND Postmark account approval (still pending) before replies land.
+**Status as of 2026-06-02:** ✅ Wildcard deleted. ✅ DKIM TXT record added clean — selector `20260602022450pm._domainkey`, exactly one record, value matches Postmark char-for-char (an earlier attempt had a duplicate + a `0`-for-`O` typo, both fixed; verified via `dig`). ✅ **Postmark now shows DKIM verified.** Return-Path also ✅ verified. Talkback reply now only needs **Postmark account approval** (still pending) before replies land.
 **To re-check the DNS record anytime:** `dig +short 20260602022450pm._domainkey.nospaces.xyz TXT` (should return exactly one `k=rsa;...` line containing `SaMgQ1OJ2eY` with a capital O).
 
-## Spotify sync (built 2026-06-02, needs dev-app credentials to go live)
+## Spotify sync ✅ DONE (built 2026-06-02, live)
 Add screen → "Sync from Spotify" → `/spotify`. Pulls your **Saved Albums** on demand (no background sync).
 - **Fully client-side OAuth** (Authorization Code + PKCE). No Client Secret, no server function, no token storage. `src/lib/spotify.ts` (logic) + `src/screens/SpotifyScreen.tsx` (UI, mirrors ImportScreen).
 - **Status rule:** first ever sync → all albums as `want_to` (backlog to triage). Every sync after → only *newly saved* albums, as `done` (no reaction; Farah adds her own). Detected by whether any `source_detail==='spotify'` item already exists.
@@ -71,7 +71,7 @@ Add screen → "Sync from Spotify" → `/spotify`. Pulls your **Saved Albums** o
 ## iOS Shortcut (flaky)
 Share screenshot → POST to `/api/identify-upload` → copy URL to clipboard → open app → tap "From Shortcut" → paste → confirm. Clipboard sometimes empty on second run.
 
-## Letterboxd import (built 2026-06-02, not yet tested with real export)
+## Letterboxd import ✅ DONE (built 2026-06-02, live)
 Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `watched.csv`, `ratings.csv` from Letterboxd Settings → Data → Export (all three at once is fine). Detected by filename.
 - `ratings.csv` → `done` + reaction: 5★ → loved it, 4/4.5★ → liked it, 3/3.5★ → eh, ≤2★ → not for me (half-stars round to nearest)
 - `watched.csv` → `done`, no reaction

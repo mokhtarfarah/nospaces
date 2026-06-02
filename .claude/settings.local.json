@@ -60,7 +60,29 @@
       "Bash(git commit *)",
       "Bash(curl -s \"https://nospaces.vercel.app/api/art?type=book&title=O%20Sinners&creator=Nicole%20Cuffy&year=2025\")",
       "Bash(curl -s \"https://nospaces.vercel.app/api/blurb?title=O%20Sinners&creator=Nicole%20Cuffy\")",
-      "Bash(curl -s \"https://nospaces.vercel.app/api/art?type=music&title=Brat&creator=Charli%20XCX\")"
+      "Bash(curl -s \"https://nospaces.vercel.app/api/art?type=music&title=Brat&creator=Charli%20XCX\")",
+      "Bash(curl -s \"https://api.deezer.com/search/artist?q=Rosalia&limit=1\")",
+      "Bash(curl -s -X POST https://nospaces.vercel.app/api/email -H 'content-type: application/json' -d '{ *)",
+      "Bash(python3 -c \"import PIL; print\\('PIL ok'\\)\")",
+      "Bash(find ~ -maxdepth 4 \\\\\\( -iname \"*.heic\" -o -iname \"*.heif\" \\\\\\) 2>/dev/null | head -5 *)",
+      "Bash(rm -f /tmp/heic_test.jpg; echo \"temp removed\")",
+      "Bash(npx tsc *)",
+      "Bash(cat)",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).devDependencies?.tsx||require\\('./package.json'\\).devDependencies?.vitest||'none'\\); \")",
+      "Bash(node_modules/.bin/tsx /tmp/lbtest.ts)",
+      "Bash(node_modules/.bin/tsx -)",
+      "Bash(dig +short 20240101._domainkey.nospaces.xyz TXT)",
+      "Bash(dig +short pm._domainkey.nospaces.xyz TXT)",
+      "Bash(dig +short _dmarc.nospaces.xyz TXT)",
+      "Bash(dig +short pm-bounces.nospaces.xyz CNAME)",
+      "Bash(dig +short nospaces.xyz MX)",
+      "Bash(dig +short thisdoesnotexist123.nospaces.xyz CNAME)",
+      "Bash(dig +short nospaces.xyz A)",
+      "Bash(dig pm._domainkey.nospaces.xyz TXT +noall +answer)",
+      "Bash(dig 20240101._domainkey.nospaces.xyz +noall +answer)",
+      "Bash(git reset *)",
+      "WebSearch",
+      "Bash(dig +short 20260602022450pm._domainkey.nospaces.xyz TXT)"
     ]
   }
 }
