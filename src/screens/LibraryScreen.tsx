@@ -3,8 +3,9 @@ import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
-import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption, type ReactionFilter } from '../components/ViewSheet'
+import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption, type SortDir, type ReactionFilter } from '../components/ViewSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
+import { DuplicatesSheet } from '../components/DuplicatesSheet'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
@@ -24,26 +25,33 @@ function formatMonthYear(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-function sortItems(items: Item[], sort: SortOption): Item[] {
-  return [...items].sort((a, b) => {
-    switch (sort) {
-      case 'date_added':
-        return new Date(b.date_added).getTime() - new Date(a.date_added).getTime()
-      case 'alpha':
-        return a.title.localeCompare(b.title)
-      case 'status':
-        return a.status === b.status ? 0 : a.status === 'want_to' ? -1 : 1
-      case 'reaction': {
-        const ai = a.reaction ? REACTION_ORDER.indexOf(a.reaction) : 99
-        const bi = b.reaction ? REACTION_ORDER.indexOf(b.reaction) : 99
-        return ai - bi
-      }
-      case 'creator':
-        return lastNameKey(a.creator).localeCompare(lastNameKey(b.creator))
-      case 'year':
-        return (b.year ?? 0) - (a.year ?? 0)
+// Comparison in the *ascending* sense for each sort. Direction is applied on top
+// by sortItems, so 'asc'/'desc' is consistent across every view.
+function compareItems(a: Item, b: Item, sort: SortOption): number {
+  switch (sort) {
+    case 'date_added':
+      return new Date(a.date_added).getTime() - new Date(b.date_added).getTime()
+    case 'updated':
+      return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
+    case 'alpha':
+      return a.title.localeCompare(b.title)
+    case 'status':
+      return a.status === b.status ? 0 : a.status === 'want_to' ? -1 : 1
+    case 'reaction': {
+      const ai = a.reaction ? REACTION_ORDER.indexOf(a.reaction) : 99
+      const bi = b.reaction ? REACTION_ORDER.indexOf(b.reaction) : 99
+      return ai - bi
     }
-  })
+    case 'creator':
+      return lastNameKey(a.creator).localeCompare(lastNameKey(b.creator))
+    case 'year':
+      return (a.year ?? 0) - (b.year ?? 0)
+  }
+}
+
+function sortItems(items: Item[], sort: SortOption, dir: SortDir): Item[] {
+  const sign = dir === 'asc' ? 1 : -1
+  return [...items].sort((a, b) => sign * compareItems(a, b, sort))
 }
 
 function groupByMonth(items: Item[]): Map<string, Item[]> {
@@ -98,7 +106,7 @@ function itemSource(item: Item): string {
 }
 
 export function LibraryScreen() {
-  const { items, loading, markDone, markWantTo, deleteItem, editItem, toggleOwned, duplicateCount, removeDuplicates } = useItems()
+  const { items, loading, markDone, markWantTo, deleteItem, editItem, toggleOwned, duplicateCount, duplicateGroups, deleteMany } = useItems()
   const dupes = duplicateCount()
 
   // Empty array = all categories. Single-select: tapping a type switches to just that
@@ -114,15 +122,30 @@ export function LibraryScreen() {
   const [newMusicOnly, setNewMusicOnly] = useState(false)
   const [ownedOnly, setOwnedOnly] = useState(false)
   const [view, setView] = useState<ViewMode>('recent')
+  const [dir, setDir] = useState<SortDir>(VIEW_CONFIG.recent.defaultDir)
   const [layout, setLayout] = useState<'list' | 'grid'>('list')
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [viewSheetOpen, setViewSheetOpen] = useState(false)
+  const [dupesOpen, setDupesOpen] = useState(false)
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
 
   const sort: SortOption = VIEW_CONFIG[view].sort
   const group = VIEW_CONFIG[view].group
+
+  // Tapping a new view switches to it (in its default order) and closes the sheet.
+  // Tapping the already-active directional view just reverses the order, sheet stays open.
+  const selectView = (v: ViewMode) => {
+    if (v === view) {
+      if (VIEW_CONFIG[v].directional) setDir(d => (d === 'asc' ? 'desc' : 'asc'))
+      else setViewSheetOpen(false)
+    } else {
+      setView(v)
+      setDir(VIEW_CONFIG[v].defaultDir)
+      setViewSheetOpen(false)
+    }
+  }
 
   // "New Music Tuesday" toggle only applies while viewing the Music category alone.
   const musicOnly = categories.length === 1 && categories[0] === 'music'
@@ -140,8 +163,8 @@ export function LibraryScreen() {
           !item.creator?.toLowerCase().includes(query.toLowerCase())) return false
       return true
     })
-    return sortItems(result, sort)
-  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, sort])
+    return sortItems(result, sort, dir)
+  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, sort, dir])
 
   const grouped = useMemo(() => {
     if (group === 'creator') return groupByCreator(filtered)
@@ -175,7 +198,9 @@ export function LibraryScreen() {
               onClick={() => setViewSheetOpen(true)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
             >
-              {VIEW_CONFIG[view].label} <span style={{ fontSize: 12 }}>▾</span>
+              {VIEW_CONFIG[view].label}
+              {VIEW_CONFIG[view].directional && <span style={{ fontSize: 12, fontWeight: 600, color: '#111' }}>{dir === 'asc' ? '↑' : '↓'}</span>}
+              <span style={{ fontSize: 12 }}>▾</span>
             </button>
             <button
               onClick={() => setLayout(l => (l === 'list' ? 'grid' : 'list'))}
@@ -271,10 +296,10 @@ export function LibraryScreen() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', background: '#F4F4F4', borderRadius: 8 }}>
             <span style={{ fontSize: 12, color: '#666' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>
             <button
-              onClick={async () => { const n = await removeDuplicates(); if (n) alert(`Removed ${n} duplicate${n > 1 ? 's' : ''}`) }}
+              onClick={() => setDupesOpen(true)}
               style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
             >
-              remove
+              review
             </button>
           </div>
         )}
@@ -350,8 +375,22 @@ export function LibraryScreen() {
       {viewSheetOpen && (
         <ViewSheet
           current={view}
-          onChange={setView}
+          dir={dir}
+          onSelect={selectView}
           onClose={() => setViewSheetOpen(false)}
+        />
+      )}
+
+      {/* Duplicates review sheet */}
+      {dupesOpen && (
+        <DuplicatesSheet
+          groups={duplicateGroups()}
+          onConfirm={async ids => {
+            setDupesOpen(false)
+            const n = await deleteMany(ids)
+            if (n) alert(`Removed ${n} duplicate${n > 1 ? 's' : ''}`)
+          }}
+          onClose={() => setDupesOpen(false)}
         />
       )}
     </div>

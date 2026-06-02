@@ -108,9 +108,10 @@ export function useItems() {
     return dupes
   }
 
-  // Remove duplicates, keeping the "best" of each group (done > has note/reaction >
-  // earliest added). Returns how many were removed.
-  async function removeDuplicates(): Promise<number> {
+  // Groups of suspected duplicates (same type + title + creator, ignoring
+  // case/punctuation), each with 2+ members. Sorted "best first" so the review
+  // sheet can pre-select a sensible item to keep (done > note > reaction > earliest).
+  function duplicateGroups(): Item[][] {
     const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
     const groups = new Map<string, Item[]>()
     for (const it of items) {
@@ -119,16 +120,17 @@ export function useItems() {
       groups.get(k)!.push(it)
     }
     const score = (i: Item) => (i.status === 'done' ? 4 : 0) + (i.note ? 2 : 0) + (i.reaction ? 1 : 0)
-    const toDelete: string[] = []
-    for (const g of groups.values()) {
-      if (g.length < 2) continue
-      const keep = [...g].sort((a, b) => score(b) - score(a) || new Date(a.date_added).getTime() - new Date(b.date_added).getTime())[0]
-      for (const i of g) if (i.id !== keep.id) toDelete.push(i.id)
-    }
-    if (!toDelete.length) return 0
-    await db().from('items').delete().in('id', toDelete)
+    return [...groups.values()]
+      .filter(g => g.length >= 2)
+      .map(g => [...g].sort((a, b) => score(b) - score(a) || new Date(a.date_added).getTime() - new Date(b.date_added).getTime()))
+  }
+
+  // Delete a chosen set of items (used by the duplicates review sheet). Returns count.
+  async function deleteMany(ids: string[]): Promise<number> {
+    if (!ids.length) return 0
+    await db().from('items').delete().in('id', ids)
     await fetch()
-    return toDelete.length
+    return ids.length
   }
 
   async function toggleOwned(id: string, owned: boolean) {
@@ -156,5 +158,5 @@ export function useItems() {
     await fetch({ silent: true })
   }
 
-  return { items, loading, addItem, importItems, markDone, markWantTo, deleteItem, editItem, toggleOwned, duplicateCount, removeDuplicates, refetch: fetch }
+  return { items, loading, addItem, importItems, markDone, markWantTo, deleteItem, editItem, toggleOwned, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
 }

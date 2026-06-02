@@ -176,12 +176,12 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#fff', borderRadius: '16px 16px 0 0',
-        padding: '12px 20px 0', zIndex: 201,
+        padding: '6px 20px 0', zIndex: 201,
         maxWidth: 480, margin: '0 auto',
         maxHeight: '96dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 20, lineHeight: 1, padding: 4 }}>✕</button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 2 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4 }}>✕</button>
         </div>
 
         {view === 'main' && (

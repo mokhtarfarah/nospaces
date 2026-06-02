@@ -47,7 +47,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         bottom: 0, left: 0, right: 0,
         background: '#fff',
         borderRadius: '16px 16px 0 0',
-        padding: '12px 20px calc(28px + env(safe-area-inset-bottom))',
+        padding: '6px 20px calc(28px + env(safe-area-inset-bottom))',
         zIndex: 201,
         maxWidth: 480,
         margin: '0 auto',
@@ -55,8 +55,8 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         overflowY: 'auto',
       }}>
         {/* Handle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 20, lineHeight: 1, padding: 4 }}>✕</button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 2 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4 }}>✕</button>
         </div>
 
         {/* Item preview */}
