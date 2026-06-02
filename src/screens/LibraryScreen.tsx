@@ -71,6 +71,26 @@ function groupByCreator(items: Item[]): Map<string, Item[]> {
   )
 }
 
+const normSource = (s: string) => s.toLowerCase().trim()
+
+function itemSource(item: Item): string {
+  return item.source_detail?.trim() || item.source.replace(/_/g, ' ')
+}
+
+// Collapse near-duplicate source names: if one label contains another (e.g.
+// "KEXP New Music Tuesday" ⊃ "New Music Tuesday"), use the shorter as canonical.
+function buildCanonicalSources(labels: string[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const label of labels) {
+    let best = label
+    for (const other of labels) {
+      if (other !== label && normSource(label).includes(normSource(other)) && other.length < best.length) best = other
+    }
+    map.set(label, best)
+  }
+  return map
+}
+
 export function LibraryScreen() {
   const { items, loading, markDone, markWantTo, deleteItem, editItem } = useItems()
 
@@ -80,6 +100,7 @@ export function LibraryScreen() {
     setCategories(prev => (prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]))
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
+  const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [sort, setSort] = useState<SortOption>('date_added')
   const [groupBy, setGroupBy] = useState<'month' | 'creator'>('month')
   const [query, setQuery] = useState('')
@@ -97,17 +118,28 @@ export function LibraryScreen() {
     year:       'Year',
   }
 
+  // Canonical source labels (with near-duplicates collapsed) for the source filter.
+  const canonicalSources = useMemo(
+    () => buildCanonicalSources(Array.from(new Set(items.map(itemSource)))),
+    [items],
+  )
+  const sources = useMemo(
+    () => Array.from(new Set([...canonicalSources.values()])).sort(),
+    [canonicalSources],
+  )
+
   const filtered = useMemo(() => {
     let result = items.filter(item => {
       if (categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
+      if (sourceFilter !== 'all' && canonicalSources.get(itemSource(item)) !== sourceFilter) return false
       if (query && !item.title.toLowerCase().includes(query.toLowerCase()) &&
           !item.creator?.toLowerCase().includes(query.toLowerCase())) return false
       return true
     })
     return sortItems(result, sort)
-  }, [items, categories, statusFilter, reactionFilter, query, sort])
+  }, [items, categories, statusFilter, reactionFilter, sourceFilter, canonicalSources, query, sort])
 
   const grouped = useMemo(
     () => (groupBy === 'creator' ? groupByCreator(filtered) : groupByMonth(filtered)),
@@ -205,6 +237,22 @@ export function LibraryScreen() {
             />
           ))}
         </div>
+
+        {/* Filter row 3 — source (only when there's more than one) */}
+        {sources.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <span style={{ fontSize: 11, color: '#999', flexShrink: 0, marginRight: 2 }}>Source</span>
+            <FilterChip label="All" active={sourceFilter === 'all'} onClick={() => setSourceFilter('all')} />
+            {sources.map(s => (
+              <FilterChip
+                key={s}
+                label={s.charAt(0).toUpperCase() + s.slice(1)}
+                active={sourceFilter === s}
+                onClick={() => setSourceFilter(sourceFilter === s ? 'all' : s)}
+              />
+            ))}
+          </div>
+        )}
       </header>
 
       {/* Legend — only when no specific categories are selected */}
@@ -238,6 +286,7 @@ export function LibraryScreen() {
                   key={item.id}
                   item={item}
                   showType={categories.length !== 1}
+                  sourceLabel={canonicalSources.get(itemSource(item)) ?? itemSource(item)}
                   onTap={() => setActionItem(item)}
                   onMarkDone={() => setDoneItem(item)}
                   onMarkWantTo={() => markWantTo(item.id)}
@@ -324,15 +373,15 @@ function FilterChip({ label, active, onClick, disabled }: { label: string; activ
   )
 }
 
-function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
+function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo }: {
   item: Item
   showType: boolean
+  sourceLabel: string
   onTap: () => void
   onMarkDone: () => void
   onMarkWantTo: () => void
 }) {
   const color = typeColor(item.type)
-  const sourceLabel = item.source_detail ?? item.source.replace(/_/g, ' ')
 
   // Wikipedia article link + cover/poster thumbnail.
   const { url: wikiUrl, thumbnail } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
