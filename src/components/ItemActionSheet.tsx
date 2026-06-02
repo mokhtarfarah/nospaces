@@ -82,7 +82,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
               Edit details
             </button>
 
-            {item.status === 'done' && (
+            {(item.status === 'done' || item.reaction != null) && (
               <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), marginTop: 10 }}>
                 Edit reaction
               </button>
