@@ -68,6 +68,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json(json)
   } catch (err) {
     console.error('[identify-upload] error:', err)
-    res.status(500).json({ error: String(err) })
+    // Always return a valid open_url so Shortcut clipboard is never emptied on failure
+    const params = new URLSearchParams({ title: '', type: 'other', confidence: 'low' })
+    res.status(200).json({ error: String(err), open_url: `https://nospaces.vercel.app/add?${params}` })
   }
 }

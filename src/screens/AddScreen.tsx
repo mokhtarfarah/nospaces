@@ -127,10 +127,10 @@ export function AddScreen() {
     try {
       const text = await navigator.clipboard.readText()
       if (!text.trim().startsWith('https://nospaces.vercel.app/add?')) return
-      const url = new URL(text)
+      const url = new URL(text.trim())
       const t = url.searchParams.get('title')
       if (!t) return
-      navigator.clipboard.writeText('')
+      // Don't clear clipboard until user confirms — so retapping the button works
       setAiSource('photo')
       setAiResult({
         title: t,
@@ -145,6 +145,8 @@ export function AddScreen() {
 
   async function handleConfirm(item: AiResult) {
     await addItem(item.title, item.type, item.creator, item.year, item.metadata, item.tags)
+    // Clear clipboard now that we've saved
+    navigator.clipboard?.writeText('').catch(() => {})
     setAiResult(null)
     setTitle('')
     navigate('/library')
