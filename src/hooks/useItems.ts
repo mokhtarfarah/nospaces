@@ -33,6 +33,9 @@ export function useItems() {
     year: number | null = null,
     metadata: Record<string, unknown> = {},
     tags: string[] = [],
+    // Optional: log as already-done with a reaction/note in one step (skips the
+    // separate mark-as-done flow for things you've already watched/read/heard).
+    done?: { reaction: ItemReaction | null; note: string },
   ) {
     if (!user) return
     await db().from('items').insert({
@@ -43,7 +46,10 @@ export function useItems() {
       year,
       metadata,
       tags,
-      status: 'want_to',
+      status: done ? 'done' : 'want_to',
+      reaction: done?.reaction ?? null,
+      note: done?.note?.trim() || null,
+      date_done: done ? new Date().toISOString() : null,
       source: 'quick_add',
     })
     await fetch()

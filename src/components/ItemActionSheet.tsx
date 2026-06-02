@@ -21,14 +21,14 @@ const TYPES = ['film', 'book', 'music', 'tv', 'other']
 const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
-  { value: 'loved_it',   label: 'Loved it'   },
-  { value: 'liked_it',   label: 'Liked it'   },
-  { value: 'eh',         label: 'Eh'         },
-  { value: 'not_for_me', label: 'Not for me' },
+  { value: 'loved_it',   label: 'loved it'   },
+  { value: 'liked_it',   label: 'liked it'   },
+  { value: 'eh',         label: 'eh'         },
+  { value: 'not_for_me', label: 'not for me' },
 ]
 
 const REACTION_LABELS: Record<ItemReaction, string> = {
-  loved_it: 'Loved it', liked_it: 'Liked it', eh: 'Eh', not_for_me: 'Not for me',
+  loved_it: 'loved it', liked_it: 'liked it', eh: 'eh', not_for_me: 'not for me',
 }
 
 type View = 'main' | 'edit' | 'reaction'
@@ -82,19 +82,19 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
   const links: { key: string; label: string; icon: React.ReactNode; onClick: () => void }[] = []
   if (item.type === 'music') {
     links.push({
-      key: 'spotify', label: 'Spotify', icon: <SpotifyIcon />,
+      key: 'spotify', label: 'spotify', icon: <SpotifyIcon />,
       onClick: () => window.open(`https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`, '_blank'),
     })
   }
   if (wikiUrl) {
     links.push({
-      key: 'wiki', label: 'Wikipedia', icon: <WikiIcon />,
+      key: 'wiki', label: 'wikipedia', icon: <WikiIcon />,
       onClick: () => window.open(wikiUrl, '_blank'),
     })
   }
   if (item.type === 'film' || item.type === 'tv') {
     links.push({
-      key: 'watch', label: 'Watch', icon: <span style={{ fontSize: 12, color: '#333' }}>▶</span>,
+      key: 'watch', label: 'watch', icon: <span style={{ fontSize: 12, color: '#333' }}>▶</span>,
       onClick: () => setWatchOpen(true),
     })
   }
@@ -162,7 +162,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
 
             {item.note && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 5 }}>Your note</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 5 }}>your note</div>
                 <div style={{ fontSize: 13, color: '#333', lineHeight: 1.5, paddingLeft: 12, borderLeft: '3px solid #111', fontStyle: 'italic' }}>
                   {item.note}
                 </div>
@@ -179,7 +179,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
             {item.type === 'tv' && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#444', marginBottom: 8 }}>
-                  Seasons
+                  seasons
                   {seasons.length > 0 && (
                     <span style={{ fontWeight: 400, color: '#999' }}>
                       {`  ·  ${seasons.filter(s => s.done).length}/${seasons.length} watched`}
@@ -206,7 +206,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
                     onClick={addSeason}
                     style={{ padding: '6px 10px', borderRadius: 8, fontSize: 12, border: '1.5px dashed #CCC', background: '#fff', color: '#777', cursor: 'pointer' }}
                   >
-                    + Season
+                    + season
                   </button>
                   {seasons.length > 0 && (
                     <button
@@ -226,20 +226,20 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
             {confirmDelete ? (
               <div style={footer}>
                 <p style={{ fontSize: 13, color: '#C0392B', textAlign: 'center', marginBottom: 10 }}>
-                  Delete "{item.title}"? This cannot be undone.
+                  delete "{item.title}"? this cannot be undone.
                 </p>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setConfirmDelete(false)} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
-                  <button onClick={onDelete} style={{ ...actionBtn('#fff'), flex: 1, background: '#C0392B', border: 'none' }}>Delete</button>
+                  <button onClick={() => setConfirmDelete(false)} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
+                  <button onClick={onDelete} style={{ ...actionBtn('#fff'), flex: 1, background: '#C0392B', border: 'none' }}>delete</button>
                 </div>
               </div>
             ) : (
               <div style={{ ...footer, display: 'flex', gap: 8 }}>
-                <button onClick={() => setView('edit')} style={{ ...actionBtn('#333'), flex: 1 }}>Edit</button>
+                <button onClick={() => setView('edit')} style={{ ...actionBtn('#333'), flex: 1 }}>edit</button>
                 {(item.status === 'done' || item.reaction != null) && (
-                  <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>Reaction</button>
+                  <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>reaction</button>
                 )}
-                <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>Delete</button>
+                <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
               </div>
             )}
           </>
@@ -247,7 +247,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
 
         {view === 'edit' && (
           <>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>Edit details</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>edit details</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={inputStyle} />
               <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={inputStyle} />
@@ -273,15 +273,15 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
             </div>
             {quickLinks}
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
-              <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
-              <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>Save</button>
+              <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
+              <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>save</button>
             </div>
           </>
         )}
 
         {view === 'reaction' && (
           <>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>Edit reaction</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>edit reaction</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
               {REACTIONS.map(r => (
                 <button key={r.value} onClick={() => setReaction(r.value)} style={{
@@ -306,8 +306,8 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
               style={{ ...inputStyle, resize: 'none', marginBottom: 16 }}
             />
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
-              <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
-              <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#111111' : '#ccc', border: 'none' }}>Save</button>
+              <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
+              <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#111111' : '#ccc', border: 'none' }}>save</button>
             </div>
           </>
         )}

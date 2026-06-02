@@ -3,10 +3,10 @@ import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor } from '../lib/colors'
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
-  { value: 'loved_it',   label: 'Loved it'   },
-  { value: 'liked_it',   label: 'Liked it'   },
-  { value: 'eh',         label: 'Eh'         },
-  { value: 'not_for_me', label: 'Not for me' },
+  { value: 'loved_it',   label: 'loved it'   },
+  { value: 'liked_it',   label: 'liked it'   },
+  { value: 'eh',         label: 'eh'         },
+  { value: 'not_for_me', label: 'not for me' },
 ]
 
 interface Props {
@@ -57,7 +57,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
           </div>
         </div>
 
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 12 }}>What did you think?</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 12 }}>what did you think?</p>
 
         {/* 2×2 reaction grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
@@ -117,7 +117,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
             cursor: reaction ? 'pointer' : 'default',
           }}
         >
-          Mark as done
+          mark as done
         </button>
       </div>
     </>

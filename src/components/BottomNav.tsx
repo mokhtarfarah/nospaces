@@ -34,11 +34,11 @@ export function BottomNav() {
     }}>
       <NavLink to="/add" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
         <AddIcon />
-        Add
+        add
       </NavLink>
       <NavLink to="/library" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
         <LibraryIcon />
-        Library
+        library
       </NavLink>
     </nav>
   )

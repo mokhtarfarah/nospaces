@@ -1,6 +1,14 @@
 import { useState } from 'react'
+import type { ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useArtwork } from '../lib/artwork'
+
+const REACTIONS: { value: ItemReaction; label: string }[] = [
+  { value: 'loved_it',   label: 'loved it'   },
+  { value: 'liked_it',   label: 'liked it'   },
+  { value: 'eh',         label: 'eh'         },
+  { value: 'not_for_me', label: 'not for me' },
+]
 
 const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
 
@@ -20,7 +28,7 @@ interface Props {
   result: AiResult
   source: string
   query?: string
-  onConfirm: (item: AiResult) => void
+  onConfirm: (item: AiResult, done: { reaction: ItemReaction | null; note: string } | null) => void
   onClose: () => void
 }
 
@@ -34,6 +42,11 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
   const [collapsed, setCollapsed] = useState(false)
   const [queryText, setQueryText] = useState(query || result.title)
   const [requerying, setRequerying] = useState(false)
+  // Optional one-step "already done" logging. status='want_to' is the default;
+  // switching to 'done' reveals the reaction grid + note, same as MarkDoneSheet.
+  const [status, setStatus] = useState<'want_to' | 'done'>('want_to')
+  const [reaction, setReaction] = useState<ItemReaction | null>(null)
+  const [note, setNote] = useState('')
   const color = typeColor(item.type)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year)
 
@@ -118,14 +131,14 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#444', margin: 0 }}>Save to library</p>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#444', margin: 0 }}>save to library</p>
           <span style={{
             fontSize: 11, padding: '2px 8px', borderRadius: 20,
             background: item.confidence === 'high' ? '#EDF3ED' : item.confidence === 'medium' ? '#FFF8E6' : '#FFF0EE',
             color: item.confidence === 'high' ? '#5A7A5A' : item.confidence === 'medium' ? '#A07000' : '#C0392B',
             fontWeight: 600,
           }}>
-            {item.confidence === 'high' ? 'High confidence' : item.confidence === 'medium' ? 'Double-check' : 'Low confidence'}
+            {item.confidence === 'high' ? 'high confidence' : item.confidence === 'medium' ? 'double-check' : 'low confidence'}
           </span>
         </div>
 
@@ -143,7 +156,7 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
             disabled={requerying || !queryText.trim()}
             style={{ flexShrink: 0, padding: '0 14px', borderRadius: 10, border: 'none', background: requerying ? '#ccc' : '#111111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: requerying ? 'default' : 'pointer' }}
           >
-            {requerying ? '…' : 'Re-run'}
+            {requerying ? '…' : 're-run'}
           </button>
         </div>
 
@@ -215,14 +228,14 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
           background: 'none', border: 'none', color: '#111111',
           fontSize: 12, cursor: 'pointer', padding: 0, marginBottom: 16,
         }}>
-          {editing ? 'Done editing' : 'Edit details'}
+          {editing ? 'done editing' : 'edit details'}
         </button>
 
         {/* Alternatives — "Did you mean?" with show more / show less */}
         <div style={{ marginBottom: 16 }}>
           {otherMatches.length > 0 && !collapsed && (
             <>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#999', marginBottom: 8 }}>Did you mean?</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#999', marginBottom: 8 }}>did you mean?</p>
               {otherMatches.map((alt, i) => (
                 <button key={i} onClick={() => setItem(normalizeAlt(alt))} style={{
                   display: 'block', width: '100%', textAlign: 'left',
@@ -243,17 +256,17 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
               disabled={loadingMore}
               style={{ background: 'none', border: 'none', color: '#111111', fontSize: 12, cursor: loadingMore ? 'default' : 'pointer', padding: 0 }}
             >
-              {loadingMore ? 'Searching…'
-                : collapsed ? `Show options (${otherMatches.length})`
-                : otherMatches.length > 0 ? 'Look it up online'
-                : 'Not the right one? Look it up online'}
+              {loadingMore ? 'searching…'
+                : collapsed ? `show options (${otherMatches.length})`
+                : otherMatches.length > 0 ? 'look it up online'
+                : 'not the right one? look it up online'}
             </button>
             {otherMatches.length > 0 && !collapsed && (
               <button
                 onClick={() => setCollapsed(true)}
                 style={{ background: 'none', border: 'none', color: '#999', fontSize: 12, cursor: 'pointer', padding: 0 }}
               >
-                Show less
+                show less
               </button>
             )}
           </div>
@@ -262,21 +275,75 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
               onClick={useTyped}
               style={{ display: 'block', marginTop: 10, background: 'none', border: 'none', color: '#111111', fontSize: 12, cursor: 'pointer', padding: 0, textAlign: 'left' }}
             >
-              None of these — use exactly what I typed: “{query}”
+              none of these — use exactly what I typed: “{query}”
             </button>
           )}
         </div>
 
+        {/* Want to / Done — log it as already-done in one step */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: status === 'done' ? 12 : 16 }}>
+          {(['want_to', 'done'] as const).map(s => {
+            const active = status === s
+            return (
+              <button
+                key={s}
+                onClick={() => setStatus(s)}
+                style={{
+                  flex: 1, padding: '10px 8px', borderRadius: 10, cursor: 'pointer',
+                  border: active ? `1.5px solid ${color.border}` : '1.5px solid #E0E0E0',
+                  background: active ? color.bg : '#fff',
+                  color: active ? color.border : '#555',
+                  fontSize: 14, fontWeight: active ? 600 : 400,
+                }}
+              >
+                {s === 'want_to' ? 'Want to' : 'Already did'}
+              </button>
+            )
+          })}
+        </div>
+
+        {status === 'done' && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+              {REACTIONS.map(r => {
+                const active = reaction === r.value
+                return (
+                  <button
+                    key={r.value}
+                    onClick={() => setReaction(active ? null : r.value)}
+                    style={{
+                      padding: '10px 8px', borderRadius: 10, cursor: 'pointer',
+                      border: active ? `2px solid ${color.border}` : '1.5px solid #E0E0E0',
+                      background: active ? color.bg : '#fff',
+                      color: active ? color.border : '#444',
+                      fontSize: 14, fontWeight: active ? 600 : 400,
+                    }}
+                  >
+                    {r.label}
+                  </button>
+                )
+              })}
+            </div>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="any thoughts… (optional)"
+              rows={2}
+              style={{ ...inputStyle, resize: 'none' }}
+            />
+          </div>
+        )}
+
         <div style={{ position: 'sticky', bottom: 0, background: '#fff', paddingTop: 10, paddingBottom: 'calc(14px + env(safe-area-inset-bottom))' }}>
           <button
-            onClick={() => onConfirm(item)}
+            onClick={() => onConfirm(item, status === 'done' ? { reaction, note } : null)}
             style={{
               width: '100%', padding: 14, background: '#111111',
               color: '#fff', border: 'none', borderRadius: 12,
               fontSize: 16, fontWeight: 600, cursor: 'pointer',
             }}
           >
-            Save
+            {status === 'done' ? 'save as done' : 'save'}
           </button>
         </div>
       </div>

@@ -13,10 +13,10 @@ type StatusFilter = 'all' | ItemStatus
 type ReactionFilter = 'all' | ItemReaction
 
 const REACTION_LABELS: Record<ItemReaction, string> = {
-  loved_it:   'Loved it',
-  liked_it:   'Liked it',
-  eh:         'Eh',
-  not_for_me: 'Not for me',
+  loved_it:   'loved it',
+  liked_it:   'liked it',
+  eh:         'eh',
+  not_for_me: 'not for me',
 }
 
 const REACTION_ORDER: ItemReaction[] = ['loved_it', 'liked_it', 'eh', 'not_for_me']
@@ -201,7 +201,7 @@ export function LibraryScreen() {
 
         {/* Filter row 1 — category */}
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 8 }}>
-          <FilterChip label="All" active={categories.length === 0} onClick={() => setCategories([])} />
+          <FilterChip label="all" active={categories.length === 0} onClick={() => setCategories([])} />
           {['film', 'book', 'music', 'tv', ...types.filter(t => !['film','book','music','tv'].includes(t))].map(t => (
             <FilterChip
               key={t}
@@ -220,7 +220,7 @@ export function LibraryScreen() {
           {(['all', 'want_to', 'done'] as StatusFilter[]).map(s => (
             <FilterChip
               key={s}
-              label={s === 'all' ? 'All' : s === 'want_to' ? 'Want to' : 'Done'}
+              label={s === 'all' ? 'all' : s === 'want_to' ? 'want to' : 'done'}
               active={statusFilter === s}
               onClick={() => { setStatusFilter(s); if (s === 'want_to') setReactionFilter('all') }}
             />
@@ -241,7 +241,7 @@ export function LibraryScreen() {
         {musicOnly && (
           <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center' }}>
             <FilterChip
-              label="New Music Tuesday"
+              label="new music tuesday"
               active={newMusicOnly}
               onClick={() => setNewMusicOnly(v => !v)}
             />
@@ -258,7 +258,7 @@ export function LibraryScreen() {
               onClick={async () => { const n = await removeDuplicates(); if (n) alert(`Removed ${n} duplicate${n > 1 ? 's' : ''}`) }}
               style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
             >
-              Remove
+              remove
             </button>
           </div>
         )}
@@ -277,9 +277,9 @@ export function LibraryScreen() {
                 </div>
               )}
               {layout === 'grid' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: '4px 12px 12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '4px 14px 12px' }}>
                   {monthItems.map(item => (
-                    <GridCard key={item.id} item={item} onTap={() => setActionItem(item)} />
+                    <GridCard key={item.id} item={item} square={musicOnly} onTap={() => setActionItem(item)} />
                   ))}
                 </div>
               ) : (
@@ -343,10 +343,10 @@ function EmptyState({ hasItems }: { hasItems: boolean }) {
   return (
     <div style={{ padding: '64px 32px', textAlign: 'center' }}>
       <div style={{ fontSize: 16, fontWeight: 600, color: '#222', marginBottom: 6 }}>
-        {hasItems ? 'Nothing matches' : 'Your library is empty'}
+        {hasItems ? 'nothing matches' : 'your library is empty'}
       </div>
       <div style={{ fontSize: 13, color: '#999', lineHeight: 1.5 }}>
-        {hasItems ? 'Try changing your filters' : 'Tap Add to save your first item'}
+        {hasItems ? 'try changing your filters' : 'tap add to save your first item'}
       </div>
     </div>
   )
@@ -481,8 +481,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
 
 const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
 
-// Plural labels for the category filter chips (per-item labels stay singular).
-const CATEGORY_LABEL: Record<string, string> = { film: 'Films', book: 'Books', music: 'Music', tv: 'TV', other: 'Other' }
+const CATEGORY_LABEL: Record<string, string> = { film: 'films', book: 'books', music: 'music', tv: 'tv', other: 'other' }
 
 // Small cover/poster thumbnail. Falls back to a type-colored tile so rows stay aligned.
 function Thumb({ src, type, color }: { src: string | null; type: string; color: { bg: string; border: string } }) {
@@ -497,18 +496,36 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
   )
 }
 
-// Grid layout cover card.
-function GridCard({ item, onTap }: { item: Item; onTap: () => void }) {
+// Grid layout cover card. square=true for music (album covers are 1:1).
+function GridCard({ item, square, onTap }: { item: Item; square: boolean; onTap: () => void }) {
   const color = typeColor(item.type)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year)
+  const aspect = square ? '1 / 1' : '2 / 3'
+  const reactionDot = item.status === 'done' && item.reaction === 'loved_it'
+    ? '#1A1A1A'
+    : item.status === 'done'
+    ? '#AAAAAA'
+    : null
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
-      <div style={{ width: '100%', aspectRatio: '2 / 3', borderRadius: 0, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #EEE' }}>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #EBEBEB' }}>
         {artwork
           ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <span style={{ fontSize: 20 }}>{TYPE_EMOJI[item.type] ?? '✦'}</span>}
+          : <div style={{ fontSize: 18, color: color.border, opacity: 0.4 }}>✦</div>}
+        {reactionDot && (
+          <div style={{
+            position: 'absolute', bottom: 5, right: 5,
+            width: 7, height: 7, borderRadius: '50%',
+            background: reactionDot, border: '1px solid rgba(255,255,255,0.6)',
+          }} />
+        )}
       </div>
-      <div style={{ fontSize: 10, color: '#444', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+      <div style={{ marginTop: 5 }}>
+        <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>{item.title}</div>
+        {item.creator && (
+          <div style={{ fontSize: 10, color: '#AAA', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>
+        )}
+      </div>
     </div>
   )
 }

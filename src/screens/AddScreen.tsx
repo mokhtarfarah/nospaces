@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
+import type { ItemReaction } from '../lib/database.types'
 
 async function identifyText(input: string, typeHint?: string | null): Promise<AiResult> {
   const res = await fetch('/api/identify', {
@@ -160,8 +161,8 @@ export function AddScreen() {
   }
 
 
-  async function handleConfirm(item: AiResult) {
-    await addItem(item.title, item.type, item.creator, item.year, item.metadata, item.tags)
+  async function handleConfirm(item: AiResult, done: { reaction: ItemReaction | null; note: string } | null) {
+    await addItem(item.title, item.type, item.creator, item.year, item.metadata, item.tags, done ?? undefined)
     // Clear clipboard now that we've saved
     navigator.clipboard?.writeText('').catch(() => {})
     setAiResult(null)
@@ -190,7 +191,7 @@ export function AddScreen() {
                   color: active ? '#111111' : '#777', fontWeight: active ? 600 : 400,
                 }}
               >
-                {t === 'tv' ? 'TV' : t.charAt(0).toUpperCase() + t.slice(1)}
+                {t === 'tv' ? 'tv' : t}
               </button>
             )
           })}
@@ -224,7 +225,7 @@ export function AddScreen() {
             cursor: title.trim() && !loading ? 'pointer' : 'default',
           }}
         >
-          {loading ? 'Identifying…' : 'Identify & Save'}
+          {loading ? 'identifying…' : 'identify & save'}
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 4px' }}>
@@ -234,10 +235,10 @@ export function AddScreen() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <CaptureButton label="Add from a photo" icon={<CameraIcon />} onClick={() => imageRef.current?.click()} />
+          <CaptureButton label="add from a photo" icon={<CameraIcon />} onClick={() => imageRef.current?.click()} />
         </div>
 
-        {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error}</p>}
+        {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
       </form>
 
       <div style={{ textAlign: 'center', marginTop: 20, display: 'flex', gap: 16, justifyContent: 'center' }}>
@@ -246,14 +247,14 @@ export function AddScreen() {
           onClick={() => navigate('/import')}
           style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
         >
-          Import from Letterboxd
+          import from Letterboxd
         </button>
         <button
           type="button"
           onClick={() => navigate('/spotify')}
           style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
         >
-          Sync from Spotify
+          sync from Spotify
         </button>
       </div>
 
@@ -265,7 +266,7 @@ export function AddScreen() {
       {recent.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: '#999', letterSpacing: '0.5px', marginBottom: 8, textTransform: 'uppercase' }}>
-            Recently added
+            recently added
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {recent.map(item => (
