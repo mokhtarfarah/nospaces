@@ -37,24 +37,22 @@ function scoreTags(items: Item[], field: 'tags' | 'moods', type?: string): Score
     .sort((a, b) => b.score - a.score)
 }
 
-// Chips ranked by score. Positive = dark; top score = filled black.
-function RankedChips({ scored }: { scored: Scored[] }) {
+// Chips ranked by score. Two tiers only: #1 filled black, rest a clean outline.
+// Order (left→right) carries the ranking, so we skip the faded gradient tail.
+// `limit` caps how many chips show — drops the long low-signal tail.
+function RankedChips({ scored, limit }: { scored: Scored[]; limit?: number }) {
   if (!scored.length) return null
-  const max = scored[0].score
+  const shown = limit ? scored.slice(0, limit) : scored
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-      {scored.map((s, i) => {
-        // Top item gets filled black. Rest scale from dark-outlined to light based on rank.
+      {shown.map((s, i) => {
         const isTop = i === 0 && s.score > 0
-        const strength = max > 0 ? s.score / max : 0
-        const textColor = isTop ? '#fff' : strength > 0.5 ? '#222' : strength > 0 ? '#555' : '#AAA'
-        const bg = isTop ? '#111' : '#fff'
-        const border = isTop ? '#111' : strength > 0.5 ? '#555' : strength > 0 ? '#CCC' : '#E8E8E8'
         return (
           <span key={s.label} style={{
             padding: '4px 12px', borderRadius: 20, fontSize: 12,
-            background: bg, color: textColor,
-            border: `1.5px solid ${border}`,
+            background: isTop ? '#111' : '#fff',
+            color: isTop ? '#fff' : '#444',
+            border: `1.5px solid ${isTop ? '#111' : '#DDD'}`,
             fontWeight: isTop ? 600 : 400,
           }}>
             {s.label}
@@ -63,10 +61,6 @@ function RankedChips({ scored }: { scored: Scored[] }) {
       })}
     </div>
   )
-}
-
-function Divider() {
-  return <div style={{ height: 1, background: '#F0F0F0', margin: '24px 0' }} />
 }
 
 // Collapsible section with the uppercase label header + chevron.
@@ -282,6 +276,7 @@ export function TasteScreen() {
       }
       const scored = Array.from(map.entries())
         .map(([label, v]) => ({ label, score: v.score, count: v.count }))
+        .filter(s => s.score > 0)  // "lean toward" = positively rated decades only
         .sort((a, b) => b.score - a.score)
       return { type, scored }
     }).filter(({ scored }) => scored.length > 0)
@@ -328,7 +323,7 @@ export function TasteScreen() {
       {/* Vibes (feel) — cross-type; vibes don't belong to a medium. Top of the page. */}
       <Section title="vibes" defaultOpen>
         {topVibes.length > 0
-          ? <RankedChips scored={topVibes} />
+          ? <RankedChips scored={topVibes} limit={8} />
           : <p style={{ fontSize: 13, color: '#CCC', margin: 0 }}>tag a vibe when you mark things done.</p>}
       </Section>
 
@@ -347,7 +342,7 @@ export function TasteScreen() {
             {genresByType.map(({ type, scored }) => (
               <div key={type}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 8 }}>{TYPE_LABEL[type]}</div>
-                <RankedChips scored={scored.filter(s => s.score >= 0)} />
+                <RankedChips scored={scored.filter(s => s.score >= 0)} limit={6} />
               </div>
             ))}
           </div>
@@ -364,7 +359,7 @@ export function TasteScreen() {
             {eraByType.map(({ type, scored }) => (
               <div key={type}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 8 }}>{TYPE_LABEL[type]}</div>
-                <RankedChips scored={scored} />
+                <RankedChips scored={scored} limit={6} />
               </div>
             ))}
           </div>
@@ -421,11 +416,12 @@ export function TasteScreen() {
         </Section>
       )}
 
-      {/* Backfill — shown when untagged items exist */}
+      {/* Maintenance chores — bundled + collapsed so they don't interrupt insights */}
+      {(untagged.length > 0 || needsRuntime.length > 0 || needsMoodMigration.length > 0) && (
+        <Section title="tidy up">
+
       {untagged.length > 0 && (
-        <>
-          <Divider />
-          <div style={{ paddingBottom: 4 }}>
+          <div style={{ paddingBottom: 16 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>
               genre tags
             </div>
@@ -466,14 +462,10 @@ export function TasteScreen() {
               </div>
             )}
           </div>
-        </>
       )}
 
-      {/* Runtime/pages backfill */}
       {needsRuntime.length > 0 && (
-        <>
-          <Divider />
-          <div style={{ paddingBottom: 4 }}>
+          <div style={{ paddingBottom: 16 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>
               runtime &amp; pages
             </div>
@@ -514,14 +506,10 @@ export function TasteScreen() {
               </div>
             )}
           </div>
-        </>
       )}
 
-      {/* One-time mood-vocab cleanup — gripping→intense, drop project/easy */}
       {needsMoodMigration.length > 0 && (
-        <>
-          <Divider />
-          <div style={{ paddingBottom: 4 }}>
+          <div style={{ paddingBottom: 0 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>
               vibe cleanup
             </div>
@@ -548,7 +536,8 @@ export function TasteScreen() {
               </div>
             )}
           </div>
-        </>
+      )}
+        </Section>
       )}
     </div>
   )
