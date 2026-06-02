@@ -3,7 +3,8 @@ import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
-import { SortSheet, type SortOption } from '../components/SortSheet'
+import { type SortOption } from '../components/SortSheet'
+import { ViewSheet, VIEW_CONFIG, type ViewMode } from '../components/ViewSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
@@ -73,6 +74,10 @@ function groupByCreator(items: Item[]): Map<string, Item[]> {
   )
 }
 
+function groupNone(items: Item[]): Map<string, Item[]> {
+  return new Map([['', items]])
+}
+
 const normSource = (s: string) => s.toLowerCase().trim()
 
 function itemSource(item: Item): string {
@@ -103,22 +108,15 @@ export function LibraryScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
-  const [sort, setSort] = useState<SortOption>('date_added')
-  const [groupBy, setGroupBy] = useState<'month' | 'creator'>('month')
+  const [view, setView] = useState<ViewMode>('recent')
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [sortSheetOpen, setSortSheetOpen] = useState(false)
+  const [viewSheetOpen, setViewSheetOpen] = useState(false)
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
 
-  const SORT_LABELS: Record<SortOption, string> = {
-    date_added: 'Date added',
-    alpha:      'A → Z',
-    status:     'Status',
-    reaction:   'Reaction',
-    creator:    'Creator',
-    year:       'Year',
-  }
+  const sort: SortOption = VIEW_CONFIG[view].sort
+  const group = VIEW_CONFIG[view].group
 
   // Canonical source labels (with near-duplicates collapsed) for row display.
   const canonicalSources = useMemo(
@@ -143,8 +141,8 @@ export function LibraryScreen() {
   }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, sort])
 
   const grouped = useMemo(
-    () => (groupBy === 'creator' ? groupByCreator(filtered) : groupByMonth(filtered)),
-    [filtered, groupBy],
+    () => (group === 'creator' ? groupByCreator(filtered) : group === 'none' ? groupNone(filtered) : groupByMonth(filtered)),
+    [filtered, group],
   )
 
   // Unique types from real data for filter row
@@ -167,16 +165,10 @@ export function LibraryScreen() {
           <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.2px' }}>Library</h1>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
-              onClick={() => setGroupBy(g => (g === 'month' ? 'creator' : 'month'))}
+              onClick={() => setViewSheetOpen(true)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
             >
-              {groupBy === 'month' ? 'By month' : 'By creator'} <span style={{ fontSize: 11 }}>⇄</span>
-            </button>
-            <button
-              onClick={() => setSortSheetOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
-            >
-              {SORT_LABELS[sort]} <span style={{ fontSize: 14 }}>↕</span>
+              {VIEW_CONFIG[view].label} <span style={{ fontSize: 12 }}>▾</span>
             </button>
             <button
               onClick={() => setSearchOpen(v => !v)}
@@ -261,10 +253,12 @@ export function LibraryScreen() {
           <EmptyState hasItems={items.length > 0} />
         ) : (
           Array.from(grouped.entries()).map(([month, monthItems]) => (
-            <div key={month}>
-              <div style={{ padding: '22px 16px 8px', fontSize: 11, fontWeight: 600, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase' }}>
-                {month}
-              </div>
+            <div key={month || 'all'}>
+              {month && (
+                <div style={{ padding: '22px 16px 8px', fontSize: 11, fontWeight: 600, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase' }}>
+                  {month}
+                </div>
+              )}
               {monthItems.map(item => (
                 <ItemRow
                   key={item.id}
@@ -309,12 +303,12 @@ export function LibraryScreen() {
         )
       })()}
 
-      {/* Sort sheet */}
-      {sortSheetOpen && (
-        <SortSheet
-          current={sort}
-          onChange={setSort}
-          onClose={() => setSortSheetOpen(false)}
+      {/* View sheet */}
+      {viewSheetOpen && (
+        <ViewSheet
+          current={view}
+          onChange={setView}
+          onClose={() => setViewSheetOpen(false)}
         />
       )}
     </div>
