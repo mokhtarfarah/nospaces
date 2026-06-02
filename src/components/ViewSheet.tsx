@@ -3,17 +3,7 @@ import type { ItemReaction } from '../lib/database.types'
 // Ordering option used when sorting items within a view.
 export type SortOption = 'date_added' | 'alpha' | 'status' | 'reaction' | 'creator' | 'year'
 
-// Reaction filter lives here (in the view sheet) rather than as an always-on
-// header row, to keep the library header calm.
 export type ReactionFilter = 'all' | ItemReaction
-
-const REACTION_FILTERS: { value: ReactionFilter; label: string }[] = [
-  { value: 'all',        label: 'all'        },
-  { value: 'loved_it',   label: 'loved it'   },
-  { value: 'liked_it',   label: 'liked it'   },
-  { value: 'eh',         label: 'eh'         },
-  { value: 'not_for_me', label: 'not for me' },
-]
 
 // A "view" bundles ordering + grouping into one coherent choice, instead of two
 // separate (and conflicting) sort/group controls.
@@ -33,14 +23,10 @@ const ORDER: ViewMode[] = ['recent', 'status', 'creator', 'alpha', 'year', 'rati
 interface Props {
   current: ViewMode
   onChange: (v: ViewMode) => void
-  reactionFilter: ReactionFilter
-  onReactionChange: (r: ReactionFilter) => void
-  // Reactions only apply to done items, so hide this filter when viewing "want to".
-  showReactionFilter: boolean
   onClose: () => void
 }
 
-export function ViewSheet({ current, onChange, reactionFilter, onReactionChange, showReactionFilter, onClose }: Props) {
+export function ViewSheet({ current, onChange, onClose }: Props) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
@@ -73,32 +59,6 @@ export function ViewSheet({ current, onChange, reactionFilter, onReactionChange,
             </button>
           )
         })}
-
-        {showReactionFilter && (
-          <div style={{ marginTop: 20 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 12 }}>filter by reaction</p>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {REACTION_FILTERS.map(r => {
-                const active = reactionFilter === r.value
-                return (
-                  <button
-                    key={r.value}
-                    onClick={() => onReactionChange(r.value)}
-                    style={{
-                      padding: '6px 14px', borderRadius: 20, cursor: 'pointer',
-                      border: active ? '1.5px solid #111111' : '1.5px solid #E0E0E0',
-                      background: active ? '#EDEDED' : '#fff',
-                      color: active ? '#111111' : '#555',
-                      fontSize: 13, fontWeight: active ? 600 : 400,
-                    }}
-                  >
-                    {r.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
       </div>
     </>
   )

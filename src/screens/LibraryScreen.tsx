@@ -168,7 +168,7 @@ export function LibraryScreen() {
               onClick={() => setViewSheetOpen(true)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
             >
-              {VIEW_CONFIG[view].label}{reactionFilter !== 'all' ? ` · ${REACTION_LABELS[reactionFilter]}` : ''} <span style={{ fontSize: 12 }}>▾</span>
+              {VIEW_CONFIG[view].label} <span style={{ fontSize: 12 }}>▾</span>
             </button>
             <button
               onClick={() => setLayout(l => (l === 'list' ? 'grid' : 'list'))}
@@ -216,7 +216,7 @@ export function LibraryScreen() {
           )}
         </div>
 
-        {/* Filter row 2 — status + owned */}
+        {/* Filter row 2 — status + owned (+ reaction chips when on "done") */}
         <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {(['all', 'want_to', 'done'] as StatusFilter[]).map(s => (
             <FilterChip
@@ -226,6 +226,19 @@ export function LibraryScreen() {
               onClick={() => { setStatusFilter(s); if (s === 'want_to') setReactionFilter('all') }}
             />
           ))}
+          {statusFilter === 'done' && (
+            <>
+              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+              {REACTION_ORDER.map(r => (
+                <FilterChip
+                  key={r}
+                  label={REACTION_LABELS[r]}
+                  active={reactionFilter === r}
+                  onClick={() => setReactionFilter(reactionFilter === r ? 'all' : r)}
+                />
+              ))}
+            </>
+          )}
           <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
           <FilterChip label="⌂ owned" active={ownedOnly} onClick={() => setOwnedOnly(v => !v)} />
         </div>
@@ -327,9 +340,6 @@ export function LibraryScreen() {
         <ViewSheet
           current={view}
           onChange={setView}
-          reactionFilter={reactionFilter}
-          onReactionChange={setReactionFilter}
-          showReactionFilter={statusFilter !== 'want_to'}
           onClose={() => setViewSheetOpen(false)}
         />
       )}
