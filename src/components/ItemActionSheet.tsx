@@ -15,6 +15,7 @@ interface Props {
   onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
   onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
+  onSetMoods: (moods: string[]) => void
   onToggleOwned: (owned: boolean) => void
   onDelete: () => void
   onClose: () => void
@@ -37,7 +38,7 @@ const REACTION_LABELS: Record<ItemReaction, string> = {
 
 type View = 'main' | 'edit' | 'reaction'
 
-export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onDelete, onClose }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onToggleOwned, onDelete, onClose }: Props) {
   const [view, setView] = useState<View>('main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -300,15 +301,36 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             )}
 
-            {/* Mood tags (set at mark-done time) */}
-            {item.moods && item.moods.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                {item.moods.map(mood => (
-                  <span key={mood} style={{
-                    padding: '3px 10px', borderRadius: 20, fontSize: 11,
-                    background: '#111', color: '#fff', fontWeight: 500,
-                  }}>{mood}</span>
-                ))}
+            {/* Mood chips — interactive on main view, tap to toggle + save immediately */}
+            {!item.metadata?.scratch && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 6 }}>vibe</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {MOODS.map(mood => {
+                    const active = (item.moods ?? []).includes(mood)
+                    return (
+                      <button
+                        key={mood}
+                        onClick={() => {
+                          const next = active
+                            ? (item.moods ?? []).filter(m => m !== mood)
+                            : [...(item.moods ?? []), mood]
+                          setSelectedMoods(next)
+                          onSetMoods(next)
+                        }}
+                        style={{
+                          padding: '3px 10px', borderRadius: 20, cursor: 'pointer', fontSize: 11,
+                          border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+                          background: active ? '#111' : '#fff',
+                          color: active ? '#fff' : '#AAA',
+                          fontWeight: active ? 600 : 400,
+                        }}
+                      >
+                        {mood}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             )}
 

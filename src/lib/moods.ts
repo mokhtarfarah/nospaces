@@ -12,4 +12,5 @@ export const MOODS: string[] = [
   'guilty pleasure',
   'overhyped',
   'life-changing',
+  'nostalgia',
 ]
