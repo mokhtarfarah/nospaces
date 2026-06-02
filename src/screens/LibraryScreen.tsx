@@ -90,7 +90,8 @@ function itemSource(item: Item): string {
 }
 
 export function LibraryScreen() {
-  const { items, loading, markDone, markWantTo, deleteItem, editItem } = useItems()
+  const { items, loading, markDone, markWantTo, deleteItem, editItem, duplicateCount, removeDuplicates } = useItems()
+  const dupes = duplicateCount()
 
   // Empty array = all categories. Single-select: tapping a type switches to just that
   // one (tap it again to clear back to All). Array kept so multi-select can return later.
@@ -239,6 +240,17 @@ export function LibraryScreen() {
 
       {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
+        {dupes > 0 && !loading && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', background: '#F4F4F4', borderRadius: 8 }}>
+            <span style={{ fontSize: 12, color: '#666' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>
+            <button
+              onClick={async () => { const n = await removeDuplicates(); if (n) alert(`Removed ${n} duplicate${n > 1 ? 's' : ''}`) }}
+              style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+            >
+              Remove
+            </button>
+          </div>
+        )}
         {loading ? (
           <div style={{ padding: '48px 24px', textAlign: 'center', color: '#999', fontSize: 14 }}>
             Loading...
@@ -374,7 +386,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
   // Creator lives on the title line; source moved to the action card (kept off the row).
   const subtitle = item.status === 'done'
     ? [item.year, seasonsLabel, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
-    : [showType ? item.type : null, seasonsLabel].filter(Boolean).join(' · ')
+    : [showType ? item.type : null, item.year, seasonsLabel].filter(Boolean).join(' · ')
 
   return (
     <div
@@ -386,6 +398,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
         <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
           <span style={{ fontWeight: 500 }}>{item.title}</span>
           {item.creator && <span style={{ fontWeight: 400, color: '#A0A0A0' }}>{'  ·  '}{item.creator}</span>}
+          {item.note && <span title="Has a note" style={{ fontWeight: 400, color: '#C0C0C0', fontSize: 11 }}>{'  '}✎</span>}
         </div>
         {subtitle && (
           <div style={{ fontSize: 11, color: '#999', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

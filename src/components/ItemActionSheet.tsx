@@ -138,22 +138,36 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
 
         {view === 'main' && (
           <>
-            {/* Item preview */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24 }}>
-              {cover
-                ? <img src={cover} alt="" style={{ width: 46, height: 69, borderRadius: 0, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
-                : <div style={{ width: 46, height: 69, borderRadius: 0, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{TYPE_EMOJI[item.type] ?? '✦'}</div>}
-              <div style={{ minWidth: 0, paddingTop: 2 }}>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>{item.title}</div>
-                <div style={{ fontSize: 12, color: '#888' }}>
+            {/* Item preview — square cover for albums, poster (2:3) for everything else */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
+              {(() => {
+                const w = item.type === 'music' ? 64 : 52
+                const h = item.type === 'music' ? 64 : 78
+                const box: React.CSSProperties = { width: w, height: h, borderRadius: 0, flexShrink: 0, objectFit: 'cover', border: '1px solid #EEE' }
+                return cover
+                  ? <img src={cover} alt="" style={box} />
+                  : <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{TYPE_EMOJI[item.type] ?? '✦'}</div>
+              })()}
+              <div style={{ minWidth: 0, paddingTop: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.25 }}>{item.title}</div>
+                <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
                   {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year].filter(Boolean).join(' · ')}
                   {item.reaction && ` · ${REACTION_LABELS[item.reaction]}`}
                 </div>
-                <div style={{ fontSize: 11, color: '#AAA', marginTop: 3 }}>
+                <div style={{ fontSize: 11, color: '#B0B0B0', marginTop: 4 }}>
                   From {item.source_detail?.trim() || item.source.replace(/_/g, ' ')}
                 </div>
               </div>
             </div>
+
+            {item.note && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 5 }}>Your note</div>
+                <div style={{ fontSize: 13, color: '#333', lineHeight: 1.5, paddingLeft: 12, borderLeft: '3px solid #111', fontStyle: 'italic' }}>
+                  {item.note}
+                </div>
+              </div>
+            )}
 
             {blurb && (
               <div style={{ fontSize: 12, color: '#777', lineHeight: 1.5, marginBottom: 16, background: '#F7F7F7', borderRadius: 8, padding: '10px 12px' }}>

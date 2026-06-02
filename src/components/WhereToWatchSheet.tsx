@@ -64,9 +64,9 @@ export function WhereToWatchSheet({ item, onClose }: {
 
         {data?.configured && data.found && (
           <>
-            <ProviderGroup label="Stream" providers={data.stream} />
-            <ProviderGroup label="Rent" providers={data.rent} />
-            <ProviderGroup label="Buy" providers={data.buy} />
+            <ProviderGroup label="Stream" providers={data.stream} title={item.title} fallback={data.link ?? justWatch} />
+            <ProviderGroup label="Rent" providers={data.rent} title={item.title} fallback={data.link ?? justWatch} />
+            <ProviderGroup label="Buy" providers={data.buy} title={item.title} fallback={data.link ?? justWatch} />
             {!(data.stream?.length || data.rent?.length || data.buy?.length) && (
               <p style={{ fontSize: 13, color: '#777' }}>Not available on any US service right now.</p>
             )}
@@ -90,17 +90,45 @@ export function WhereToWatchSheet({ item, onClose }: {
   )
 }
 
-function ProviderGroup({ label, providers }: { label: string; providers?: Provider[] }) {
+// Best-effort deep links: open the title's search on the specific service. Unknown
+// services fall back to the JustWatch offer page.
+const PROVIDER_SEARCH: Record<string, (q: string) => string> = {
+  'netflix': q => `https://www.netflix.com/search?q=${q}`,
+  'hulu': q => `https://www.hulu.com/search?q=${q}`,
+  'disney plus': q => `https://www.disneyplus.com/search?q=${q}`,
+  'amazon prime video': q => `https://www.amazon.com/s?k=${q}&i=instant-video`,
+  'apple tv': q => `https://tv.apple.com/search?term=${q}`,
+  'apple tv plus': q => `https://tv.apple.com/search?term=${q}`,
+  'max': q => `https://play.max.com/search?q=${q}`,
+  'hbo max': q => `https://play.max.com/search?q=${q}`,
+  'peacock': q => `https://www.peacocktv.com/watch/search?q=${q}`,
+  'peacock premium': q => `https://www.peacocktv.com/watch/search?q=${q}`,
+  'paramount plus': () => `https://www.paramountplus.com/search/`,
+}
+
+function providerUrl(name: string, title: string, fallback: string): string {
+  const key = name.toLowerCase().replace(/\+/g, ' plus').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
+  const make = PROVIDER_SEARCH[key]
+  return make ? make(encodeURIComponent(title)) : fallback
+}
+
+function ProviderGroup({ label, providers, title, fallback }: { label: string; providers?: Provider[]; title: string; fallback: string }) {
   if (!providers || providers.length === 0) return null
   return (
     <div style={{ marginBottom: 16 }}>
       <p style={{ fontSize: 11, fontWeight: 600, color: '#999', marginBottom: 8, letterSpacing: '0.4px', textTransform: 'uppercase' }}>{label}</p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {providers.map((p, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {p.logo && <img src={p.logo} alt="" width={28} height={28} style={{ borderRadius: 6, border: '1px solid #EEE' }} />}
-            <span style={{ fontSize: 12, color: '#333' }}>{p.name}</span>
-          </div>
+          <a
+            key={i}
+            href={providerUrl(p.name, title, fallback)}
+            target="_blank"
+            rel="noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px 5px 5px', border: '1px solid #EEE', borderRadius: 8, background: '#FAFAFA', textDecoration: 'none', color: '#333' }}
+          >
+            {p.logo && <img src={p.logo} alt="" width={24} height={24} style={{ borderRadius: 5 }} />}
+            <span style={{ fontSize: 12 }}>{p.name} ↗</span>
+          </a>
         ))}
       </div>
     </div>

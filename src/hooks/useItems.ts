@@ -72,6 +72,42 @@ export function useItems() {
     await fetch()
   }
 
+  // Count duplicate items (same type + title + creator, ignoring case/punctuation).
+  function duplicateCount(): number {
+    const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const seen = new Set<string>()
+    let dupes = 0
+    for (const it of items) {
+      const k = `${it.type}|${norm(it.title)}|${norm(it.creator ?? '')}`
+      if (seen.has(k)) dupes++
+      else seen.add(k)
+    }
+    return dupes
+  }
+
+  // Remove duplicates, keeping the "best" of each group (done > has note/reaction >
+  // earliest added). Returns how many were removed.
+  async function removeDuplicates(): Promise<number> {
+    const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const groups = new Map<string, Item[]>()
+    for (const it of items) {
+      const k = `${it.type}|${norm(it.title)}|${norm(it.creator ?? '')}`
+      if (!groups.has(k)) groups.set(k, [])
+      groups.get(k)!.push(it)
+    }
+    const score = (i: Item) => (i.status === 'done' ? 4 : 0) + (i.note ? 2 : 0) + (i.reaction ? 1 : 0)
+    const toDelete: string[] = []
+    for (const g of groups.values()) {
+      if (g.length < 2) continue
+      const keep = [...g].sort((a, b) => score(b) - score(a) || new Date(a.date_added).getTime() - new Date(b.date_added).getTime())[0]
+      for (const i of g) if (i.id !== keep.id) toDelete.push(i.id)
+    }
+    if (!toDelete.length) return 0
+    await db().from('items').delete().in('id', toDelete)
+    await fetch()
+    return toDelete.length
+  }
+
   async function editItem(id: string, fields: {
     title?: string
     creator?: string | null
@@ -85,5 +121,5 @@ export function useItems() {
     await fetch()
   }
 
-  return { items, loading, addItem, markDone, markWantTo, deleteItem, editItem, refetch: fetch }
+  return { items, loading, addItem, markDone, markWantTo, deleteItem, editItem, duplicateCount, removeDuplicates, refetch: fetch }
 }
