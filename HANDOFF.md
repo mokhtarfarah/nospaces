@@ -109,6 +109,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
    - All client-side from `useItems`, no extra API calls.
    - **Still thin until backfill runs + moods accumulate through use.**
 3. **Recommendations page** (next big thing — its own design pass). Pick trusted sources → pull their lists → check off "want to". v1: manual pull (ask for a named list e.g. "NYT best books summer 2026" → AI+web fetch → parse → dedupe vs library → selectable checklist → save as want_to). v2: saved sources. v3: rank against taste snapshot.
+4. **Taste page overhaul** — full redesign pass needed. Parked until search/identify flow is more stable. Revisit after re-identify bugs are fixed and vibe/genre filter is in place so there's richer data to display.
 
 ### 🃏 Action card
 1. ✅ **Mark done / edit reaction inline** — "mark as done" in action sheet footer for want_to items; transitions to reaction view inside the sheet (no second overlay). "edit reaction" for done items.
@@ -120,11 +121,14 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 7. **Manual link** — paste Wikipedia/URL to fix wrong cover/blurb. Store in `metadata.wikiUrl`.
 8. ✅ **Manual cover art edit** — paste image URL in edit view → stored in `metadata.coverUrl`.
 9. ✅ **Re-identify** — on main card (auto-saves title/creator/type/year/tags/runtime/pages, sheet stays open) + in edit view (populates fields for review) + prominent "identify now" for scratch items.
+10. **🐛 Re-identify wrong-form revert** — re-identify on a film that was adapted from a book (e.g. Pride & Prejudice 2005) sometimes resolves to the novel instead of the film, with no disambiguation offered. Fix: when an item already has `type:'film'` and a year, the identify call should strongly anchor to that type+year and not silently switch forms. If the AI returns a different type than what's stored, surface a disambiguation prompt rather than auto-saving.
+11. **🐛 Vibe section too large in action card** — mood chip grid takes up too much vertical space, especially with many moods. Explore condensing: e.g. wrap into a scrollable single row, collapse to "tap to expand" initially, or reduce chip padding/font size without reducing the number of options.
 
 ### 🔗 Wikipedia coverage
 - ✅ Multi-fallback cascade: tries up to 4 queries per film (with year → without year → drop "The" → bare title). Films/TV trust search result; books/music use title guard. Deployed 2026-06-02 session 2.
 - **Backfill missing directors** — Letterboxd imports arrive with null creator (CSV has no director column). Re-identify button handles this one at a time. Bulk backfill not built yet.
 - **Still missing:** foreign-language titles where Wikipedia article name differs entirely from item title.
+- **🐛 Re-identify Wikipedia gap** — re-identify sometimes fails to populate Wikipedia even when year + director are correct. Inconsistent; needs investigation into why the fallback cascade doesn't always fire post-re-identify.
 
 ### 📚 Content / types
 1. **Book & movie series** — group like TV seasons.
@@ -137,6 +141,8 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 3. ✅ **Split "want to" / "done"** — "Want to / Done" view mode added 2026-06-02.
 4. ✅ **Subtitle extras** — both done and want-to rows now show: type · year · first mood (if any) · runtime/pages (if available) · reaction (done only). `api/runtime.ts` (Haiku) captures runtime/pages at identify time going forward. Taste screen has a "fill in" backfill button to populate existing items.
 5. **Added date / source in subtitle** — still open if wanted.
+6. **🐛 Subtitle mood display logic unclear** — when an item has multiple moods, which one shows in the subtitle? Currently appears to be the first in the array, but this isn't intentional/documented. Decide the rule (e.g. first selected, highest priority, most recently added) and make it explicit.
+7. **Sort by vibe / genre in library** — needs design thought. Options: (a) add vibe + genre as filter chips in the library header (like the existing type/reaction chips), so you can narrow to e.g. "gripping" or "sci-fi"; (b) add sort options for "by genre" or "by vibe" (alphabetical within the tag); (c) both. Chips approach (a) is probably the right v1 — it's consistent with existing UI patterns and "at a glance" fits better than a sort.
 
 ### 🎨 Polish
 0. ✅ **Header declutter (session 3)** — reaction chips only show when "done" status is active (hidden for "all" and "want to"). Category → want-to/done fast path kept. Removed "recently added" chips from the Add screen.

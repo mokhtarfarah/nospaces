@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
@@ -9,6 +9,7 @@ import { DuplicatesSheet } from '../components/DuplicatesSheet'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
+import { MOODS } from '../lib/moods'
 
 type StatusFilter = 'all' | ItemStatus
 
@@ -127,12 +128,13 @@ export function LibraryScreen() {
   const [scratchOnly, setScratchOnly] = useState(false)
   const selectCategory = (t: string) => {
     setScratchOnly(false)
+    setTagFilter(null)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   }
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
-  const [ownedOnly, setOwnedOnly] = useState(false)
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [view, setView] = useState<ViewMode>('recent')
   const [dir, setDir] = useState<SortDir>(VIEW_CONFIG.recent.defaultDir)
   const [layout, setLayout] = useState<'list' | 'grid'>('list')
@@ -162,21 +164,48 @@ export function LibraryScreen() {
   // "New Music Tuesday" toggle only applies while viewing the Music category alone.
   const musicOnly = categories.length === 1 && categories[0] === 'music'
 
-  const filtered = useMemo(() => {
-    const result = items.filter(item => {
+  // Base filter: everything except the tag/vibe filter. Used to compute which
+  // vibe/genre chips should be shown so they don't vanish when one is selected.
+  const baseFiltered = useMemo(() => {
+    return items.filter(item => {
       if (scratchOnly) return !!item.metadata?.scratch
-      if (item.metadata?.scratch) return false  // hide scratch from normal views
+      if (item.metadata?.scratch) return false
       if (categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
       if (newMusicOnly && musicOnly && !itemSource(item).toLowerCase().includes('new music tuesday')) return false
-      if (ownedOnly && !item.metadata?.owned) return false
       if (query && !item.title.toLowerCase().includes(query.toLowerCase()) &&
           !item.creator?.toLowerCase().includes(query.toLowerCase())) return false
       return true
     })
+  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, scratchOnly])
+
+  const filtered = useMemo(() => {
+    let result = baseFiltered
+    if (tagFilter) {
+      result = result.filter(item =>
+        item.moods?.includes(tagFilter) || item.tags?.includes(tagFilter)
+      )
+    }
     return sortItems(result, sort, dir)
-  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, sort, dir])
+  }, [baseFiltered, tagFilter, sort, dir])
+
+  // Vibes and genres present in the current base-filtered set, for filter chips.
+  const availableTags = useMemo(() => {
+    const moodSet = new Set<string>()
+    const genreSet = new Set<string>()
+    baseFiltered.forEach(i => {
+      i.moods?.forEach(m => moodSet.add(m))
+      i.tags?.forEach(t => genreSet.add(t))
+    })
+    return {
+      moods:  MOODS.filter(m => moodSet.has(m)),  // canonical MOODS order
+      genres: [...genreSet].sort(),
+    }
+  }, [baseFiltered])
+
+  // Reset tag filter when base filters change so a stale tag doesn't silently hide results.
+  useEffect(() => { setTagFilter(null) }, [categories, statusFilter, reactionFilter, scratchOnly])
 
   const grouped = useMemo(() => {
     if (group === 'creator') return groupByCreator(filtered)
@@ -273,7 +302,7 @@ export function LibraryScreen() {
           )}
         </div>
 
-        {/* Filter row 2 — status + owned (+ reaction chips when on "done") */}
+        {/* Filter row 2 — status (+ reaction chips when on "done") */}
         <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {(['all', 'want_to', 'done'] as StatusFilter[]).map(s => (
             <FilterChip
@@ -296,9 +325,22 @@ export function LibraryScreen() {
               ))}
             </>
           )}
-          <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-          <FilterChip label="⌂ owned" active={ownedOnly} onClick={() => setOwnedOnly(v => !v)} />
         </div>
+
+        {/* Filter row 3 — vibe + genre chips (only shown when the current view has any) */}
+        {(availableTags.moods.length > 0 || availableTags.genres.length > 0) && (
+          <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {availableTags.moods.map(m => (
+              <FilterChip key={m} label={m} active={tagFilter === m} onClick={() => setTagFilter(f => f === m ? null : m)} />
+            ))}
+            {availableTags.moods.length > 0 && availableTags.genres.length > 0 && (
+              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+            )}
+            {availableTags.genres.map(g => (
+              <FilterChip key={g} label={g} active={tagFilter === g} onClick={() => setTagFilter(f => f === g ? null : g)} />
+            ))}
+          </div>
+        )}
 
         {/* New Music Tuesday toggle — only in the Music category */}
         {musicOnly && (

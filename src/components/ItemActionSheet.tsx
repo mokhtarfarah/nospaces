@@ -3,7 +3,7 @@ import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { MOODS } from '../lib/moods'
 import { NoteInput } from './NoteInput'
-import { useWikipediaInfo } from '../lib/wikipedia'
+import { useWikipediaInfo, clearWikiCache } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { useBookBlurb } from '../lib/blurb'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
@@ -142,10 +142,18 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     if (reidentifying) return
     setReidentifying(true)
     try {
+      // Include year in the input string to help anchor disambiguation (e.g. a 2005
+      // film adaptation vs the 1813 novel it was based on). Also pass typeHint so the
+      // identify API strongly prefers the existing type.
+      const currentTitle = autoSave ? item.title : (title.trim() || item.title)
+      const currentYear  = autoSave ? item.year  : (year ? parseInt(year) : item.year)
+      const currentType  = autoSave ? item.type  : type
+      const inputStr = currentYear ? `${currentTitle} (${currentYear})` : currentTitle
+
       const res = await fetch('/api/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: title.trim() || item.title }),
+        body: JSON.stringify({ input: inputStr, typeHint: currentType }),
       })
       const r = await res.json()
       if (item.metadata?.scratch || !autoSave) {
@@ -156,16 +164,24 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         if (r.year) setYear(String(r.year))
         if (item.metadata?.scratch) { setCoverUrl(''); setView('edit') }
       } else {
-        // Auto-save path: merge result directly onto the item.
+        // Auto-save path: merge result directly onto the item. Never override the
+        // existing type — if the AI returned a different form (e.g. book instead of
+        // film), we silently keep what the user already had.
         const metadata: Record<string, unknown> = { ...item.metadata }
         if (r.metadata?.runtime) metadata.runtime = r.metadata.runtime
         if (r.metadata?.pages) metadata.pages = r.metadata.pages
+        const newTitle   = r.title   || item.title
+        const newCreator = r.creator || item.creator
+        const newYear    = r.year    || item.year
+        // Clear cache for both the old and new keys so the Wikipedia hook re-fetches.
+        clearWikiCache(item.type, item.title,  item.creator,  item.year)
+        clearWikiCache(item.type, newTitle,    newCreator,    newYear)
         onEdit({
-          title: r.title || item.title,
-          creator: r.creator || item.creator,
-          type: r.type || item.type,
-          year: r.year || item.year,
-          tags: r.tags?.length ? r.tags : item.tags,
+          title:   newTitle,
+          creator: newCreator,
+          type:    item.type,   // always keep existing type on auto-save
+          year:    newYear,
+          tags:    r.tags?.length ? r.tags : item.tags,
           metadata,
         })
       }
@@ -331,7 +347,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             {!item.metadata?.scratch && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 10, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 6 }}>vibe</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
                   {MOODS.map(mood => {
                     const active = (item.moods ?? []).includes(mood)
                     return (
@@ -345,6 +361,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                           onSetMoods(next)
                         }}
                         style={{
+                          flexShrink: 0,
                           padding: '3px 10px', borderRadius: 20, cursor: 'pointer', fontSize: 11,
                           border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
                           background: active ? '#111' : '#fff',
@@ -476,7 +493,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               ))}
             </div>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 10 }}>vibe? <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 16 }}>
               {MOODS.map(mood => {
                 const active = selectedMoods.includes(mood)
                 return (
@@ -484,6 +501,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     key={mood}
                     onClick={() => toggleMood(mood)}
                     style={{
+                      flexShrink: 0,
                       padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
                       border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
                       background: active ? '#EDEDED' : '#fff',

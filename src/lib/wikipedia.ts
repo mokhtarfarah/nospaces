@@ -90,6 +90,11 @@ async function resolve(type: string, title: string, creator: string | null, year
   return info
 }
 
+export function clearWikiCache(type: string, title: string, creator: string | null, year: number | null) {
+  const key = `${type}|${title}|${creator ?? ''}|${year ?? ''}`
+  cache.delete(key)
+}
+
 // Resolves the Wikipedia article URL + thumbnail for an item. Both may be null when
 // no suitable page exists (or the type isn't looked up).
 export function useWikipediaInfo(type: string, title: string, creator: string | null, year: number | null): WikiInfo {
