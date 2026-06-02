@@ -79,6 +79,7 @@ export function useItems() {
     year?: number | null
     note?: string | null
     reaction?: ItemReaction | null
+    metadata?: Record<string, unknown>
   }) {
     await db().from('items').update(fields).eq('id', id)
     await fetch()

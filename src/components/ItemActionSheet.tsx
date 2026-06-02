@@ -2,11 +2,13 @@ import { useState } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useWikipediaInfo } from '../lib/wikipedia'
+import { getSeasons, type Season } from '../lib/seasons'
 
 interface Props {
   item: Item
   onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null }) => void
   onEditReaction: (reaction: ItemReaction, note: string) => void
+  onSetSeasons: (seasons: Season[]) => void
   onDelete: () => void
   onClose: () => void
 }
@@ -26,7 +28,7 @@ const REACTION_LABELS: Record<ItemReaction, string> = {
 
 type View = 'main' | 'edit' | 'reaction'
 
-export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClose }: Props) {
+export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, onDelete, onClose }: Props) {
   const [view, setView] = useState<View>('main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -35,7 +37,19 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
   const [reaction, setReaction] = useState<ItemReaction | null>(item.reaction)
   const [note, setNote] = useState(item.note ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const color = typeColor(item.type)
+
+  // Persist the season checklist (kept in local state for instant feedback).
+  function updateSeasons(next: Season[]) {
+    setSeasons(next)
+    onSetSeasons(next)
+  }
+  const toggleSeason = (n: number) =>
+    updateSeasons(seasons.map(s => (s.n === n ? { ...s, done: !s.done } : s)))
+  const addSeason = () =>
+    updateSeasons([...seasons, { n: (seasons[seasons.length - 1]?.n ?? 0) + 1, done: false }])
+  const removeLastSeason = () => updateSeasons(seasons.slice(0, -1))
 
   // Wikipedia article link (null if no page exists / type not linked).
   // Music resolves a page (for the cover) but keeps Spotify as its button.
@@ -124,6 +138,51 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
               <div style={{ fontSize: 12, color: '#777', lineHeight: 1.5, marginBottom: 16, background: '#F7F7F7', borderRadius: 8, padding: '10px 12px' }}>
                 {summary}
                 <span style={{ display: 'block', marginTop: 4, fontSize: 10, color: '#AAA' }}>via Wikipedia</span>
+              </div>
+            )}
+
+            {item.type === 'tv' && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#444', marginBottom: 8 }}>
+                  Seasons
+                  {seasons.length > 0 && (
+                    <span style={{ fontWeight: 400, color: '#999' }}>
+                      {`  ·  ${seasons.filter(s => s.done).length}/${seasons.length} watched`}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {seasons.map(s => (
+                    <button
+                      key={s.n}
+                      onClick={() => toggleSeason(s.n)}
+                      style={{
+                        padding: '6px 10px', borderRadius: 8, fontSize: 12, cursor: 'pointer',
+                        border: s.done ? `1.5px solid ${color.border}` : '1.5px solid #E0E0E0',
+                        background: s.done ? color.bg : '#fff',
+                        color: s.done ? color.border : '#555',
+                        fontWeight: s.done ? 600 : 400,
+                      }}
+                    >
+                      {s.done ? '✓ ' : ''}S{s.n}
+                    </button>
+                  ))}
+                  <button
+                    onClick={addSeason}
+                    style={{ padding: '6px 10px', borderRadius: 8, fontSize: 12, border: '1.5px dashed #CCC', background: '#fff', color: '#777', cursor: 'pointer' }}
+                  >
+                    + Season
+                  </button>
+                  {seasons.length > 0 && (
+                    <button
+                      onClick={removeLastSeason}
+                      title="Remove last season"
+                      style={{ padding: '6px 10px', borderRadius: 8, fontSize: 12, border: '1.5px solid #EED', background: '#fff', color: '#C0392B', cursor: 'pointer' }}
+                    >
+                      −
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 

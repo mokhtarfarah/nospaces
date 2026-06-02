@@ -6,6 +6,7 @@ import { MarkDoneSheet } from '../components/MarkDoneSheet'
 import { SortSheet, type SortOption } from '../components/SortSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { useWikipediaInfo } from '../lib/wikipedia'
+import { getSeasons } from '../lib/seasons'
 
 type StatusFilter = 'all' | ItemStatus
 type ReactionFilter = 'all' | ItemReaction
@@ -318,6 +319,7 @@ export function LibraryScreen() {
             item={fresh}
             onEdit={fields => { editItem(fresh.id, fields); setActionItem(null) }}
             onEditReaction={(reaction, note) => { editItem(fresh.id, { reaction, note: note || null }); setActionItem(null) }}
+            onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
             onDelete={() => { deleteItem(fresh.id); setActionItem(null) }}
             onClose={() => setActionItem(null)}
           />
@@ -386,10 +388,14 @@ function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo 
   // Wikipedia article link + cover/poster thumbnail.
   const { url: wikiUrl, thumbnail } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
 
+  // Season progress for TV shows that have a checklist.
+  const tvSeasons = item.type === 'tv' ? getSeasons(item.metadata) : []
+  const seasonsLabel = tvSeasons.length > 0 ? `${tvSeasons.filter(s => s.done).length}/${tvSeasons.length} seasons` : null
+
   // Creator now lives on the title line, so it's dropped from the subtitle.
   const subtitle = item.status === 'done'
-    ? [item.year, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
-    : [showType ? item.type : null, sourceLabel].filter(Boolean).join(' · ')
+    ? [item.year, seasonsLabel, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
+    : [showType ? item.type : null, seasonsLabel, sourceLabel].filter(Boolean).join(' · ')
 
   return (
     <div
