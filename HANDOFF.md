@@ -78,7 +78,18 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 5 end)
+## TODO / Roadmap (last edited 2026-06-02, updated session 6 end)
+
+### 📌 Session 6 summary (2026-06-02) — taste page deep work
+All shipped to `main` / live unless noted:
+1. **Library:** vibe/genre filter dropdowns moved onto the same row as the status chips (`all / want to / done`) — see Sort & filter #7.
+2. **Vibe tags split into two axes** (`src/lib/moods.ts`): **VIBES** (feel — ranked by reaction) + **VERDICTS** (how it landed — ranked by frequency, not reaction). Both stored in the one `moods[]` array; partitioned by vocab. New shared `MoodChips` component renders them as two labelled groups ("feel" / "how it landed") in MarkDoneSheet + both ItemActionSheet spots. One-time "vibe cleanup" backfill on the taste page migrates retired words (gripping→intense, drops project/easy).
+3. **New vibes added:** `intense` (was gripping), `epic`, `romantic`, `relaxed`, `upbeat`, `cozy`, `funny`. (`bittersweet` considered + skipped — overlaps melancholic/nostalgic.)
+4. **Genre vs descriptor split** (`isGenreTag` in `src/lib/genres.ts`): a tag is a "genre" only if it's in the genres vocab; free-text descriptors ("New York", "sitcom", "ensemble cast") are hidden from all genre surfaces but **stay on the item card and are now matched by library search** (search previously only hit title+creator).
+5. **Taste page reorganized category-first** + **new insights** (era lean, backlog-vs-taste) — see Taste arc #4.
+6. **Editorial aesthetic overhaul** of the taste page — see Taste arc #4. ⚠️ **Farah doesn't love it yet — parked.**
+7. Mockup tool committed at `public/taste-mockup.html` (font exploration; delete once typeface decided — note it's also live at `nospaces.vercel.app/taste-mockup.html`).
+
 
 ### 📥 Seamless capture
 1. ✅ **Mark-as-done at identify time** — "want to / already did" toggle on confirm screen; saves status+reaction in one step.
@@ -100,14 +111,9 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
    - **Mood/vibe** = how it *felt* ("comfort", "gripping", "project", "nostalgia", "classic", etc). Tap chips on the action card main view (saves immediately) or at mark-done time. Stored in `moods text[]` column — **requires Supabase migration if not yet run:** `alter table public.items add column if not exists moods text[] not null default '{}';`. Vocab in `src/lib/moods.ts` — edit freely.
    - Genre chips (light grey) and mood chips (black) displayed on action card main view.
    - **Backfill:** "tag my library" button on the Taste screen runs all untagged items through `/api/genres` (Haiku model, cheap) in batches of 5 with live progress + cancel. Run this once after the first deploy to populate historical items.
-2. ✅ **Taste snapshot screen** (`/taste`, 3rd nav tab). Built session 3.
-   - Genres split by type (films / tv / books / music) — ranked chips, top = filled black.
-   - Vibes cross-type — same ranked chips.
-   - "How you rate" — thin reaction bar per type.
-   - "What doesn't land" — collapsible, same per-type grouping.
-   - Scoring: loved +2, liked +1, eh 0, not-for-me −1. Minimum 1 data point to show.
+2. ✅ **Taste snapshot screen** (`/taste`, 3rd nav tab). Built session 3. **⤵ Layout fully superseded in session 6 — see #4 below for the current structure.** (Original: genres split by type, vibes cross-type, reaction bars, "what doesn't land" — all ranked pill chips.)
+   - Scoring (unchanged): loved +2, liked +1, eh 0, not-for-me −1. Minimum 1 data point to show.
    - All client-side from `useItems`, no extra API calls.
-   - **Still thin until backfill runs + moods accumulate through use.**
 3. **Recommendations page** (next big thing — its own design pass). Pick trusted sources → pull their lists → check off "want to". v1: manual pull (ask for a named list e.g. "NYT best books summer 2026" → AI+web fetch → parse → dedupe vs library → selectable checklist → save as want_to). v2: saved sources. v3: rank against taste snapshot.
 4. **Taste page** — reorganized **category-first** (session 6). Overall **vibes** + **verdicts** (cross-type) at the top; then one collapsible **CategoryCard** per medium (film/book/music/tv, tv last) holding that medium's ratings bar, genres-you-love, era, backlog, and doesn't-land. Chips capped + two-tier. Genre tags now partitioned from free-text descriptors via `isGenreTag` (descriptors stay searchable, hidden from genre surfaces). Vibe tags split into two axes — VIBES (feel) + VERDICTS (how it landed) in `src/lib/moods.ts`.
    - **TODO (come back to): per-category vibes/verdicts.** Right now vibes/verdicts are overall-only. Later, optionally break them down inside each CategoryCard (your *film* vibes vs *book* vibes). Needs enough tagged data per type to be worth it.
@@ -149,7 +155,8 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 4. ✅ **Subtitle extras** — both done and want-to rows now show: type · year · first mood (if any) · runtime/pages (if available) · reaction (done only). `api/runtime.ts` (Haiku) captures runtime/pages at identify time going forward. Taste screen has a "fill in" backfill button to populate existing items.
 5. **Added date / source in subtitle** — still open if wanted.
 6. **🐛 Subtitle mood display logic unclear** — when an item has multiple moods, which one shows in the subtitle? Currently appears to be the first in the array, but this isn't intentional/documented. Decide the rule (e.g. first selected, highest priority, most recently added) and make it explicit.
-7. ✅ **Filter by vibe / genre in library** — two compact dropdown buttons (`vibe ▾` / `genre ▾`) in the header. Only shown when the current view has tagged items. Both can be active simultaneously (cross-filter). Auto-resets when category/status changes. Real-time sync also added so mobile changes appear on desktop without refresh (Supabase `postgres_changes` subscription in `useItems.ts`).
+7. ✅ **Filter by vibe / genre in library** — two compact dropdown buttons (`vibe ▾` / `genre ▾`). **Session 6: moved onto the same row as the status chips** (`all / want to / done`), each wrapped so its menu still anchors under its button; row wraps if crowded. Only shown when the current view has tagged items. Both can be active simultaneously (cross-filter). Auto-resets when category/status changes. The `genre` dropdown lists **real genres only** (`isGenreTag`); descriptors are excluded but still searchable. Real-time sync also added so mobile changes appear on desktop without refresh (Supabase `postgres_changes` subscription in `useItems.ts`).
+   - **Note:** the library `vibe` dropdown still lists VIBES + VERDICTS mixed (only the taste page splits the two axes). Possible small follow-up to split it there too.
 
 ### 🎨 Polish
 0. ✅ **Header declutter (session 3)** — reaction chips only show when "done" status is active (hidden for "all" and "want to"). Category → want-to/done fast path kept. Removed "recently added" chips from the Add screen.
