@@ -138,25 +138,33 @@ export interface BuildResult {
 }
 
 /**
- * Combine parsed watchlist + ratings films into insert rows, deduped against
- * each other and against the user's existing film keys.
+ * Combine parsed watchlist + watched + ratings films into insert rows, deduped
+ * against each other and against the user's existing film keys.
  *
- * Precedence: a rated film wins over a watchlisted one (done beats want_to).
+ * Precedence (highest first): rated (done + reaction) > watched (done, no
+ * reaction) > watchlist (want_to).
  */
 export function buildInserts(
   watchlist: ParsedFilm[],
+  watched: ParsedFilm[],
   ratings: ParsedFilm[],
   existingKeys: Set<string>,
 ): BuildResult {
   const byKey = new Map<string, LetterboxdInsert>()
   let skippedExisting = 0
 
+  const priority = (status: 'want_to' | 'done', hasRating: boolean) =>
+    status === 'done' && hasRating ? 2 : status === 'done' ? 1 : 0
+
   const add = (f: ParsedFilm, status: 'want_to' | 'done') => {
     const key = filmKey(f.title, f.year)
     if (existingKeys.has(key)) { skippedExisting++; return }
     const existing = byKey.get(key)
-    // Done beats want_to; otherwise first one wins.
-    if (existing && !(status === 'done' && existing.status === 'want_to')) return
+    const newPri = priority(status, f.rating != null)
+    if (existing) {
+      const oldPri = priority(existing.status, existing.reaction != null)
+      if (newPri <= oldPri) return
+    }
     const now = new Date().toISOString()
     byKey.set(key, {
       title: f.title,
@@ -173,9 +181,10 @@ export function buildInserts(
     })
   }
 
-  // Add rated (done) first so they take precedence over any watchlist duplicates.
-  for (const f of ratings) add(f, 'done')
+  // Add in ascending priority order so higher-priority entries overwrite lower.
   for (const f of watchlist) add(f, 'want_to')
+  for (const f of watched) add(f, 'done')
+  for (const f of ratings) add(f, 'done')
 
   return { inserts: [...byKey.values()], skippedExisting }
 }

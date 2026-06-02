@@ -19,24 +19,29 @@ export function ImportScreen() {
     setError(''); setPreview(null); setDone(null)
     if (!files || files.length === 0) return
     try {
-      const films: ParsedFilm[] = []
+      let watchlist: ParsedFilm[] = []
+      let watched: ParsedFilm[] = []
+      let ratings: ParsedFilm[] = []
+
       for (const f of Array.from(files)) {
-        films.push(...parseLetterboxdCsv(await f.text()))
+        const name = f.name.toLowerCase()
+        const parsed = parseLetterboxdCsv(await f.text())
+        if (name.includes('ratings')) ratings = [...ratings, ...parsed]
+        else if (name.includes('watched')) watched = [...watched, ...parsed]
+        else watchlist = [...watchlist, ...parsed] // watchlist.csv or unknown
       }
-      if (films.length === 0) {
-        setError("Couldn't find any films in that file. Make sure it's a Letterboxd CSV.")
+
+      const total = watchlist.length + watched.length + ratings.length
+      if (total === 0) {
+        setError("Couldn't find any films in those files. Make sure they're Letterboxd CSVs.")
         return
       }
-      // Rating present → watched & rated (done); otherwise → watchlist (want to).
-      const rated = films.filter(f => f.rating != null)
-      const watchlist = films.filter(f => f.rating == null)
 
-      // Existing film keys so we don't create duplicates.
       const existingKeys = new Set(
         items.filter(i => i.type === 'film').map(i => filmKey(i.title, i.year)),
       )
-      setCounts({ watch: watchlist.length, rated: rated.length })
-      setPreview(buildInserts(watchlist, rated, existingKeys))
+      setCounts({ watch: watchlist.length, rated: watched.length + ratings.length })
+      setPreview(buildInserts(watchlist, watched, ratings, existingKeys))
     } catch {
       setError('Could not read that file.')
     }
@@ -70,10 +75,11 @@ export function ImportScreen() {
       </h1>
       <p style={{ fontSize: 14, color: '#777', lineHeight: 1.5, margin: '0 0 24px' }}>
         On Letterboxd: <b>Settings → Data → Export Your Data</b>. Unzip it, then upload
-        <code style={{ background: '#F2F2F2', padding: '1px 5px', borderRadius: 4, margin: '0 3px' }}>watchlist.csv</code>
+        <code style={{ background: '#F2F2F2', padding: '1px 5px', borderRadius: 4, margin: '0 3px' }}>watchlist.csv</code>,{' '}
+        <code style={{ background: '#F2F2F2', padding: '1px 5px', borderRadius: 4, margin: '0 3px' }}>watched.csv</code>,
         and
         <code style={{ background: '#F2F2F2', padding: '1px 5px', borderRadius: 4, margin: '0 3px' }}>ratings.csv</code>.
-        You can pick both at once.
+        You can pick all three at once.
       </p>
 
       <label
@@ -97,7 +103,7 @@ export function ImportScreen() {
         <div style={{ marginTop: 24 }}>
           <div style={{ border: '1px solid #EEE', borderRadius: 14, padding: 18 }}>
             <Row label="To watch (want to)" value={counts.watch} />
-            <Row label="Watched & rated (done)" value={counts.rated} />
+            <Row label="Watched (done)" value={counts.rated} />
             <Row label="Already in your library — skipped" value={preview.skippedExisting} muted />
             <div style={{ height: 1, background: '#EEE', margin: '12px 0' }} />
             <Row label="New films to add" value={preview.inserts.length} bold />
