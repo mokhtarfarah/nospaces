@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { useItems } from '../hooks/useItems'
 import type { Item, ItemReaction } from '../lib/database.types'
 
@@ -96,8 +96,46 @@ function ReactionBar({ items, type }: { items: Item[]; type: string }) {
 }
 
 export function TasteScreen() {
-  const { items, loading } = useItems()
+  const { items, loading, editItem } = useItems()
   const [showNegative, setShowNegative] = useState(false)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillProgress, setBackfillProgress] = useState(0)
+  const [backfillTotal, setBackfillTotal] = useState(0)
+  const cancelRef = useRef(false)
+
+  const untagged = useMemo(() =>
+    items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type)),
+    [items],
+  )
+
+  async function runBackfill() {
+    if (backfilling || untagged.length === 0) return
+    cancelRef.current = false
+    setBackfilling(true)
+    setBackfillProgress(0)
+    setBackfillTotal(untagged.length)
+
+    const BATCH = 5
+    for (let i = 0; i < untagged.length; i += BATCH) {
+      if (cancelRef.current) break
+      const batch = untagged.slice(i, i + BATCH)
+      await Promise.all(batch.map(async item => {
+        try {
+          const res = await fetch('/api/genres', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type }),
+          })
+          const { tags } = await res.json()
+          if (tags?.length > 0) await editItem(item.id, { tags })
+        } catch { /* skip on error */ }
+      }))
+      setBackfillProgress(Math.min(i + BATCH, untagged.length))
+    }
+
+    setBackfilling(false)
+    cancelRef.current = false
+  }
 
   const doneWithReaction = useMemo(() => items.filter(i => i.status === 'done' && i.reaction), [items])
 
@@ -188,6 +226,54 @@ export function TasteScreen() {
           <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 14 }}>how you rate</div>
           {ratedTypes.map(t => <ReactionBar key={t} items={items} type={t} />)}
         </div>
+      )}
+
+      {/* Backfill — shown when untagged items exist */}
+      {untagged.length > 0 && (
+        <>
+          <Divider />
+          <div style={{ paddingBottom: 4 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>
+              genre tags
+            </div>
+            {backfilling ? (
+              <div>
+                <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
+                  tagging {Math.min(backfillProgress + 5, backfillTotal)} of {backfillTotal}…
+                </div>
+                <div style={{ background: '#F0F0F0', borderRadius: 4, height: 4, overflow: 'hidden', marginBottom: 10 }}>
+                  <div style={{
+                    height: '100%', borderRadius: 4, background: '#111',
+                    width: `${backfillTotal ? (backfillProgress / backfillTotal) * 100 : 0}%`,
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                <button
+                  onClick={() => { cancelRef.current = true }}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
+                >
+                  cancel
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, color: '#888' }}>
+                  {untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags
+                </span>
+                <button
+                  onClick={runBackfill}
+                  style={{
+                    padding: '7px 16px', borderRadius: 20, cursor: 'pointer',
+                    border: '1.5px solid #111', background: '#111',
+                    color: '#fff', fontSize: 12, fontWeight: 600,
+                  }}
+                >
+                  tag my library
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* What doesn't land — collapsible */}

@@ -149,6 +149,7 @@ export function useItems() {
     note?: string | null
     reaction?: ItemReaction | null
     moods?: string[]
+    tags?: string[]
     metadata?: Record<string, unknown>
   }) {
     await db().from('items').update(fields).eq('id', id)
