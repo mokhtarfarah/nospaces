@@ -86,24 +86,8 @@ function groupNone(items: Item[]): Map<string, Item[]> {
   return new Map([['', items]])
 }
 
-const normSource = (s: string) => s.toLowerCase().trim()
-
 function itemSource(item: Item): string {
   return item.source_detail?.trim() || item.source.replace(/_/g, ' ')
-}
-
-// Collapse near-duplicate source names: if one label contains another (e.g.
-// "KEXP New Music Tuesday" ⊃ "New Music Tuesday"), use the shorter as canonical.
-function buildCanonicalSources(labels: string[]): Map<string, string> {
-  const map = new Map<string, string>()
-  for (const label of labels) {
-    let best = label
-    for (const other of labels) {
-      if (other !== label && normSource(label).includes(normSource(other)) && other.length < best.length) best = other
-    }
-    map.set(label, best)
-  }
-  return map
 }
 
 export function LibraryScreen() {
@@ -126,12 +110,6 @@ export function LibraryScreen() {
 
   const sort: SortOption = VIEW_CONFIG[view].sort
   const group = VIEW_CONFIG[view].group
-
-  // Canonical source labels (with near-duplicates collapsed) for row display.
-  const canonicalSources = useMemo(
-    () => buildCanonicalSources(Array.from(new Set(items.map(itemSource)))),
-    [items],
-  )
 
   // "New Music Tuesday" toggle only applies while viewing the Music category alone.
   const musicOnly = categories.length === 1 && categories[0] === 'music'
@@ -287,7 +265,6 @@ export function LibraryScreen() {
                     key={item.id}
                     item={item}
                     showType={categories.length !== 1}
-                    sourceLabel={canonicalSources.get(itemSource(item)) ?? itemSource(item)}
                     onTap={() => setActionItem(item)}
                     onMarkDone={() => setDoneItem(item)}
                     onMarkWantTo={() => markWantTo(item.id)}
@@ -376,10 +353,9 @@ function FilterChip({ label, active, onClick, disabled }: { label: string; activ
   )
 }
 
-function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo }: {
+function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
   item: Item
   showType: boolean
-  sourceLabel: string
   onTap: () => void
   onMarkDone: () => void
   onMarkWantTo: () => void
@@ -395,10 +371,10 @@ function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo 
   const tvSeasons = item.type === 'tv' ? getSeasons(item.metadata) : []
   const seasonsLabel = tvSeasons.length > 0 ? `${tvSeasons.filter(s => s.done).length}/${tvSeasons.length} seasons` : null
 
-  // Creator now lives on the title line, so it's dropped from the subtitle.
+  // Creator lives on the title line; source moved to the action card (kept off the row).
   const subtitle = item.status === 'done'
     ? [item.year, seasonsLabel, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
-    : [showType ? item.type : null, seasonsLabel, sourceLabel].filter(Boolean).join(' · ')
+    : [showType ? item.type : null, seasonsLabel].filter(Boolean).join(' · ')
 
   return (
     <div

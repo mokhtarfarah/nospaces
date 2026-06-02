@@ -149,6 +149,9 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
                   {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year].filter(Boolean).join(' · ')}
                   {item.reaction && ` · ${REACTION_LABELS[item.reaction]}`}
                 </div>
+                <div style={{ fontSize: 11, color: '#AAA', marginTop: 3 }}>
+                  From {item.source_detail?.trim() || item.source.replace(/_/g, ' ')}
+                </div>
               </div>
             </div>
 
