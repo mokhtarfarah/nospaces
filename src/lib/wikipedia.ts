@@ -64,30 +64,7 @@ async function fetchInfo(query: string): Promise<{ title: string; url: string; t
   }
 }
 
-// Direct title lookup with redirect following — used as a last-resort fallback
-// for films whose article doesn't rank #1 in full-text search (e.g. Ponyo).
-async function fetchByTitle(title: string): Promise<{ title: string; url: string; thumbnail: string | null; summary: string | null } | null> {
-  const url =
-    'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*' +
-    '&prop=pageimages|info|extracts&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
-    '&exsentences=2&explaintext=1&redirects=1' +
-    `&titles=${encodeURIComponent(title)}`
-  const data = await (await fetch(url)).json()
-  const pages = data?.query?.pages
-  if (!pages) return null
-  const page = Object.values(pages)[0] as { title?: string; fullurl?: string; thumbnail?: { source?: string }; extract?: string; missing?: string } | undefined
-  // Wikipedia returns a page with 'missing' property when the title doesn't exist.
-  if (!page?.title || 'missing' in (page as object)) return null
-  return {
-    title: page.title,
-    url: page.fullurl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
-    thumbnail: page.thumbnail?.source ?? null,
-    summary: page.extract?.trim() || null,
-  }
-}
-
-// One full attempt: runs the search queries, then the direct-title fallbacks.
-// Returns EMPTY if nothing found (either no article or network error on every query).
+// One full attempt: runs all search queries. Returns EMPTY if nothing found.
 async function tryResolve(type: string, title: string, creator: string | null, year: number | null): Promise<WikiInfo> {
   const queries = wikiQueries(type, title, creator, year)
   let info: WikiInfo = EMPTY
@@ -107,29 +84,6 @@ async function tryResolve(type: string, title: string, creator: string | null, y
       break
     } catch {
       // network error on this attempt — try next query
-    }
-  }
-
-  // If full-text search found nothing, try direct title lookups as a final fallback.
-  // This catches films/TV whose article doesn't rank #1 in search (e.g. Ponyo).
-  if (info === EMPTY && (type === 'film' || type === 'tv')) {
-    const bare = title.replace(/^(the|a|an)\s+/i, '').trim()
-    const directTitles = type === 'film'
-      ? [
-          ...(year ? [`${title} (${year} film)`] : []),
-          `${title} (film)`,
-          ...(bare !== title ? [`${bare} (film)`] : []),
-        ]
-      : [`${title} (TV series)`, `${title} (television series)`]
-    for (const t of directTitles) {
-      try {
-        const found = await fetchByTitle(t)
-        if (!found) continue
-        info = { url: found.url, thumbnail: found.thumbnail, summary: found.summary }
-        break
-      } catch {
-        // try next
-      }
     }
   }
 
