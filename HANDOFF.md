@@ -48,7 +48,8 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 - Domain: nospaces.xyz (registered on Porkbun). MX records point to inbound.postmarkapp.com — confirmed live.
 - Postmark inbound webhook: https://nospaces.vercel.app/api/email
 - Forward any email (or whole newsletter) to `anything@nospaces.xyz` (e.g. save@nospaces.xyz). Must be sent from an allowed address (farahmokhtar94@gmail.com or tom.effland@gmail.com).
-- AI lists every media item it finds, identifies each (creator/year/type from its own knowledge), and saves them with source = "email". No reply email is sent — items just appear in the library.
+- AI lists every media item it finds, identifies each (creator/year/type from its own knowledge), and saves them with source = "email".
+- **Talkback** (code live as of 2026-06-02, not yet active): after saving, the app replies to the sender listing what was saved (or why nothing was). Needs `POSTMARK_SERVER_TOKEN` added to Vercel env vars + redeploy to activate. Postmark account approval request submitted 2026-06-02 (needed to send to gmail). DKIM DNS record added to Porkbun — **still propagating as of 2026-06-02** (Return-Path already green ✅). Once DKIM goes green in Postmark, add token to Vercel + redeploy.
 - Fixes that got it working: handle title-based specified_items; tell the prompt to IDENTIFY/enrich items instead of copying email text; make the prompt always extract every media item (a plain forwarded newsletter with no note used to save zero); widened body slice to 12k chars.
 - ByteString error from earlier (bullet •) handled by cleanEnv()/sanitize() stripping non-ASCII; never reproduced after the prompt fixes.
 - Server-side Vercel env vars required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (not VITE_ prefixed).
