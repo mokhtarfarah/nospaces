@@ -51,13 +51,13 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 ## TODO / Roadmap (user-curated — last edited 2026-06-02)
 
 ### 🔧 Short-term fixes (small, queued)
-1. **Want-to rows have no subtitle** — done items show year/reaction; want-to rows can be blank or just the media type. Add year, and BRAINSTORM other useful info (e.g. source, "added <when>", page count / runtime, tags, who added it). In LibraryScreen ItemRow.
-2. **Show your notes** — notes (item.note) are saved (mark-done / edit-reaction) but displayed nowhere. Plan: a "Your note" quote block on the action card (italic, left accent border, distinct from the grey Wikipedia blurb) + maybe a 💬 dot on the row. (Drafted once, reverted to do later.)
-3. **Remove duplicates** — find/clear duplicate items (same title + creator/type, case-insensitive); maybe block dupes on save too. (Some dupes may exist from dev test imports.)
-4. **Tom's login** — publish the Google OAuth consent screen (console.cloud.google.com → APIs & Services → OAuth consent screen → Publish App).
-5. **Action cards: tighter / sleeker / proportional** — clean up the tap card; "something about the pictures isn't totally working." (Same as the design-pass idea below — visual hierarchy, dividers, cover proportions, collapsible blurb. Sticky action footer already added.)
-6. **All lowercase?** — experiment: lowercase the whole UI, just for fun / aesthetic.
-7. **Where-to-watch → direct links** — replace the streaming logos with links that open the show on each service. Small/clean. (api/watch.ts + WhereToWatchSheet.tsx; whole feature is easy to remove.)
+1. ✅ **Want-to rows subtitle** — now show year (+ type/seasons). Brainstorm extras still open (length: pages/runtime; "added when"; tags; who added it).
+2. ✅ **Show your notes** — "Your note" quote block on the action card + a ✎ mark on rows with a note.
+3. ✅ **Remove duplicates** — count + "Remove" banner in library; keeps best of each group (done > note/reaction > earliest). Block-on-save still TODO (optional).
+4. **Tom's login** — publish the Google OAuth consent screen (console.cloud.google.com → APIs & Services → OAuth consent screen → Publish App). (SKIPPED for now.)
+5. 🔄 **Action cards: tighter / sleeker / proportional** — first pass done: albums show square covers, others 2:3 posters; larger cover, tighter spacing. NEEDS USER EYE on real covers; deeper design pass still possible (dividers, collapsible blurb).
+6. **All lowercase?** — experiment: lowercase the whole UI, just for fun / aesthetic. (Not started.)
+7. ✅ **Where-to-watch → links** — provider logos now link to the title's search on that service (majors mapped; others fall back to JustWatch).
 
 ### 🎯 Bigger near-term
 1. **Spotify login integration** — OAuth; e.g. add-to-queue, listening history.
