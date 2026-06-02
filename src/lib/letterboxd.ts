@@ -118,11 +118,12 @@ export function parseLetterboxdCsv(text: string): ParsedFilm[] {
   return out
 }
 
-/** Map a Letterboxd star rating (0.5–5) to a Nospaces reaction. */
+/** Map a Letterboxd star rating (0.5–5) to a Nospaces reaction. Half-stars round to nearest whole. */
 export function ratingToReaction(rating: number): ItemReaction {
-  if (rating >= 4.5) return 'loved_it'
-  if (rating >= 3.5) return 'liked_it'
-  if (rating >= 2.5) return 'eh'
+  const r = Math.round(rating)
+  if (r >= 5) return 'loved_it'
+  if (r >= 4) return 'liked_it'
+  if (r >= 3) return 'eh'
   return 'not_for_me'
 }
 
