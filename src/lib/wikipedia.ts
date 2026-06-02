@@ -1,47 +1,51 @@
 import { useEffect, useState } from 'react'
 
-// Build a Wikipedia search URL — used for types that reliably have pages (film, tv).
-export function wikiSearchUrl(title: string, year: number | null, kind: 'film' | 'TV series') {
-  const q = encodeURIComponent([title, year, kind].filter(Boolean).join(' '))
-  return `https://en.wikipedia.org/w/index.php?search=${q}`
-}
+// Resolve the direct Wikipedia article URL for a query via the opensearch API.
+// Returns null if no article matches. Cached per query.
+const cache = new Map<string, string | null>()
 
-// For books, we only want a link when an actual article exists. Resolve it via the
-// opensearch API (returns the article URL, or null if nothing matches). Cached per query.
-const bookCache = new Map<string, string | null>()
-
-export async function lookupBookWikipedia(title: string, creator?: string | null): Promise<string | null> {
-  const key = `${title}|${creator ?? ''}`
-  if (bookCache.has(key)) return bookCache.get(key)!
-  const q = encodeURIComponent([title, creator].filter(Boolean).join(' '))
+export async function resolveWikipedia(query: string): Promise<string | null> {
+  if (cache.has(query)) return cache.get(query)!
   try {
     const res = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=opensearch&format=json&limit=1&namespace=0&origin=*&search=${q}`,
+      `https://en.wikipedia.org/w/api.php?action=opensearch&format=json&limit=1&namespace=0&origin=*&search=${encodeURIComponent(query)}`,
     )
     const data = (await res.json()) as [string, string[], string[], string[]]
     const link = data?.[3]?.[0] ?? null
-    bookCache.set(key, link)
+    cache.set(query, link)
     return link
   } catch {
     return null
   }
 }
 
-// Returns the book's Wikipedia URL if a page exists, else null. Only fetches when enabled.
-export function useBookWikipedia(title: string, creator: string | null, enabled: boolean): string | null {
+// Build the search query per media type. Returns null for types we don't link.
+function wikiQuery(type: string, title: string, creator: string | null, year: number | null): string | null {
+  switch (type) {
+    case 'film': return [title, year, 'film'].filter(Boolean).join(' ')
+    case 'tv':   return [title, 'TV series'].filter(Boolean).join(' ')
+    case 'book': return [title, creator].filter(Boolean).join(' ')
+    default:     return null
+  }
+}
+
+// Resolves the direct Wikipedia article URL for an item, or null if no page exists
+// (or the type isn't linked). Films/TV almost always resolve; books only when a page exists.
+export function useWikipediaLink(type: string, title: string, creator: string | null, year: number | null): string | null {
   const [url, setUrl] = useState<string | null>(null)
+  const query = wikiQuery(type, title, creator, year)
   useEffect(() => {
-    if (!enabled) {
+    if (!query) {
       setUrl(null)
       return
     }
     let cancelled = false
-    lookupBookWikipedia(title, creator).then(u => {
+    resolveWikipedia(query).then(u => {
       if (!cancelled) setUrl(u)
     })
     return () => {
       cancelled = true
     }
-  }, [title, creator, enabled])
+  }, [query])
   return url
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
-import { wikiSearchUrl, useBookWikipedia } from '../lib/wikipedia'
+import { useWikipediaLink } from '../lib/wikipedia'
 
 interface Props {
   item: Item
@@ -37,13 +37,8 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
   const [confirmDelete, setConfirmDelete] = useState(false)
   const color = typeColor(item.type)
 
-  // Wikipedia link: film/tv always, books only when a page actually exists.
-  const bookWiki = useBookWikipedia(item.title, item.creator, item.type === 'book')
-  const wikiUrl =
-    item.type === 'film' ? wikiSearchUrl(item.title, item.year, 'film')
-    : item.type === 'tv' ? wikiSearchUrl(item.title, item.year, 'TV series')
-    : item.type === 'book' ? bookWiki
-    : null
+  // Direct Wikipedia article link (null if no page exists / type not linked).
+  const wikiUrl = useWikipediaLink(item.type, item.title, item.creator, item.year)
 
   function handleSaveDetails() {
     onEdit({
