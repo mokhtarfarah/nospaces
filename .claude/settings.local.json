@@ -42,7 +42,10 @@
       "Bash(curl -s \"https://itunes.apple.com/search?term=charli%20xcx&entity=album&limit=25\")",
       "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);[print\\('-',r.get\\('collectionName'\\)\\) for r in d.get\\('results',[]\\) if 'brat' in \\(r.get\\('collectionName'\\) or ''\\).lower\\(\\)] or print\\('\\(no brat in first 25\\)'\\)\")",
       "Bash(curl -s \"https://api.deezer.com/search/album?q=Charli%20XCX%20Brat&limit=5\")",
-      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);[print\\('-',r.get\\('artist',{}\\).get\\('name'\\),'—',r.get\\('title'\\),'|',r.get\\('cover_xl'\\)\\) for r in d.get\\('data',[]\\)[:5]] or print\\('\\(none\\)'\\)\")"
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);[print\\('-',r.get\\('artist',{}\\).get\\('name'\\),'—',r.get\\('title'\\),'|',r.get\\('cover_xl'\\)\\) for r in d.get\\('data',[]\\)[:5]] or print\\('\\(none\\)'\\)\")",
+      "Bash(python3 -c \"import sys,json,re;d=json.load\\(sys.stdin\\);r=d.get\\('results',[{}]\\)[0];desc=re.sub\\('<[^>]+>','',r.get\\('description',''\\) or ''\\);print\\(\\(desc[:240]+'…'\\) if desc else '\\(none\\)'\\)\")",
+      "Bash(curl -s \"https://openlibrary.org/search.json?title=The%20Secret%20History&author=Donna%20Tartt&limit=1\")",
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);desc=d.get\\('description'\\);desc=desc.get\\('value'\\) if isinstance\\(desc,dict\\) else desc;print\\(\\(desc[:240]+'…'\\) if desc else '\\(none\\)'\\)\")"
     ]
   }
 }

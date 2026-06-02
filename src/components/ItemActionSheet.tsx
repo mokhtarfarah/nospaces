@@ -3,6 +3,7 @@ import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
+import { useBookBlurb } from '../lib/blurb'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
 import { WhereToWatchSheet } from './WhereToWatchSheet'
 
@@ -72,6 +73,10 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
   const wikiUrl = item.type === 'music' ? null : url
   const artwork = useArtwork(item.type, item.title, item.creator, item.year)
   const cover = artwork ?? wikiThumb
+  // For books with no Wikipedia summary, fall back to an Open Library / Apple Books blurb.
+  const bookBlurb = useBookBlurb(item.title, item.creator, item.type === 'book' && !summary)
+  const blurb = summary ?? bookBlurb.summary
+  const blurbSource = summary ? 'Wikipedia' : bookBlurb.source
 
   // Quick links (Spotify / Wikipedia / Where to watch) as one row of soft pills.
   const links: { key: string; label: string; icon: React.ReactNode; onClick: () => void }[] = []
@@ -147,10 +152,10 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
               </div>
             </div>
 
-            {summary && (
+            {blurb && (
               <div style={{ fontSize: 12, color: '#777', lineHeight: 1.5, marginBottom: 16, background: '#F7F7F7', borderRadius: 8, padding: '10px 12px' }}>
-                {summary}
-                <span style={{ display: 'block', marginTop: 4, fontSize: 10, color: '#AAA' }}>via Wikipedia</span>
+                {blurb}
+                {blurbSource && <span style={{ display: 'block', marginTop: 4, fontSize: 10, color: '#AAA' }}>via {blurbSource}</span>}
               </div>
             )}
 
