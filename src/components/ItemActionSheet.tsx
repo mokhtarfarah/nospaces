@@ -180,7 +180,9 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         maxWidth: 480, margin: '0 auto',
         maxHeight: '96dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
-        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 20, lineHeight: 1, padding: 4 }}>✕</button>
+        </div>
 
         {view === 'main' && (
           <>

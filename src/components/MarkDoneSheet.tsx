@@ -55,7 +55,9 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         overflowY: 'auto',
       }}>
         {/* Handle */}
-        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 20, lineHeight: 1, padding: 4 }}>✕</button>
+        </div>
 
         {/* Item preview */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
