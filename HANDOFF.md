@@ -60,6 +60,10 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 - **Add/search improvements** — searching a string that isn't a famous work (e.g. "my new band believe") returns wrong famous results with no way to force the literal string. DONE so far: quotation marks now force an exact/literal match (api/identify.ts), and the confirm sheet has "show more options". STILL WANTED: a clearer in-UI way to force exact search / regenerate without quotes; revisit overall add-screen search UX.
 - DONE: ~~Sorting clarity~~ (single View menu + grid toggle). ~~Missing artwork~~ (TMDB/Deezer/iTunes/Open Library/Apple Books via api/art.ts).
 
+## Future ideas (parked)
+- **TV season-specific ratings** — let each season in the checklist carry its own reaction, not just a watched tick + one show-level reaction.
+- **Optional multi-category select** — categories are single-select by default now (tap switches). Possibly allow selecting multiple via a non-default gesture (long-press to add, or a small "multi" toggle) without making multi the default.
+
 ## Ideas to evaluate (not committed — revisit as we go)
 - **"+" quick-add in library header** — a + by the search bar. Evaluated as low value right now since the bottom-nav Add tab already covers it in one tap; only worth it as a true inline quick-add (type+save without leaving the library). Parked for reconsideration.
 - **Book blurbs / OCR jacket** — DONE: Open Library/Apple Books blurb fallback (api/blurb.ts). Still possible: snap a photo of the back-cover blurb → Claude vision OCR → save as the item's blurb/note.
