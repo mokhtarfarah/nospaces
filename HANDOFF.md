@@ -78,15 +78,15 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 3 end)
+## TODO / Roadmap (last edited 2026-06-02, updated session 4 end)
 
 ### 📥 Seamless capture
 1. ✅ **Mark-as-done at identify time** — "want to / already did" toggle on confirm screen; saves status+reaction in one step.
 2. ✅ **Scratch sheet** — "save a description" path on the Add screen for things you can't identify yet. Saves as `metadata.scratch=true, type='other'` with raw text as title. Appears under a "scratch" filter chip in the library. Action card shows a prominent "identify now" button for scratch items. No schema change — uses existing columns. Built session 3.
-3. **Bulk picture upload** — pick many photos → AI runs each → batch confirm/save. **(in progress)**
+3. ✅ **Bulk photo upload** — "add from photos" accepts multiple files. Single pick → single ConfirmSheet. Multi-pick → BulkConfirmSheet: identifies all in parallel, each row checkable/editable, saves all as want_to. Low-confidence results start unchecked.
 4. **Manual source field** — set where an item came from (person/site/newsletter). Decide where it surfaces.
 5. **Music / songs** — today albums-only. Figure out adding individual songs + cleanest flow.
-6. **Descriptive queries** (PARKED — separate body of work, not part of the taste arc): "rosalía latest album" → AI returns intent {creator, type, ordinal}; server resolves via live catalog (Deezer for music, TMDB for film/TV). Two-stage in `api/identify.ts`: classify direct-title vs descriptive-intent, then resolve against live API. Start music-only (Deezer, no key). Revisit after the taste arc.
+6. **Descriptive queries** (PARKED): "rosalía latest album" → AI returns intent {creator, type, ordinal}; server resolves via live catalog. Revisit after taste arc.
 7. **Screenshot shortcut reliability** — clipboard flow flaky. Improve or retire.
 8. **Photo-blurb / OCR** — snap back cover → Claude reads blurb → save.
 
@@ -115,11 +115,11 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 2. ✅ **Notes display** — note renders below the blurb. Bullet-list support: lines starting with -, *, • render as a list. `NoteInput` component (shared) has a "• bullet" button that inserts at cursor. Font 14px, 3-row textarea.
 3. ✅ **Genre + mood chips on action card** — genre chips (light grey), mood chips (black), fully interactive (tap to toggle, saves immediately). Works on want_to and done items.
 4. ✅ **"Owned" toggle** — `⌂ own it?` pill on action card header. Saves as `metadata.owned=true`. `⌂` marker on list rows. `⌂ owned` filter chip in library header.
-5. ✅ **✕ close button** — top-right of both ItemActionSheet and MarkDoneSheet. Action card opens to 96dvh.
+5. ✅ **✕ close button** — top-right of both ItemActionSheet and MarkDoneSheet. Action card opens to 96dvh. Top padding tightened.
 6. **Design polish** — editorial identity pass done (all-lowercase, 3-col grid, square music grid). Needs eye on real covers.
 7. **Manual link** — paste Wikipedia/URL to fix wrong cover/blurb. Store in `metadata.wikiUrl`.
 8. ✅ **Manual cover art edit** — paste image URL in edit view → stored in `metadata.coverUrl`.
-9. ✅ **Re-identify** — button in edit view + prominent "identify now" for scratch items.
+9. ✅ **Re-identify** — on main card (auto-saves title/creator/type/year/tags/runtime/pages, sheet stays open) + in edit view (populates fields for review) + prominent "identify now" for scratch items.
 
 ### 🔗 Wikipedia coverage
 - ✅ Multi-fallback cascade: tries up to 4 queries per film (with year → without year → drop "The" → bare title). Films/TV trust search result; books/music use title guard. Deployed 2026-06-02 session 2.
@@ -133,9 +133,10 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ### 🔀 Sort & filter
 1. ✅ **Recently edited** sort option — sorts by `updated_at`, reversible.
-2. ✅ **By year** ascending + descending — tap ↑/↓ arrow in header to flip any directional sort.
+2. ✅ **By year** ascending + descending — tap ↑/↓ arrow in header to flip any directional sort. All directional sorts (recent, edited, creator, a→z, year) reversible this way.
 3. ✅ **Split "want to" / "done"** — "Want to / Done" view mode added 2026-06-02.
-4. **Subtitle extras** — pages/runtime, added date, source, who added. (in progress)
+4. ✅ **Subtitle extras** — both done and want-to rows now show: type · year · first mood (if any) · runtime/pages (if available) · reaction (done only). `api/runtime.ts` (Haiku) captures runtime/pages at identify time going forward. Taste screen has a "fill in" backfill button to populate existing items.
+5. **Added date / source in subtitle** — still open if wanted.
 
 ### 🎨 Polish
 0. ✅ **Header declutter (session 3)** — reaction chips only show when "done" status is active (hidden for "all" and "want to"). Category → want-to/done fast path kept. Removed "recently added" chips from the Add screen.
@@ -144,9 +145,10 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 3. **Letterboxd source label** — small "from Letterboxd" badge in the action card for imported items (`source_detail === 'letterboxd'`). Helps spot anything that imported wrong.
 4. **Dedup after Letterboxd import** — slight title variants can slip through. Worth running remove-duplicates after first import.
 5. ✅ **Remove-duplicates: show before deleting** — review sheet shows each duplicate group; pick which to keep before deleting.
+6. ✅ **Action card header tightened** — reduced top padding + ✕ row margin on both ItemActionSheet and MarkDoneSheet.
 
 ### 🎵 Music
-- **Touring dates** — pull upcoming tour dates for liked/loved music artists and surface a small notice somewhere in the app. API: Bandsintown or Ticketmaster (Songkick public API is dead). Design call: where it shows, location handling. **Active next feature.**
+- **Touring dates** — pull upcoming tour dates for liked/loved music artists and surface a small notice in the app. API: Bandsintown or Ticketmaster (Songkick dead). Location-aware (device GPS), with fallback to a few saved home-base cities if location sharing is declined. Design call: where it surfaces (action card? separate section? taste screen?). **Queued for next session.**
 
 ### 🌱 Bigger / later
 - Genre/mood tags + taste analysis → now the active "Taste arc" above
