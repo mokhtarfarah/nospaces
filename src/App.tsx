@@ -4,6 +4,7 @@ import { LoginScreen } from './components/LoginScreen'
 import { BottomNav } from './components/BottomNav'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { AddScreen } from './screens/AddScreen'
+import { ImportScreen } from './screens/ImportScreen'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/library" replace />} />
         <Route path="/library" element={<LibraryScreen />} />
         <Route path="/add" element={<AddScreen />} />
+        <Route path="/import" element={<ImportScreen />} />
       </Routes>
       <BottomNav />
     </>

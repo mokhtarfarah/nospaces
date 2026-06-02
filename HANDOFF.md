@@ -3,6 +3,11 @@
 ## App
 Personal PWA taste library for Farah + Tom. Films, books, music, TV. https://nospaces.vercel.app. Two users: farahmokhtar94@gmail.com, tom.effland@gmail.com.
 
+## North star (read before every design call)
+Nospaces is a **one-stop media library + taste-tracking / curation source** — Farah's single source of truth for everything she's watched, read, listened to, and wants to. The whole point: **see all my media easily, at a glance, including on the go.**
+
+Design mentality: **clean, easy, productive, sleek/editorial.** Every UX and feature choice serves "at a glance + low friction." Claude should proactively suggest tweaks that push toward this (and flag things that fight it). When in doubt, favor clarity and calm over more options.
+
 ## Stack
 React + TypeScript + Vite PWA · Supabase (okxuzqqzqpuyepgiskqp) · Google OAuth · Anthropic claude-sonnet-4-5 · Vercel · Postmark inbound (nospaces.xyz) · Repo: github.com/mokhtarfarah/nospaces
 
@@ -57,7 +62,7 @@ Share screenshot → POST to `/api/identify-upload` → copy URL to clipboard �
 
 ### 🎬 Integrations
 1. **Spotify** — OAuth, listening history, saved albums.
-2. **Letterboxd** — one-time CSV import and/or sync.
+2. ✅ **Letterboxd** — one-time CSV import built 2026-06-02 (not yet tested with real export / live login). Flow: Add screen → "Import from Letterboxd" link → `/import` (`src/screens/ImportScreen.tsx`). User uploads `watchlist.csv` + `ratings.csv` from the Letterboxd export ZIP (Settings → Data → Export). Rows **with** a Rating → `done` + reaction (5/4.5★→loved_it, 4/3.5→liked_it, 3/2.5→eh, ≤2→not_for_me); rows **without** → `want_to`. Deduped vs existing films (title+year) and against each other (done beats want_to). Batch-inserted as `type:film`, `source:'manual'`, `source_detail:'letterboxd'`, `metadata.letterboxdRating`. Posters/blurbs resolve free via `/api/art` on display. Logic in `src/lib/letterboxd.ts` (pure, unit-tested); insert via `importItems()` in `useItems`. **Next:** Farah tests with her real export. No public Letterboxd API exists for sync — CSV is the only path.
 
 ### 🃏 Action card
 1. **Mark done / edit reaction inline** — not just via row action sheet.

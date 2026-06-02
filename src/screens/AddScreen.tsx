@@ -210,6 +210,16 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error}</p>}
       </form>
 
+      <div style={{ textAlign: 'center', marginTop: 20 }}>
+        <button
+          type="button"
+          onClick={() => navigate('/import')}
+          style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+        >
+          Import from Letterboxd
+        </button>
+      </div>
+
       {/* Single image input — iOS shows camera + photo library options */}
       <input ref={imageRef} type="file" accept="image/*"
         onChange={e => { const f = e.target.files?.[0]; if (f) processImageFile(f, 'photo') }}

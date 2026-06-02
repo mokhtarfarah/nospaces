@@ -74,6 +74,20 @@ export function useItems() {
     await fetch({ silent: true })
   }
 
+  // Batch-insert pre-built rows (used by the Letterboxd import). Rows arrive
+  // without user_id; we stamp it on, chunk to stay under request limits, then
+  // refetch once. Returns how many were inserted.
+  async function importItems(rows: Record<string, unknown>[]): Promise<number> {
+    if (!user || rows.length === 0) return 0
+    const stamped = rows.map(r => ({ ...r, user_id: user.id }))
+    const CHUNK = 500
+    for (let i = 0; i < stamped.length; i += CHUNK) {
+      await db().from('items').insert(stamped.slice(i, i + CHUNK))
+    }
+    await fetch()
+    return stamped.length
+  }
+
   // Count duplicate items (same type + title + creator, ignoring case/punctuation).
   function duplicateCount(): number {
     const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -123,5 +137,5 @@ export function useItems() {
     await fetch({ silent: true })
   }
 
-  return { items, loading, addItem, markDone, markWantTo, deleteItem, editItem, duplicateCount, removeDuplicates, refetch: fetch }
+  return { items, loading, addItem, importItems, markDone, markWantTo, deleteItem, editItem, duplicateCount, removeDuplicates, refetch: fetch }
 }
