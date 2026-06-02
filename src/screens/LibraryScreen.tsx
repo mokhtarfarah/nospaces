@@ -381,7 +381,7 @@ export function LibraryScreen() {
         return (
           <ItemActionSheet
             item={fresh}
-            onEdit={fields => { editItem(fresh.id, fields); setActionItem(null) }}
+            onEdit={fields => { editItem(fresh.id, fields) }}
             onSetMoods={moods => editItem(fresh.id, { moods })}
             onToggleOwned={owned => toggleOwned(fresh.id, owned)}
             onMarkDone={(reaction, note, moods) => { markDone(fresh.id, reaction, note, moods); setActionItem(null) }}
