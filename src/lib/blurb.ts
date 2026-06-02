@@ -10,15 +10,16 @@ export interface Blurb {
 const EMPTY: Blurb = { summary: null, source: null }
 const cache = new Map<string, Blurb>()
 
-export function useBookBlurb(title: string, creator: string | null, enabled: boolean): Blurb {
+export function useBookBlurb(title: string, creator: string | null, year: number | null, enabled: boolean): Blurb {
   const [blurb, setBlurb] = useState<Blurb>(EMPTY)
   useEffect(() => {
     if (!enabled) { setBlurb(EMPTY); return }
-    const key = `${title}|${creator ?? ''}`
+    const key = `${title}|${creator ?? ''}|${year ?? ''}`
     if (cache.has(key)) { setBlurb(cache.get(key)!); return }
     let cancelled = false
     const sp = new URLSearchParams({ title })
     if (creator) sp.set('creator', creator)
+    if (year) sp.set('year', String(year))
     fetch(`/api/blurb?${sp}`)
       .then(r => r.json())
       .then((d: Blurb) => {
@@ -28,6 +29,6 @@ export function useBookBlurb(title: string, creator: string | null, enabled: boo
       })
       .catch(() => { if (!cancelled) setBlurb(EMPTY) })
     return () => { cancelled = true }
-  }, [title, creator, enabled])
+  }, [title, creator, year, enabled])
   return blurb
 }

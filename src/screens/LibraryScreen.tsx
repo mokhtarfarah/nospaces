@@ -93,10 +93,11 @@ function itemSource(item: Item): string {
 export function LibraryScreen() {
   const { items, loading, markDone, markWantTo, deleteItem, editItem } = useItems()
 
-  // Empty array = all categories. Otherwise only the selected types are shown.
+  // Empty array = all categories. Single-select: tapping a type switches to just that
+  // one (tap it again to clear back to All). Array kept so multi-select can return later.
   const [categories, setCategories] = useState<string[]>([])
-  const toggleCategory = (t: string) =>
-    setCategories(prev => (prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]))
+  const selectCategory = (t: string) =>
+    setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
@@ -195,11 +196,11 @@ export function LibraryScreen() {
               key={t}
               label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
               active={categories.includes(t)}
-              onClick={() => toggleCategory(t)}
+              onClick={() => selectCategory(t)}
             />
           ))}
           {!types.includes('other') && (
-            <FilterChip label="Other" active={categories.includes('other')} onClick={() => toggleCategory('other')} />
+            <FilterChip label="Other" active={categories.includes('other')} onClick={() => selectCategory('other')} />
           )}
         </div>
 

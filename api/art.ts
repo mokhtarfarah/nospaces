@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { searchBookDoc, appleBookMatches } from './_bookMatch'
 
 // Best-source artwork resolver:
 //   film/tv  -> TMDB poster (falls back to a season poster for shows with none)
@@ -60,25 +61,23 @@ async function musicArt(title: string, creator: string): Promise<string | null> 
   return (await deezerArt(title, creator)) ?? (await itunesAlbumArt(title, creator))
 }
 
-async function openLibraryCover(title: string, creator: string): Promise<string | null> {
-  const sp = new URLSearchParams({ title, limit: '1' })
-  if (creator) sp.set('author', creator)
-  const data = await (await fetch(`https://openlibrary.org/search.json?${sp}`)).json()
-  const cover: number | undefined = data?.docs?.[0]?.cover_i
-  return cover ? `https://covers.openlibrary.org/b/id/${cover}-M.jpg` : null
+async function openLibraryCover(title: string, creator: string, year?: number): Promise<string | null> {
+  const doc = await searchBookDoc(title, creator, year)
+  return doc?.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : null
 }
 
 // Apple Books fallback (Goodreads has no public API since 2020; Google Books' keyless
-// quota is unreliable). Same keyless source as music. Covers only.
+// quota is unreliable). Verifies the result matches title + author. Covers only.
 async function appleBookCover(title: string, creator: string): Promise<string | null> {
   const term = [title, creator].filter(Boolean).join(' ')
-  const data = await (await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=ebook&limit=1`)).json()
-  const art: string | undefined = data?.results?.[0]?.artworkUrl100
-  return art ? art.replace('100x100bb', '300x300bb') : null
+  const data = await (await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=ebook&limit=5`)).json()
+  const results: { trackName?: string; artistName?: string; artworkUrl100?: string }[] = data?.results ?? []
+  const m = results.find(r => appleBookMatches(r.trackName, r.artistName, title, creator))
+  return m?.artworkUrl100 ? m.artworkUrl100.replace('100x100bb', '600x600bb') : null
 }
 
-async function bookCover(title: string, creator: string): Promise<string | null> {
-  return (await openLibraryCover(title, creator)) ?? (await appleBookCover(title, creator))
+async function bookCover(title: string, creator: string, year?: number): Promise<string | null> {
+  return (await openLibraryCover(title, creator, year)) ?? (await appleBookCover(title, creator))
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -93,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (type === 'film') url = await tmdbPoster('movie', title, year)
     else if (type === 'tv') url = await tmdbPoster('tv', title, year)
     else if (type === 'music') url = await musicArt(title, creator)
-    else if (type === 'book') url = await bookCover(title, creator)
+    else if (type === 'book') url = await bookCover(title, creator, year ? Number(year) : undefined)
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate')
     return res.status(200).json({ url })
   } catch {

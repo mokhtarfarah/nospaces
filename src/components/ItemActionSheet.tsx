@@ -74,7 +74,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
   const artwork = useArtwork(item.type, item.title, item.creator, item.year)
   const cover = artwork ?? wikiThumb
   // For books with no Wikipedia summary, fall back to an Open Library / Apple Books blurb.
-  const bookBlurb = useBookBlurb(item.title, item.creator, item.type === 'book' && !summary)
+  const bookBlurb = useBookBlurb(item.title, item.creator, item.year, item.type === 'book' && !summary)
   const blurb = summary ?? bookBlurb.summary
   const blurbSource = summary ? 'Wikipedia' : bookBlurb.source
 
