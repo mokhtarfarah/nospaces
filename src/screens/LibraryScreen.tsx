@@ -388,7 +388,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
 
   // Wikipedia article link (+ image as a fallback); best cover comes from /api/art.
   const { url: wikiUrl, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
-  const artwork = useArtwork(item.type, item.title, item.creator, item.year)
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const thumbnail = artwork ?? wikiThumb
 
   // Season progress for TV shows that have a checklist.
@@ -500,7 +500,7 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
 // Grid layout cover card. square=true for music (album covers are 1:1).
 function GridCard({ item, square, onTap }: { item: Item; square: boolean; onTap: () => void }) {
   const color = typeColor(item.type)
-  const artwork = useArtwork(item.type, item.title, item.creator, item.year)
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const aspect = square ? '1 / 1' : '2 / 3'
   const reactionDot = item.status === 'done' && item.reaction === 'loved_it'
     ? '#1A1A1A'

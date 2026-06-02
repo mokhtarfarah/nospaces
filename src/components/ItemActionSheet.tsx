@@ -9,7 +9,7 @@ import { WhereToWatchSheet } from './WhereToWatchSheet'
 
 interface Props {
   item: Item
-  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null }) => void
+  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; metadata?: Record<string, unknown> }) => void
   onMarkDone: (reaction: ItemReaction, note: string) => void
   onEditReaction: (reaction: ItemReaction, note: string) => void
   onSetSeasons: (seasons: Season[]) => void
@@ -42,6 +42,8 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [year, setYear] = useState(item.year?.toString() ?? '')
   const [reaction, setReaction] = useState<ItemReaction | null>(item.reaction)
   const [note, setNote] = useState(item.note ?? '')
+  const [coverUrl, setCoverUrl] = useState((item.metadata?.coverUrl as string | null) ?? '')
+  const [reidentifying, setReidentifying] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
@@ -72,7 +74,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   // Music resolves a page (for the cover) but keeps Spotify as its button.
   const { url, summary, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
   const wikiUrl = item.type === 'music' ? null : url
-  const artwork = useArtwork(item.type, item.title, item.creator, item.year)
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year, coverUrl || null)
   const cover = artwork ?? wikiThumb
   // For books with no Wikipedia summary, fall back to an Open Library / Apple Books blurb.
   const bookBlurb = useBookBlurb(item.title, item.creator, item.year, item.type === 'book' && !summary)
@@ -115,8 +117,30 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
       creator: creator.trim() || null,
       type,
       year: year ? parseInt(year) : null,
+      metadata: { ...item.metadata, coverUrl: coverUrl.trim() || null },
     })
     onClose()
+  }
+
+  async function handleReidentify() {
+    if (reidentifying) return
+    setReidentifying(true)
+    try {
+      const res = await fetch('/api/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: title.trim() || item.title }),
+      })
+      const r = await res.json()
+      if (r.title) setTitle(r.title)
+      if (r.creator) setCreator(r.creator)
+      if (r.type) setType(r.type)
+      if (r.year) setYear(String(r.year))
+    } catch {
+      // ignore — fields stay as-is
+    } finally {
+      setReidentifying(false)
+    }
   }
 
   function handleSaveReaction() {
@@ -251,11 +275,36 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
 
         {view === 'edit' && (
           <>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>edit details</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#444', margin: 0 }}>edit details</p>
+              <button
+                onClick={handleReidentify}
+                disabled={reidentifying}
+                style={{ background: 'none', border: 'none', fontSize: 12, color: reidentifying ? '#BBB' : '#111', cursor: reidentifying ? 'default' : 'pointer', padding: 0 }}
+              >
+                {reidentifying ? 'identifying…' : 're-identify'}
+              </button>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={inputStyle} />
               <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={inputStyle} />
               <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={inputStyle} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  value={coverUrl}
+                  onChange={e => setCoverUrl(e.target.value)}
+                  placeholder="cover image url (optional override)"
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                {coverUrl.trim() && (
+                  <img
+                    src={coverUrl.trim()}
+                    alt=""
+                    onError={e => (e.currentTarget.style.display = 'none')}
+                    style={{ width: 36, height: 36, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }}
+                  />
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
               {TYPES.map(t => {

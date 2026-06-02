@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 // Returns null until loaded or when nothing is found. Cached per item.
 const cache = new Map<string, string | null>()
 
-export function useArtwork(type: string, title: string, creator: string | null, year: number | null): string | null {
-  const [url, setUrl] = useState<string | null>(null)
+export function useArtwork(type: string, title: string, creator: string | null, year: number | null, overrideUrl?: string | null): string | null {
+  const [url, setUrl] = useState<string | null>(overrideUrl ?? null)
   useEffect(() => {
+    // User-supplied cover takes precedence — skip the API entirely.
+    if (overrideUrl) { setUrl(overrideUrl); return }
     const key = `${type}|${title}|${creator ?? ''}|${year ?? ''}`
     if (cache.has(key)) {
       setUrl(cache.get(key)!)
@@ -25,6 +27,6 @@ export function useArtwork(type: string, title: string, creator: string | null, 
       })
       .catch(() => { if (!cancelled) setUrl(null) })
     return () => { cancelled = true }
-  }, [type, title, creator, year])
+  }, [type, title, creator, year, overrideUrl])
   return url
 }
