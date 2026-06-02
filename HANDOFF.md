@@ -22,6 +22,7 @@ A personal PWA taste library for Farah and her husband Tom. Captures films, book
 - Edit reaction/note after marking done
 - Delete items (tap row → action sheet → delete with confirmation)
 - "From Shortcut" button: reads clipboard URL from iOS Shortcut result
+- Email capture: forward any email (or newsletter) to `anything@nospaces.xyz` → AI finds every film/book/music/TV item and saves them to the library
 
 ## iOS Shortcut (partially working)
 User has a manual Shortcut built in iOS Shortcuts app:
@@ -38,22 +39,21 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 
 **Known issue**: clipboard sometimes empty on second run. Reliability could be improved.
 
-## Email capture (IN PROGRESS — currently broken)
-- Domain: nospaces.xyz (registered on Porkbun)
-- Postmark set up, MX records added to Porkbun DNS (may still be propagating)
-- Postmark inbound webhook: https://nospaces.vercel.app/api/email ✅
-- /api/email.ts is built and deployed
-- **Current bug**: TypeError: Cannot convert argument to a ByteString — happening at character index 23, value 8226 (bullet point •). Suspect stray character in SUPABASE_SERVICE_ROLE_KEY env var on Vercel. Last fix: sanitize all env vars with cleanEnv() function. Not yet confirmed working.
-- **To debug**: Vercel → Logs → look for [email] log lines after sending test email to 2cd0b69cd3e551c9eb6f7d4c4379846e@inbound.postmarkapp.com
-- **Also needed**: SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL must be set in Vercel env vars (not VITE_ prefixed — server-side only)
+## Email capture (DONE ✅ — working as of 2026-06-01)
+- Domain: nospaces.xyz (registered on Porkbun). MX records point to inbound.postmarkapp.com — confirmed live.
+- Postmark inbound webhook: https://nospaces.vercel.app/api/email
+- Forward any email (or whole newsletter) to `anything@nospaces.xyz` (e.g. save@nospaces.xyz). Must be sent from an allowed address (farahmokhtar94@gmail.com or tom.effland@gmail.com).
+- AI lists every media item it finds, identifies each (creator/year/type from its own knowledge), and saves them with source = "email". No reply email is sent — items just appear in the library.
+- Fixes that got it working: handle title-based specified_items; tell the prompt to IDENTIFY/enrich items instead of copying email text; make the prompt always extract every media item (a plain forwarded newsletter with no note used to save zero); widened body slice to 12k chars.
+- ByteString error from earlier (bullet •) handled by cleanEnv()/sanitize() stripping non-ASCII; never reproduced after the prompt fixes.
+- Server-side Vercel env vars required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (not VITE_ prefixed).
 
 ## Planned next (user requested)
-1. **Finish debugging email** — ByteString error, possibly bad env var
-2. **Day 4 review** — check what's left from the original Day 4 plan
-3. **Cosmetic changes** — user has specific UI tweaks in mind (details TBD)
-4. **Tom's login** — publish Google OAuth consent screen (console.cloud.google.com → APIs & Services → OAuth consent screen → Publish App)
-5. **Music organization** — ability to organize/filter by artist more prominently
-6. **Screenshot shortcut reliability** — clipboard approach is flaky, consider Supabase "pending items" approach instead
+1. **Cosmetic + minor feature tweaks** — IN PROGRESS. User has specific UI tweaks and small features in mind (details being gathered).
+2. **Tom's login** — publish Google OAuth consent screen (console.cloud.google.com → APIs & Services → OAuth consent screen → Publish App)
+3. **Music organization** — ability to organize/filter by artist more prominently
+4. **Screenshot shortcut reliability** — clipboard approach is flaky, consider Supabase "pending items" approach instead
+5. **Day 4 review** — NOTE: no written Day 4 plan exists in the repo; was likely a verbal plan from an old session. Ask the user what it covered.
 
 ## Key files
 - `src/screens/LibraryScreen.tsx` — main library UI
