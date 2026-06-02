@@ -1,6 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+// heic-convert ships no types; esbuild bundles it for the Vercel function regardless.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import heicConvert from 'heic-convert'
 
 // Strip any non-ASCII chars that may have crept in via copy-paste
 const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
@@ -15,6 +19,53 @@ const ALLOWED_EMAILS = [
   'farahmokhtar94@gmail.com',
   'tom.effland@gmail.com',
 ]
+
+// Anthropic only accepts these image media types.
+const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+
+type Attachment = { ContentType?: string; Content?: string; Name?: string }
+
+// Figure out the real image type from the MIME type (params stripped) or the filename.
+function imageType(att: Attachment): string {
+  let t = (att.ContentType ?? '').split(';')[0].trim().toLowerCase()
+  if (t === 'image/jpg') t = 'image/jpeg'
+  const name = (att.Name ?? '').toLowerCase()
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : ''
+  // octet-stream / missing type → fall back to the file extension
+  if (!t.startsWith('image/') || t === 'image/octet-stream') {
+    const byExt: Record<string, string> = {
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+      webp: 'image/webp', heic: 'image/heic', heif: 'image/heif',
+    }
+    if (byExt[ext]) t = byExt[ext]
+  }
+  return t
+}
+
+// Return base64 data + a media type Anthropic will accept, converting HEIC/HEIF (iPhone's
+// default photo format, which Anthropic rejects) to JPEG. Returns null if unusable.
+async function prepImage(att: Attachment): Promise<{ mediaType: string; data: string } | null> {
+  if (!att.Content) return null
+  let mediaType = imageType(att)
+  let data = att.Content
+
+  if (mediaType === 'image/heic' || mediaType === 'image/heif') {
+    const input = Buffer.from(data, 'base64')
+    // Anthropic rejects images over ~5MB (base64). Start at decent quality and step down
+    // for very large photos (e.g. 48MP) until the raw JPEG is comfortably under the limit.
+    let quality = 0.6
+    let out: ArrayBuffer = await heicConvert({ buffer: input, format: 'JPEG', quality })
+    while (out.byteLength > 3_600_000 && quality > 0.3) {
+      quality -= 0.2
+      out = await heicConvert({ buffer: input, format: 'JPEG', quality })
+    }
+    data = Buffer.from(out).toString('base64')
+    mediaType = 'image/jpeg'
+  }
+
+  if (!SUPPORTED_IMAGE_TYPES.includes(mediaType)) return null
+  return { mediaType, data }
+}
 
 const EMAIL_PROMPT = (subject: string, body: string) => `
 This is an email or newsletter that was forwarded to be saved into a media library.
@@ -115,31 +166,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Sanitize body — strip non-latin characters that break ByteString conversion
   const body = sanitize(TextBody ?? HtmlBody?.replace(/<[^>]+>/g, ' ') ?? '')
 
-  // Check for image attachments
-  let imageResult = null
-  if (Attachments?.length > 0) {
-    const imgAttachment = Attachments.find((a: { ContentType: string }) =>
-      a.ContentType?.startsWith('image/')
-    )
-    if (imgAttachment) {
-      try {
-        const imgRes = await anthropic.messages.create({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 1024,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: { type: 'base64', media_type: imgAttachment.ContentType, data: imgAttachment.Content },
-              },
-              { type: 'text', text: 'Identify any film, book, music, or TV recommendation in this image. Return JSON: {"title":"...","creator":"...","type":"...","year":null,"confidence":"high|medium|low","metadata":{},"tags":[]}' },
-            ],
-          }],
-        })
-        const txt = imgRes.content[0].type === 'text' ? imgRes.content[0].text : ''
-        imageResult = JSON.parse(txt.replace(/```json\n?|\n?```/g, '').trim())
-      } catch { /* ignore failed image parse */ }
+  // Identify media from any image attachments. Each image is normalized first (HEIC→JPEG,
+  // media-type cleanup) so iPhone photos work. Errors are logged, never silently dropped.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const imageResults: any[] = []
+  const imageAttachments: Attachment[] = (Attachments ?? []).filter((a: Attachment) =>
+    imageType(a).startsWith('image/')
+  )
+  console.log('[email] image attachments:', imageAttachments.length,
+    JSON.stringify(imageAttachments.map(a => ({ type: a.ContentType, name: a.Name }))))
+
+  for (const att of imageAttachments) {
+    try {
+      const prepped = await prepImage(att)
+      if (!prepped) { console.log('[email] image skipped (unusable):', att.ContentType, att.Name); continue }
+      const imgRes = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: prepped.mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: prepped.data } },
+            { type: 'text', text: 'Identify the film, book, music album, or TV show shown in this image (e.g. a screenshot, poster, or cover). Use your own knowledge to give the exact canonical title, creator (director/author/artist/showrunner), and release year. Return JSON only: {"title":"...","creator":"...","type":"film|book|music|tv|other","year":1234,"confidence":"high|medium|low","metadata":{},"tags":[]}. If no media is identifiable, return {"title":null}.' },
+          ],
+        }],
+      })
+      const txt = imgRes.content[0].type === 'text' ? imgRes.content[0].text : ''
+      const result = JSON.parse(txt.replace(/```json\n?|\n?```/g, '').trim())
+      if (result?.title) imageResults.push(result)
+      else console.log('[email] image had no identifiable media')
+    } catch (err) {
+      console.error('[email] image identify failed:', err instanceof Error ? err.message : err)
     }
   }
 
@@ -155,9 +212,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const parsed = safeParse(txt)
 
   const allItems = [
-    ...(imageResult ? [imageResult] : []),
+    ...imageResults,
     ...(parsed.items ?? []),
-  ]
+  ].filter((i: { title?: string }) => i?.title)
 
   console.log('[email] items found:', allItems.length, JSON.stringify(allItems.map((i: {title: string}) => i.title)))
 

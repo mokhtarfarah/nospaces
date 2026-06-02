@@ -22,7 +22,7 @@ A personal PWA taste library for Farah and her husband Tom. Captures films, book
 - Edit reaction/note after marking done
 - Delete items (tap row → action sheet → delete with confirmation)
 - "From Shortcut" button: reads clipboard URL from iOS Shortcut result
-- Email capture: forward any email (or newsletter) to `anything@nospaces.xyz` → AI finds every film/book/music/TV item and saves them to the library
+- Email capture: forward any email (or newsletter) to `anything@nospaces.xyz` → AI finds every film/book/music/TV item and saves them to the library (incl. photo attachments — fixed 2026-06-02)
 
 ## iOS Shortcut (partially working)
 User has a manual Shortcut built in iOS Shortcuts app:
@@ -39,7 +39,12 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 
 **Known issue**: clipboard sometimes empty on second run. Reliability could be improved.
 
-## Email capture (DONE ✅ — working as of 2026-06-01)
+## Email capture (✅ fixed 2026-06-02 — picture attachments now work)
+- **Root cause:** picture emails saved nothing. Text-only emails were fine (verified live `{"saved":1}`). The image step rejected iPhone photos: Anthropic only accepts jpeg/png/gif/webp, but iPhone photos are **HEIC**, and some clients label attachments `image/jpeg; name=…` (params) — both got rejected, and the error was swallowed by an empty `catch`, so nothing saved.
+- **Fix (`api/email.ts`):** normalize the media type (strip params, map jpg→jpeg, fall back to filename ext), **convert HEIC/HEIF → JPEG via `heic-convert`** (quality 0.6, steps down for huge 48MP photos to stay under Anthropic's ~5MB limit), handle **all** image attachments not just the first, drop items with no title, and **log errors instead of swallowing** them.
+- Verified end-to-end with a real `.HEIC`: convert → valid JPEG → Anthropic reads it. Added dep: `heic-convert`.
+- History/setup below stays for reference.
+
 - Domain: nospaces.xyz (registered on Porkbun). MX records point to inbound.postmarkapp.com — confirmed live.
 - Postmark inbound webhook: https://nospaces.vercel.app/api/email
 - Forward any email (or whole newsletter) to `anything@nospaces.xyz` (e.g. save@nospaces.xyz). Must be sent from an allowed address (farahmokhtar94@gmail.com or tom.effland@gmail.com).
@@ -50,36 +55,56 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 
 ## TODO / Roadmap (user-curated — last edited 2026-06-02)
 
-### 🔧 Short-term fixes (small, queued)
-1. ✅ **Want-to rows subtitle** — now show year (+ type/seasons). Brainstorm extras still open (length: pages/runtime; "added when"; tags; who added it).
-2. ✅ **Show your notes** — "Your note" quote block on the action card + a ✎ mark on rows with a note.
-3. ✅ **Remove duplicates** — count + "Remove" banner in library; keeps best of each group (done > note/reaction > earliest). Block-on-save still TODO (optional).
-4. **Tom's login** — publish the Google OAuth consent screen (console.cloud.google.com → APIs & Services → OAuth consent screen → Publish App). (SKIPPED for now.)
-5. 🔄 **Action cards: tighter / sleeker / proportional** — first pass done: albums show square covers, others 2:3 posters; larger cover, tighter spacing. NEEDS USER EYE on real covers; deeper design pass still possible (dividers, collapsible blurb).
-6. **All lowercase?** — experiment: lowercase the whole UI, just for fun / aesthetic. (Not started.)
-7. ✅ **Where-to-watch → links** — provider logos now link to the title's search on that service (majors mapped; others fall back to JustWatch).
+### 🚨 Now / broken (do first)
+1. ✅ **Email upload broken (picture emails)** — FIXED 2026-06-02. iPhone HEIC photos + parametered media-types were rejected and the error swallowed. Now converts HEIC→JPEG, normalizes types, logs failures. See Email capture section.
+2. **iOS zoom-on-type** — page zooms in when you tap an input to type. Fix by making input font-size ≥16px (or viewport `maximum-scale=1`). Annoying, small fix.
+3. **Revert to where you were after editing an action card** — after you edit, you lose your place (scroll position / open card). Should return you to exactly where you were.
 
-### 🎯 Bigger near-term
-1. **Spotify login integration** — OAuth; e.g. add-to-queue, listening history.
-2. **Letterboxd integration** — (one-time import and/or sync).
-3. **Genre / mood tags + trend analysis** — richer tags, then synthesis/analysis of patterns across the library.
-4. **Recommendations** — sourced from user-selected trusted websites/sources.
-5. **Add/search UX** — clearer in-app "force exact / try again" (quotes + "look it up online" + Re-run exist); and/or a super-quick add page.
-   - **Descriptive/relative queries** (NEXT, designed, not built): e.g. "rosalía latest album", "newest Nolan movie" — AI can't reliably name "latest" (knowledge cutoff). Plan: identify prompt also returns an `intent` { creator, type, ordinal: latest|newest|first|debut }; server resolves the real title from a LIVE catalog — music via Deezer (artist → albums sorted by release_date; verified: Rosalía → "LUX" 2025), film/TV via TMDB person credits. Fall back to the AI guess if resolution fails. Implement in api/identify.ts.
+### 📥 Seamless capture (make uploading effortless — user theme)
+1. **Mark-as-done at identify time** — let you log a *done* item (reaction/note) right on the identify/confirm page, so it's 1 step not 2.
+2. **Bulk picture upload** — pick many screenshots/photos at once → AI runs on each → confirm/save in a batch.
+3. **Manual source field** — let you set/enter where an item came from (who recommended it / which site/newsletter) in add, upload, or edit. Decide where that data is useful (subtitle? filter? "recs that landed"?).
+4. **How to add music / songs** — clarify the music flow: today it's albums-oriented; figure out adding individual songs + the cleanest "add music" path.
+5. **Descriptive/relative queries** (designed, not built): e.g. "rosalía latest album", "newest Nolan movie" — AI can't reliably name "latest" (knowledge cutoff). Plan: identify prompt also returns an `intent` { creator, type, ordinal: latest|newest|first|debut }; server resolves the real title from a LIVE catalog — music via Deezer (artist → albums sorted by release_date; verified: Rosalía → "LUX" 2025), film/TV via TMDB person credits. Fall back to the AI guess if resolution fails. Implement in `api/identify.ts`.
 6. **Screenshot shortcut reliability** — clipboard flow is flaky; improve (Supabase "pending items" approach) or retire it.
+7. **Photo-blurb / OCR** — snap a back cover → Claude vision reads the blurb → save it.
+
+### 🎬 Integrations (user wants these)
+1. **Spotify login** — OAuth; e.g. add-to-queue, listening history, saved albums.
+2. **Letterboxd** — one-time CSV import and/or sync.
+
+### 🃏 Action card
+1. **Mark as done / edit reaction in the card** — do it inline on the action card (not only via the row action sheet).
+2. **Fix notes display** — show your note *below the blurb*, formatted nicely / user-friendly (current "Your note" block needs a pass).
+3. 🔄 **Design polish** — first pass done (albums square covers, others 2:3 posters, larger cover, tighter spacing). NEEDS USER EYE on real covers; deeper pass possible (dividers, collapsible blurb).
+4. **Manually link an item to a specific online/Wikipedia entry** — when auto-resolution picks the wrong entry (wrong edition/cover/blurb), let the user set the correct source. Plan: a "link" field in Edit details (paste a Wikipedia/URL) stored in `metadata.wikiUrl`; card's link/cover/blurb prefer the manual override; ideally fetch cover+blurb from that exact page. Could also offer a "pick the right one" chooser from search results.
+5. **"Want to reread/rewatch" button** — flag a *done* item to revisit, keeping its done status + reaction/note. Store as `metadata.revisit` boolean (no schema change); button on the card for done items (label adapts: reread/rewatch/relisten by type); add a "Revisit" filter chip. Recommended, low effort.
+
+### 📚 Library content / types
+1. **Book & movie series** — group a series the way TV shows group seasons. Not strictly needed for books (sort-by-author covers it) but nice for movie franchises.
+2. **Magazines / articles** — add as new media type(s).
+3. **TV season-specific ratings** — rate each season, not just tick-watched.
+
+### 🔀 Sort & grouping
+1. **Recently edited** — sort/group by last-edited, not just date-added.
+2. **By year — ascending & descending** — both directions.
+3. **Split each category into "want to" + "done"** — two sub-lists under each category header.
+4. **Subtitle extras** — decide what else to show on rows (length: pages/runtime; "added when"; tags; who added it / source).
+
+### 🎨 Polish / experiments
+1. **All lowercase?** — experiment: lowercase the whole UI, for aesthetic. (Not started.)
+2. ✅ **Where-to-watch → links** — provider logos link to the title's search on that service (majors mapped; others fall back to JustWatch).
+3. **Remove duplicates** — ✅ banner done (keeps best of each group). Block-on-save still optional TODO.
+
+### 🌱 Bigger / later
+1. **Genre / mood tags + trend analysis** — richer tags, then synthesis/analysis of patterns across the library.
+2. **Recommendations** — sourced from user-selected trusted websites/sources.
+3. **Tom's login** — publish the Google OAuth consent screen (console.cloud.google.com → APIs & Services → OAuth consent screen → Publish App). (SKIPPED for now.)
+4. **Optional multi-category** — bring back multi-select via long-press (not the default).
+5. **Import with notes/status** — bulk import that keeps reactions + done status (not just "want to").
 
 ### 🧹 Code cleanup (ongoing)
 - Continuously evaluate and use best judgment on when to do cleanup. Also periodically double-check security (RLS, auth, exposed keys, input handling). (Dead-code pass already done: removed identify "more" mode, SortSheet, identify-upload, seeds.)
-
-### 💡 Small future ideas
-1. **TV season-specific ratings** — rate each season, not just tick-watched.
-2. **Optional multi-category** — bring back multi-select via long-press (not the default).
-3. **Import with notes/status** — bulk import that keeps reactions + done status (not just "want to"). Email import no longer crashes on long notes (8192 tokens + defensive parse).
-4. **Photo-blurb / OCR** — snap a back cover → Claude vision reads the blurb → save it.
-5. **Action-card design pass** — polish (see short-term #5).
-6. **"+" quick-add in library** — low value unless it's a true inline quick-add (Add tab already covers one-tap).
-7. **"Want to reread/rewatch" button** — flag a *done* item to revisit, keeping its done status + reaction/note. Eval: good value, low effort. Store as metadata.revisit boolean (no schema change); button on the action card for done items (label adapts: reread/rewatch/relisten by type); add a "Revisit" filter chip. Recommended.
-8. **Manually link an item to a specific online/Wikipedia entry** — when auto-resolution picks the wrong entry (wrong edition/cover/blurb), let the user set the correct source. Eval: useful for accuracy, medium effort. Plan: a "link" field in Edit details (paste a Wikipedia/URL) stored in metadata (e.g. metadata.wikiUrl); the action card's link/cover/blurb prefer the manual override; ideally fetch cover+blurb from that exact Wikipedia page. Could also offer a "pick the right one" chooser from search results.
 
 ## Key files
 - `src/screens/LibraryScreen.tsx` — main library UI
