@@ -52,15 +52,15 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
   async function loadMore() {
     setLoadingMore(true)
     try {
-      const exclude = [item.title, ...candidates.map(c => c.title)]
-      const res = await fetch('/api/identify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: origQuery, more: true, exclude }),
-      })
+      // Search the real catalogs (iTunes / TMDB / Open Library) for actual matches.
+      const res = await fetch(`/api/lookup?q=${encodeURIComponent(origQuery)}`)
       const data = await res.json()
-      const more: AiResult[] = (data.alternatives ?? []).map(normalizeAlt)
-      setCandidates(prev => [...prev, ...more])
+      const more: AiResult[] = (data.results ?? []).map((r: Partial<AiResult>) => normalizeAlt(r as AiResult))
+      setCandidates(prev => {
+        const seen = new Set(prev.map(p => p.title.toLowerCase()))
+        return [...prev, ...more.filter(m => m.title && !seen.has(m.title.toLowerCase()))]
+      })
+      setCollapsed(false)
     } catch {
       /* ignore — leave list as-is */
     } finally {
@@ -190,10 +190,10 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
               disabled={loadingMore}
               style={{ background: 'none', border: 'none', color: '#111111', fontSize: 12, cursor: loadingMore ? 'default' : 'pointer', padding: 0 }}
             >
-              {loadingMore ? 'Finding more…'
+              {loadingMore ? 'Searching…'
                 : collapsed ? `Show options (${otherMatches.length})`
-                : otherMatches.length > 0 ? 'Show more options'
-                : 'Not the right one? See other matches'}
+                : otherMatches.length > 0 ? 'Look it up online'
+                : 'Not the right one? Look it up online'}
             </button>
             {otherMatches.length > 0 && !collapsed && (
               <button
