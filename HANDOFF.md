@@ -126,9 +126,11 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ### 🔗 Wikipedia coverage
 - ✅ Multi-fallback cascade: tries up to 4 queries per film (with year → without year → drop "The" → bare title). Films/TV trust search result; books/music use title guard.
-- ✅ **SW-abort retry** — PWA `clientsClaim()` was aborting all in-flight Wikipedia fetches on every new deploy (all 100+ requests failing simultaneously). Fix: if first round returns EMPTY, wait 700ms and retry once. Cached after that; no repeated overhead.
+- ✅ **Proxied through Vercel** (`api/wiki.ts`) — all Wikipedia calls happen server-side. Eliminated browser CORS errors entirely. Includes proper `User-Agent` header (required by Wikipedia API terms for server-side calls).
+- ✅ **Throttled to 3 concurrent requests** — prevents rate-limiting when the library renders many items at once.
+- ✅ **Persisted to item metadata** — once resolved, `metadata.wikiUrl/wikiThumb/wikiSummary` are saved to Supabase via `patchMetadata` (local state update + DB write, no full refetch). Future loads skip the API call entirely and read from DB. Gets more complete over a few page loads; fully warm after that.
 - **Backfill missing directors** — Letterboxd imports arrive with null creator (CSV has no director column). Re-identify button handles this one at a time. Bulk backfill not built yet.
-- **Still missing:** foreign-language titles where Wikipedia article name differs entirely from item title (e.g. Ponyo). `fetchByTitle` with `&titles=` + `&redirects=1` was attempted but caused CORS errors via HTTP redirects without CORS headers — removed. Needs a different approach if this becomes a priority.
+- **Still missing:** foreign-language titles where Wikipedia article name differs entirely from item title (e.g. Ponyo). Needs a different approach if this becomes a priority.
 
 ### 📚 Content / types
 1. **Book & movie series** — group like TV seasons.
