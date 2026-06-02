@@ -5,6 +5,7 @@ import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
 import { SortSheet, type SortOption } from '../components/SortSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
+import { wikiSearchUrl, useBookWikipedia } from '../lib/wikipedia'
 
 type CategoryFilter = 'all' | string
 type StatusFilter = 'all' | ItemStatus
@@ -303,6 +304,14 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
   const color = typeColor(item.type)
   const sourceLabel = item.source_detail ?? item.source.replace(/_/g, ' ')
 
+  // Wikipedia link: film/tv always (they reliably have pages); books only if a page exists.
+  const bookWiki = useBookWikipedia(item.title, item.creator, item.type === 'book')
+  const wikiUrl =
+    item.type === 'film' ? wikiSearchUrl(item.title, item.year, 'film')
+    : item.type === 'tv' ? wikiSearchUrl(item.title, item.year, 'TV series')
+    : item.type === 'book' ? bookWiki
+    : null
+
   const subtitle = item.status === 'done'
     ? [item.creator, item.year, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
     : [showType ? item.type : null, item.creator, sourceLabel].filter(Boolean).join(' · ')
@@ -339,13 +348,12 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
           <SpotifyGlyph />
         </button>
       )}
-      {/* Wikipedia quick-link — film only */}
-      {item.type === 'film' && (
+      {/* Wikipedia quick-link — film/tv always, books only when a page exists */}
+      {wikiUrl && (
         <button
           onClick={e => {
             e.stopPropagation()
-            const q = encodeURIComponent([item.title, item.year, 'film'].filter(Boolean).join(' '))
-            window.open(`https://en.wikipedia.org/w/index.php?search=${q}`, '_blank')
+            window.open(wikiUrl, '_blank')
           }}
           title="Open Wikipedia page"
           style={{
