@@ -42,6 +42,25 @@ export function AddScreen() {
 
   const recent = items.slice(0, 4)
 
+  // Handle results pre-filled from iOS Shortcut
+  useEffect(() => {
+    const t = searchParams.get('title')
+    if (!t) return
+    const result: AiResult = {
+      title: t,
+      creator: searchParams.get('creator') ?? '',
+      type: searchParams.get('type') ?? 'other',
+      year: searchParams.get('year') ? parseInt(searchParams.get('year')!) : null,
+      confidence: (searchParams.get('confidence') ?? 'high') as AiResult['confidence'],
+      metadata: {},
+      tags: [],
+      ambiguous: false,
+      alternatives: [],
+    }
+    setAiSource('photo')
+    setAiResult(result)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Handle images shared via iOS share sheet (Web Share Target)
   useEffect(() => {
     if (searchParams.get('shared') !== 'true') return
