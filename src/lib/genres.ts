@@ -29,3 +29,15 @@ export const GENRES: Record<string, string[]> = {
 export function genresForType(type: string): string[] {
   return GENRES[type] ?? []
 }
+
+// Union of every type's genre vocab, lowercased — used to tell a real genre
+// from a free-text descriptor (e.g. "New York", "sitcom", "ensemble cast").
+const ALL_GENRE_SET = new Set<string>(
+  Object.values(GENRES).flat().map(g => g.toLowerCase()),
+)
+
+// True only if `tag` is a known genre (in vocab). Everything else is a
+// descriptor — kept in tags[] and searchable, but hidden from genre surfaces.
+export function isGenreTag(tag: string): boolean {
+  return ALL_GENRE_SET.has(tag.toLowerCase())
+}

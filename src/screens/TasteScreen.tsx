@@ -2,6 +2,7 @@ import { useMemo, useState, useRef, type ReactNode } from 'react'
 import { useItems } from '../hooks/useItems'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { VIBES, VERDICTS } from '../lib/moods'
+import { isGenreTag } from '../lib/genres'
 
 const WEIGHTS: Record<ItemReaction, number> = {
   loved_it: 2, liked_it: 1, eh: 0, not_for_me: -1,
@@ -231,7 +232,7 @@ export function TasteScreen() {
   // Genres per type — tv last
   const genresByType = useMemo(() => {
     return (['film', 'book', 'music', 'tv'] as const)
-      .map(type => ({ type, scored: scoreTags(items, 'tags', type) }))
+      .map(type => ({ type, scored: scoreTags(items, 'tags', type).filter(s => isGenreTag(s.label)) }))
       .filter(({ scored }) => scored.length > 0)
   }, [items])
 
@@ -254,7 +255,7 @@ export function TasteScreen() {
   // "What doesn't land" — genres with negative scores, per type
   const lowGenresByType = useMemo(() => {
     return (['film', 'book', 'music', 'tv'] as const)
-      .map(type => ({ type, scored: scoreTags(items, 'tags', type).filter(s => s.score < 0) }))
+      .map(type => ({ type, scored: scoreTags(items, 'tags', type).filter(s => s.score < 0 && isGenreTag(s.label)) }))
       .filter(({ scored }) => scored.length > 0)
   }, [items])
 
@@ -287,12 +288,12 @@ export function TasteScreen() {
     return (['film', 'book', 'music', 'tv'] as const).map(type => {
       const map = new Map<string, number>()
       items.filter(i => i.status === 'want_to' && i.type === type).forEach(i =>
-        i.tags?.forEach(t => map.set(t, (map.get(t) ?? 0) + 1)))
+        i.tags?.forEach(t => { if (isGenreTag(t)) map.set(t, (map.get(t) ?? 0) + 1) }))
       const backlog = Array.from(map.entries())
         .map(([label, count]) => ({ label, score: count, count }))
         .sort((a, b) => b.score - a.score)
         .slice(0, 5)
-      const loved = scoreTags(items, 'tags', type).filter(s => s.score > 0).slice(0, 5)
+      const loved = scoreTags(items, 'tags', type).filter(s => s.score > 0 && isGenreTag(s.label)).slice(0, 5)
       return { type, backlog, loved }
     }).filter(({ backlog, loved }) => backlog.length > 0 || loved.length > 0)
   }, [items])

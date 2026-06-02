@@ -10,6 +10,7 @@ import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
 import { MOODS } from '../lib/moods'
+import { isGenreTag } from '../lib/genres'
 
 type StatusFilter = 'all' | ItemStatus
 
@@ -180,8 +181,13 @@ export function LibraryScreen() {
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
       if (newMusicOnly && musicOnly && !itemSource(item).toLowerCase().includes('new music tuesday')) return false
-      if (query && !item.title.toLowerCase().includes(query.toLowerCase()) &&
-          !item.creator?.toLowerCase().includes(query.toLowerCase())) return false
+      if (query) {
+        const q = query.toLowerCase()
+        const hit = item.title.toLowerCase().includes(q)
+          || item.creator?.toLowerCase().includes(q)
+          || item.tags?.some(t => t.toLowerCase().includes(q))  // incl. descriptor tags
+        if (!hit) return false
+      }
       return true
     })
   }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, scratchOnly])
@@ -203,7 +209,8 @@ export function LibraryScreen() {
     })
     return {
       moods:  MOODS.filter(m => moodSet.has(m)),  // canonical MOODS order
-      genres: [...genreSet].sort(),
+      genres: [...genreSet].filter(isGenreTag).sort(),  // real genres only; descriptors stay searchable
+
     }
   }, [baseFiltered])
 
