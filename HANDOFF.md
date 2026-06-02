@@ -65,12 +65,12 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 - **Display item notes** — notes (item.note) are saved (mark-done sheet / edit reaction) but shown nowhere. Recommended: a "Your note" quote block on the action card main view (italic, left accent border, distinct from the grey Wikipedia blurb so it reads as the user's own words); optionally a small 💬 indicator on the row when a note exists. (Drafted then reverted per user — implement later.)
 - **Remove duplicates function** — detect duplicate library items (same title + creator/type, case-insensitive) and let the user clear them; consider preventing dupes on save too. (Some may exist from test imports during dev.)
 
-## Code cleanup candidates (light refactor pass)
-- `api/identify.ts` `more` mode + `MORE_PROMPT` — dead (frontend uses /api/lookup now). Remove.
-- `src/components/SortSheet.tsx` — component unused (replaced by ViewSheet); only its `SortOption` type is imported. Move the type, delete the component.
-- `api/identify-upload.ts` — was for the iOS Shortcut, which we removed. Verify unused, then delete.
-- `src/lib/seeds.ts` — check if still referenced; likely stale.
-- External-data fetchers (TMDB/iTunes/Deezer/Open Library) are spread across api/art, api/lookup, api/blurb, api/watch, api/_bookMatch with some duplicated search logic — could consolidate shared helpers, but each endpoint serves a distinct purpose so keep light.
+## Code cleanup — DONE (dead-code pass)
+- ✅ Removed `identify.ts` `more` mode + `MORE_PROMPT` (frontend uses /api/lookup).
+- ✅ Deleted unused `src/components/SortSheet.tsx`; `SortOption` type now lives in ViewSheet.
+- ✅ Deleted `api/identify-upload.ts` (old iOS Shortcut endpoint, unreferenced).
+- ✅ Deleted stale `src/lib/seeds.ts`.
+- Not done (intentionally): consolidating the per-endpoint TMDB/iTunes/Deezer/Open Library fetchers — each serves a distinct purpose; book-match helpers are inlined in art.ts + blurb.ts (NOT a shared file — Vercel drops underscore-prefixed files from the bundle, which previously 500'd those endpoints).
 
 ## Future ideas (parked)
 - **TV season-specific ratings** — let each season in the checklist carry its own reaction, not just a watched tick + one show-level reaction.
@@ -91,8 +91,13 @@ Flow: share screenshot → shortcut runs → app opens → tap "From Shortcut" �
 - `src/hooks/useItems.ts` — all Supabase data operations
 - `src/hooks/useAuth.tsx` — Google OAuth, allowed emails list
 - `api/identify.ts` — text/image AI identification (JSON body)
-- `api/identify-upload.ts` — raw binary image upload (for iOS Shortcut)
 - `api/email.ts` — Postmark inbound email parsing
+- `api/art.ts` — best-source cover/poster (TMDB/Deezer/iTunes/Open Library/Apple Books)
+- `api/blurb.ts` — book blurb fallback (Open Library / Apple Books)
+- `api/lookup.ts` — real-catalog "look it up online" search
+- `api/watch.ts` — where-to-watch (TMDB), used by WhereToWatchSheet
+- `src/components/ViewSheet.tsx` — the View menu (presets = sort + grouping); owns SortOption type
+- `src/lib/{artwork,blurb,wikipedia,seasons}.ts` — client hooks for the above
 - `supabase/schema.sql` — full DB schema with RLS
 
 ## Tone with user

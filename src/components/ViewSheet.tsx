@@ -1,4 +1,5 @@
-import type { SortOption } from './SortSheet'
+// Ordering option used when sorting items within a view.
+export type SortOption = 'date_added' | 'alpha' | 'status' | 'reaction' | 'creator' | 'year'
 
 // A "view" bundles ordering + grouping into one coherent choice, instead of two
 // separate (and conflicting) sort/group controls.

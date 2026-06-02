@@ -24,45 +24,17 @@ If confidence is low, populate alternatives with up to 3 other possible matches 
 If the input is wrapped in quotation marks, treat the quoted text as an EXACT, literal title — do not substitute a more famous or differently-spelled work. Match that exact title even if it's obscure; if you can't, set type "other" and use the quoted text verbatim as the title.
 If you cannot identify anything, return type "other" with the input as the title.`
 
-const MORE_PROMPT = (input: string, exclude: string[]) => `Given this input: "${input}", list up to 6 DIFFERENT real things it could plausibly refer to (films, books, music albums, or TV shows).
-${exclude.length ? `Do NOT include these, they were already shown: ${exclude.join('; ')}.` : ''}
-Return JSON only:
-{
-  "alternatives": [
-    { "title": "...", "creator": "...", "type": "film|book|music|tv|other", "year": 1234, "confidence": "high|medium|low", "metadata": {}, "tags": [], "ambiguous": false, "alternatives": [] }
-  ]
-}`
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { input, imageBase64, mimeType, more, exclude, typeHint } = req.body as {
+  const { input, imageBase64, mimeType, typeHint } = req.body as {
     input?: string
     imageBase64?: string
     mimeType?: string
-    more?: boolean
-    exclude?: string[]
     typeHint?: string
   }
 
   const hintLine = typeHint ? `\nThe user indicates this is a ${typeHint}. Strongly prefer that type.` : ''
-
-  // "Show more options" — return a list of additional candidate matches.
-  if (more) {
-    try {
-      const message = await client.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: MORE_PROMPT(input ?? '', exclude ?? []) }],
-      })
-      const text = message.content[0].type === 'text' ? message.content[0].text : ''
-      const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
-      return res.status(200).json({ alternatives: json.alternatives ?? [] })
-    } catch {
-      return res.status(200).json({ alternatives: [] })
-    }
-  }
 
   try {
     const content: Anthropic.MessageParam['content'] = []
