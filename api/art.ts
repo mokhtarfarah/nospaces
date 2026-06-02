@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { searchBookDoc, appleBookMatches } from './_bookMatch'
 
 // Best-source artwork resolver:
 //   film/tv  -> TMDB poster (falls back to a season poster for shows with none)
@@ -59,6 +58,35 @@ async function itunesAlbumArt(title: string, creator: string): Promise<string | 
 
 async function musicArt(title: string, creator: string): Promise<string | null> {
   return (await deezerArt(title, creator)) ?? (await itunesAlbumArt(title, creator))
+}
+
+// Find the best Open Library doc, verifying author (when known) and preferring exact
+// title + matching year, so "Pride and Prejudice" doesn't match the Zombies edition.
+interface OLDoc { title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number; key?: string }
+async function searchBookDoc(title: string, creator: string, year?: number): Promise<OLDoc | null> {
+  const sp = new URLSearchParams({ title, limit: '10' })
+  if (creator) sp.set('author', creator)
+  const data = await (await fetch(`https://openlibrary.org/search.json?${sp}`)).json()
+  const docs: OLDoc[] = data?.docs ?? []
+  if (!docs.length) return null
+  const t = norm(title)
+  const c = creator ? norm(creator) : ''
+  const authorOk = (d: OLDoc) => !c || (d.author_name ?? []).some(a => { const n = norm(a); return n.includes(c) || c.includes(n) })
+  const pool = c ? docs.filter(authorOk) : docs
+  const cands = pool.length ? pool : docs
+  const exact = (d: OLDoc) => norm(d.title ?? '') === t
+  return (
+    cands.find(d => exact(d) && (!year || d.first_publish_year === year)) ??
+    cands.find(d => exact(d)) ??
+    (c ? pool[0] ?? null : cands[0] ?? null)
+  )
+}
+
+function appleBookMatches(trackName: string | undefined, artistName: string | undefined, title: string, creator: string): boolean {
+  if (norm(trackName ?? '') !== norm(title)) return false
+  if (!creator) return true
+  const a = norm(artistName ?? ''), c = norm(creator)
+  return a.includes(c) || c.includes(a)
 }
 
 async function openLibraryCover(title: string, creator: string, year?: number): Promise<string | null> {
