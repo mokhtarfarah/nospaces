@@ -85,3 +85,25 @@ cd /Users/farahmokhtar/nospaces
 npm run dev
 # app runs at localhost:5173
 ```
+
+## Build plan (original)
+- **Day 1 — Foundation** ✅ — PWA scaffold (Vite), Vercel deploy, Supabase + items schema, Google OAuth (2 accounts), basic Library + Add screens.
+- **Day 2 — UI** ✅ — full Library UI (filter rows, sort, colored left borders, month dividers, legend), list item component, mark-done sheet w/ reactions, empty states.
+- **Day 3 — AI + capture** ✅ — Anthropic connected, quick-add text → AI → confirm → save, photo → vision AI → confirm → save, iOS share sheet extension.
+- **Day 4 — Email capture + polish** — inbound email parsing via Postmark ✅; multi-recommendation reply flow (NOTE: built as auto-save-all, not an email reply flow — revisit if a reply/confirm-by-email step is wanted); fix broken things; start using for real ✅.
+- **Week 2** — Spotify OAuth + API (listening history, saved albums); Letterboxd one-time CSV import; grid / card view toggle.
+
+## Long-term wishlist (not scheduled)
+- Card / grid view toggle
+- Gmail / newsletter auto-parsing (passive, no forwarding needed)
+- Spotify two-way sync (add to queue in app → appears in Spotify)
+- Letterboxd one-time import
+- Apple Books / Kindle integration
+- Restaurant / place tracking (beyond media)
+- Personal taste graph — AI pattern recognition across logged items
+- AI recommendations based on selected sources
+- Person-based recommendations (weight by how often a person's suggestions land)
+- Shared lists / household view
+- Confidence indicator visible in UI for uncertain AI identifications
+- Group-by setting (month / year / none) as a user preference
+- Auto-import from a designated iOS Photos album
