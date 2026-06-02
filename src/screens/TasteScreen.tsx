@@ -88,16 +88,18 @@ function Section({ title, defaultOpen = false, count, children }: {
   )
 }
 
-function ReactionBar({ items, type }: { items: Item[]; type: string }) {
+function ReactionBar({ items, type, compact }: { items: Item[]; type: string; compact?: boolean }) {
   const done = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
   if (!done.length) return null
   const counts = Object.fromEntries(REACTION_ORDER.map(r => [r, done.filter(i => i.reaction === r).length]))
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 500, color: '#222' }}>{TYPE_LABEL[type] ?? type}</span>
-        <span style={{ fontSize: 11, color: '#BBB' }}>{done.length} rated</span>
-      </div>
+      {!compact && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#222' }}>{TYPE_LABEL[type] ?? type}</span>
+          <span style={{ fontSize: 11, color: '#BBB' }}>{done.length} rated</span>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 2, borderRadius: 3, overflow: 'hidden', height: 5 }}>
         {REACTION_ORDER.map(r => {
           const pct = counts[r] / done.length * 100
@@ -112,6 +114,89 @@ function ReactionBar({ items, type }: { items: Item[]; type: string }) {
         ))}
       </div>
     </div>
+  )
+}
+
+// Small uppercase sub-label inside a category card.
+function SubLabel({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ fontSize: 10, fontWeight: 700, color: '#C5C5C5', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }}>
+      {children}
+    </div>
+  )
+}
+
+// One collapsible card per medium — its whole taste profile in one place.
+// Replaces the old per-insight sections (which repeated the type labels 3+ times).
+function CategoryCard({ items, type }: { items: Item[]; type: string }) {
+  const data = useMemo(() => {
+    const genresScored = scoreTags(items, 'tags', type).filter(s => isGenreTag(s.label))
+    const genres = genresScored.filter(s => s.score >= 0).slice(0, 6)
+    const lowGenres = genresScored.filter(s => s.score < 0).slice(0, 6)
+
+    // Era — positively-rated decades from `year`.
+    const eraMap = new Map<string, { score: number; count: number }>()
+    for (const i of items) {
+      if (i.type !== type || i.status !== 'done' || !i.reaction || !i.year) continue
+      const decade = `${Math.floor(i.year / 10) * 10}s`
+      const w = WEIGHTS[i.reaction]
+      const e = eraMap.get(decade) ?? { score: 0, count: 0 }
+      eraMap.set(decade, { score: e.score + w, count: e.count + 1 })
+    }
+    const era = Array.from(eraMap.entries())
+      .map(([label, v]) => ({ label, score: v.score, count: v.count }))
+      .filter(s => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+
+    // Backlog — most-saved genres in want_to.
+    const bMap = new Map<string, number>()
+    items.filter(i => i.status === 'want_to' && i.type === type).forEach(i =>
+      i.tags?.forEach(t => { if (isGenreTag(t)) bMap.set(t, (bMap.get(t) ?? 0) + 1) }))
+    const backlog = Array.from(bMap.entries())
+      .map(([label, count]) => ({ label, score: count, count }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+
+    const ratedCount = items.filter(i => i.type === type && i.status === 'done' && i.reaction).length
+    return { genres, lowGenres, era, backlog, ratedCount }
+  }, [items, type])
+
+  const { genres, lowGenres, era, backlog, ratedCount } = data
+  if (ratedCount === 0 && backlog.length === 0) return null
+
+  return (
+    <Section title={TYPE_LABEL[type] ?? type} count={ratedCount || undefined}>
+      {ratedCount > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <ReactionBar items={items} type={type} compact />
+        </div>
+      )}
+      {genres.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <SubLabel>genres you love</SubLabel>
+          <RankedChips scored={genres} limit={6} />
+        </div>
+      )}
+      {era.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <SubLabel>era</SubLabel>
+          <RankedChips scored={era} limit={6} />
+        </div>
+      )}
+      {backlog.length > 0 && (
+        <div style={{ marginBottom: lowGenres.length > 0 ? 18 : 0 }}>
+          <SubLabel>most in backlog</SubLabel>
+          <RankedChips scored={backlog} limit={6} />
+        </div>
+      )}
+      {lowGenres.length > 0 && (
+        <div>
+          <SubLabel>doesn't land</SubLabel>
+          <RankedChips scored={lowGenres} limit={6} />
+        </div>
+      )}
+    </Section>
   )
 }
 
@@ -229,13 +314,6 @@ export function TasteScreen() {
 
   const doneWithReaction = useMemo(() => items.filter(i => i.status === 'done' && i.reaction), [items])
 
-  // Genres per type — tv last
-  const genresByType = useMemo(() => {
-    return (['film', 'book', 'music', 'tv'] as const)
-      .map(type => ({ type, scored: scoreTags(items, 'tags', type).filter(s => isGenreTag(s.label)) }))
-      .filter(({ scored }) => scored.length > 0)
-  }, [items])
-
   // Moods cross-type (moods are personal, not media-type-specific).
   // Two axes share the moods[] array: VIBES (feel) and VERDICTS (how it landed).
   const moodScores = useMemo(() => scoreTags(items, 'moods'), [items])
@@ -251,54 +329,6 @@ export function TasteScreen() {
       .sort((a, b) => b.score - a.score),
     [moodScores],
   )
-
-  // "What doesn't land" — genres with negative scores, per type
-  const lowGenresByType = useMemo(() => {
-    return (['film', 'book', 'music', 'tv'] as const)
-      .map(type => ({ type, scored: scoreTags(items, 'tags', type).filter(s => s.score < 0 && isGenreTag(s.label)) }))
-      .filter(({ scored }) => scored.length > 0)
-  }, [items])
-
-  const ratedTypes = useMemo(() =>
-    ['film', 'tv', 'book', 'music'].filter(t => doneWithReaction.some(i => i.type === t)),
-    [doneWithReaction],
-  )
-
-  // Era lean per type — decades you gravitate to, reaction-weighted, from `year`. tv last.
-  const eraByType = useMemo(() => {
-    return (['film', 'book', 'music', 'tv'] as const).map(type => {
-      const map = new Map<string, { score: number; count: number }>()
-      for (const i of items) {
-        if (i.type !== type || i.status !== 'done' || !i.reaction || !i.year) continue
-        const decade = `${Math.floor(i.year / 10) * 10}s`
-        const w = WEIGHTS[i.reaction]
-        const e = map.get(decade) ?? { score: 0, count: 0 }
-        map.set(decade, { score: e.score + w, count: e.count + 1 })
-      }
-      const scored = Array.from(map.entries())
-        .map(([label, v]) => ({ label, score: v.score, count: v.count }))
-        .filter(s => s.score > 0)  // "lean toward" = positively rated decades only
-        .sort((a, b) => b.score - a.score)
-      return { type, scored }
-    }).filter(({ scored }) => scored.length > 0)
-  }, [items])
-
-  // Backlog vs taste gap per type — what you keep saving vs what you rate highest. tv last.
-  const backlogVsTasteByType = useMemo(() => {
-    return (['film', 'book', 'music', 'tv'] as const).map(type => {
-      const map = new Map<string, number>()
-      items.filter(i => i.status === 'want_to' && i.type === type).forEach(i =>
-        i.tags?.forEach(t => { if (isGenreTag(t)) map.set(t, (map.get(t) ?? 0) + 1) }))
-      const backlog = Array.from(map.entries())
-        .map(([label, count]) => ({ label, score: count, count }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5)
-      const loved = scoreTags(items, 'tags', type).filter(s => s.score > 0 && isGenreTag(s.label)).slice(0, 5)
-      return { type, backlog, loved }
-    }).filter(({ backlog, loved }) => backlog.length > 0 || loved.length > 0)
-  }, [items])
-
-  const hasNegative = lowGenresByType.length > 0 || lowVibes.length > 0
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh' }}>
@@ -321,11 +351,18 @@ export function TasteScreen() {
     <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh' }}>
       <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 8px', letterSpacing: '-0.2px' }}>taste</h1>
 
-      {/* Vibes (feel) — cross-type; vibes don't belong to a medium. Top of the page. */}
+      {/* OVERALL — vibes + verdicts are cross-type (a vibe doesn't belong to a medium). */}
+      {/* Vibes (feel) — your taste fingerprint. Top of the page, open by default. */}
       <Section title="vibes" defaultOpen>
         {topVibes.length > 0
           ? <RankedChips scored={topVibes} limit={8} />
           : <p style={{ fontSize: 13, color: '#CCC', margin: 0 }}>tag a vibe when you mark things done.</p>}
+        {lowVibes.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <SubLabel>rarely lands</SubLabel>
+            <RankedChips scored={lowVibes} limit={6} />
+          </div>
+        )}
       </Section>
 
       {/* Verdicts (how it landed) — ranked by how often you reach for each, not by reaction. */}
@@ -336,86 +373,10 @@ export function TasteScreen() {
         </Section>
       )}
 
-      {/* Genres — split by type, tv last */}
-      <Section title="genres">
-        {genresByType.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {genresByType.map(({ type, scored }) => (
-              <div key={type}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 8 }}>{TYPE_LABEL[type]}</div>
-                <RankedChips scored={scored.filter(s => s.score >= 0)} limit={6} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p style={{ fontSize: 13, color: '#CCC', margin: 0 }}>genres will appear here as you add and rate new items.</p>
-        )}
-      </Section>
-
-      {/* Era lean per type — which decades land best. tv last. */}
-      {eraByType.length > 0 && (
-        <Section title="era">
-          <p style={{ fontSize: 11, color: '#CCC', margin: '0 0 14px' }}>decades you lean toward</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {eraByType.map(({ type, scored }) => (
-              <div key={type}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 8 }}>{TYPE_LABEL[type]}</div>
-                <RankedChips scored={scored} limit={6} />
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Backlog vs taste per type — what you save vs what you love. tv last. */}
-      {backlogVsTasteByType.length > 0 && (
-        <Section title="backlog vs taste">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {backlogVsTasteByType.map(({ type, backlog, loved }) => (
-              <div key={type}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#BBBBBB', marginBottom: 10 }}>{TYPE_LABEL[type]}</div>
-                {backlog.length > 0 && (
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 10, color: '#CCC', marginBottom: 6 }}>most in backlog</div>
-                    <RankedChips scored={backlog} />
-                  </div>
-                )}
-                {loved.length > 0 && (
-                  <div>
-                    <div style={{ fontSize: 10, color: '#CCC', marginBottom: 6 }}>rate highest</div>
-                    <RankedChips scored={loved} />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* How you rate — reaction bar per type */}
-      {ratedTypes.length > 0 && (
-        <Section title="how you rate">
-          {ratedTypes.map(t => <ReactionBar key={t} items={items} type={t} />)}
-        </Section>
-      )}
-
-      {/* What doesn't land */}
-      {hasNegative && (
-        <Section title="what doesn't land">
-          {lowGenresByType.map(({ type, scored }) => (
-            <div key={type} style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#DDDDDD', marginBottom: 8 }}>{TYPE_LABEL[type]}</div>
-              <RankedChips scored={scored} />
-            </div>
-          ))}
-          {lowVibes.length > 0 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#DDDDDD', marginBottom: 8 }}>vibes</div>
-              <RankedChips scored={lowVibes} />
-            </div>
-          )}
-        </Section>
-      )}
+      {/* PER CATEGORY — one card per medium holds its whole profile. tv last. */}
+      {(['film', 'book', 'music', 'tv'] as const).map(type => (
+        <CategoryCard key={type} items={items} type={type} />
+      ))}
 
       {/* Maintenance chores — bundled + collapsed so they don't interrupt insights */}
       {(untagged.length > 0 || needsRuntime.length > 0 || needsMoodMigration.length > 0) && (

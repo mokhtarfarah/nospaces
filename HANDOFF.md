@@ -109,7 +109,9 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
    - All client-side from `useItems`, no extra API calls.
    - **Still thin until backfill runs + moods accumulate through use.**
 3. **Recommendations page** (next big thing — its own design pass). Pick trusted sources → pull their lists → check off "want to". v1: manual pull (ask for a named list e.g. "NYT best books summer 2026" → AI+web fetch → parse → dedupe vs library → selectable checklist → save as want_to). v2: saved sources. v3: rank against taste snapshot.
-4. **Taste page overhaul** — full redesign pass needed. Parked until search/identify flow is more stable. Revisit after re-identify bugs are fixed and vibe/genre filter is in place so there's richer data to display.
+4. **Taste page** — reorganized **category-first** (session 6). Overall **vibes** + **verdicts** (cross-type) at the top; then one collapsible **CategoryCard** per medium (film/book/music/tv, tv last) holding that medium's ratings bar, genres-you-love, era, backlog, and doesn't-land. Chips capped + two-tier. Genre tags now partitioned from free-text descriptors via `isGenreTag` (descriptors stay searchable, hidden from genre surfaces). Vibe tags split into two axes — VIBES (feel) + VERDICTS (how it landed) in `src/lib/moods.ts`.
+   - **TODO (come back to): per-category vibes/verdicts.** Right now vibes/verdicts are overall-only. Later, optionally break them down inside each CategoryCard (your *film* vibes vs *book* vibes). Needs enough tagged data per type to be worth it.
+   - **Parked future axes:** *effort* (project/easy — pairs with runtime/pages data) and *occasion* (derived backlog filter — "what do I put on tonight"; never hand-tagged). See memory `taste-tags-structure`.
 
 ### 🃏 Action card
 1. ✅ **Mark done / edit reaction inline** — "mark as done" in action sheet footer for want_to items; transitions to reaction view inside the sheet (no second overlay). "edit reaction" for done items.
