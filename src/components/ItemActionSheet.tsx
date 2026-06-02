@@ -40,6 +40,31 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
   // Direct Wikipedia article link (null if no page exists / type not linked).
   const wikiUrl = useWikipediaLink(item.type, item.title, item.creator, item.year)
 
+  // Spotify (music) + Wikipedia (film/tv/book) quick links — shown on both main and edit views.
+  const quickLinks = (
+    <>
+      {item.type === 'music' && (
+        <button
+          onClick={() => {
+            const q = encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))
+            window.open(`https://open.spotify.com/search/${q}`, '_blank')
+          }}
+          style={{ ...actionBtn('#fff'), background: '#1DB954', border: 'none', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <SpotifyIcon /> Open in Spotify
+        </button>
+      )}
+      {wikiUrl && (
+        <button
+          onClick={() => window.open(wikiUrl, '_blank')}
+          style={{ ...actionBtn('#fff'), background: '#202122', border: 'none', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <WikiIcon /> Open Wikipedia page
+        </button>
+      )}
+    </>
+  )
+
   function handleSaveDetails() {
     onEdit({
       title: title.trim() || item.title,
@@ -82,26 +107,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
               </div>
             </div>
 
-            {item.type === 'music' && (
-              <button
-                onClick={() => {
-                  const q = encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))
-                  window.open(`https://open.spotify.com/search/${q}`, '_blank')
-                }}
-                style={{ ...actionBtn('#fff'), background: '#1DB954', border: 'none', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-              >
-                <SpotifyIcon /> Open in Spotify
-              </button>
-            )}
-
-            {wikiUrl && (
-              <button
-                onClick={() => window.open(wikiUrl, '_blank')}
-                style={{ ...actionBtn('#fff'), background: '#202122', border: 'none', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-              >
-                <WikiIcon /> Open Wikipedia page
-              </button>
-            )}
+            {quickLinks}
 
             <button onClick={() => setView('edit')} style={actionBtn('#333')}>
               Edit details
@@ -157,6 +163,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
                 )
               })}
             </div>
+            {quickLinks}
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
               <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#002FA7', border: 'none' }}>Save</button>
