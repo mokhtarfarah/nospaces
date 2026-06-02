@@ -207,7 +207,7 @@ export function LibraryScreen() {
           {['film', 'book', 'music', 'tv', ...types.filter(t => !['film','book','music','tv'].includes(t))].map(t => (
             <FilterChip
               key={t}
-              label={TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
+              label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
               active={categories.includes(t)}
               onClick={() => toggleCategory(t)}
             />
@@ -473,9 +473,12 @@ function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo 
 
 const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
 
+// Plural labels for the category filter chips (per-item labels stay singular).
+const CATEGORY_LABEL: Record<string, string> = { film: 'Films', book: 'Books', music: 'Music', tv: 'TV', other: 'Other' }
+
 // Small cover/poster thumbnail. Falls back to a type-colored tile so rows stay aligned.
 function Thumb({ src, type, color }: { src: string | null; type: string; color: { bg: string; border: string } }) {
-  const box: React.CSSProperties = { width: 42, height: 42, borderRadius: 8, flexShrink: 0, marginRight: 14, alignSelf: 'center' }
+  const box: React.CSSProperties = { width: 42, height: 42, borderRadius: 0, flexShrink: 0, marginRight: 14, alignSelf: 'center' }
   if (src) {
     return <img src={src} alt="" loading="lazy" style={{ ...box, objectFit: 'cover', border: '1px solid #EEE', background: '#F4F4F4' }} />
   }
@@ -492,7 +495,7 @@ function GridCard({ item, onTap }: { item: Item; onTap: () => void }) {
   const artwork = useArtwork(item.type, item.title, item.creator, item.year)
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
-      <div style={{ width: '100%', aspectRatio: '2 / 3', borderRadius: 6, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #EEE' }}>
+      <div style={{ width: '100%', aspectRatio: '2 / 3', borderRadius: 0, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #EEE' }}>
         {artwork
           ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : <span style={{ fontSize: 20 }}>{TYPE_EMOJI[item.type] ?? '✦'}</span>}
