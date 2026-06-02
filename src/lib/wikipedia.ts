@@ -45,16 +45,28 @@ async function fetchInfo(query: string): Promise<{ title: string; url: string; t
     '&prop=pageimages|info|extracts&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
     '&exsentences=2&explaintext=1' +
     `&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(query)}`
-  const data = await (await fetch(url)).json()
-  const pages = data?.query?.pages
-  if (!pages) return null
-  const page = Object.values(pages)[0] as { title?: string; fullurl?: string; thumbnail?: { source?: string }; extract?: string } | undefined
-  if (!page?.title) return null
-  return {
-    title: page.title,
-    url: page.fullurl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
-    thumbnail: page.thumbnail?.source ?? null,
-    summary: page.extract?.trim() || null,
+  try {
+    const resp = await fetch(url)
+    const data = await resp.json()
+    const pages = data?.query?.pages
+    if (!pages) {
+      console.warn('[wiki] no pages for query:', query, '| response keys:', Object.keys(data ?? {}))
+      return null
+    }
+    const page = Object.values(pages)[0] as { title?: string; fullurl?: string; thumbnail?: { source?: string }; extract?: string } | undefined
+    if (!page?.title) {
+      console.warn('[wiki] no title in page for query:', query)
+      return null
+    }
+    return {
+      title: page.title,
+      url: page.fullurl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
+      thumbnail: page.thumbnail?.source ?? null,
+      summary: page.extract?.trim() || null,
+    }
+  } catch (err) {
+    console.error('[wiki] fetch/parse error for query:', query, err)
+    return null
   }
 }
 
