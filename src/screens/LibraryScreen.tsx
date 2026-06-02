@@ -101,7 +101,7 @@ export function LibraryScreen() {
     setCategories(prev => (prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]))
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
-  const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [newMusicOnly, setNewMusicOnly] = useState(false)
   const [sort, setSort] = useState<SortOption>('date_added')
   const [groupBy, setGroupBy] = useState<'month' | 'creator'>('month')
   const [query, setQuery] = useState('')
@@ -119,28 +119,27 @@ export function LibraryScreen() {
     year:       'Year',
   }
 
-  // Canonical source labels (with near-duplicates collapsed) for the source filter.
+  // Canonical source labels (with near-duplicates collapsed) for row display.
   const canonicalSources = useMemo(
     () => buildCanonicalSources(Array.from(new Set(items.map(itemSource)))),
     [items],
   )
-  const sources = useMemo(
-    () => Array.from(new Set([...canonicalSources.values()])).sort(),
-    [canonicalSources],
-  )
+
+  // "New Music Tuesday" toggle only applies while viewing the Music category alone.
+  const musicOnly = categories.length === 1 && categories[0] === 'music'
 
   const filtered = useMemo(() => {
     let result = items.filter(item => {
       if (categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
-      if (sourceFilter !== 'all' && canonicalSources.get(itemSource(item)) !== sourceFilter) return false
+      if (newMusicOnly && musicOnly && !itemSource(item).toLowerCase().includes('new music tuesday')) return false
       if (query && !item.title.toLowerCase().includes(query.toLowerCase()) &&
           !item.creator?.toLowerCase().includes(query.toLowerCase())) return false
       return true
     })
     return sortItems(result, sort)
-  }, [items, categories, statusFilter, reactionFilter, sourceFilter, canonicalSources, query, sort])
+  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, sort])
 
   const grouped = useMemo(
     () => (groupBy === 'creator' ? groupByCreator(filtered) : groupByMonth(filtered)),
@@ -239,19 +238,14 @@ export function LibraryScreen() {
           ))}
         </div>
 
-        {/* Filter row 3 — source (only when there's more than one) */}
-        {sources.length > 1 && (
-          <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
-            <span style={{ fontSize: 11, color: '#999', flexShrink: 0, marginRight: 2 }}>Source</span>
-            <FilterChip label="All" active={sourceFilter === 'all'} onClick={() => setSourceFilter('all')} />
-            {sources.map(s => (
-              <FilterChip
-                key={s}
-                label={s.charAt(0).toUpperCase() + s.slice(1)}
-                active={sourceFilter === s}
-                onClick={() => setSourceFilter(sourceFilter === s ? 'all' : s)}
-              />
-            ))}
+        {/* New Music Tuesday toggle — only in the Music category */}
+        {musicOnly && (
+          <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center' }}>
+            <FilterChip
+              label="New Music Tuesday"
+              active={newMusicOnly}
+              onClick={() => setNewMusicOnly(v => !v)}
+            />
           </div>
         )}
       </header>
