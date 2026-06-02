@@ -108,7 +108,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
           style={{
             width: '100%',
             padding: 14,
-            background: reaction ? '#002FA7' : '#E0E0E0',
+            background: reaction ? '#111111' : '#E0E0E0',
             color: reaction ? '#fff' : '#999',
             border: 'none',
             borderRadius: 12,

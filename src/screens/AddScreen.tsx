@@ -181,7 +181,7 @@ export function AddScreen() {
           disabled={!title.trim() || loading}
           style={{
             width: '100%', marginTop: 16, padding: '14px',
-            background: title.trim() && !loading ? '#002FA7' : '#ccc',
+            background: title.trim() && !loading ? '#111111' : '#ccc',
             color: '#fff', border: 'none', borderRadius: 12,
             fontSize: 16, fontWeight: 600,
             cursor: title.trim() && !loading ? 'pointer' : 'default',

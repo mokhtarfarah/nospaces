@@ -14,7 +14,7 @@ export function LoginScreen() {
       background: '#ffffff',
     }}>
       <div style={{ textAlign: 'center', maxWidth: 320, width: '100%' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#002FA7', marginBottom: 8, letterSpacing: '-0.5px' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#111111', marginBottom: 8, letterSpacing: '-0.5px' }}>
           Nospaces
         </h1>
         <p style={{ color: '#666', fontSize: 15, marginBottom: 48, lineHeight: 1.5 }}>
@@ -25,7 +25,7 @@ export function LoginScreen() {
           style={{
             width: '100%',
             padding: '14px 20px',
-            background: '#002FA7',
+            background: '#111111',
             color: '#fff',
             border: 'none',
             borderRadius: 12,

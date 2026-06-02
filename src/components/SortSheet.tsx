@@ -45,7 +45,7 @@ export function SortSheet({ current, onChange, onClose }: Props) {
               borderBottom: '1px solid #F0F0F0',
               background: 'none',
               fontSize: 15,
-              color: current === opt.value ? '#002FA7' : '#222',
+              color: current === opt.value ? '#111111' : '#222',
               fontWeight: current === opt.value ? 600 : 400,
               cursor: 'pointer',
               textAlign: 'left',

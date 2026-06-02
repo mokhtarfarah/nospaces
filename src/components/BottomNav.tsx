@@ -32,11 +32,11 @@ export function BottomNav() {
       alignItems: 'center',
       zIndex: 100,
     }}>
-      <NavLink to="/add" style={({ isActive }) => ({ ...base, color: isActive ? '#002FA7' : '#999' })}>
+      <NavLink to="/add" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
         <AddIcon />
         Add
       </NavLink>
-      <NavLink to="/library" style={({ isActive }) => ({ ...base, color: isActive ? '#002FA7' : '#999' })}>
+      <NavLink to="/library" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
         <LibraryIcon />
         Library
       </NavLink>

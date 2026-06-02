@@ -170,7 +170,7 @@ export function LibraryScreen() {
               onClick={() => setGroupBy(g => (g === 'month' ? 'creator' : 'month'))}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
             >
-              {groupBy === 'month' ? 'By month' : 'By artist'} <span style={{ fontSize: 11 }}>⇄</span>
+              {groupBy === 'month' ? 'By month' : 'By creator'} <span style={{ fontSize: 11 }}>⇄</span>
             </button>
             <button
               onClick={() => setSortSheetOpen(true)}
@@ -359,10 +359,10 @@ function FilterChip({ label, active, onClick, disabled }: { label: string; activ
       style={{
         flexShrink: 0,
         padding: '5px 12px',
-        border: active && !disabled ? '1.5px solid #002FA7' : '1.5px solid #E0E0E0',
+        border: active && !disabled ? '1.5px solid #111111' : '1.5px solid #E0E0E0',
         borderRadius: 20,
-        background: active && !disabled ? '#E6EBFA' : '#fff',
-        color: disabled ? '#C4C4C4' : active ? '#002FA7' : '#555',
+        background: active && !disabled ? '#EDEDED' : '#fff',
+        color: disabled ? '#C4C4C4' : active ? '#111111' : '#555',
         fontSize: 13,
         fontWeight: active ? 600 : 400,
         cursor: disabled ? 'not-allowed' : 'pointer',

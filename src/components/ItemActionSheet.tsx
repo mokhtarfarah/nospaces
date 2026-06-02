@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useWikipediaInfo } from '../lib/wikipedia'
-import { getSeasons, type Season } from '../lib/seasons'
+import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
 
 interface Props {
   item: Item
@@ -51,6 +51,16 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
     updateSeasons([...seasons, { n: (seasons[seasons.length - 1]?.n ?? 0) + 1, done: false }])
   const removeLastSeason = () => updateSeasons(seasons.slice(0, -1))
 
+  // Auto-fill the season count from TVmaze when a TV show has none yet (display only;
+  // it persists once a season is ticked).
+  const autoCount = useSeasonCount(item.title, item.type === 'tv' && seasons.length === 0)
+  useEffect(() => {
+    if (item.type === 'tv' && seasons.length === 0 && autoCount && autoCount > 0) {
+      setSeasons(Array.from({ length: autoCount }, (_, i) => ({ n: i + 1, done: false })))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCount])
+
   // Wikipedia article link (null if no page exists / type not linked).
   // Music resolves a page (for the cover) but keeps Spotify as its button.
   const { url, summary } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
@@ -72,7 +82,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
   }
   if (item.type === 'film' || item.type === 'tv') {
     links.push({
-      key: 'watch', label: 'Watch', icon: <span style={{ fontSize: 12, color: '#C99700' }}>▶</span>,
+      key: 'watch', label: 'Watch', icon: <span style={{ fontSize: 12, color: '#333' }}>▶</span>,
       onClick: () => window.open(`https://www.justwatch.com/us/search?q=${encodeURIComponent([item.title, item.year].filter(Boolean).join(' '))}`, '_blank'),
     })
   }
@@ -233,7 +243,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
             {quickLinks}
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
-              <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#002FA7', border: 'none' }}>Save</button>
+              <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>Save</button>
             </div>
           </>
         )}
@@ -266,7 +276,7 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onSetSeasons, on
             />
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>Cancel</button>
-              <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#002FA7' : '#ccc', border: 'none' }}>Save</button>
+              <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#111111' : '#ccc', border: 'none' }}>Save</button>
             </div>
           </>
         )}

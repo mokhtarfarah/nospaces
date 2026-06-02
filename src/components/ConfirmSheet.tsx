@@ -143,7 +143,7 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
 
         {/* Edit toggle */}
         <button onClick={() => setEditing(v => !v)} style={{
-          background: 'none', border: 'none', color: '#002FA7',
+          background: 'none', border: 'none', color: '#111111',
           fontSize: 12, cursor: 'pointer', padding: 0, marginBottom: 16,
         }}>
           {editing ? 'Done editing' : 'Edit details'}
@@ -169,7 +169,7 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
             </>
           )}
           <button onClick={loadMore} disabled={loadingMore} style={{
-            background: 'none', border: 'none', color: '#002FA7',
+            background: 'none', border: 'none', color: '#111111',
             fontSize: 12, cursor: loadingMore ? 'default' : 'pointer', padding: 0,
           }}>
             {loadingMore ? 'Finding more…' : otherMatches.length > 0 ? 'Show more options' : 'Not the right one? See other matches'}
@@ -179,7 +179,7 @@ export function ConfirmSheet({ result, source, onConfirm, onClose }: Props) {
         <button
           onClick={() => onConfirm(item)}
           style={{
-            width: '100%', padding: 14, background: '#002FA7',
+            width: '100%', padding: 14, background: '#111111',
             color: '#fff', border: 'none', borderRadius: 12,
             fontSize: 16, fontWeight: 600, cursor: 'pointer',
           }}
