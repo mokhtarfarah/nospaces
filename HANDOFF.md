@@ -37,7 +37,7 @@ cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (server-side, email API)
 - `POSTMARK_SERVER_TOKEN` — **needed to activate email talkback** (get from Postmark → Servers → API Tokens). Not set yet → talkback silently no-ops, saving still works.
 - `POSTMARK_FROM` — optional reply-from override (e.g. `Nospaces <hello@nospaces.xyz>`)
-- `BANDSINTOWN_APP_ID` — for the "shows near you" tour-dates feature. Any string works for light use; register a real one for reliability (https://artists.bandsintown.com/support/api-installation). Falls back to `nospaces` if unset.
+- `TICKETMASTER_API_KEY` — for the "shows near you" tour-dates feature. Free, instant key (no approval) at https://developer.ticketmaster.com (Discovery API). Without it `/api/shows` returns empty. ⚠️ Coverage is Ticketmaster/Live Nation inventory only — indie + non-TM-ticketed shows won't appear (see Music section for the Bandsintown follow-up).
 
 ## Email capture
 Forward anything to `anything@nospaces.xyz` from an allowed address. AI finds every media item + saves as `want_to`. Photo attachments (incl. HEIC) work.
@@ -173,7 +173,9 @@ All shipped to `main` / live unless noted:
 ### 🎵 Music
 - ✅ **Touring dates / "shows near you"** — built session 7. Entry point: a `📍 shows near you` button in the **music category** filter row (only shows when viewing music alone), → `/shows` (`ShowsScreen.tsx`).
   - Pulls upcoming tour dates for every artist you've **liked or loved** (positive-reaction music only; `likedArtists()` in `src/lib/shows.ts`). Whole-backlog music is intentionally excluded.
-  - API: **Bandsintown**, proxied through `api/shows.ts` (attaches `BANDSINTOWN_APP_ID`, normalises to `{id, artist, datetime, venue, city, lat, lng, url}`, caches 12h). Songkick is dead; Ticketmaster not used.
+  - API: **Ticketmaster Discovery**, proxied through `api/shows.ts` (attaches `TICKETMASTER_API_KEY`, keyword=artist + classificationName=music + startDateTime=now, filters fuzzy keyword hits down to events whose billed attraction matches the artist, normalises to `{id, artist, datetime, venue, city, lat, lng, url}`, caches 12h).
+    - **Why not Bandsintown:** their public API is now gated — an unregistered `app_id` returns `"User is not authorized... explicit deny"`. Songkick's API is dead. Ticketmaster is the only free/instant option, but **only covers TM/Live Nation inventory** (misses indie venues, AXS/DICE/Eventbrite, much international).
+    - **🔭 FUTURE TODO (not now):** apply for Bandsintown API access (broader coverage). The proxy + normalised `Show` shape already support merging sources — fetch both, map to `Show[]`, dedupe by id. Do this only if/when Bandsintown approves.
   - Client fetches all artists with concurrency 5 and **streams results in** with a live `done/total` count (`fetchAllShows`).
   - **Two modes (tabs at top):**
     - **near me** — location-first. Primary = device GPS (`📍 use my location`); fallback = preset home cities with hardcoded lat/lng (`HOME_CITIES` — edit freely) so no geocoding API needed. Distance filter via haversine (`milesBetween`); radius chips 25/50/100/250 mi + "anywhere" (default 100 mi). Shows with no venue coords are dropped when a radius is active. Grouped by month.

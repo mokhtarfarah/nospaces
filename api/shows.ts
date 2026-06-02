@@ -1,22 +1,27 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-// Proxy for Bandsintown's public artist-events API. We go through Vercel so we
-// can (a) attach the app_id without exposing it in the client, (b) normalise the
-// response down to just the fields the UI needs, and (c) cache per artist.
+// Proxy for Ticketmaster's Discovery API. We go through Vercel so we can attach
+// the API key (kept server-side), normalise the response to just what the UI
+// needs, and cache per artist.
 //
-// Bandsintown app_id is just an identifier string — register a real one for
-// production reliability (https://artists.bandsintown.com/support/api-installation)
-// and set BANDSINTOWN_APP_ID in Vercel. Falls back to a default so dev works.
-const APP_ID = process.env.BANDSINTOWN_APP_ID || 'nospaces'
+// Set TICKETMASTER_API_KEY in Vercel — get one instantly (no approval) at
+// https://developer.ticketmaster.com (Discovery API). Coverage is Ticketmaster /
+// Live Nation inventory only; indie + non-TM-ticketed shows won't appear.
+//
+// FUTURE: merge in Bandsintown (broader coverage) once/if their API access is
+// approved — the normalised Show shape below already supports multiple sources;
+// just fetch both, map to Show[], and dedupe by id before returning.
+const API_KEY = process.env.TICKETMASTER_API_KEY
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? ''
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 
 export interface Show {
   id: string
   artist: string
-  datetime: string // ISO, local to venue
+  datetime: string // ISO
   venue: string
-  city: string // "City, Region" or "City, Country"
+  city: string // "City, ST" or "City, Country"
   lat: number | null
   lng: number | null
   url: string | null // ticket / event link
@@ -25,43 +30,58 @@ export interface Show {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const artist = one(req.query.artist).trim()
   if (!artist) return res.status(400).json({ shows: [] })
+  if (!API_KEY) return res.json({ shows: [], error: 'missing TICKETMASTER_API_KEY' })
 
-  // Bandsintown wants the artist name URL-encoded in the path; a literal "/" in
-  // a name must be double-encoded as %252F per their docs.
-  const enc = encodeURIComponent(artist.replace(/\//g, '%2F'))
-  const url = `https://rest.bandsintown.com/artists/${enc}/events?app_id=${encodeURIComponent(APP_ID)}&date=upcoming`
+  // Only future music events, soonest first.
+  const startDateTime = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const url =
+    'https://app.ticketmaster.com/discovery/v2/events.json' +
+    `?apikey=${encodeURIComponent(API_KEY)}` +
+    `&keyword=${encodeURIComponent(artist)}` +
+    '&classificationName=music&sort=date,asc&size=60' +
+    `&startDateTime=${encodeURIComponent(startDateTime)}`
 
   try {
-    const data = await (await fetch(url, {
-      headers: { 'User-Agent': 'Nospaces/1.0 (https://nospaces.vercel.app)' },
-    })).json()
+    const data = await (await fetch(url)).json()
+    const events: Record<string, any>[] = data?._embedded?.events ?? []
+    const want = norm(artist)
 
-    // Not-found / no-events responses come back as an object with a message,
-    // not an array. Treat anything non-array as "no shows".
-    if (!Array.isArray(data)) {
-      res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate')
-      return res.json({ shows: [] })
-    }
-
-    const shows: Show[] = data.map((e: Record<string, any>) => {
-      const v = e.venue ?? {}
-      const lat = parseFloat(v.latitude)
-      const lng = parseFloat(v.longitude)
-      const offer = Array.isArray(e.offers) ? e.offers.find((o: any) => o?.url) : null
-      return {
-        id: String(e.id ?? `${artist}-${e.datetime}`),
-        artist,
-        datetime: e.datetime ?? '',
-        venue: v.name ?? '',
-        city: v.location || [v.city, v.region || v.country].filter(Boolean).join(', '),
-        lat: Number.isFinite(lat) ? lat : null,
-        lng: Number.isFinite(lng) ? lng : null,
-        url: offer?.url ?? e.url ?? null,
-      }
-    })
+    const shows: Show[] = events
+      // Keyword search is fuzzy (tribute bands, partial matches). Keep only
+      // events where a billed attraction actually matches the artist we asked
+      // for; fall back to the event name when no attractions are listed.
+      .filter(e => {
+        const attractions: Record<string, any>[] = e?._embedded?.attractions ?? []
+        if (attractions.length) {
+          return attractions.some(a => {
+            const n = norm(a?.name ?? '')
+            return n === want || n.includes(want) || want.includes(n)
+          })
+        }
+        const n = norm(e?.name ?? '')
+        return n.includes(want) || want.includes(n)
+      })
+      .map(e => {
+        const v = e?._embedded?.venues?.[0] ?? {}
+        const lat = parseFloat(v?.location?.latitude)
+        const lng = parseFloat(v?.location?.longitude)
+        const region = v?.state?.stateCode || v?.country?.name || ''
+        const start = e?.dates?.start ?? {}
+        return {
+          id: String(e.id),
+          artist, // queried name → consistent grouping in the UI
+          datetime: start.dateTime || start.localDate || '',
+          venue: v?.name ?? '',
+          city: [v?.city?.name, region].filter(Boolean).join(', '),
+          lat: Number.isFinite(lat) ? lat : null,
+          lng: Number.isFinite(lng) ? lng : null,
+          url: e?.url ?? null,
+        }
+      })
+      .filter(s => s.datetime)
 
     // Cache 12h — tour dates don't change minute-to-minute, and this keeps us
-    // well under Bandsintown's rate limits when many artists resolve at once.
+    // well under Ticketmaster's rate limits when many artists resolve at once.
     res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate')
     return res.json({ shows })
   } catch {
