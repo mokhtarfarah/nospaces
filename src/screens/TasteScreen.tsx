@@ -51,7 +51,7 @@ function RankedLine({ scored, limit }: { scored: Scored[]; limit?: number }) {
   if (!scored.length) return null
   const shown = limit ? scored.slice(0, limit) : scored
   return (
-    <div style={{ fontSize: 15, lineHeight: 1.85, color: GRAPHITE, letterSpacing: '-0.1px' }}>
+    <div style={{ fontSize: 14, lineHeight: 1.85, color: GRAPHITE, letterSpacing: '-0.1px' }}>
       {shown.map((s, i) => {
         const isLead = i === 0 && s.score > 0
         return (
@@ -79,7 +79,7 @@ function Section({ title, defaultOpen = false, count, children }: {
           background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0',
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 600, color: INK, letterSpacing: '1.2px', textTransform: 'uppercase' }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: INK, letterSpacing: '1px', textTransform: 'uppercase' }}>
           {title}{count != null && <span style={{ color: MUTE, fontWeight: 500 }}>  {count}</span>}
         </span>
         <span style={{ fontSize: 10, color: MUTE }}>{open ? '▾' : '▸'}</span>
@@ -111,7 +111,7 @@ function ReactionBar({ items, type }: { items: Item[]; type: string }) {
 // Small uppercase sub-label inside a category card.
 function SubLabel({ children }: { children: ReactNode }) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: MUTE, letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 7 }}>
+    <div style={{ fontSize: 14, fontWeight: 600, color: GRAPHITE, letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: 8 }}>
       {children}
     </div>
   )
