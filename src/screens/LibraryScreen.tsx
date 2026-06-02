@@ -56,6 +56,21 @@ function groupByMonth(items: Item[]): Map<string, Item[]> {
   return map
 }
 
+function groupByCreator(items: Item[]): Map<string, Item[]> {
+  const map = new Map<string, Item[]>()
+  for (const item of items) {
+    const key = item.creator?.trim() || 'Unknown'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(item)
+  }
+  // Alphabetical by creator, with "Unknown" last.
+  return new Map(
+    [...map.entries()].sort((a, b) =>
+      a[0] === 'Unknown' ? 1 : b[0] === 'Unknown' ? -1 : a[0].localeCompare(b[0]),
+    ),
+  )
+}
+
 export function LibraryScreen() {
   const { items, loading, markDone, markWantTo, deleteItem, editItem } = useItems()
 
@@ -66,6 +81,7 @@ export function LibraryScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
   const [sort, setSort] = useState<SortOption>('date_added')
+  const [groupBy, setGroupBy] = useState<'month' | 'creator'>('month')
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [sortSheetOpen, setSortSheetOpen] = useState(false)
@@ -93,7 +109,10 @@ export function LibraryScreen() {
     return sortItems(result, sort)
   }, [items, categories, statusFilter, reactionFilter, query, sort])
 
-  const grouped = useMemo(() => groupByMonth(filtered), [filtered])
+  const grouped = useMemo(
+    () => (groupBy === 'creator' ? groupByCreator(filtered) : groupByMonth(filtered)),
+    [filtered, groupBy],
+  )
 
   // Unique types from real data for filter row
   const types = useMemo(() => {
@@ -114,6 +133,12 @@ export function LibraryScreen() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.3px' }}>Library</h1>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => setGroupBy(g => (g === 'month' ? 'creator' : 'month'))}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              {groupBy === 'month' ? 'By month' : 'By artist'} <span style={{ fontSize: 11 }}>⇄</span>
+            </button>
             <button
               onClick={() => setSortSheetOpen(true)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}

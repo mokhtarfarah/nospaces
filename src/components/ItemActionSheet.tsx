@@ -64,6 +64,17 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
           <WikiIcon /> Open Wikipedia page
         </button>
       )}
+      {(item.type === 'film' || item.type === 'tv') && (
+        <button
+          onClick={() => {
+            const q = encodeURIComponent([item.title, item.year].filter(Boolean).join(' '))
+            window.open(`https://www.justwatch.com/us/search?q=${q}`, '_blank')
+          }}
+          style={{ ...actionBtn('#1A1A1A'), background: '#FAD22B', border: 'none', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <span style={{ fontSize: 13 }}>▶</span> Where to watch
+        </button>
+      )}
     </>
   )
 
