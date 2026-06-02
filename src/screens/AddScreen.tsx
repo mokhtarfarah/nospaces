@@ -143,33 +143,39 @@ export function AddScreen() {
         <textarea
           value={title}
           onChange={e => setTitle(e.target.value)}
-          placeholder="Title, name, or description..."
-          rows={3}
+          placeholder="A film, book, album, or show — or describe it"
+          rows={2}
           style={{
             width: '100%', boxSizing: 'border-box',
-            padding: '12px', fontSize: 16,
-            border: '1.5px solid #E0E0E0', borderRadius: 12,
+            padding: '14px', fontSize: 16,
+            border: '1px solid #E4E4E4', borderRadius: 12,
             resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
           }}
         />
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-          <CaptureButton label="Photo" icon={<CameraIcon />} onClick={() => imageRef.current?.click()} />
-        </div>
 
         <button
           type="submit"
           disabled={!title.trim() || loading}
           style={{
-            width: '100%', marginTop: 16, padding: '14px',
-            background: title.trim() && !loading ? '#111111' : '#ccc',
+            width: '100%', marginTop: 12, padding: '14px',
+            background: title.trim() && !loading ? '#111111' : '#E2E2E2',
             color: '#fff', border: 'none', borderRadius: 12,
-            fontSize: 16, fontWeight: 600,
+            fontSize: 15, fontWeight: 600, letterSpacing: '0.2px',
             cursor: title.trim() && !loading ? 'pointer' : 'default',
           }}
         >
-          {loading ? 'Identifying...' : 'Identify & Save'}
+          {loading ? 'Identifying…' : 'Identify & Save'}
         </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 4px' }}>
+          <div style={{ flex: 1, height: 1, background: '#EEE' }} />
+          <span style={{ fontSize: 11, color: '#BBB' }}>or</span>
+          <div style={{ flex: 1, height: 1, background: '#EEE' }} />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <CaptureButton label="Add from a photo" icon={<CameraIcon />} onClick={() => imageRef.current?.click()} />
+        </div>
 
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error}</p>}
       </form>
@@ -178,12 +184,6 @@ export function AddScreen() {
       <input ref={imageRef} type="file" accept="image/*"
         onChange={e => { const f = e.target.files?.[0]; if (f) processImageFile(f, 'photo') }}
         style={{ display: 'none' }} />
-
-      {loading && (
-        <p style={{ textAlign: 'center', color: '#888', fontSize: 13, marginTop: 16 }}>
-          Identifying...
-        </p>
-      )}
 
       {recent.length > 0 && (
         <div style={{ marginTop: 32 }}>
@@ -219,10 +219,10 @@ function CaptureButton({ label, icon, onClick }: { label: string; icon: React.Re
       type="button"
       onClick={onClick}
       style={{
-        flex: 1, padding: '10px 8px',
-        border: '1.5px solid #E0E0E0', borderRadius: 10,
-        background: '#fff', fontSize: 12, color: '#555', cursor: 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        padding: '9px 16px',
+        border: '1px solid #E4E4E4', borderRadius: 20,
+        background: '#fff', fontSize: 13, color: '#555', cursor: 'pointer',
+        display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
       }}
     >
       {icon}
