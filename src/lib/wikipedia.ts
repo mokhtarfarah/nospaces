@@ -65,22 +65,22 @@ async function resolve(type: string, title: string, creator: string | null, year
   const queries = wikiQueries(type, title, creator, year)
   let info: WikiInfo = EMPTY
 
-  // Try each query in order, stopping at the first result whose title is a
-  // plausible match. Books/music need a strict match (common words return junk);
-  // films/tv use a loose check so "The Favourite (film)" still matches "The Favourite".
-  const strict = type === 'book' || type === 'music'
+  // Books/music: guard against common-word false positives by checking title similarity.
+  // Films/TV: trust the search result — Wikipedia film searches are reliable enough,
+  // and a strict title check breaks legitimate hits like "The Favourite (film)".
+  const guarded = type === 'book' || type === 'music'
   const a = normalize(title)
 
   for (const query of queries) {
     try {
       const found = await fetchInfo(query)
       if (!found) continue
-      const b = normalize(found.title)
-      const ok = strict ? (b.includes(a) || a.includes(b)) : (b.includes(a) || a.includes(b) || b.includes(a.replace(/^(the|a|an)\s+/i, '').trim()))
-      if (ok) {
-        info = { url: found.url, thumbnail: found.thumbnail, summary: found.summary }
-        break
+      if (guarded) {
+        const b = normalize(found.title)
+        if (!b.includes(a) && !a.includes(b)) continue
       }
+      info = { url: found.url, thumbnail: found.thumbnail, summary: found.summary }
+      break
     } catch {
       // network error on this attempt — try next query
     }
