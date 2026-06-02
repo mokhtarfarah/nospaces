@@ -1,74 +1,85 @@
 import { useEffect, useState } from 'react'
 
-// Resolve the direct Wikipedia article URL for a media item. Uses full-text search
-// (more forgiving than autocomplete, which only prefix-matches titles). Returns null
-// when nothing suitable is found. Cached per item.
-const cache = new Map<string, string | null>()
+// Look up a media item on Wikipedia and return its canonical article URL plus a
+// thumbnail image (poster / cover / album art). Uses full-text search (more forgiving
+// than autocomplete) and pulls the page image in the same request. Cached per item.
+export interface WikiInfo {
+  url: string | null
+  thumbnail: string | null
+}
 
-// Build the search query per media type. Returns null for types we don't link.
+const EMPTY: WikiInfo = { url: null, thumbnail: null }
+const cache = new Map<string, WikiInfo>()
+
+// Build the search query per media type. Returns null for types we don't look up.
 function wikiQuery(type: string, title: string, creator: string | null, year: number | null): string | null {
   switch (type) {
-    case 'film': return [title, year, 'film'].filter(Boolean).join(' ')
-    case 'tv':   return [title, 'TV series'].filter(Boolean).join(' ')
-    case 'book': return [title, creator].filter(Boolean).join(' ')
-    default:     return null
+    case 'film':  return [title, year, 'film'].filter(Boolean).join(' ')
+    case 'tv':    return [title, 'TV series'].filter(Boolean).join(' ')
+    case 'book':  return [title, creator].filter(Boolean).join(' ')
+    case 'music': return [title, creator, 'album'].filter(Boolean).join(' ')
+    default:      return null
   }
-}
-
-async function searchTopTitle(query: string): Promise<string | null> {
-  const res = await fetch(
-    `https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&origin=*&srsearch=${encodeURIComponent(query)}`,
-  )
-  const data = await res.json()
-  return data?.query?.search?.[0]?.title ?? null
-}
-
-function articleUrl(title: string): string {
-  return `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`
 }
 
 // Strip disambiguation parens and lowercase, for loose title comparison.
 const normalize = (s: string) => s.toLowerCase().replace(/\s*\([^)]*\)\s*/g, '').trim()
 
-async function resolve(type: string, title: string, creator: string | null, year: number | null): Promise<string | null> {
+async function fetchInfo(query: string): Promise<{ title: string; url: string; thumbnail: string | null } | null> {
+  const url =
+    'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*' +
+    '&prop=pageimages|info&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
+    `&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(query)}`
+  const data = await (await fetch(url)).json()
+  const pages = data?.query?.pages
+  if (!pages) return null
+  const page = Object.values(pages)[0] as { title?: string; fullurl?: string; thumbnail?: { source?: string } } | undefined
+  if (!page?.title) return null
+  return {
+    title: page.title,
+    url: page.fullurl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
+    thumbnail: page.thumbnail?.source ?? null,
+  }
+}
+
+async function resolve(type: string, title: string, creator: string | null, year: number | null): Promise<WikiInfo> {
   const key = `${type}|${title}|${creator ?? ''}|${year ?? ''}`
   if (cache.has(key)) return cache.get(key)!
 
   const query = wikiQuery(type, title, creator, year)
-  let url: string | null = null
+  let info: WikiInfo = EMPTY
   if (query) {
     try {
-      const found = await searchTopTitle(query)
+      const found = await fetchInfo(query)
       if (found) {
-        // Books often have no article — guard against linking an unrelated top hit.
-        // Films/TV reliably have pages, so accept the top result directly.
-        const ok = type !== 'book' || (() => {
-          const a = normalize(title)
-          const b = normalize(found)
-          return b.includes(a) || a.includes(b)
-        })()
-        if (ok) url = articleUrl(found)
+        // Books/albums are ambiguous — guard against an unrelated top hit (wrong page
+        // and wrong cover). Films/TV reliably resolve, so accept their top result.
+        const guarded = type === 'book' || type === 'music'
+        const a = normalize(title)
+        const b = normalize(found.title)
+        const ok = !guarded || b.includes(a) || a.includes(b)
+        if (ok) info = { url: found.url, thumbnail: found.thumbnail }
       }
     } catch {
-      url = null
+      info = EMPTY
     }
   }
-  cache.set(key, url)
-  return url
+  cache.set(key, info)
+  return info
 }
 
-// Resolves the direct Wikipedia article URL for an item, or null if no page exists
-// (or the type isn't linked).
-export function useWikipediaLink(type: string, title: string, creator: string | null, year: number | null): string | null {
-  const [url, setUrl] = useState<string | null>(null)
+// Resolves the Wikipedia article URL + thumbnail for an item. Both may be null when
+// no suitable page exists (or the type isn't looked up).
+export function useWikipediaInfo(type: string, title: string, creator: string | null, year: number | null): WikiInfo {
+  const [info, setInfo] = useState<WikiInfo>(EMPTY)
   useEffect(() => {
     let cancelled = false
-    resolve(type, title, creator, year).then(u => {
-      if (!cancelled) setUrl(u)
+    resolve(type, title, creator, year).then(i => {
+      if (!cancelled) setInfo(i)
     })
     return () => {
       cancelled = true
     }
   }, [type, title, creator, year])
-  return url
+  return info
 }

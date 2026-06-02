@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
-import { useWikipediaLink } from '../lib/wikipedia'
+import { useWikipediaInfo } from '../lib/wikipedia'
 
 interface Props {
   item: Item
@@ -37,8 +37,10 @@ export function ItemActionSheet({ item, onEdit, onEditReaction, onDelete, onClos
   const [confirmDelete, setConfirmDelete] = useState(false)
   const color = typeColor(item.type)
 
-  // Direct Wikipedia article link (null if no page exists / type not linked).
-  const wikiUrl = useWikipediaLink(item.type, item.title, item.creator, item.year)
+  // Wikipedia article link (null if no page exists / type not linked).
+  // Music resolves a page (for the cover) but keeps Spotify as its button.
+  const { url } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
+  const wikiUrl = item.type === 'music' ? null : url
 
   // Spotify (music) + Wikipedia (film/tv/book) quick links — shown on both main and edit views.
   const quickLinks = (

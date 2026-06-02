@@ -5,7 +5,7 @@ import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
 import { SortSheet, type SortOption } from '../components/SortSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
-import { useWikipediaLink } from '../lib/wikipedia'
+import { useWikipediaInfo } from '../lib/wikipedia'
 
 type CategoryFilter = 'all' | string
 type StatusFilter = 'all' | ItemStatus
@@ -164,7 +164,7 @@ export function LibraryScreen() {
               key={s}
               label={s === 'all' ? 'All' : s === 'want_to' ? 'Want to' : 'Done'}
               active={statusFilter === s}
-              onClick={() => setStatusFilter(s)}
+              onClick={() => { setStatusFilter(s); if (s === 'want_to') setReactionFilter('all') }}
             />
           ))}
           <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
@@ -173,6 +173,7 @@ export function LibraryScreen() {
               key={r}
               label={REACTION_LABELS[r]}
               active={reactionFilter === r}
+              disabled={statusFilter === 'want_to'}
               onClick={() => setReactionFilter(reactionFilter === r ? 'all' : r)}
             />
           ))}
@@ -272,20 +273,22 @@ function EmptyState({ hasItems }: { hasItems: boolean }) {
   )
 }
 
-function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function FilterChip({ label, active, onClick, disabled }: { label: string; active: boolean; onClick: () => void; disabled?: boolean }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       style={{
         flexShrink: 0,
         padding: '5px 12px',
-        border: active ? '1.5px solid #002FA7' : '1.5px solid #E0E0E0',
+        border: active && !disabled ? '1.5px solid #002FA7' : '1.5px solid #E0E0E0',
         borderRadius: 20,
-        background: active ? '#E6EBFA' : '#fff',
-        color: active ? '#002FA7' : '#555',
+        background: active && !disabled ? '#E6EBFA' : '#fff',
+        color: disabled ? '#C4C4C4' : active ? '#002FA7' : '#555',
         fontSize: 13,
         fontWeight: active ? 600 : 400,
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
         whiteSpace: 'nowrap',
       }}
     >
@@ -304,26 +307,31 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
   const color = typeColor(item.type)
   const sourceLabel = item.source_detail ?? item.source.replace(/_/g, ' ')
 
-  // Direct Wikipedia article link (null if no page exists / type not linked).
-  const wikiUrl = useWikipediaLink(item.type, item.title, item.creator, item.year)
+  // Wikipedia article link + cover/poster thumbnail.
+  const { url: wikiUrl, thumbnail } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
 
+  // Creator now lives on the title line, so it's dropped from the subtitle.
   const subtitle = item.status === 'done'
-    ? [item.creator, item.year, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
-    : [showType ? item.type : null, item.creator, sourceLabel].filter(Boolean).join(' · ')
+    ? [item.year, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
+    : [showType ? item.type : null, sourceLabel].filter(Boolean).join(' · ')
 
   return (
     <div
       onClick={onTap}
-      style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #F2F2F2', padding: '10px 16px 10px 0', marginLeft: 16, cursor: 'pointer' }}
+      style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #F2F2F2', padding: '8px 16px 8px 0', marginLeft: 16, cursor: 'pointer' }}
     >
-      <div style={{ width: 3, borderRadius: 2, background: color.border, flexShrink: 0, marginRight: 12, alignSelf: 'stretch' }} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {item.title}
+      <div style={{ width: 3, borderRadius: 2, background: color.border, flexShrink: 0, marginRight: 10, alignSelf: 'stretch' }} />
+      <Thumb src={thumbnail} type={item.type} color={color} />
+      <div style={{ flex: 1, minWidth: 0, alignSelf: 'center' }}>
+        <div style={{ fontSize: 13, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontWeight: 500 }}>{item.title}</span>
+          {item.creator && <span style={{ fontWeight: 400, color: '#999' }}>{'  ·  '}{item.creator}</span>}
         </div>
-        <div style={{ fontSize: 11, color: '#888', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {subtitle}
-        </div>
+        {subtitle && (
+          <div style={{ fontSize: 11, color: '#888', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {subtitle}
+          </div>
+        )}
       </div>
       {/* Spotify quick-link — music only */}
       {item.type === 'music' && (
@@ -343,8 +351,8 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
           <SpotifyGlyph />
         </button>
       )}
-      {/* Wikipedia quick-link — film/tv always, books only when a page exists */}
-      {wikiUrl && (
+      {/* Wikipedia quick-link — film/tv/book (music uses Spotify instead) */}
+      {item.type !== 'music' && wikiUrl && (
         <button
           onClick={e => {
             e.stopPropagation()
@@ -383,6 +391,21 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo }: {
       >
         ✓
       </button>
+    </div>
+  )
+}
+
+const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
+
+// Small cover/poster thumbnail. Falls back to a type-colored tile so rows stay aligned.
+function Thumb({ src, type, color }: { src: string | null; type: string; color: { bg: string; border: string } }) {
+  const box: React.CSSProperties = { width: 34, height: 34, borderRadius: 6, flexShrink: 0, marginRight: 12, alignSelf: 'center' }
+  if (src) {
+    return <img src={src} alt="" loading="lazy" style={{ ...box, objectFit: 'cover', border: '1px solid #EEE', background: '#F4F4F4' }} />
+  }
+  return (
+    <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+      {TYPE_EMOJI[type] ?? '✦'}
     </div>
   )
 }
