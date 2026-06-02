@@ -45,6 +45,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const text = message.content[0].type === 'text' ? message.content[0].text : ''
     const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
+
+    // Build a ready-to-open URL so the Shortcut only needs one dictionary lookup
+    const params = new URLSearchParams({
+      title: json.title ?? '',
+      type: json.type ?? 'other',
+      creator: json.creator ?? '',
+      year: json.year ? String(json.year) : '',
+      confidence: json.confidence ?? 'high',
+    })
+    json.open_url = `https://nospaces.vercel.app/add?${params.toString()}`
+
     res.status(200).json(json)
   } catch (err) {
     console.error(err)
