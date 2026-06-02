@@ -294,7 +294,7 @@ function SpotifyIcon() {
 }
 
 function WikiIcon() {
-  return <span style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 15, fontWeight: 700, color: '#202122', lineHeight: 1 }}>W</span>
+  return <span style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#202122', lineHeight: 1 }}>W</span>
 }
 
 function actionBtn(color: string): React.CSSProperties {

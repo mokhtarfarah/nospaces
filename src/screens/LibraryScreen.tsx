@@ -413,7 +413,7 @@ function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo 
           title="Open in Spotify"
           style={{
             flexShrink: 0, marginLeft: 8, width: 28, height: 28, borderRadius: '50%',
-            border: 'none', background: '#1DB954', cursor: 'pointer',
+            border: '1px solid #E6E6E6', background: '#F6F6F6', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
           }}
         >
@@ -430,7 +430,7 @@ function ItemRow({ item, showType, sourceLabel, onTap, onMarkDone, onMarkWantTo 
           title="Open Wikipedia page"
           style={{
             flexShrink: 0, marginLeft: 8, width: 28, height: 28, borderRadius: '50%',
-            border: 'none', background: '#202122', cursor: 'pointer',
+            border: '1px solid #E6E6E6', background: '#F6F6F6', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
           }}
         >
@@ -481,14 +481,14 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
 
 function SpotifyGlyph() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="#666" aria-hidden="true">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.59 14.42a.62.62 0 0 1-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.62.62 0 1 1-.28-1.21c3.82-.87 7.09-.5 9.72 1.1a.62.62 0 0 1 .21.86zm1.23-2.74a.78.78 0 0 1-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 1 1-.45-1.49c3.63-1.1 8.15-.56 11.23 1.33.37.22.49.7.26 1.07zm.11-2.85C14.81 8.98 9.5 8.8 6.44 9.73a.94.94 0 1 1-.54-1.8c3.52-1.07 9.38-.86 13.08 1.34a.94.94 0 0 1-.96 1.61z" />
     </svg>
   )
 }
 
 function WikiGlyph() {
-  return <span style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 15, fontWeight: 700, color: '#fff', lineHeight: 1 }}>W</span>
+  return <span style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: '#555', lineHeight: 1 }}>W</span>
 }
 
 function SearchIcon() {
