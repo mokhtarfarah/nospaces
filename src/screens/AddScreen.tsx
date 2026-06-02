@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
+import { BulkConfirmSheet, type BulkItem } from '../components/BulkConfirmSheet'
 import type { ItemReaction } from '../lib/database.types'
 
 async function identifyText(input: string, typeHint?: string | null): Promise<AiResult> {
@@ -72,6 +73,8 @@ export function AddScreen() {
   const [aiQuery, setAiQuery] = useState('') // the exact text the user typed (for "use as typed")
   const [typeHint, setTypeHint] = useState<string | null>(null)
   const imageRef = useRef<HTMLInputElement>(null)
+  const [bulkItems, setBulkItems] = useState<BulkItem[] | null>(null)
+  const [bulkLoading, setBulkLoading] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
@@ -136,6 +139,47 @@ export function AddScreen() {
       setLoading(false)
       if (imageRef.current) imageRef.current.value = ''
     }
+  }
+
+  async function processMultipleImages(files: File[]) {
+    setBulkLoading(true)
+    setError('')
+    // Build skeleton rows immediately so the sheet can show progress
+    const skeletons: BulkItem[] = files.map((file, i) => ({
+      id: i,
+      file,
+      preview: URL.createObjectURL(file),
+      result: null,
+      error: false,
+      checked: false,
+    }))
+    setBulkItems(skeletons)
+    setBulkLoading(false)
+
+    // Identify all in parallel, updating each row as it resolves
+    await Promise.all(files.map(async (file, i) => {
+      try {
+        const result = await identifyImage(file, typeHint)
+        setBulkItems(prev => prev
+          ? prev.map(it => it.id === i ? { ...it, result, checked: result.confidence !== 'low' } : it)
+          : prev)
+      } catch {
+        setBulkItems(prev => prev
+          ? prev.map(it => it.id === i ? { ...it, error: true } : it)
+          : prev)
+      }
+    }))
+  }
+
+  async function handleBulkConfirm(items: BulkItem[]) {
+    for (const item of items) {
+      if (!item.result) continue
+      await addItem(item.result.title, item.result.type, item.result.creator, item.result.year, item.result.metadata, item.result.tags)
+    }
+    // Revoke object URLs to free memory
+    bulkItems?.forEach(i => URL.revokeObjectURL(i.preview))
+    setBulkItems(null)
+    navigate('/library')
   }
 
   async function handleSubmit(e: React.FormEvent | React.KeyboardEvent) {
@@ -239,7 +283,11 @@ export function AddScreen() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <CaptureButton label="add from a photo" icon={<CameraIcon />} onClick={() => imageRef.current?.click()} />
+          <CaptureButton
+            label={bulkLoading ? 'identifying…' : 'add from photos'}
+            icon={<CameraIcon />}
+            onClick={() => !bulkLoading && imageRef.current?.click()}
+          />
         </div>
 
         {title.trim() && !loading && (
@@ -274,9 +322,15 @@ export function AddScreen() {
         </button>
       </div>
 
-      {/* Single image input — iOS shows camera + photo library options */}
-      <input ref={imageRef} type="file" accept="image/*"
-        onChange={e => { const f = e.target.files?.[0]; if (f) processImageFile(f, 'photo') }}
+      {/* Image input — single pick → single confirm, multi-pick → bulk confirm */}
+      <input ref={imageRef} type="file" accept="image/*" multiple
+        onChange={e => {
+          const files = Array.from(e.target.files ?? [])
+          if (files.length === 0) return
+          if (files.length === 1) processImageFile(files[0], 'photo')
+          else processMultipleImages(files)
+          if (imageRef.current) imageRef.current.value = ''
+        }}
         style={{ display: 'none' }} />
 
       {aiResult && (
@@ -286,6 +340,14 @@ export function AddScreen() {
           query={aiQuery}
           onConfirm={handleConfirm}
           onClose={() => setAiResult(null)}
+        />
+      )}
+
+      {bulkItems && (
+        <BulkConfirmSheet
+          items={bulkItems}
+          onConfirm={handleBulkConfirm}
+          onClose={() => { bulkItems.forEach(i => URL.revokeObjectURL(i.preview)); setBulkItems(null) }}
         />
       )}
     </div>
