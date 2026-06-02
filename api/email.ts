@@ -58,6 +58,42 @@ Return JSON only:
 }
 `
 
+// Parse the model's JSON defensively. If the reply is truncated/malformed, salvage every
+// complete item object from the "items" array (string-aware brace matching) so a long
+// note never crashes the whole request.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function safeParse(raw: string): any {
+  const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim()
+  try {
+    return JSON.parse(cleaned)
+  } catch { /* fall through to salvage */ }
+
+  const arrStart = cleaned.indexOf('[', cleaned.indexOf('"items"'))
+  if (arrStart < 0) return { items: [] }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const objs: any[] = []
+  let depth = 0, objStart = -1, inStr = false, esc = false
+  for (let i = arrStart + 1; i < cleaned.length; i++) {
+    const ch = cleaned[i]
+    if (inStr) {
+      if (esc) esc = false
+      else if (ch === '\\') esc = true
+      else if (ch === '"') inStr = false
+      continue
+    }
+    if (ch === '"') inStr = true
+    else if (ch === '{') { if (depth === 0) objStart = i; depth++ }
+    else if (ch === '}') {
+      depth--
+      if (depth === 0 && objStart >= 0) {
+        try { objs.push(JSON.parse(cleaned.slice(objStart, i + 1))) } catch { /* skip partial */ }
+        objStart = -1
+      }
+    } else if (ch === ']' && depth === 0) break
+  }
+  return { instruction: 'all', items: objs }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
@@ -107,15 +143,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // Parse email body for recommendations
+  // Parse email body for recommendations. Big notes can list dozens of items, so allow
+  // a large output and parse defensively (never 500 on a malformed/truncated reply).
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-5',
-    max_tokens: 2048,
+    max_tokens: 8192,
     messages: [{ role: 'user', content: EMAIL_PROMPT(subject, body) }],
   })
 
   const txt = message.content[0].type === 'text' ? message.content[0].text : ''
-  const parsed = JSON.parse(txt.replace(/```json\n?|\n?```/g, '').trim())
+  const parsed = safeParse(txt)
 
   const allItems = [
     ...(imageResult ? [imageResult] : []),
