@@ -174,6 +174,8 @@ function safeParse(raw: string): any {
   return { instruction: 'all', items: objs }
 }
 
+export const config = { maxDuration: 60 }
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
@@ -236,14 +238,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Parse email body for recommendations. Big notes can list dozens of items, so allow
   // a large output and parse defensively (never 500 on a malformed/truncated reply).
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 8192,
-    messages: [{ role: 'user', content: EMAIL_PROMPT(subject, body) }],
-  })
-
-  const txt = message.content[0].type === 'text' ? message.content[0].text : ''
-  const parsed = safeParse(txt)
+  let parsed: ReturnType<typeof safeParse>
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 8192,
+      messages: [{ role: 'user', content: EMAIL_PROMPT(subject, body) }],
+    })
+    const txt = message.content[0].type === 'text' ? message.content[0].text : ''
+    parsed = safeParse(txt)
+  } catch (err) {
+    console.error('[email] anthropic error:', err instanceof Error ? err.message : err)
+    await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
+      `I got your email but hit an error reading it — nothing was saved. Please try forwarding it again.`)
+    // Return 200 so Postmark doesn't retry the webhook
+    return res.status(200).json({ saved: 0, error: 'anthropic_error' })
+  }
 
   const allItems = [
     ...imageResults,
