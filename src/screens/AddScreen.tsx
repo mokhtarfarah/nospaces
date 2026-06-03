@@ -93,24 +93,8 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
 }
 
 import type { Item } from '../lib/database.types'
-import { isGenreTag } from '../lib/genres'
 import { useArtwork } from '../lib/artwork'
-
-const GAP_MEDIA_TYPES = ['film', 'tv', 'book', 'music']
-
-// Cheap, data-only gaps for an item (cover is resolved separately per row, since
-// it needs the art API). Returns the human labels of what's missing.
-function itemGaps(item: Item): string[] {
-  if (!GAP_MEDIA_TYPES.includes(item.type)) return []
-  const gaps: string[] = []
-  if (!item.year) gaps.push('year')
-  if (!item.creator?.trim()) gaps.push('creator')
-  if (!(item.tags ?? []).some(isGenreTag)) gaps.push('genre')
-  if (item.type === 'book') { if (!item.metadata?.pages) gaps.push('pages') }
-  else if (item.type === 'film' || item.type === 'tv') { if (!item.metadata?.runtime) gaps.push('runtime') }
-  if (!item.metadata?.wikiUrl) gaps.push('wiki')
-  return gaps
-}
+import { itemGaps } from '../lib/gaps'
 
 // One row in the "fill by hand" list. Resolves art the same way the library does
 // so it can flag a genuinely missing cover (no stored image AND nothing the art
@@ -423,7 +407,7 @@ function LibraryTools({ items, editItem, open }: {
               )}
               <div style={{ marginTop: 8, maxHeight: 340, overflowY: 'auto', border: '1px solid #ECEAE6', borderRadius: 6 }}>
                 {shownIncomplete.map(({ item, gaps }) => (
-                  <GapRow key={item.id} item={item} gaps={gaps} onOpen={() => navigate(`/library?item=${item.id}&edit=1`)} />
+                  <GapRow key={item.id} item={item} gaps={gaps} onOpen={() => navigate(`/library?item=${item.id}&edit=1&tidy=1`)} />
                 ))}
               </div>
             </>

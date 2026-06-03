@@ -25,6 +25,11 @@ interface Props {
   onClose: () => void
   // Open straight into the edit view (e.g. deep-linked from the data-gaps list).
   initialEdit?: boolean
+  // Tidy-queue walk-through: when present, the edit view shows "save & next" /
+  // "skip" instead of plain "save", and a "n of total" position line.
+  tidyPosition?: { index: number; total: number }
+  onSaveNext?: () => void
+  onSkipNext?: () => void
 }
 
 const TYPES = ['film', 'book', 'music', 'tv', 'other']
@@ -59,7 +64,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, initialEdit }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, initialEdit, tidyPosition, onSaveNext, onSkipNext }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -144,7 +149,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         ?? `https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`)
     : null
 
-  function handleSaveDetails() {
+  function persistEditFields() {
     const newTitle   = title.trim() || item.title
     const newCreator = creator.trim() || null
     const newYear    = year ? parseInt(year) : null
@@ -166,7 +171,17 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
       source_detail: sourceDetail.trim() || null,
       metadata,
     })
+  }
+
+  function handleSaveDetails() {
+    persistEditFields()
     onClose()
+  }
+
+  // Tidy-queue: save the current item, then advance to the next gappy one.
+  function handleSaveNext() {
+    persistEditFields()
+    onSaveNext?.()
   }
 
   // autoSave=true (main card): save result immediately, no edit view.
@@ -615,7 +630,14 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         {view === 'edit' && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <p style={{ ...sectionHeading, margin: 0 }}>edit details</p>
+              <p style={{ ...sectionHeading, margin: 0 }}>
+                edit details
+                {tidyPosition && (
+                  <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: '#ABA69C', textTransform: 'none', letterSpacing: 0 }}>
+                    tidying · {tidyPosition.index + 1} of {tidyPosition.total}
+                  </span>
+                )}
+              </p>
               <button
                 onClick={() => handleReidentify(false)}
                 disabled={reidentifying}
@@ -675,8 +697,17 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               })}
             </div>
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
-              <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
-              <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>save</button>
+              {onSaveNext ? (
+                <>
+                  <button onClick={onSkipNext} style={{ ...actionBtn('#333'), flex: 1 }}>skip ›</button>
+                  <button onClick={handleSaveNext} style={{ ...actionBtn('#fff'), flex: 2, background: '#111111', border: 'none' }}>save &amp; next ›</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
+                  <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>save</button>
+                </>
+              )}
             </div>
           </>
         )}

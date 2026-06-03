@@ -12,6 +12,7 @@ import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
 import { MOODS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
+import { gapQueue } from '../lib/gaps'
 
 type StatusFilter = 'all' | ItemStatus
 
@@ -168,15 +169,41 @@ export function LibraryScreen() {
   const [actionItem, setActionItem] = useState<Item | null>(null)
   // When deep-linked from the data-gaps list with &edit=1, open straight into edit.
   const [actionEdit, setActionEdit] = useState(false)
+  // Tidy queue: an ordered snapshot of gappy item ids + a cursor, so "save & next"
+  // walks through them without bouncing back to the Add page. null = not tidying.
+  const [tidyQueue, setTidyQueue] = useState<string[] | null>(null)
+  const [tidyIndex, setTidyIndex] = useState(0)
   // Deep-link: arriving with ?item=<id> (e.g. from the data-gaps list) opens that
   // item's action sheet so it can be filled in place, then clears the param.
   useEffect(() => {
     const id = searchParams.get('item')
     if (!id || loading) return
     const target = items.find(i => i.id === id)
-    if (target) { setActionItem(target); setActionEdit(searchParams.get('edit') === '1') }
-    setSearchParams(prev => { prev.delete('item'); prev.delete('edit'); return prev }, { replace: true })
+    if (target) {
+      setActionItem(target)
+      setActionEdit(searchParams.get('edit') === '1')
+      // tidy=1 → start a walk-through queue beginning at the tapped item.
+      if (searchParams.get('tidy') === '1') {
+        const q = gapQueue(items).map(x => x.item.id)
+        const start = q.indexOf(id)
+        setTidyQueue(q)
+        setTidyIndex(start < 0 ? 0 : start)
+      }
+    }
+    setSearchParams(prev => { prev.delete('item'); prev.delete('edit'); prev.delete('tidy'); return prev }, { replace: true })
   }, [searchParams, loading, items, setSearchParams])
+
+  // Advance the tidy queue to the next still-present item (skips deleted ones).
+  // When the queue runs out, close the sheet and head back to the Add page.
+  const goToTidy = useCallback((from: number) => {
+    if (!tidyQueue) { setActionItem(null); setActionEdit(false); return }
+    for (let i = from; i < tidyQueue.length; i++) {
+      const next = items.find(it => it.id === tidyQueue[i])
+      if (next) { setTidyIndex(i); setActionItem(next); setActionEdit(true); return }
+    }
+    setActionItem(null); setActionEdit(false); setTidyQueue(null)
+    navigate('/add')
+  }, [tidyQueue, items, navigate])
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
@@ -640,6 +667,9 @@ export function LibraryScreen() {
             key={fresh.id}
             item={fresh}
             initialEdit={actionEdit}
+            tidyPosition={tidyQueue ? { index: tidyIndex, total: tidyQueue.length } : undefined}
+            onSaveNext={tidyQueue ? () => goToTidy(tidyIndex + 1) : undefined}
+            onSkipNext={tidyQueue ? () => goToTidy(tidyIndex + 1) : undefined}
             onEdit={fields => { editItem(fresh.id, fields) }}
             onSetMoods={moods => editItem(fresh.id, { moods })}
             onSetTags={tags => editItem(fresh.id, { tags })}
@@ -648,7 +678,7 @@ export function LibraryScreen() {
             onEditReaction={(reaction, note, moods) => { editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }}
             onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
             onDelete={() => { deleteItem(fresh.id); setActionItem(null) }}
-            onClose={() => { setActionItem(null); setActionEdit(false) }}
+            onClose={() => { setActionItem(null); setActionEdit(false); setTidyQueue(null) }}
           />
         )
       })()}
