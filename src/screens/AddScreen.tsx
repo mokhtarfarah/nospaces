@@ -148,7 +148,7 @@ function LibraryTools({ items, editItem }: {
   const btnStyle = { padding: '7px 16px', borderRadius: 20, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
 
   return (
-    <div style={{ marginTop: 16, paddingTop: 16, textAlign: 'center' }}>
+    <div style={{ marginTop: 20, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
       <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}>
         {open ? 'hide library tools' : 'library tools'}
       </button>
