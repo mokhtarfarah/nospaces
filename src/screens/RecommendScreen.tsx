@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 
 interface RecItem {
+  rank: number
   title: string
   creator: string | null
   type: string
   year: number | null
+  tags: string[]
   blurb: string
 }
 
@@ -32,12 +34,11 @@ export function RecommendScreen() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [source, setSource] = useState('')
+  const [sourceUrl, setSourceUrl] = useState('')
   const [rows, setRows] = useState<Row[] | null>(null)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState<number | null>(null)
 
-  // Library keys for dedupe: type + normalized title (creators often differ
-  // slightly between a published list and what we stored).
   const libraryKeys = useMemo(
     () => new Set(items.map(i => `${i.type}|${norm(i.title)}`)),
     [items],
@@ -54,12 +55,13 @@ export function RecommendScreen() {
         body: JSON.stringify({ query: text }),
       })
       if (!res.ok) throw new Error('request failed')
-      const data = await res.json() as { source: string; items: RecItem[] }
+      const data = await res.json() as { source: string; sourceUrl: string; items: RecItem[] }
       if (!data.items?.length) {
-        setError("Couldn't find that list. Try naming the outlet and year, e.g. “Time best films 2025”.")
+        setError("Couldn't find that list. Try naming the outlet and year, e.g. \"Time best films 2025\", or paste a direct URL.")
         return
       }
       setSource(data.source || text)
+      setSourceUrl(data.sourceUrl || '')
       setRows(data.items.map(it => {
         const inLibrary = libraryKeys.has(`${it.type}|${norm(it.title)}`)
         return { ...it, inLibrary, checked: !inLibrary }
@@ -75,7 +77,13 @@ export function RecommendScreen() {
     setRows(prev => prev && prev.map((r, idx) => idx === i ? { ...r, checked: !r.checked } : r))
   }
 
+  const selectableCount = rows?.filter(r => !r.inLibrary).length ?? 0
   const selected = rows?.filter(r => r.checked) ?? []
+  const allChecked = selected.length === selectableCount && selectableCount > 0
+
+  function toggleAll() {
+    setRows(prev => prev && prev.map(r => r.inLibrary ? r : { ...r, checked: !allChecked }))
+  }
 
   async function handleSave() {
     if (!selected.length) return
@@ -88,12 +96,15 @@ export function RecommendScreen() {
         year: r.year,
         status: 'want_to',
         reaction: null,
-        note: r.blurb || null,
+        note: null,
         source: 'manual',
         source_detail: 'recommendation',
         recommended_by: source,
-        metadata: {},
-        tags: [],
+        metadata: {
+          ...(sourceUrl ? { recommendationUrl: sourceUrl } : {}),
+          ...(r.blurb ? { recommendationBlurb: r.blurb } : {}),
+        },
+        tags: r.tags,
         moods: [],
         date_done: null,
       }))
@@ -123,15 +134,15 @@ export function RecommendScreen() {
         recommendations
       </h1>
       <p style={{ fontSize: 14, color: '#777', lineHeight: 1.5, margin: '0 0 18px' }}>
-        Name a list — a "best of", a critic's roundup, a publication's picks. I'll pull
-        the real list, skip what you already have, and let you save the rest to <b>want to</b>.
+        Name a list or paste a URL — a "best of", a critic's roundup, a publication's picks.
+        I'll pull the real list, skip what you already have, and let you save the rest to <b>want to</b>.
       </p>
 
       <textarea
         value={query}
         onChange={e => setQuery(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePull(query) } }}
-        placeholder="e.g. NYT best books of summer 2026"
+        placeholder="e.g. NYT best books summer 2026 — or paste a URL"
         rows={2}
         style={{
           width: '100%', boxSizing: 'border-box', padding: '14px', fontSize: 16,
@@ -179,14 +190,24 @@ export function RecommendScreen() {
 
       {rows && (
         <div style={{ marginTop: 24 }}>
-          {source && (
-            <p style={{ fontSize: 13, color: '#999', margin: '0 0 4px' }}>from {source}</p>
-          )}
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
+            {source && (
+              sourceUrl
+                ? <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#999', textDecoration: 'underline', textUnderlineOffset: 2 }}>{source}</a>
+                : <span style={{ fontSize: 13, color: '#999' }}>{source}</span>
+            )}
+            <button
+              onClick={toggleAll}
+              style={{ border: 'none', background: 'none', fontSize: 13, color: '#555', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2, padding: 0, marginLeft: 'auto' }}
+            >
+              {allChecked ? 'deselect all' : 'select all'}
+            </button>
+          </div>
           <p style={{ fontSize: 13, color: '#777', margin: '0 0 14px' }}>
             {newCount} new{haveCount ? ` · ${haveCount} already in your library` : ''}
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {rows.map((r, i) => (
               <button
                 key={i}
@@ -194,20 +215,28 @@ export function RecommendScreen() {
                 disabled={r.inLibrary}
                 style={{
                   display: 'flex', gap: 12, alignItems: 'flex-start', textAlign: 'left',
-                  padding: '12px 0', borderBottom: '1px solid #F0F0F0', background: 'none',
-                  border: 'none', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: '#F0F0F0',
+                  padding: '12px 0', borderBottom: '1px solid #F0F0F0',
+                  background: 'none', border: 'none', borderBottomWidth: 1,
+                  borderBottomStyle: 'solid', borderBottomColor: '#F0F0F0',
                   cursor: r.inLibrary ? 'default' : 'pointer', width: '100%',
                   opacity: r.inLibrary ? 0.45 : 1,
                 }}
               >
+                {/* Rank number */}
+                <div style={{ flexShrink: 0, width: 22, textAlign: 'right', fontSize: 12, color: '#BBB', paddingTop: 3, fontVariantNumeric: 'tabular-nums' }}>
+                  {r.rank}
+                </div>
+
+                {/* Checkbox */}
                 <div style={{
                   flexShrink: 0, marginTop: 2, width: 20, height: 20, borderRadius: 6,
                   border: r.checked ? '1.5px solid #111' : '1.5px solid #CCC',
                   background: r.checked ? '#111' : '#fff',
                   color: '#fff', fontSize: 13, lineHeight: '18px', textAlign: 'center',
                 }}>
-                  {r.inLibrary ? '' : r.checked ? '✓' : ''}
+                  {!r.inLibrary && r.checked ? '✓' : ''}
                 </div>
+
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, color: '#111', lineHeight: 1.3 }}>
                     {r.title}
@@ -216,6 +245,15 @@ export function RecommendScreen() {
                   <div style={{ fontSize: 13, color: '#888', margin: '1px 0 0' }}>
                     {[typeLabel(r.type), r.creator, r.year].filter(Boolean).join(' · ')}
                   </div>
+                  {r.tags.length > 0 && (
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
+                      {r.tags.map(tag => (
+                        <span key={tag} style={{ fontSize: 11, padding: '2px 7px', borderRadius: 20, background: '#F2F2F2', color: '#666' }}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {r.blurb && (
                     <div style={{ fontSize: 13, color: '#666', lineHeight: 1.45, marginTop: 5 }}>
                       {r.blurb}

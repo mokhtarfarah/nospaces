@@ -292,12 +292,19 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   {(() => {
+                    // Recommendations: show the list name as a tappable link.
+                    if (item.source_detail === 'recommendation' && item.recommended_by) {
+                      const url = item.metadata?.recommendationUrl as string | undefined
+                      return url
+                        ? <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#B0B0B0', textDecoration: 'underline', textUnderlineOffset: 2 }}>from {item.recommended_by}</a>
+                        : <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {item.recommended_by}</div>
+                    }
                     // "quick add" is the obvious default — it's noise, so hide it.
                     // Keep meaningful sources (letterboxd, spotify, email, photo, …) visible.
                     const label = item.source_detail?.trim()
                       || (item.source === 'quick_add' ? '' : item.source.replace(/_/g, ' '))
                     return label
-                      ? <div style={{ fontSize: 11, color: '#B0B0B0' }}>From {label}</div>
+                      ? <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {label}</div>
                       : null
                   })()}
                   <button
