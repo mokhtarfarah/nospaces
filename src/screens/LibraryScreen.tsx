@@ -839,7 +839,7 @@ function SpotifyGlyph() {
 }
 
 function WikiGlyph() {
-  return <span style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: '#555', lineHeight: 1 }}>W</span>
+  return <span style={{ fontFamily: 'inherit', fontSize: 14, fontWeight: 400, color: '#888', lineHeight: 1 }}>w</span>
 }
 
 function SearchIcon() {
