@@ -1,5 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from '../lib/auth'
+import { createClient } from '@supabase/supabase-js'
+const _ce = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
+let _sba: ReturnType<typeof createClient> | null = null
+const _ac = () => { if (!_sba) _sba = createClient(_ce(process.env.SUPABASE_URL), _ce(process.env.SUPABASE_SERVICE_ROLE_KEY)); return _sba }
+async function requireAuth(req: VercelRequest): Promise<boolean> { const a = req.headers['authorization']; if (!a?.startsWith('Bearer ')) return false; try { const { error } = await _ac().auth.getUser(a.slice(7)); return !error } catch { return false } }
 
 // Best-source artwork resolver:
 //   film/tv  -> TMDB poster (falls back to a season poster for shows with none)

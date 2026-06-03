@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './_auth'
 
 // Real-catalog search for the "look it up online" action: queries iTunes (music),
 // TMDB (film/TV), and Open Library (books) for the literal text and returns concrete
@@ -69,12 +68,13 @@ async function tmdb(q: string): Promise<Candidate[]> {
     }))
 }
 
-// Google Books is faster and more reliable than Open Library for popular titles.
 async function googleBooks(q: string): Promise<Candidate[]> {
   const ac = new AbortController()
-  const t = setTimeout(() => ac.abort(), 4000)
+  const t = setTimeout(() => ac.abort(), 5000)
   try {
-    const data = await (await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=4&langRestrict=en`, { signal: ac.signal })).json()
+    const resp = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=4&langRestrict=en`, { signal: ac.signal })
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const data = await resp.json()
     return (data?.items ?? []).slice(0, 4).map((item: { volumeInfo?: { title?: string; authors?: string[]; publishedDate?: string } }) => {
       const v = item.volumeInfo ?? {}
       return { title: v.title ?? '', creator: v.authors?.[0] ?? '', type: 'book', year: v.publishedDate ? (parseInt(v.publishedDate) || null) : null }
@@ -88,7 +88,7 @@ async function googleBooks(q: string): Promise<Candidate[]> {
 
 async function openLibrary(q: string): Promise<Candidate[]> {
   const ac = new AbortController()
-  const t = setTimeout(() => ac.abort(), 4000)
+  const t = setTimeout(() => ac.abort(), 7000)
   try {
     const data = await (await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=3`, { signal: ac.signal })).json()
     return (data?.docs ?? []).slice(0, 3).map((d: { title?: string; author_name?: string[]; first_publish_year?: number }) => ({
@@ -129,15 +129,17 @@ async function openLibraryByAuthor(q: string): Promise<Candidate[]> {
   }
 }
 
-// For regular book queries, try Google Books first (fast), fall back to Open Library.
+// Run both in parallel — Google Books rate-limits on Vercel's shared IPs;
+// Open Library is slower but always available. First non-empty result wins.
 async function bookSearch(q: string): Promise<Candidate[]> {
-  const gb = await googleBooks(q)
-  if (gb.length > 0) return gb
-  return openLibrary(q)
+  const [gb, ol] = await Promise.all([
+    googleBooks(q).catch(() => [] as Candidate[]),
+    openLibrary(q).catch(() => [] as Candidate[]),
+  ])
+  return gb.length > 0 ? gb : ol
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (!await requireAuth(req)) return res.status(401).end()
   const q = String(req.query.q ?? '')
   if (!q) return res.status(200).json({ results: [] })
   const recency = req.query.recency === '1'
