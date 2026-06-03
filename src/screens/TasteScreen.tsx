@@ -319,11 +319,26 @@ export function TasteScreen() {
   const doneWithReaction = useMemo(() => items.filter(i => i.status === 'done' && i.reaction), [items])
 
   // Moods cross-type (moods are personal, not media-type-specific).
-  // Two axes share the moods[] array: VIBES (feel) and VERDICTS (how it landed).
   const moodScores = useMemo(() => scoreTags(items, 'moods'), [items])
-  // Vibes = taste fingerprint → ranked by reaction.
   const topVibes = moodScores.filter(s => VIBES.includes(s.label) && s.score >= 0)
   const lowVibes = moodScores.filter(s => VIBES.includes(s.label) && s.score < 0)
+
+  // Cross-medium love rate — must be before early returns (Rules of Hooks).
+  const mediumRates = useMemo(() => {
+    return (['film', 'book', 'music', 'tv'] as const).map(type => {
+      const rated = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
+      const loved = rated.filter(i => i.reaction === 'loved_it').length
+      return { type, pct: rated.length >= 5 ? Math.round((loved / rated.length) * 100) : null }
+    }).filter(m => m.pct !== null) as { type: string; pct: number }[]
+  }, [items])
+
+  const mediumInsight = useMemo(() => {
+    if (mediumRates.length < 2) return null
+    const sorted = [...mediumRates].sort((a, b) => b.pct - a.pct)
+    const top = sorted[0], bottom = sorted[sorted.length - 1]
+    if (top.pct - bottom.pct < 10) return null
+    return `you love ${top.pct}% of ${TYPE_LABEL[top.type]} you finish — more than any other medium (${bottom.pct}% for ${TYPE_LABEL[bottom.type]})`
+  }, [mediumRates])
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh' }}>
@@ -341,23 +356,6 @@ export function TasteScreen() {
       </div>
     </div>
   )
-
-  // Cross-medium love rate — compare loved% across media with enough data.
-  const mediumRates = useMemo(() => {
-    return (['film', 'book', 'music', 'tv'] as const).map(type => {
-      const rated = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
-      const loved = rated.filter(i => i.reaction === 'loved_it').length
-      return { type, pct: rated.length >= 5 ? Math.round((loved / rated.length) * 100) : null }
-    }).filter(m => m.pct !== null) as { type: string; pct: number }[]
-  }, [items])
-
-  const mediumInsight = useMemo(() => {
-    if (mediumRates.length < 2) return null
-    const sorted = [...mediumRates].sort((a, b) => b.pct - a.pct)
-    const top = sorted[0], bottom = sorted[sorted.length - 1]
-    if (top.pct - bottom.pct < 10) return null
-    return `you love ${top.pct}% of ${TYPE_LABEL[top.type]} you finish — more than any other medium (${bottom.pct}% for ${TYPE_LABEL[bottom.type]})`
-  }, [mediumRates])
 
   return (
     <div style={{ padding: '44px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
