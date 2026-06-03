@@ -543,7 +543,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             {item.note && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>thoughts</div>
-                <div style={{ fontSize: 13, color: '#57534E', lineHeight: 1.65, fontStyle: 'italic' }}>
+                <div style={{ fontSize: 12, color: '#57534E', lineHeight: 1.6, fontStyle: 'italic' }}>
                   {renderNote(item.note)}
                 </div>
               </div>
@@ -748,8 +748,7 @@ function actionBtn(color: string): React.CSSProperties {
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
   padding: '10px 12px', border: '1.5px solid #E0E0E0',
-  // 16px keeps iOS Safari from auto-zooming the page when the field is focused.
-  borderRadius: 10, fontSize: 16, fontFamily: 'inherit', outline: 'none',
+  borderRadius: 10, fontSize: 14, fontFamily: 'inherit', outline: 'none',
 }
 
 // Editorial heading + field-label styles, shared so the sub-views match the main card.

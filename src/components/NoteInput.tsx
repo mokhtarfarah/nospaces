@@ -56,8 +56,7 @@ export function NoteInput({ value, onChange, placeholder = 'Any thoughts...', ro
         style={{
           width: '100%', boxSizing: 'border-box',
           padding: '10px 12px', border: '1.5px solid #E0E0E0',
-          // 16px avoids iOS Safari focus-zoom.
-          borderRadius: 10, fontSize: 16, fontFamily: 'inherit',
+          borderRadius: 10, fontSize: 13, fontFamily: 'inherit',
           resize: 'none', outline: 'none', color: '#333', lineHeight: 1.5,
         }}
       />
