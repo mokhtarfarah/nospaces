@@ -434,7 +434,7 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
       </form>
 
-      <div style={{ marginTop: 32, borderTop: '1px solid #ECEAE6', paddingTop: 20, textAlign: 'center' }}>
+      <div style={{ marginTop: 20, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
         <button
           onClick={() => setMoreWaysOpen(o => !o)}
           style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
