@@ -365,39 +365,43 @@ export function TasteScreen() {
       <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 10px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
 
       {/* Taste profile prose — AI-generated editorial summary, cached in user_prefs */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ borderBottom: `1px solid ${HAIR}`, paddingBottom: 24, marginBottom: 4 }}>
         {tasteProfile ? (
           <>
-            <p style={{ fontSize: 15, lineHeight: 1.75, color: INK, margin: '0 0 10px', letterSpacing: '-0.1px' }}>
+            <p style={{ fontSize: 14, lineHeight: 1.85, color: GRAPHITE, margin: '0 0 14px', letterSpacing: '-0.1px' }}>
               {tasteProfile}
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {tasteProfileGeneratedAt && (
                 <span style={{ fontSize: 11, color: MUTE }}>
-                  generated {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
               )}
               <button
                 onClick={generateProfile}
                 disabled={generatingProfile}
-                style={{ background: 'none', border: 'none', fontSize: 11, color: generatingProfile ? MUTE : GRAPHITE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
+                style={{ background: 'none', border: 'none', fontSize: 11, color: generatingProfile ? MUTE : MUTE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
               >
-                {generatingProfile ? 'generating…' : 'refresh'}
+                {generatingProfile ? 'generating…' : 'regenerate'}
               </button>
             </div>
           </>
         ) : (
-          <button
-            onClick={generateProfile}
-            disabled={generatingProfile}
-            style={{
-              padding: '8px 18px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
-              border: `1.5px solid ${INK}`, background: generatingProfile ? HAIR : INK,
-              color: generatingProfile ? GRAPHITE : '#fff', fontSize: 12, fontWeight: 600,
-            }}
-          >
-            {generatingProfile ? 'generating…' : 'describe my taste'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, color: GRAPHITE }}>ai taste profile</span>
+            <button
+              onClick={generateProfile}
+              disabled={generatingProfile}
+              style={{
+                padding: '7px 16px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
+                border: '1.5px solid #111', background: '#111',
+                color: '#fff', fontSize: 12, fontWeight: 600,
+                opacity: generatingProfile ? 0.5 : 1,
+              }}
+            >
+              {generatingProfile ? 'generating…' : 'generate'}
+            </button>
+          </div>
         )}
       </div>
 
