@@ -119,8 +119,19 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 8. ✅ **Library grid** — **3 col / 4 col toggle** (persisted per-device; 4 for desktop where 3 was too big/low-res); grid cards now show the **same subtitle** as list rows (type · year · seasons · genre · reaction).
 9. ✅ **Clear-all-filters** — subtle "clear ×" in the library header, shown only when a filter is narrowing the list.
 10. ✅ **Font decided: Geist** (compared vs DM Sans / Plus Jakarta Sans via a mockup, now deleted).
+11. ✅ **Bulk photo "already did" toggle** — whole-batch want-to/done toggle on `BulkConfirmSheet` (reactions added per item later, like Spotify sync). `handleBulkConfirm` threads status → `addItem` done flag.
+12. ✅ **Un-identified captures are no longer a dead-end** — the action card now offers "mark as done / edit reaction" alongside "identify now" for scratch items, so you can log a reaction + note now and identify whenever. Resolves the parked scratch model toward "save now, identify later" (kept the triage filter — didn't rip the concept out). *Capture-time reaction (react in the same tap as save-as-note) intentionally not built — you react right after, by opening the item.*
 
-**Decisions / open from session 16 discussion (act on next):**
+**▶ NEXT SESSION STARTS HERE — decide between two big input-queue items:**
+- **(A) Shared review checklist + email "pending inbox"** — extract the recommendations-PDF select/deselect checklist into a reusable component; reuse it for (1) recommendations (already), (2) **email → a "needs review" pending inbox** (forwarded items land pending, you review/pick next time you open the app — turns email from a firehose dump into curated capture), (3) bulk photo (replace the bespoke `BulkConfirmSheet`). New infra: a "pending review" state + an in-app inbox surface. **M/L. Highest leverage for how Farah actually uses the app (email + curation).**
+- **(B) Offline capture queue** — IndexedDB queue holds new captures while offline, syncs on reconnect. Serves the "on the go" north star. **M/L.**
+- Farah will pick A vs B at the **start of next session.**
+
+**iOS Shortcut — DECIDED: skip / leave retired.** The Web Share **Target** API (PWA receiving a shared *image file*) is **not supported by iOS WebKit** — that's why nospaces never appeared in the Photos share sheet (platform limitation, not a config bug; don't chase the manifest). Workaround Farah will use instead: **screenshot → share to Mail → forward to the nospaces address** (Mail *is* a share target on iOS), which captures without keeping the screenshot. Rebuilding the Shortcut+`/api/identify-upload` is possible later but not worth it now. (A `GET` text/URL share target *could* work on iOS for sharing links — minor, not scheduled.)
+
+**The pitch / mental model (use on onboarding / empty state): "add things 4 ways — Type it · Snap it · Forward it · Sync it."** Type = title or description (+ save-as-note). Snap = photo/screenshot, single or bulk (+ paste). Forward = email anything (text or photo) to the nospaces address. Sync = Letterboxd / Spotify / recommendations PDF.
+
+**Other decisions / open from session 16 discussion (act on next):**
 - 🔜 **"Save & next" tidy queue (PRIORITIZED to unblock setup).** The fill-by-hand list should walk through gappy items: tap in → edit view → **"save & next ›"** advances to the next gappy item without bouncing back to the Add page (today's friction = round-trip Add→Library→Add per item). Skip button for unfixables. Reuses the existing edit view; ~⅓ the work of true inline editing and handles every gap type. (Lighter alt considered + rejected: inline text-only editing for creator/year/pages, link out for genre/wiki.)
 - 🔜 **Cover-art quality pass (biggest tastemaker payoff).** Low-res / inconsistent covers cheapen the grid wall. Need a higher-res art source or a consistent fallback treatment so the grid always looks intentional. Image quality = identity for the target user.
 - 🔜 **Default library view → want-to (once import is done).** Today defaults to recent/all (correct during setup). Long-term the recurring job is "what do I put on / read next" = the want-to backlog. Flip the default *status* to want-to once the library is populated. Tiny change (just the default value). Held until Farah finishes importing.
@@ -305,19 +316,18 @@ All shipped to `main` / live:
 
 **Friction findings:**
 - 🟢 **Genre gap — FIXED session 16** (catalog/bulk/shortcut/email all saved tagless; now auto-filled).
-- 🔴 **iOS Shortcut likely 404s** (`/api/identify-upload` missing) — needs a decision.
-- 🟡 **Bulk photos = want_to only** — no "already did" toggle on bulk rows.
-- 🟡 **Email = bulk want_to dump** — no reaction/selection; big-photo 413 (by design).
-- 🟡 **Scratch vs un-ID'd entry** — parked open question; also no offline capture.
+- 🟢 **iOS Shortcut — DECIDED: leave retired** (iOS doesn't support PWA file share targets; use screenshot→share→Mail→forward instead). See next-session note above.
+- 🟢 **Bulk photos "already did" — FIXED session 16** (whole-batch toggle).
+- 🟢 **Scratch dead-end — FIXED session 16** (can now react/note un-ID'd captures).
+- 🟡 **Email = bulk want_to dump** — no reaction/selection; big-photo 413 (by design). → addressed by **(A) review checklist + pending inbox** next session.
+- 🟡 **No offline capture** → **(B) offline queue** next session.
 
-**Improvement ideas (ranked):**
+**Remaining improvement ideas (ranked):**
 | Effort | Idea |
 |---|---|
-| XS | Decide iOS Shortcut fate (confirm broken → rebuild or remove from UI/HANDOFF) |
-| S | "already did" toggle on **bulk** confirm rows |
-| S | scratch = "save now, identify later" keeping reaction/note (resolve the parked model) |
-| M | offline capture queue (IndexedDB) — save offline, sync on reconnect ("on the go" north star) |
-| M | film/TV **describe-by-recency** ("that new Villeneuve movie") via TMDB person→credits |
+| M/L | **(A)** shared review checklist + email pending-inbox (see next-session note) |
+| M/L | **(B)** offline capture queue (IndexedDB) — save offline, sync on reconnect |
+| M | film/TV **describe-by-recency** ("that new Villeneuve movie") via TMDB person→credits — *extends describe-to-add, NOT a new search; music/books recency already work* |
 
 ### 🌱 Bigger / later
 - Genre/mood tags + taste analysis → now the active "Taste arc" above
