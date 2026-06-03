@@ -279,7 +279,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     // when a blurb toggle already shows the same source name.
                     if (item.source_detail === 'recommendation' && item.recommended_by) {
                       const url = item.metadata?.recommendationUrl as string | undefined
-                      if (url) return <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#B0B0B0', textDecoration: 'underline', textUnderlineOffset: 2 }}>from {item.recommended_by}</a>
+                      if (url) return null  // "see source" link appears inline at the end of the blurb text instead
                       if (blurb) return null  // blurb toggle already says "via [list]"
                       return <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {item.recommended_by}</div>
                     }
@@ -375,7 +375,17 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </div>
                 {showBlurb && blurb && (
                   <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginTop: 5, fontStyle: 'italic' }}>
-                    {blurb}
+                    {blurb}{' '}
+                    {(item.metadata?.recommendationUrl as string | undefined) && (
+                      <a
+                        href={item.metadata?.recommendationUrl as string}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: '#B0B0B0', fontSize: 11, fontStyle: 'normal', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}
+                      >
+                        see source ↗
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
