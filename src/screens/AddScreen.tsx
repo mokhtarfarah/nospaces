@@ -63,11 +63,11 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
 
 import type { Item } from '../lib/database.types'
 
-function LibraryTools({ items, editItem }: {
+function LibraryTools({ items, editItem, open }: {
   items: Item[]
   editItem: (id: string, fields: Record<string, unknown>) => Promise<void>
+  open: boolean
 }) {
-  const [open, setOpen] = useState(false)
   const [backfilling, setBackfilling] = useState(false)
   const [backfillProgress, setBackfillProgress] = useState(0)
   const [backfillTotal, setBackfillTotal] = useState(0)
@@ -91,7 +91,7 @@ function LibraryTools({ items, editItem }: {
     items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy')), [items])
 
   const total = untagged.length + needsRuntime.length + needsMoodMigration.length
-  if (total === 0) return null
+  if (total === 0 || !open) return null
 
   async function runBackfill() {
     if (backfilling || untagged.length === 0) return
@@ -148,36 +148,29 @@ function LibraryTools({ items, editItem }: {
   const btnStyle = { padding: '7px 16px', borderRadius: 20, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
 
   return (
-    <div style={{ marginTop: 20, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}>
-        {open ? 'hide library tools' : 'library tools'}
-      </button>
-      {open && (
-        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {untagged.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags</span>
-              {backfilling
-                ? <span style={{ fontSize: 13, color: '#555' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)} of {backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
-                : <button onClick={runBackfill} style={btnStyle}>tag my library</button>}
-            </div>
-          )}
-          {needsRuntime.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: '#888' }}>{needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or pages</span>
-              {rtBackfilling
-                ? <span style={{ fontSize: 13, color: '#555' }}>filling {Math.min(rtProgress + 5, rtTotal)} of {rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
-                : <button onClick={runRtBackfill} style={btnStyle}>fill in</button>}
-            </div>
-          )}
-          {needsMoodMigration.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: '#888' }}>{needsMoodMigration.length} item{needsMoodMigration.length !== 1 ? 's' : ''} use old vibe words</span>
-              {migrating
-                ? <span style={{ fontSize: 13, color: '#555' }}>updating {migrateProgress} of {needsMoodMigration.length}…</span>
-                : <button onClick={runMoodMigration} style={btnStyle}>clean up</button>}
-            </div>
-          )}
+    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {untagged.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags</span>
+          {backfilling
+            ? <span style={{ fontSize: 13, color: '#555' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)} of {backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
+            : <button onClick={runBackfill} style={btnStyle}>tag my library</button>}
+        </div>
+      )}
+      {needsRuntime.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, color: '#888' }}>{needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or pages</span>
+          {rtBackfilling
+            ? <span style={{ fontSize: 13, color: '#555' }}>filling {Math.min(rtProgress + 5, rtTotal)} of {rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
+            : <button onClick={runRtBackfill} style={btnStyle}>fill in</button>}
+        </div>
+      )}
+      {needsMoodMigration.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, color: '#888' }}>{needsMoodMigration.length} item{needsMoodMigration.length !== 1 ? 's' : ''} use old vibe words</span>
+          {migrating
+            ? <span style={{ fontSize: 13, color: '#555' }}>updating {migrateProgress} of {needsMoodMigration.length}…</span>
+            : <button onClick={runMoodMigration} style={btnStyle}>clean up</button>}
         </div>
       )}
     </div>
@@ -344,6 +337,17 @@ export function AddScreen() {
   }
 
   const [moreWaysOpen, setMoreWaysOpen] = useState(false)
+  const [libToolsOpen, setLibToolsOpen] = useState(false)
+  const hasLibraryWork = useMemo(() => {
+    const untagged = items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type))
+    const needsRuntime = items.filter(i => {
+      if (i.type === 'film' || i.type === 'tv') return !i.metadata?.runtime
+      if (i.type === 'book') return !i.metadata?.pages
+      return false
+    })
+    const needsMoodMigration = items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy'))
+    return (untagged.length + needsRuntime.length + needsMoodMigration.length) > 0
+  }, [items])
 
   return (
     <div style={{ padding: '56px 16px 0', background: '#fff', minHeight: '100dvh' }}>
@@ -412,42 +416,32 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
       </form>
 
-      <div style={{ marginTop: 20, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
-        <button
-          onClick={() => setMoreWaysOpen(o => !o)}
-          style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
-        >
-          {moreWaysOpen ? 'hide' : 'more ways to add'}
-        </button>
+      <div style={{ marginTop: 20, borderTop: '1px solid #ECEAE6', paddingTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 24 }}>
+          <button
+            onClick={() => setMoreWaysOpen(o => !o)}
+            style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
+          >
+            more ways to add
+          </button>
+          {hasLibraryWork && (
+            <button
+              onClick={() => setLibToolsOpen(o => !o)}
+              style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
+            >
+              library tools
+            </button>
+          )}
+        </div>
         {moreWaysOpen && (
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={() => navigate('/recommend')}
-              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}
-            >
-              find recommendations
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/import')}
-              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}
-            >
-              import from Letterboxd
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/spotify')}
-              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}
-            >
-              sync from Spotify
-            </button>
+            <button type="button" onClick={() => navigate('/recommend')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>find recommendations</button>
+            <button type="button" onClick={() => navigate('/import')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>import from Letterboxd</button>
+            <button type="button" onClick={() => navigate('/spotify')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>sync from Spotify</button>
           </div>
         )}
+        <LibraryTools items={items} editItem={editItem} open={libToolsOpen} />
       </div>
-
-      {/* Library tools — backfill genre tags, runtime, and vibe cleanup */}
-      <LibraryTools items={items} editItem={editItem} />
 
       {/* Image input — single pick → single confirm, multi-pick → bulk confirm */}
       <input ref={imageRef} type="file" accept="image/*" multiple
