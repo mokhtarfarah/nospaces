@@ -19,7 +19,6 @@ const TYPE_LABEL: Record<string, string> = {
   film: 'films', book: 'books', music: 'music', tv: 'tv',
 }
 
-const REACTION_ORDER: ItemReaction[] = ['loved_it', 'liked_it', 'eh', 'not_for_me']
 
 interface Scored { label: string; score: number; count: number }
 
@@ -106,34 +105,16 @@ function Section({ title, defaultOpen = false, count, children }: {
 }
 
 // How you rate, as a quiet typographic line: "88 loved · 41 liked · 9 eh".
-const REACTION_COLOR: Record<ItemReaction, string> = {
-  loved_it: INK,
-  liked_it: GRAPHITE,
-  eh: MUTE,
-  not_for_me: '#D4D0CA',
-}
 
 function ReactionBar({ items, type }: { items: Item[]; type: string }) {
   const done = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
   if (!done.length) return null
-  const parts = REACTION_ORDER
-    .map(r => ({ r, n: done.filter(i => i.reaction === r).length }))
-    .filter(p => p.n > 0)
   const total = done.length
   const lovedPct = Math.round((done.filter(i => i.reaction === 'loved_it').length / total) * 100)
   return (
-    <div style={{ marginBottom: 18 }}>
-      {/* Proportional bar */}
-      <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
-        {parts.map(p => (
-          <div key={p.r} style={{ width: `${(p.n / total) * 100}%`, background: REACTION_COLOR[p.r] }} />
-        ))}
-      </div>
-      {/* Caption */}
-      <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.1px' }}>
-        {total} rated
-        {lovedPct > 0 && <span> · <span style={{ color: GRAPHITE }}>{lovedPct}%</span> loved</span>}
-      </div>
+    <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.1px', marginBottom: 18 }}>
+      {total} rated
+      {lovedPct > 0 && <span> · <span style={{ color: GRAPHITE }}>{lovedPct}%</span> loved</span>}
     </div>
   )
 }
