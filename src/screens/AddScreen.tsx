@@ -35,8 +35,7 @@ async function describeToSearch(input: string): Promise<{ searchQuery: string; t
 }
 
 async function catalogLookup(q: string, recency = false): Promise<Candidate[]> {
-  const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}${recency ? '&recency=1' : ''}`, { headers: await authHeaders() })
-  if (res.status === 401) throw new Error('auth_error')
+  const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}${recency ? '&recency=1' : ''}`)
   if (!res.ok) return []
   const { results } = await res.json()
   return Array.isArray(results) ? results : []

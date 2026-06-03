@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './_auth'
 
 // Real-catalog search for the "look it up online" action: queries iTunes (music),
 // TMDB (film/TV), and Open Library (books) for the literal text and returns concrete
 // matches — useful for obscure titles Claude doesn't know from memory.
+// No auth required: only queries public external APIs, no sensitive data or Anthropic calls.
 const TMDB = process.env.TMDB_API_KEY
 
 interface Candidate {
@@ -136,7 +136,6 @@ async function bookSearch(q: string): Promise<Candidate[]> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (!await requireAuth(req)) return res.status(401).end()
   const q = String(req.query.q ?? '')
   if (!q) return res.status(200).json({ results: [] })
   const recency = req.query.recency === '1'
