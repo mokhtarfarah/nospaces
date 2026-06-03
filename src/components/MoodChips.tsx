@@ -7,19 +7,21 @@ const GROUPS = [
   { label: 'how it landed', list: VERDICTS },
 ] as const
 
-export function MoodChips({ isActive, onToggle, size = 'md', layout = 'wrap' }: {
+export function MoodChips({ isActive, onToggle, size = 'md', layout = 'wrap', groups = 'all' }: {
   isActive: (mood: string) => boolean
   onToggle: (mood: string) => void
   size?: 'sm' | 'md'
   layout?: 'wrap' | 'scroll'
+  groups?: 'all' | 'vibes-only'
 }) {
   const sm = size === 'sm'
   const rowStyle: React.CSSProperties = layout === 'scroll'
     ? { display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, paddingBottom: 4, WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }
     : { display: 'flex', flexWrap: 'wrap', gap: 6 }
+  const visibleGroups = groups === 'vibes-only' ? GROUPS.filter(g => g.label === 'feel') : GROUPS
   return (
     <>
-      {GROUPS.map(({ label, list }) => (
+      {visibleGroups.map(({ label, list }) => (
         <div key={label} style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 600, color: '#BBB', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 6 }}>
             {label}

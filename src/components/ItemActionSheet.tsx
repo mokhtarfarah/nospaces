@@ -123,40 +123,12 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     : summary ? 'Wikipedia'
     : bookBlurb.source
 
-  // Quick links (Spotify / Wikipedia / Where to watch) as one row of soft pills.
-  const links: { key: string; label: string; icon: React.ReactNode; onClick: () => void }[] = []
-  if (item.type === 'music') {
-    links.push({
-      key: 'spotify', label: 'spotify', icon: <SpotifyIcon />,
-      onClick: () => {
-        const url = (item.metadata?.spotifyUrl as string | undefined)
-          ?? (item.metadata?.spotifyId ? `https://open.spotify.com/album/${item.metadata.spotifyId}` : null)
-          ?? `https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`
-        window.open(url, '_blank')
-      },
-    })
-  }
-  if (wikiUrl) {
-    links.push({
-      key: 'wiki', label: 'wikipedia', icon: <WikiIcon />,
-      onClick: () => window.open(wikiUrl, '_blank'),
-    })
-  }
-  if (item.type === 'film' || item.type === 'tv') {
-    links.push({
-      key: 'watch', label: 'watch', icon: <span style={{ fontSize: 12, color: '#333' }}>▶</span>,
-      onClick: () => setWatchOpen(true),
-    })
-  }
-  const quickLinks = links.length > 0 && (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-      {links.map(l => (
-        <button key={l.key} onClick={l.onClick} style={linkPill}>
-          {l.icon}<span>{l.label}</span>
-        </button>
-      ))}
-    </div>
-  )
+  // Spotify URL for music items (used inline in blurb row).
+  const spotifyUrl = item.type === 'music'
+    ? ((item.metadata?.spotifyUrl as string | undefined)
+        ?? (item.metadata?.spotifyId ? `https://open.spotify.com/album/${item.metadata.spotifyId}` : null)
+        ?? `https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`)
+    : null
 
   function handleSaveDetails() {
     const metadata: Record<string, unknown> = { ...item.metadata, coverUrl: coverUrl.trim() || null }
@@ -372,16 +344,36 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             )}
 
-            {blurb && (
+            {/* Blurb toggle + inline quick links (Spotify / Wikipedia / Watch) in one row */}
+            {(blurb || spotifyUrl || wikiUrl || item.type === 'film' || item.type === 'tv') && (
               <div style={{ marginBottom: 16 }}>
-                <button
-                  onClick={() => setShowBlurb(v => !v)}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: '#B0B0B0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
-                >
-                  <span>{blurbSource ? `via ${blurbSource}` : 'about this'}</span>
-                  <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
-                </button>
-                {showBlurb && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {blurb && (
+                    <button
+                      onClick={() => setShowBlurb(v => !v)}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: '#B0B0B0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+                    >
+                      <span>{blurbSource ? `via ${blurbSource}` : 'about this'}</span>
+                      <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
+                    </button>
+                  )}
+                  {spotifyUrl && (
+                    <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" style={inlineLink}>
+                      <SpotifyIcon /> spotify
+                    </a>
+                  )}
+                  {wikiUrl && (
+                    <a href={wikiUrl} target="_blank" rel="noopener noreferrer" style={inlineLink}>
+                      wikipedia ↗
+                    </a>
+                  )}
+                  {(item.type === 'film' || item.type === 'tv') && (
+                    <button onClick={() => setWatchOpen(true)} style={{ ...inlineLink, background: 'none', border: 'none', cursor: 'pointer' }}>
+                      ▶ watch
+                    </button>
+                  )}
+                </div>
+                {showBlurb && blurb && (
                   <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginTop: 5, fontStyle: 'italic' }}>
                     {blurb}
                   </div>
@@ -494,11 +486,13 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             })()}
 
             {/* Mood chips — interactive on main view, tap to toggle + save immediately */}
+            {/* HOW IT LANDED (verdicts) only shown for done items — can't know how it landed before finishing */}
             {!item.metadata?.scratch && (
               <div style={{ marginBottom: 12 }}>
                 <MoodChips
                   size="sm"
                   layout="scroll"
+                  groups={item.status === 'want_to' ? 'vibes-only' : 'all'}
                   isActive={m => (item.moods ?? []).includes(m)}
                   onToggle={mood => {
                     const active = (item.moods ?? []).includes(mood)
@@ -511,8 +505,6 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 />
               </div>
             )}
-
-            {quickLinks}
 
             {confirmDelete ? (
               <div style={footer}>
@@ -598,7 +590,6 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 )
               })}
             </div>
-            {quickLinks}
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
               <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>save</button>
@@ -688,9 +679,6 @@ function SpotifyIcon() {
   )
 }
 
-function WikiIcon() {
-  return <span style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#202122', lineHeight: 1 }}>W</span>
-}
 
 // Pinned footer so action buttons stay visible even when the sheet scrolls.
 const footer: React.CSSProperties = {
@@ -706,11 +694,11 @@ function actionBtn(color: string): React.CSSProperties {
   }
 }
 
-// Compact pill for the quick-link row (Spotify / Wikipedia / Watch).
-const linkPill: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 5,
-  padding: '6px 12px', border: '1px solid #E6E6E6', borderRadius: 20,
-  background: '#FAFAFA', fontSize: 12, fontWeight: 500, color: '#333', cursor: 'pointer',
+// Small inline text links that sit on the same row as the blurb toggle.
+const inlineLink: React.CSSProperties = {
+  fontSize: 11, color: '#B0B0B0', textDecoration: 'none',
+  display: 'inline-flex', alignItems: 'center', gap: 3,
+  padding: 0, background: 'none', border: 'none',
 }
 
 const inputStyle: React.CSSProperties = {
