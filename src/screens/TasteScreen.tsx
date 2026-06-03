@@ -104,39 +104,14 @@ function Section({ title, defaultOpen = false, children }: {
   )
 }
 
-// How you rate, as a quiet typographic line: "88 loved · 41 liked · 9 eh".
 
-function ReactionBar({ items, type }: { items: Item[]; type: string }) {
-  const done = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
-  if (!done.length) return null
-  const total = done.length
-  const lovedPct = Math.round((done.filter(i => i.reaction === 'loved_it').length / total) * 100)
-  return (
-    <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.1px', marginBottom: 18 }}>
-      {total} rated
-      {lovedPct > 0 && <span> · <span style={{ color: GRAPHITE }}>{lovedPct}%</span> loved</span>}
-    </div>
-  )
-}
 
-// Small lowercase sub-label inside a category card.
-function SubLabel({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ fontSize: 10, fontWeight: 500, color: MUTE, letterSpacing: '0.4px', marginBottom: 6 }}>
-      {children}
-    </div>
-  )
-}
-
-// One collapsible card per medium — its whole taste profile in one place.
-// Replaces the old per-insight sections (which repeated the type labels 3+ times).
+// Compact bordered card per medium — title + stats on header line, no sublabels.
 function CategoryCard({ items, type }: { items: Item[]; type: string }) {
   const data = useMemo(() => {
     const genresScored = scoreTags(items, 'tags', type).filter(s => isGenreTag(s.label))
-    const genres = genresScored.filter(s => s.score >= 0).slice(0, 6)
-    const lowGenres = genresScored.filter(s => s.score < 0).slice(0, 6)
+    const genres = genresScored.filter(s => s.score >= 0).slice(0, 5)
 
-    // Creator loyalty — creators with 2+ rated items, ranked by reaction score.
     const creatorMap = new Map<string, { score: number; count: number }>()
     for (const i of items) {
       if (i.type !== type || i.status !== 'done' || !i.reaction || !i.creator) continue
@@ -148,37 +123,35 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
       .filter(([, v]) => v.count >= 2)
       .map(([label, v]) => ({ label, score: v.score, count: v.count }))
       .sort((a, b) => b.score - a.score || b.count - a.count)
-      .slice(0, 6)
+      .slice(0, 5)
 
-    const ratedCount = items.filter(i => i.type === type && i.status === 'done' && i.reaction).length
-    return { genres, lowGenres, creators, ratedCount }
+    const rated = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
+    const lovedPct = rated.length ? Math.round(rated.filter(i => i.reaction === 'loved_it').length / rated.length * 100) : 0
+    return { genres, creators, ratedCount: rated.length, lovedPct }
   }, [items, type])
 
-  const { genres, lowGenres, creators, ratedCount } = data
+  const { genres, creators, ratedCount, lovedPct } = data
   if (ratedCount === 0) return null
 
   return (
-    <Section title={TYPE_LABEL[type] ?? type}>
-      {ratedCount > 0 && <ReactionBar items={items} type={type} />}
+    <div style={{ border: `1px solid ${HAIR}`, borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: INK }}>
+          {TYPE_LABEL[type] ?? type}
+        </span>
+        <span style={{ fontSize: 11, color: MUTE }}>
+          {ratedCount} rated · {lovedPct}% loved
+        </span>
+      </div>
       {creators.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <SubLabel>go-to creators</SubLabel>
-          <RankedLine scored={creators} limit={6} />
+        <div style={{ marginBottom: 8 }}>
+          <RankedLine scored={creators} limit={5} />
         </div>
       )}
       {genres.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <SubLabel>genres you love</SubLabel>
-          <RankedLine scored={genres} limit={6} />
-        </div>
+        <RankedLine scored={genres} limit={5} />
       )}
-      {lowGenres.length > 0 && (
-        <div>
-          <SubLabel>doesn't land</SubLabel>
-          <RankedLine scored={lowGenres} limit={6} />
-        </div>
-      )}
-    </Section>
+    </div>
   )
 }
 
@@ -332,13 +305,6 @@ export function TasteScreen() {
     }).filter(m => m.pct !== null) as { type: string; pct: number }[]
   }, [items])
 
-  const mediumInsight = useMemo(() => {
-    if (mediumRates.length < 2) return null
-    const sorted = [...mediumRates].sort((a, b) => b.pct - a.pct)
-    const top = sorted[0], bottom = sorted[sorted.length - 1]
-    if (top.pct - bottom.pct < 10) return null
-    return `you love ${top.pct}% of ${TYPE_LABEL[top.type]} you finish — more than any other medium (${bottom.pct}% for ${TYPE_LABEL[bottom.type]})`
-  }, [mediumRates])
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh' }}>
@@ -357,25 +323,32 @@ export function TasteScreen() {
     </div>
   )
 
+  // Cross-medium love% comparison — all media with enough data, sorted by love%.
+  const mediumComparison = useMemo(() => {
+    if (mediumRates.length < 2) return null
+    const sorted = [...mediumRates].sort((a, b) => b.pct - a.pct)
+    return sorted
+  }, [mediumRates])
+
   return (
     <div style={{ padding: '44px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 6px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 14px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
 
-      {/* Vibes — quick-scan fingerprint. Open by default. */}
-      <Section title="vibes" defaultOpen>
-        {topVibes.length > 0
-          ? <RankedLine scored={topVibes} limit={8} />
-          : <p style={{ fontSize: 13, color: MUTE, margin: 0 }}>tag a vibe when you mark things done.</p>}
-        {lowVibes.length > 0 && (
-          <div style={{ marginTop: 14 }}>
-            <SubLabel>rarely lands</SubLabel>
-            <RankedLine scored={lowVibes} limit={6} />
+      {/* Hero header — non-collapsible: vibes chips + prose */}
+      <div style={{ borderBottom: `1.5px solid ${INK}`, paddingBottom: 18, marginBottom: 16 }}>
+        {topVibes.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <RankedLine scored={topVibes} limit={8} />
+            {lowVibes.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <span style={{ fontSize: 10, color: MUTE, marginRight: 4 }}>rarely lands</span>
+                <RankedLine scored={lowVibes} limit={4} />
+              </div>
+            )}
           </div>
         )}
-      </Section>
 
-      {/* Taste profile prose — standalone block, survives vibes collapse */}
-      <div style={{ borderBottom: `1px solid ${HAIR}`, padding: '14px 0 16px' }}>
+        {/* Prose */}
         {tasteProfile ? (() => {
           const lines = tasteProfile.split('\n').filter(l => l.trim())
           const opener = lines.find(l => !l.trimStart().startsWith('- ')) ?? ''
@@ -435,14 +408,23 @@ export function TasteScreen() {
         )}
       </div>
 
-      {/* Cross-medium insight */}
-      {mediumInsight && (
-        <div style={{ borderBottom: `1px solid ${HAIR}`, padding: '12px 0' }}>
-          <span style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.5 }}>{mediumInsight}</span>
+      {/* Cross-medium love% — ranked comparison across all media */}
+      {mediumComparison && (
+        <div style={{ marginBottom: 16 }}>
+          {mediumComparison.map((m, i) => (
+            <span key={m.type}>
+              {i > 0 && <span style={{ color: MUTE }}> · </span>}
+              <span style={{ color: i === 0 ? INK : GRAPHITE, fontWeight: i === 0 ? 600 : 400, fontSize: 13 }}>
+                {TYPE_LABEL[m.type]}
+              </span>
+              <span style={{ fontSize: 13, color: MUTE }}> {m.pct}%</span>
+            </span>
+          ))}
+          <span style={{ fontSize: 11, color: MUTE }}> loved</span>
         </div>
       )}
 
-      {/* PER CATEGORY — one card per medium. tv last. */}
+      {/* PER CATEGORY — compact bordered cards. tv last. */}
       {(['film', 'book', 'music', 'tv'] as const).map(type => (
         <CategoryCard key={type} items={items} type={type} />
       ))}
