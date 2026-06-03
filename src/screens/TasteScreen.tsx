@@ -7,6 +7,8 @@ import { isGenreTag } from '../lib/genres'
 import { authHeaders } from '../lib/supabase'
 import { useArtwork } from '../lib/artwork'
 
+const SERIF = "'Source Serif 4', Georgia, serif"
+
 // Editorial palette — monochrome, warm ink on white. Low-contrast, print-like.
 const INK = '#1C1B19'      // primary text / lead term
 const GRAPHITE = '#6F6B64' // secondary text / non-lead terms
@@ -180,7 +182,7 @@ function EraMap({ items }: { items: Item[] }) {
 
   return (
     <div>
-      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', color: MUTE, marginBottom: 10, fontFamily: SERIF }}>
         by era
       </div>
 
@@ -336,7 +338,7 @@ export function TasteScreen() {
 
   return (
     <div style={{ padding: '44px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 14px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
+      <h1 style={{ fontSize: 24, fontWeight: 600, margin: '0 0 14px', letterSpacing: '-0.3px', color: INK, fontFamily: SERIF }}>taste</h1>
 
       {/* Hero header — vibes chips + prose */}
       <div style={{ borderBottom: `1.5px solid ${INK}`, paddingBottom: 18, marginBottom: 16 }}>
@@ -359,14 +361,14 @@ export function TasteScreen() {
           const bullets = lines.filter(l => l.trimStart().startsWith('- '))
           return (
             <>
-              <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
+              <div style={{ fontSize: 15, lineHeight: 1.65, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px', fontFamily: SERIF }}>
                 {inlineItalics(opener)}
                 {bullets.length > 0 && !profileExpanded && (
                   <TextLink onClick={() => setProfileExpanded(true)}>see more</TextLink>
                 )}
               </div>
               {bullets.length > 0 && profileExpanded && (
-                <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
+                <div style={{ fontSize: 15, lineHeight: 1.65, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px', fontFamily: SERIF }}>
                   {bullets.map((line, i) => {
                     const isLast = i === bullets.length - 1
                     return (
@@ -426,7 +428,7 @@ export function TasteScreen() {
       </div>
 
       {/* Section bridge */}
-      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', color: MUTE, marginBottom: 10, fontFamily: SERIF }}>
         by medium
       </div>
 
