@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 One opening sentence that names a specific cross-medium pattern and anchors it with at least two titles or names — thematic analysis is fine, but it must be grounded in something concrete from the list, not a mood word floating on its own.
 
-Then 4–5 bullet points (each starting with "- "), exactly one sentence each. Use the full signal available: treat [loved] items as core taste (what they consistently reach for), [liked] as supporting evidence, and notes as first-person confirmation. Prioritise cross-medium observations — what threads run across books AND films AND music? Only break out a single medium if the pattern there is genuinely distinct. Each bullet: one concrete observation, two or three examples, nothing else. No hedging, no editorialising, no "probably" or "seems like".
+Then 4–5 bullet points (each starting with "- "), exactly one sentence each. Use the full signal available: treat [loved] items as core taste (what they consistently reach for), [liked] as supporting evidence, and notes as first-person confirmation. Music, books, and film must each appear meaningfully across the bullets — do not let any one medium dominate or get a single token mention at the end. Prioritise cross-medium observations where they exist, but if a medium has a genuinely distinct pattern, give it its own bullet. Each bullet: one concrete observation, two or three examples, nothing else. No hedging, no editorialising, no "probably" or "seems like".
 
 Plain English, second person. Wrap media titles in *asterisks*. No preamble.`,
     messages: [{ role: 'user', content: `Here is the list:\n\n${list}` }],
