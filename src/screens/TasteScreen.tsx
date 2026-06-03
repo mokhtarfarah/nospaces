@@ -110,65 +110,104 @@ function CoverTile({ item, width, height }: { item: Item; width: number; height:
 interface EraBucket { decade: number; label: string; rate: number; rep: Item }
 
 const ERA_MIN_RATED = 4 // n-floor: ignore decades too thin to read anything into
+const TILE_SIZE = 50   // all tiles square — works for music (natively square) and film/book (center-crop)
 
-// Era map — where your taste lives in time. One column per decade (chronological),
-// fronted by the cover of your most-loved item from that era. The bar encodes
-// loved-rate (the share of what you saw in that decade that you actually loved),
-// not raw volume — so it measures taste, not how much you happened to log.
+// Derives peak decade per medium and cross-medium buckets from the same pass.
+function computeEraData(items: Item[]) {
+  const byDecade = new Map<number, Item[]>()
+  const byTypeDecade = new Map<string, Map<number, { rated: number; loved: number }>>()
+
+  for (const i of items) {
+    if (i.status !== 'done' || !i.reaction) continue
+    if (!i.year || i.year < 1900) continue
+    const decade = Math.floor(i.year / 10) * 10
+
+    // Cross-medium buckets
+    const arr = byDecade.get(decade) ?? []
+    arr.push(i)
+    byDecade.set(decade, arr)
+
+    // Per-medium
+    if (!byTypeDecade.has(i.type)) byTypeDecade.set(i.type, new Map())
+    const td = byTypeDecade.get(i.type)!
+    const e = td.get(decade) ?? { rated: 0, loved: 0 }
+    e.rated++
+    if (i.reaction === 'loved_it') e.loved++
+    td.set(decade, e)
+  }
+
+  const hasCover = (i: Item) => !!(i.metadata?.coverUrl || i.metadata?.wikiThumb)
+  const pickRep = (arr: Item[]) => [...arr]
+    .filter(i => i.reaction === 'loved_it')
+    .sort((a, b) => {
+      if (hasCover(a) !== hasCover(b)) return hasCover(a) ? -1 : 1
+      return (b.year ?? 0) - (a.year ?? 0)
+    })[0]
+
+  const buckets: EraBucket[] = Array.from(byDecade.entries())
+    .map(([decade, arr]) => {
+      const loved = arr.filter(i => i.reaction === 'loved_it').length
+      return { decade, rated: arr.length, loved, rep: pickRep(arr) }
+    })
+    .filter(b => b.rated >= ERA_MIN_RATED && b.loved >= 1 && b.rep)
+    .map(b => ({ decade: b.decade, label: `${b.decade}s`, rate: b.loved / b.rated, rep: b.rep! }))
+    .sort((a, b) => a.decade - b.decade)
+
+  // Per-medium peak: the decade where you loved the highest share of what you saw.
+  const mediumPeaks: { type: string; typeLabel: string; decade: number }[] = []
+  for (const type of ['film', 'book', 'music', 'tv']) {
+    const td = byTypeDecade.get(type)
+    if (!td) continue
+    const qualified = Array.from(td.entries())
+      .filter(([, v]) => v.rated >= ERA_MIN_RATED && v.loved >= 1)
+      .map(([decade, v]) => ({ decade, rate: v.loved / v.rated }))
+      .sort((a, b) => b.rate - a.rate)
+    if (qualified.length) mediumPeaks.push({ type, typeLabel: TYPE_LABEL[type] ?? type, decade: qualified[0].decade })
+  }
+
+  return { buckets, mediumPeaks }
+}
+
+// Era map — its own section below the prose. Shows the actual finding as a
+// typographic insight line (per-medium peak decades), then the visual strip
+// of emblematic covers with a love-rate bar for the shape. All tiles square
+// so music (natively square) looks correct and film/book crops cleanly.
 function EraMap({ items }: { items: Item[] }) {
-  const buckets = useMemo<EraBucket[]>(() => {
-    const byDecade = new Map<number, Item[]>()
-    for (const i of items) {
-      if (i.status !== 'done' || !i.reaction) continue
-      if (!i.year || i.year < 1900) continue
-      const decade = Math.floor(i.year / 10) * 10
-      const arr = byDecade.get(decade) ?? []
-      arr.push(i)
-      byDecade.set(decade, arr)
-    }
-    const hasCover = (i: Item) => !!(i.metadata?.coverUrl || i.metadata?.wikiThumb)
-    // Emblem per decade: a loved item, preferring one with a stored cover, then most recent.
-    const pickRep = (arr: Item[]) => [...arr]
-      .filter(i => i.reaction === 'loved_it')
-      .sort((a, b) => {
-        if (hasCover(a) !== hasCover(b)) return hasCover(a) ? -1 : 1
-        return (b.year ?? 0) - (a.year ?? 0)
-      })[0]
-    return Array.from(byDecade.entries())
-      .map(([decade, arr]) => {
-        const loved = arr.filter(i => i.reaction === 'loved_it').length
-        return { decade, rated: arr.length, loved, rep: pickRep(arr) }
-      })
-      // Credible (enough rated) and meaningful (you loved something here).
-      .filter(b => b.rated >= ERA_MIN_RATED && b.loved >= 1 && b.rep)
-      .map(b => ({
-        decade: b.decade,
-        label: `${b.decade}s`,
-        rate: b.loved / b.rated,
-        rep: b.rep,
-      }))
-      .sort((a, b) => a.decade - b.decade)
-  }, [items])
+  const { buckets, mediumPeaks } = useMemo(() => computeEraData(items), [items])
 
   if (buckets.length < 2) return null
   const maxRate = Math.max(...buckets.map(b => b.rate))
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 8 }}>
-        where your taste lives
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
+        by era
       </div>
+
+      {/* Insight line — the actual finding, stated plainly */}
+      {mediumPeaks.length > 0 && (
+        <div style={{ fontSize: 13, lineHeight: 1.7, color: GRAPHITE, marginBottom: 14, letterSpacing: '-0.1px' }}>
+          {mediumPeaks.map((p, i) => (
+            <span key={p.type}>
+              {i > 0 && <span style={{ color: MUTE }}> · </span>}
+              <span>{p.typeLabel}: </span>
+              <span style={{ color: INK, fontWeight: 600 }}>{p.decade}s</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Visual strip — cover emblem per decade, love-rate bar for shape */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
         {buckets.map(b => {
           const isPeak = b.rate === maxRate
           return (
-            <div key={b.decade} style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 46 }}>
-              <CoverTile item={b.rep} width={46} height={68} />
-              {/* love-rate bar — taller where you loved a higher share of what you saw */}
-              <div style={{ width: '100%', height: 4, background: HAIR, borderRadius: 2, overflow: 'hidden' }}>
+            <div key={b.decade} style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: TILE_SIZE }}>
+              <CoverTile item={b.rep} width={TILE_SIZE} height={TILE_SIZE} />
+              <div style={{ width: '100%', height: 3, background: HAIR, borderRadius: 2, overflow: 'hidden' }}>
                 <div style={{ width: `${Math.round((b.rate / maxRate) * 100)}%`, height: '100%', background: isPeak ? INK : GRAPHITE }} />
               </div>
-              <span style={{ fontSize: 10.5, fontWeight: isPeak ? 700 : 500, color: isPeak ? INK : GRAPHITE, letterSpacing: '-0.2px' }}>{b.label}</span>
+              <span style={{ fontSize: 10, fontWeight: isPeak ? 700 : 400, color: isPeak ? INK : GRAPHITE, letterSpacing: '-0.1px' }}>{b.label}</span>
             </div>
           )
         })}
@@ -299,9 +338,8 @@ export function TasteScreen() {
     <div style={{ padding: '44px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
       <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 14px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
 
-      {/* Hero header — non-collapsible: era map + vibes chips + prose */}
+      {/* Hero header — vibes chips + prose */}
       <div style={{ borderBottom: `1.5px solid ${INK}`, paddingBottom: 18, marginBottom: 16 }}>
-        <EraMap items={items} />
         {topVibes.length > 0 && (
           <div style={{ marginBottom: 14 }}>
             <RankedLine scored={topVibes} limit={8} />
@@ -382,12 +420,17 @@ export function TasteScreen() {
         )}
       </div>
 
+      {/* Era map — own section, below prose, above medium cards */}
+      <div style={{ borderBottom: `1px solid ${HAIR}`, paddingBottom: 20, marginBottom: 16 }}>
+        <EraMap items={items} />
+      </div>
+
       {/* Section bridge */}
       <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
         by medium
       </div>
 
-      {/* PER CATEGORY — compact bordered cards. tv last. */}
+      {/* PER CATEGORY — hairline-ruled sections. tv last. */}
       {(['film', 'book', 'music', 'tv'] as const).map(type => (
         <CategoryCard key={type} items={items} type={type} />
       ))}
