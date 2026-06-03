@@ -148,7 +148,7 @@ function LibraryTools({ items, editItem }: {
   const btnStyle = { padding: '7px 16px', borderRadius: 20, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
 
   return (
-    <div style={{ marginTop: 32, borderTop: '1px solid #ECEAE6', paddingTop: 16 }}>
+    <div style={{ marginTop: 32, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
       <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#AAA', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
         {open ? 'hide library tools' : 'library tools'}
       </button>
@@ -401,7 +401,7 @@ export function AddScreen() {
           {loading ? 'identifying…' : 'identify & save'}
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
           <div style={{ flex: 1, height: 1, background: '#EEE' }} />
           <span style={{ fontSize: 11, color: '#BBB' }}>or</span>
           <div style={{ flex: 1, height: 1, background: '#EEE' }} />
@@ -416,13 +416,20 @@ export function AddScreen() {
         </div>
 
         {!loading && (
-          <div style={{ textAlign: 'center', marginTop: 12 }}>
+          <div style={{ textAlign: 'center', marginTop: 12, display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={handleSaveAsScratch}
               style={{ border: 'none', background: 'none', color: title.trim() ? '#777' : '#AAA', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
             >
               can't identify it? jot a description for later
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/recommend')}
+              style={{ border: 'none', background: 'none', color: '#AAA', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+            >
+              find recommendations
             </button>
           </div>
         )}
@@ -431,13 +438,6 @@ export function AddScreen() {
       </form>
 
       <div style={{ textAlign: 'center', marginTop: 20, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => navigate('/recommend')}
-          style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
-        >
-          find recommendations
-        </button>
         <button
           type="button"
           onClick={() => navigate('/import')}
