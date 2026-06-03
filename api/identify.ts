@@ -5,9 +5,9 @@ import { requireAuth } from './_auth'
 // Genre vocab — keep in sync with src/lib/genres.ts (server-side copy, Vercel
 // functions can't import from src/).
 const GENRE_VOCAB: Record<string, string[]> = {
-  film:  ['action','animation','comedy','crime','documentary','drama','fantasy','horror','musical','romance','satire','sci-fi','thriller','western'],
-  tv:    ['animation','comedy','crime','documentary','drama','fantasy','horror','reality','satire','sci-fi','thriller'],
-  book:  ['biography','business','classics','crime','essay','fantasy','history','horror','literary fiction','mystery','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
+  film:  ['action','animation','classic','comedy','crime','documentary','drama','fantasy','horror','musical','period piece','romance','satire','sci-fi','thriller','western'],
+  tv:    ['animation','classic','comedy','crime','documentary','drama','fantasy','horror','period piece','reality','satire','sci-fi','thriller'],
+  book:  ['biography','business','classics','crime','essay','fantasy','history','horror','literary fiction','mystery','period piece','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
   music: ['afrobeats','ambient','classical','country','electronic','folk','hip-hop','indie','jazz','latin','metal','pop','punk','r&b','rock','soul'],
 }
 

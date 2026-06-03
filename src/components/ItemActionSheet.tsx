@@ -6,8 +6,8 @@ import { NoteInput } from './NoteInput'
 import { MoodChips } from './MoodChips'
 import { VIBES, VERDICTS } from '../lib/moods'
 import { useWikipediaInfo, clearWikiCache } from '../lib/wikipedia'
-import { useArtwork } from '../lib/artwork'
-import { useBookBlurb } from '../lib/blurb'
+import { useArtwork, clearArtworkCache } from '../lib/artwork'
+import { useBookBlurb, clearBlurbCache } from '../lib/blurb'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
 import { WhereToWatchSheet } from './WhereToWatchSheet'
 import { genresForType, isGenreTag } from '../lib/genres'
@@ -138,15 +138,22 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     : null
 
   function handleSaveDetails() {
+    const newTitle   = title.trim() || item.title
+    const newCreator = creator.trim() || null
+    const newYear    = year ? parseInt(year) : null
+    clearArtworkCache(item.type, item.title, item.creator, item.year)
+    clearArtworkCache(type, newTitle, newCreator, newYear)
+    clearBlurbCache(item.title, item.creator, item.year)
+    clearBlurbCache(newTitle, newCreator, newYear)
     const metadata: Record<string, unknown> = { ...item.metadata, coverUrl: coverUrl.trim() || null }
     delete metadata.scratch  // clear scratch flag when user confirms the identity
     if (series.trim()) metadata.series = series.trim()
     else delete metadata.series
     onEdit({
-      title: title.trim() || item.title,
-      creator: creator.trim() || null,
+      title: newTitle,
+      creator: newCreator,
       type,
-      year: year ? parseInt(year) : null,
+      year: newYear,
       source_detail: sourceDetail.trim() || null,
       metadata,
     })
@@ -209,6 +216,10 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     // Clear cache for both old and new keys so the Wikipedia hook re-fetches.
     clearWikiCache(item.type, item.title, item.creator, item.year)
     clearWikiCache(item.type, newTitle,   newCreator,   newYear)
+    clearArtworkCache(item.type, item.title, item.creator, item.year)
+    clearArtworkCache(item.type, newTitle,   newCreator,   newYear)
+    clearBlurbCache(item.title, item.creator, item.year)
+    clearBlurbCache(newTitle,   newCreator,   newYear)
     onEdit({
       title:   newTitle,
       creator: newCreator,

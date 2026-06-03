@@ -24,8 +24,6 @@ export interface Item {
   updated_at: string
 }
 
-export type NewItem = Omit<Item, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'date_added'>
-
 export interface Database {
   public: {
     Tables: {

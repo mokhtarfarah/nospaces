@@ -2,12 +2,10 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
-// Only these two Google accounts may access the app.
-// Add both email addresses here.
-const ALLOWED_EMAILS: string[] = [
-  'farahmokhtar94@gmail.com',
-  'tom.effland@gmail.com',
-]
+// Read from VITE_ALLOWED_EMAILS env var (comma-separated). If not set, empty
+// array = allow everyone (dev mode). Set in Vercel to lock down production.
+const ALLOWED_EMAILS: string[] = (import.meta.env.VITE_ALLOWED_EMAILS ?? '')
+  .split(',').map((e: string) => e.trim()).filter(Boolean)
 
 interface AuthContextValue {
   session: Session | null
