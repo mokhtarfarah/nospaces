@@ -85,9 +85,9 @@ function RankedLine({ scored, limit }: { scored: Scored[]; limit?: number }) {
 
 
 
-// One cover tile in the hero shelf. Resolves art the same way the library does
+// One cover tile. Resolves art the same way the library does
 // (useArtwork → stored wiki thumb → lowercase type-word placeholder, no emoji).
-function CoverTile({ item }: { item: Item }) {
+function CoverTile({ item, width, height }: { item: Item; width: number; height: number }) {
   const stored = (item.metadata?.coverUrl as string | null) ?? (item.metadata?.wikiThumb as string | null) ?? null
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const src = artwork ?? stored
@@ -95,37 +95,79 @@ function CoverTile({ item }: { item: Item }) {
     <div
       title={item.title}
       style={{
-        flex: '0 0 auto', width: 58, height: 86, borderRadius: 4, overflow: 'hidden',
+        width, height, borderRadius: 3, overflow: 'hidden',
         border: `1px solid ${HAIR}`, background: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
       {src
         ? <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <span style={{ fontSize: 10, color: MUTE, textAlign: 'center', padding: '0 4px', lineHeight: 1.3 }}>{TYPE_LABEL[item.type] ?? item.type}</span>}
+        : <span style={{ fontSize: 9, color: MUTE, textAlign: 'center', padding: '0 3px', lineHeight: 1.3 }}>{TYPE_LABEL[item.type] ?? item.type}</span>}
     </div>
   )
 }
 
-// Editorial "shelf" of the most-loved covers across media — gives the all-text
-// hero a personal, at-a-glance visual. Loved items first, prefer ones with a
-// stored cover so art shows instantly, mix media for variety.
-function HeroCovers({ items }: { items: Item[] }) {
-  const featured = useMemo(() => {
-    const loved = items.filter(i => i.status === 'done' && i.reaction === 'loved_it')
+interface EraBucket { decade: number; label: string; count: number; rep: Item }
+
+// Era map — where your taste lives in time. One column per decade (chronological),
+// each fronted by the cover of your most-loved item from that era, with a count
+// + density bar so the clusters read at a glance. Covers carry meaning (the
+// emblem of each decade), not decoration.
+function EraMap({ items }: { items: Item[] }) {
+  const buckets = useMemo<EraBucket[]>(() => {
+    const byDecade = new Map<number, Item[]>()
+    for (const i of items) {
+      if (i.status !== 'done' || (i.reaction !== 'loved_it' && i.reaction !== 'liked_it')) continue
+      if (!i.year || i.year < 1900) continue
+      const decade = Math.floor(i.year / 10) * 10
+      const arr = byDecade.get(decade) ?? []
+      arr.push(i)
+      byDecade.set(decade, arr)
+    }
     const hasCover = (i: Item) => !!(i.metadata?.coverUrl || i.metadata?.wikiThumb)
-    return [...loved]
-      .sort((a, b) => {
-        if (hasCover(a) !== hasCover(b)) return hasCover(a) ? -1 : 1
-        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-      })
-      .slice(0, 6)
+    // Representative per decade: loved over liked, then a stored cover, then most recent.
+    const pickRep = (arr: Item[]) => [...arr].sort((a, b) => {
+      const ra = a.reaction === 'loved_it' ? 1 : 0, rb = b.reaction === 'loved_it' ? 1 : 0
+      if (ra !== rb) return rb - ra
+      if (hasCover(a) !== hasCover(b)) return hasCover(a) ? -1 : 1
+      return (b.year ?? 0) - (a.year ?? 0)
+    })[0]
+    return Array.from(byDecade.entries())
+      .map(([decade, arr]) => ({
+        decade,
+        label: `'${String(decade % 100).padStart(2, '0')}s`,
+        count: arr.length,
+        rep: pickRep(arr),
+      }))
+      .sort((a, b) => a.decade - b.decade)
   }, [items])
 
-  if (featured.length < 3) return null
+  if (buckets.length < 2) return null
+  const maxCount = Math.max(...buckets.map(b => b.count))
+
   return (
-    <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      {featured.map(item => <CoverTile key={item.id} item={item} />)}
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 8 }}>
+        where your taste lives
+      </div>
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+        {buckets.map(b => {
+          const isPeak = b.count === maxCount
+          return (
+            <div key={b.decade} style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, width: 46 }}>
+              <CoverTile item={b.rep} width={46} height={68} />
+              {/* density bar — taller where more of your taste sits */}
+              <div style={{ width: '100%', height: 3, background: HAIR, borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: `${Math.round((b.count / maxCount) * 100)}%`, height: '100%', background: isPeak ? INK : GRAPHITE }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                <span style={{ fontSize: 11, fontWeight: isPeak ? 700 : 500, color: isPeak ? INK : GRAPHITE }}>{b.label}</span>
+                <span style={{ fontSize: 9, color: MUTE }}>{b.count}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -197,6 +239,7 @@ export function TasteScreen() {
         headers: await authHeaders(),
         body: JSON.stringify({
           items: signal.map(i => ({ title: i.title, creator: i.creator, type: i.type, reaction: i.reaction, note: i.note })),
+          vibes: topVibes.slice(0, 8).map(v => v.label),
         }),
       })
       if (!res.ok) {
@@ -249,9 +292,9 @@ export function TasteScreen() {
     <div style={{ padding: '44px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
       <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 14px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
 
-      {/* Hero header — non-collapsible: loved-covers shelf + vibes chips + prose */}
+      {/* Hero header — non-collapsible: era map + vibes chips + prose */}
       <div style={{ borderBottom: `1.5px solid ${INK}`, paddingBottom: 18, marginBottom: 16 }}>
-        <HeroCovers items={items} />
+        <EraMap items={items} />
         {topVibes.length > 0 && (
           <div style={{ marginBottom: 14 }}>
             <RankedLine scored={topVibes} limit={8} />
