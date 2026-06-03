@@ -20,7 +20,7 @@ async function identifyText(input: string, typeHint?: string | null): Promise<Ai
     headers: await authHeaders(),
     body: JSON.stringify({ input, typeHint: typeHint || undefined }),
   })
-  if (!res.ok) throw new Error('AI request failed')
+  if (!res.ok) throw new Error(res.status === 401 ? 'auth_error' : 'AI request failed')
   return res.json()
 }
 
@@ -36,6 +36,7 @@ async function describeToSearch(input: string): Promise<{ searchQuery: string; t
 
 async function catalogLookup(q: string, recency = false): Promise<Candidate[]> {
   const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}${recency ? '&recency=1' : ''}`, { headers: await authHeaders() })
+  if (res.status === 401) throw new Error('auth_error')
   if (!res.ok) return []
   const { results } = await res.json()
   return Array.isArray(results) ? results : []
@@ -83,7 +84,7 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
     headers: await authHeaders(),
     body: JSON.stringify({ imageBase64: base64, mimeType, typeHint: typeHint || undefined }),
   })
-  if (!res.ok) throw new Error('AI request failed')
+  if (!res.ok) throw new Error(res.status === 401 ? 'auth_error' : 'AI request failed')
   return res.json()
 }
 
@@ -373,8 +374,10 @@ export function AddScreen() {
       setAiSource(source)
       setAiQuery('')
       setAiResult(result)
-    } catch {
-      setError('Could not identify from image.')
+    } catch (err) {
+      setError(err instanceof Error && err.message === 'auth_error'
+        ? 'Session expired — reload the app and try again.'
+        : 'Could not identify from image.')
     } finally {
       setLoading(false)
       if (imageRef.current) imageRef.current.value = ''
@@ -445,11 +448,15 @@ export function AddScreen() {
 
       // Step 3: No catalog results — prompt before using Sonnet
       setSonnetPrompt(true)
-    } catch {
-      setError('Could not reach AI — saved as typed.')
-      await addItem(title.trim())
-      setTitle('')
-      navigate('/library')
+    } catch (err) {
+      if (err instanceof Error && err.message === 'auth_error') {
+        setError('Session expired — reload the app and try again.')
+      } else {
+        setError('Could not reach AI — saved as typed.')
+        await addItem(title.trim())
+        setTitle('')
+        navigate('/library')
+      }
     } finally {
       setLoading(false)
     }
@@ -483,11 +490,15 @@ export function AddScreen() {
       setAiSource('quick add')
       setAiQuery(title.trim())
       setAiResult(result)
-    } catch {
-      setError('Could not reach AI — saved as typed.')
-      await addItem(title.trim())
-      setTitle('')
-      navigate('/library')
+    } catch (err) {
+      if (err instanceof Error && err.message === 'auth_error') {
+        setError('Session expired — reload the app and try again.')
+      } else {
+        setError('Could not reach AI — saved as typed.')
+        await addItem(title.trim())
+        setTitle('')
+        navigate('/library')
+      }
     } finally {
       setLoading(false)
     }

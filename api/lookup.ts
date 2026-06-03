@@ -68,11 +68,36 @@ async function tmdb(q: string): Promise<Candidate[]> {
     }))
 }
 
+// Google Books is faster and more reliable than Open Library for popular titles.
+async function googleBooks(q: string): Promise<Candidate[]> {
+  const ac = new AbortController()
+  const t = setTimeout(() => ac.abort(), 4000)
+  try {
+    const data = await (await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=4&langRestrict=en`, { signal: ac.signal })).json()
+    return (data?.items ?? []).slice(0, 4).map((item: { volumeInfo?: { title?: string; authors?: string[]; publishedDate?: string } }) => {
+      const v = item.volumeInfo ?? {}
+      return { title: v.title ?? '', creator: v.authors?.[0] ?? '', type: 'book', year: v.publishedDate ? (parseInt(v.publishedDate) || null) : null }
+    }).filter((c: Candidate) => c.title)
+  } catch {
+    return []
+  } finally {
+    clearTimeout(t)
+  }
+}
+
 async function openLibrary(q: string): Promise<Candidate[]> {
-  const data = await (await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=3`)).json()
-  return (data?.docs ?? []).slice(0, 3).map((d: { title?: string; author_name?: string[]; first_publish_year?: number }) => ({
-    title: d.title ?? '', creator: d.author_name?.[0] ?? '', type: 'book', year: d.first_publish_year ?? null,
-  }))
+  const ac = new AbortController()
+  const t = setTimeout(() => ac.abort(), 4000)
+  try {
+    const data = await (await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=3`, { signal: ac.signal })).json()
+    return (data?.docs ?? []).slice(0, 3).map((d: { title?: string; author_name?: string[]; first_publish_year?: number }) => ({
+      title: d.title ?? '', creator: d.author_name?.[0] ?? '', type: 'book', year: d.first_publish_year ?? null,
+    }))
+  } catch {
+    return []
+  } finally {
+    clearTimeout(t)
+  }
 }
 
 // Recency book queries ("Ottessa Moshfegh's latest book") — search by author, dedupe
@@ -80,19 +105,34 @@ async function openLibrary(q: string): Promise<Candidate[]> {
 // first_publish_year. Open Library's own sort=new is unusable (it floats recent reprints
 // of old books), and first_publish_year is the cleanest "real" date available.
 async function openLibraryByAuthor(q: string): Promise<Candidate[]> {
-  const data = await (await fetch(`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=40&fields=title,author_name,first_publish_year`)).json()
-  const byBase = new Map<string, Candidate>()
-  for (const d of (data?.docs ?? []) as { title?: string; author_name?: string[]; first_publish_year?: number }[]) {
-    if (!d.title || !d.first_publish_year || !/[a-z]/i.test(d.title)) continue
-    const base = d.title.split(/\s*\/\s*/)[0].trim() // "Mcglue / Mcglue" -> "Mcglue"
-    const key = base.toLowerCase().replace(/[^a-z0-9]/g, '')
-    const prev = byBase.get(key)
-    if (!prev || (prev.year != null && d.first_publish_year < prev.year)) {
-      byBase.set(key, { title: base, creator: d.author_name?.[0] ?? '', type: 'book', year: d.first_publish_year })
+  const ac = new AbortController()
+  const t = setTimeout(() => ac.abort(), 5000)
+  try {
+    const data = await (await fetch(`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=40&fields=title,author_name,first_publish_year`, { signal: ac.signal })).json()
+    const byBase = new Map<string, Candidate>()
+    for (const d of (data?.docs ?? []) as { title?: string; author_name?: string[]; first_publish_year?: number }[]) {
+      if (!d.title || !d.first_publish_year || !/[a-z]/i.test(d.title)) continue
+      const base = d.title.split(/\s*\/\s*/)[0].trim()
+      const key = base.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const prev = byBase.get(key)
+      if (!prev || (prev.year != null && d.first_publish_year < prev.year)) {
+        byBase.set(key, { title: base, creator: d.author_name?.[0] ?? '', type: 'book', year: d.first_publish_year })
+      }
     }
+    const out = [...byBase.values()].sort((a, b) => (b.year ?? 0) - (a.year ?? 0)).slice(0, 6)
+    return out.length > 0 ? out : googleBooks(q)
+  } catch {
+    return googleBooks(q)
+  } finally {
+    clearTimeout(t)
   }
-  const out = [...byBase.values()].sort((a, b) => (b.year ?? 0) - (a.year ?? 0)).slice(0, 6)
-  return out.length > 0 ? out : openLibrary(q)
+}
+
+// For regular book queries, try Google Books first (fast), fall back to Open Library.
+async function bookSearch(q: string): Promise<Candidate[]> {
+  const gb = await googleBooks(q)
+  if (gb.length > 0) return gb
+  return openLibrary(q)
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -103,7 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const [music, screen, books] = await Promise.all([
     (recency ? itunesByArtist(q) : itunes(q)).catch(() => []),
     tmdb(q).catch(() => []),
-    (recency ? openLibraryByAuthor(q) : openLibrary(q)).catch(() => []),
+    (recency ? openLibraryByAuthor(q) : bookSearch(q)).catch(() => []),
   ])
   let results = [...music, ...screen, ...books].filter(r => r.title)
   // For recency queries, float the newest release to the top across all types.
