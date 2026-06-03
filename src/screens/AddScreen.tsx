@@ -367,6 +367,28 @@ export function AddScreen() {
           }}
         />
 
+        {/* Optional type hint — part of the input setup, between box and button */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {(['film', 'book', 'music', 'tv'] as const).map(t => {
+            const active = typeHint === t
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTypeHint(active ? null : t)}
+                style={{
+                  padding: '4px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 12,
+                  border: active ? '1.5px solid #111' : '1.5px solid #E4E4E4',
+                  background: active ? '#111' : '#F7F7F7',
+                  color: active ? '#fff' : '#999', fontWeight: active ? 600 : 400,
+                }}
+              >
+                {t}
+              </button>
+            )
+          })}
+        </div>
+
         <button
           type="submit"
           disabled={!title.trim() || loading}
@@ -381,63 +403,30 @@ export function AddScreen() {
           {loading ? 'identifying…' : 'identify & save'}
         </button>
 
-        {/* Optional type hint — helps the AI, not a required step */}
-        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-          {(['film', 'book', 'music', 'tv'] as const).map(t => {
-            const active = typeHint === t
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTypeHint(active ? null : t)}
-                style={{
-                  padding: '4px 11px', borderRadius: 20, cursor: 'pointer', fontSize: 12,
-                  border: active ? '1.5px solid #111111' : '1.5px solid #E4E4E4',
-                  background: active ? '#F0F0F0' : '#fff',
-                  color: active ? '#111111' : '#AAA', fontWeight: active ? 600 : 400,
-                }}
-              >
-                {t}
-              </button>
-            )
-          })}
+        {/* Photo — compact grey pill, clearly a different input mode */}
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <button
+            type="button"
+            onClick={() => !bulkLoading && imageRef.current?.click()}
+            style={{
+              padding: '10px 22px', borderRadius: 24, border: 'none',
+              background: '#F0F0F0', fontSize: 14, color: '#444', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+            }}
+          >
+            <CameraIcon />
+            {bulkLoading ? 'identifying…' : 'add from photos'}
+          </button>
         </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
-          <div style={{ flex: 1, height: 1, background: '#EEE' }} />
-          <span style={{ fontSize: 11, color: '#BBB' }}>or</span>
-          <div style={{ flex: 1, height: 1, background: '#EEE' }} />
-        </div>
-
-        <button
-          type="button"
-          onClick={() => !bulkLoading && imageRef.current?.click()}
-          style={{
-            width: '100%', boxSizing: 'border-box', padding: '13px 16px',
-            border: '1px solid #E4E4E4', borderRadius: 12,
-            background: '#fff', fontSize: 14, color: '#444', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}
-        >
-          <CameraIcon />
-          {bulkLoading ? 'identifying…' : 'add from photos'}
-        </button>
 
         {!loading && (
-          <div style={{ textAlign: 'center', marginTop: 16, display: 'flex', justifyContent: 'center', gap: 20 }}>
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
             <button
               type="button"
               onClick={handleSaveAsScratch}
-              style={{ border: 'none', background: 'none', color: '#AAA', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+              style={{ border: 'none', background: 'none', color: '#BBB', fontSize: 13, cursor: 'pointer', padding: 0 }}
             >
               save as note
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/recommend')}
-              style={{ border: 'none', background: 'none', color: '#AAA', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
-            >
-              find recommendations
             </button>
           </div>
         )}
@@ -445,26 +434,33 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
       </form>
 
-      <div style={{ marginTop: 32, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
+      <div style={{ marginTop: 40, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
         <button
           onClick={() => setMoreWaysOpen(o => !o)}
-          style={{ background: 'none', border: 'none', fontSize: 12, color: '#AAA', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+          style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
         >
           {moreWaysOpen ? 'hide' : 'more ways to add'}
         </button>
         {moreWaysOpen && (
-          <div style={{ marginTop: 12, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => navigate('/recommend')}
+              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}
+            >
+              find recommendations
+            </button>
             <button
               type="button"
               onClick={() => navigate('/import')}
-              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}
             >
               import from Letterboxd
             </button>
             <button
               type="button"
               onClick={() => navigate('/spotify')}
-              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}
             >
               sync from Spotify
             </button>
