@@ -516,7 +516,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               <div style={{ marginBottom: 12 }}>
                 <MoodChips
                   size="sm"
-                  layout="scroll"
+                  collapsible
                   groups={item.status === 'want_to' ? 'vibes-only' : 'all'}
                   isActive={m => (item.moods ?? []).includes(m)}
                   onToggle={mood => {
