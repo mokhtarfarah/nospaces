@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
     res.status(200).json(json)
   } catch (err) {
-    console.error(err)
+    console.error('[runtime] error for', JSON.stringify({ title, type }), ':', err instanceof Error ? err.message : err)
     res.status(500).json({ error: 'Failed to fetch runtime/pages' })
   }
 }

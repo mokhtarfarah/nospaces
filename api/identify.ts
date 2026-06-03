@@ -102,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json(json)
   } catch (err) {
-    console.error(err)
+    console.error('[identify] error:', err instanceof Error ? err.message : err)
     res.status(500).json({ error: 'Failed to identify item' })
   }
 }

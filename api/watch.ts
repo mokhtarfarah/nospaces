@@ -42,7 +42,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       rent: mapProviders(us.rent),
       buy: mapProviders(us.buy),
     })
-  } catch {
+  } catch (err) {
+    console.error('[watch] error for', JSON.stringify({ title, type }), ':', err instanceof Error ? err.message : err)
     return res.status(200).json({ configured: true, error: true })
   }
 }

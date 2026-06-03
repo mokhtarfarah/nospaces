@@ -225,7 +225,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json(parseResponse(text, url ? input : ''))
   } catch (err) {
-    console.error(err)
+    console.error('[recommend] error for query', JSON.stringify(input), ':', err instanceof Error ? err.message : err)
     res.status(500).json({ error: 'Failed to fetch recommendations' })
   }
 }

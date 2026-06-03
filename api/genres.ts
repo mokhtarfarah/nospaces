@@ -41,7 +41,8 @@ If none fit, return [].`
     const tags = (Array.isArray(raw) ? raw : [])
       .filter((t: unknown) => typeof t === 'string' && genres.includes(t))
     res.status(200).json({ tags })
-  } catch {
+  } catch (err) {
+    console.error('[genres] error for', JSON.stringify({ title, type }), ':', err instanceof Error ? err.message : err)
     res.status(200).json({ tags: [] })
   }
 }

@@ -91,7 +91,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // well under Ticketmaster's rate limits when many artists resolve at once.
     res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate')
     return res.json({ shows })
-  } catch {
+  } catch (err) {
+    console.error('[shows] error for artist', JSON.stringify(artist), ':', err instanceof Error ? err.message : err)
     return res.json({ shows: [] })
   }
 }

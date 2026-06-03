@@ -45,8 +45,8 @@ Input: "${input.trim().replace(/"/g, '\\"')}"`,
       type: json.type ?? null,
       sortByRecency,
     })
-  } catch {
-    // Fall through — caller will fall back to Sonnet identify
+  } catch (err) {
+    console.error('[describe] error:', err instanceof Error ? err.message : err)
     return res.status(200).json({ searchQuery: input.trim(), type: null, sortByRecency })
   }
 }

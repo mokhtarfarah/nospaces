@@ -125,7 +125,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     else if (type === 'book') url = await bookCover(title, creator, year ? Number(year) : undefined)
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate')
     return res.status(200).json({ url })
-  } catch {
+  } catch (err) {
+    console.error('[art] error for', JSON.stringify({ type, title }), ':', err instanceof Error ? err.message : err)
     return res.status(200).json({ url: null })
   }
 }

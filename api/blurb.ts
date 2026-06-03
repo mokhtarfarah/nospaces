@@ -76,7 +76,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate')
     return res.status(200).json(summary ? { summary: shorten(summary), source } : { summary: null, source: null })
-  } catch {
+  } catch (err) {
+    console.error('[blurb] error for', JSON.stringify({ title }), ':', err instanceof Error ? err.message : err)
     return res.status(200).json({ summary: null, source: null })
   }
 }
