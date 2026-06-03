@@ -305,10 +305,6 @@ export function TasteScreen() {
     }).filter(m => m.pct !== null) as { type: string; pct: number }[]
   }, [items])
 
-  const mediumComparison = useMemo(() => {
-    if (mediumRates.length < 2) return null
-    return [...mediumRates].sort((a, b) => b.pct - a.pct)
-  }, [mediumRates])
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh' }}>
@@ -406,21 +402,10 @@ export function TasteScreen() {
         )}
       </div>
 
-      {/* Cross-medium love% — ranked comparison across all media */}
-      {mediumComparison && (
-        <div style={{ marginBottom: 16 }}>
-          {mediumComparison.map((m, i) => (
-            <span key={m.type}>
-              {i > 0 && <span style={{ color: MUTE }}> · </span>}
-              <span style={{ color: i === 0 ? INK : GRAPHITE, fontWeight: i === 0 ? 600 : 400, fontSize: 13 }}>
-                {TYPE_LABEL[m.type]}
-              </span>
-              <span style={{ fontSize: 13, color: MUTE }}> {m.pct}%</span>
-            </span>
-          ))}
-          <span style={{ fontSize: 11, color: MUTE }}> loved</span>
-        </div>
-      )}
+      {/* Section bridge */}
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
+        by medium
+      </div>
 
       {/* PER CATEGORY — compact bordered cards. tv last. */}
       {(['film', 'book', 'music', 'tv'] as const).map(type => (
