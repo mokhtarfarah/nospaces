@@ -20,6 +20,7 @@ export interface AiResult {
   confidence: 'high' | 'medium' | 'low'
   metadata: Record<string, unknown>
   tags: string[]
+  blurb?: string | null
   ambiguous: boolean
   alternatives: AiResult[]
 }

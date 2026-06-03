@@ -110,8 +110,11 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const cover = artwork ?? wikiThumb
   // For books with no Wikipedia summary, fall back to an Open Library / Apple Books blurb.
   const bookBlurb = useBookBlurb(item.title, item.creator, item.year, item.type === 'book' && !summary)
-  const blurb = summary ?? bookBlurb.summary
-  const blurbSource = summary ? 'Wikipedia' : bookBlurb.source
+  // Priority: recommendation blurb (from list) > captured blurb (from photo) > wiki > book
+  const recBlurb = item.metadata?.recommendationBlurb as string | undefined
+  const capturedBlurb = item.metadata?.capturedBlurb as string | undefined
+  const blurb = recBlurb ?? capturedBlurb ?? summary ?? bookBlurb.summary
+  const blurbSource = recBlurb ? null : capturedBlurb ? null : summary ? 'Wikipedia' : bookBlurb.source
 
   // Quick links (Spotify / Wikipedia / Where to watch) as one row of soft pills.
   const links: { key: string; label: string; icon: React.ReactNode; onClick: () => void }[] = []
@@ -378,10 +381,20 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             )}
 
-            {blurb && (
-              <div style={{ fontSize: 12, color: '#777', lineHeight: 1.5, marginBottom: 16, background: '#F7F7F7', borderRadius: 8, padding: '10px 12px' }}>
-                {blurb}
-                {blurbSource && <span style={{ display: 'block', marginTop: 4, fontSize: 10, color: '#AAA' }}>via {blurbSource}</span>}
+            {blurb && item.source_detail !== 'recommendation' && (
+              <div style={{ marginBottom: 16 }}>
+                <button
+                  onClick={() => setShowBlurb(v => !v)}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: '#B0B0B0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+                >
+                  <span>{blurbSource ? `via ${blurbSource}` : 'about this'}</span>
+                  <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
+                </button>
+                {showBlurb && (
+                  <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginTop: 5, fontStyle: 'italic' }}>
+                    {blurb}
+                  </div>
+                )}
               </div>
             )}
 

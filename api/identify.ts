@@ -25,6 +25,7 @@ Identify the item and return JSON only:
   "confidence": "high|medium|low",
   "metadata": { "runtime": null, "pages": null },
   "tags": ["tag1", "tag2"],
+  "blurb": null,
   "ambiguous": false,
   "alternatives": []
 }
@@ -44,6 +45,8 @@ RUNTIME / PAGES — populate metadata fields if known:
 - film / tv: set "runtime" to the runtime in minutes as a number (e.g. 112). Leave null if unknown.
 - book: set "pages" to the page count as a number (e.g. 324). Leave null if unknown.
 - music / other: leave both null.
+
+BLURB — leave null for text input. Only populate if the input is an image and there is visible descriptive text about the item (e.g. back-cover copy, a review excerpt, a list annotation). Copy it verbatim or paraphrase closely. Do not invent a description.
 
 If confidence is low, populate alternatives with up to 3 other possible matches with the same shape.
 If the input is wrapped in quotation marks, treat the quoted text as an EXACT, literal title — do not substitute a more famous or differently-spelled work. Match that exact title even if it's obscure; if you can't, set type "other" and use the quoted text verbatim as the title.
@@ -79,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       content.push({
         type: 'text',
-        text: `Identify the film, book, music album, or TV show in this image. Always fill in creator (director for films, author for books, artist for music, showrunner for TV). Populate "tags" with 1–3 genres from this list only:\n${genreList}\nFor metadata: film/tv → set "runtime" to minutes as a number; book → set "pages" to page count as a number; others leave null.\nReturn JSON only:\n{\n  "title": "...",\n  "creator": "...",\n  "type": "film|book|music|tv|other",\n  "year": 1234,\n  "confidence": "high|medium|low",\n  "metadata": { "runtime": null, "pages": null },\n  "tags": [],\n  "ambiguous": false,\n  "alternatives": []\n}` + hintLine,
+        text: `Identify the film, book, music album, or TV show in this image. Always fill in creator (director for films, author for books, artist for music, showrunner for TV). Populate "tags" with 1–3 genres from this list only:\n${genreList}\nFor metadata: film/tv → set "runtime" to minutes as a number; book → set "pages" to page count as a number; others leave null.\nFor "blurb": if the image contains visible descriptive text about the item (back-cover copy, a review excerpt, a list annotation), capture it here — copy verbatim or paraphrase closely. Otherwise null.\nReturn JSON only:\n{\n  "title": "...",\n  "creator": "...",\n  "type": "film|book|music|tv|other",\n  "year": 1234,\n  "confidence": "high|medium|low",\n  "metadata": { "runtime": null, "pages": null },\n  "tags": [],\n  "blurb": null,\n  "ambiguous": false,\n  "alternatives": []\n}` + hintLine,
       })
     } else {
       content.push({ type: 'text', text: USER_PROMPT(input ?? '', genreList) + hintLine })

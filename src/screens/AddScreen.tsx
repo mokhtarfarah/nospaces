@@ -204,7 +204,8 @@ export function AddScreen() {
 
 
   async function handleConfirm(item: AiResult, done: { reaction: ItemReaction | null; note: string } | null) {
-    await addItem(item.title, item.type, item.creator, item.year, item.metadata, item.tags, done ?? undefined)
+    const metadata = item.blurb ? { ...item.metadata, capturedBlurb: item.blurb } : item.metadata
+    await addItem(item.title, item.type, item.creator, item.year, metadata, item.tags, done ?? undefined)
     navigator.clipboard?.writeText('').catch(() => {})
     setAiResult(null)
     setTitle('')
