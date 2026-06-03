@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
@@ -122,6 +122,7 @@ function itemSource(item: Item): string {
 export function LibraryScreen() {
   const { items, loading, markDone, markWantTo, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   // Anchors for the vibe/genre dropdown menus — the filter row scrolls
   // horizontally (overflow clips absolutely-positioned children), so the menus
   // position themselves `fixed` relative to these.
@@ -162,6 +163,15 @@ export function LibraryScreen() {
   const [dupesOpen, setDupesOpen] = useState(false)
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
+  // Deep-link: arriving with ?item=<id> (e.g. from the data-gaps list) opens that
+  // item's action sheet so it can be filled in place, then clears the param.
+  useEffect(() => {
+    const id = searchParams.get('item')
+    if (!id || loading) return
+    const target = items.find(i => i.id === id)
+    if (target) setActionItem(target)
+    setSearchParams(prev => { prev.delete('item'); return prev }, { replace: true })
+  }, [searchParams, loading, items, setSearchParams])
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)

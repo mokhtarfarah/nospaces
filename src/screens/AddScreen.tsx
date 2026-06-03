@@ -122,6 +122,9 @@ function LibraryTools({ items, editItem, open }: {
   const [wikiTotal, setWikiTotal] = useState(0)
   const wikiCancelRef = useRef(false)
 
+  const navigate = useNavigate()
+  const [openList, setOpenList] = useState<string | null>(null)
+
   const untagged = useMemo(() =>
     items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type)), [items])
   const needsRuntime = useMemo(() =>
@@ -241,12 +244,40 @@ function LibraryTools({ items, editItem, open }: {
   const ghostBtn = { background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: '0 4px' } as const
   const warnBtn = { background: 'none', border: 'none', fontSize: 12, color: '#C00', cursor: 'pointer', padding: '0 4px', fontWeight: 600 } as const
   const cost = (n: number) => `~${n} API calls (~$${(n * 0.001).toFixed(2)})`
+  const listLinkBtn = { background: 'none', border: 'none', fontSize: 12, color: '#6F6B64', cursor: 'pointer', padding: 0, textDecoration: 'underline' } as const
+
+  // Expandable "see full list" of the items with this gap — tap one to jump to
+  // the library and open it for manual filling. Read-only, no API calls.
+  const gapList = (key: string, list: Item[]) => {
+    if (openList !== key) return null
+    return (
+      <div style={{ marginTop: 8, maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', border: '1px solid #ECEAE6', borderRadius: 6 }}>
+        {list.map((it, idx) => (
+          <button
+            key={it.id}
+            onClick={() => navigate(`/library?item=${it.id}`)}
+            style={{ display: 'flex', alignItems: 'baseline', gap: 6, textAlign: 'left', background: 'none', border: 'none', borderTop: idx === 0 ? 'none' : '1px solid #F4F2EE', padding: '8px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            <span style={{ fontSize: 13, color: '#1C1B19' }}>{it.title}</span>
+            {it.creator && <span style={{ fontSize: 12, color: '#ABA69C' }}>{it.creator}</span>}
+            <span style={{ fontSize: 11, color: '#ABA69C', marginLeft: 'auto', flexShrink: 0 }}>{it.type}</span>
+          </button>
+        ))}
+      </div>
+    )
+  }
+  const toggleLink = (key: string) => (
+    <button onClick={() => setOpenList(openList === key ? null : key)} style={listLinkBtn}>
+      {openList === key ? 'hide' : 'see full list'}
+    </button>
+  )
 
   return (
     <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
       {untagged.length > 0 && (
+        <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags</span>
+          <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags · {toggleLink('genre')}</span>
           {backfilling
             ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)}/{backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : backfillResult
@@ -263,10 +294,13 @@ function LibraryTools({ items, editItem, open }: {
                   </span>
                 : <button onClick={() => setBackfillConfirm(true)} style={btnStyle}>tag my library</button>}
         </div>
+        {gapList('genre', untagged)}
+        </div>
       )}
       {needsRuntime.length > 0 && (
+        <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or pages</span>
+          <span style={{ fontSize: 13, color: '#888' }}>{needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or pages · {toggleLink('runtime')}</span>
           {rtBackfilling
             ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>filling {Math.min(rtProgress + 5, rtTotal)}/{rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : rtResult
@@ -283,6 +317,8 @@ function LibraryTools({ items, editItem, open }: {
                   </span>
                 : <button onClick={() => setRtConfirm(true)} style={btnStyle}>fill in</button>}
         </div>
+        {gapList('runtime', needsRuntime)}
+        </div>
       )}
       {needsMoodMigration.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -293,11 +329,14 @@ function LibraryTools({ items, editItem, open }: {
         </div>
       )}
       {needsWiki.length > 0 && (
+        <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{needsWiki.length} item{needsWiki.length !== 1 ? 's' : ''} missing saved wiki links</span>
+          <span style={{ fontSize: 13, color: '#888' }}>{needsWiki.length} item{needsWiki.length !== 1 ? 's' : ''} missing saved wiki links · {toggleLink('wiki')}</span>
           {wikiBackfilling
             ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>fetching {Math.min(wikiProgress + 6, wikiTotal)}/{wikiTotal}… <button onClick={() => { wikiCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : <button onClick={runWikiBackfill} style={btnStyle}>fill in links</button>}
+        </div>
+        {gapList('wiki', needsWiki)}
         </div>
       )}
     </div>
