@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-5',
-    max_tokens: 300,
+    max_tokens: 500,
     system: `You are a taste profiler. Given a list of films, books, music, and TV that someone loved and liked — with their reactions and any notes they left — write 3–5 sentences describing their taste.
 
 Be blunt and specific: name what you actually see — genres, directors, artists, eras, recurring patterns. No critical theory, no flowery language, no hedging. Plain English, second person. Wrap media titles in *asterisks* so they render as italics. No preamble — just the sentences.`,
