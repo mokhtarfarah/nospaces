@@ -194,7 +194,7 @@ export function AddScreen() {
   const [aiResult, setAiResult] = useState<AiResult | null>(null)
   const [aiSource, setAiSource] = useState('quick add')
   const [aiQuery, setAiQuery] = useState('') // the exact text the user typed (for "use as typed")
-  const [typeHint, setTypeHint] = useState<string | null>(null)
+  const typeHint = null
   const imageRef = useRef<HTMLInputElement>(null)
   const [bulkItems, setBulkItems] = useState<BulkItem[] | null>(null)
   const [bulkLoading, setBulkLoading] = useState(false)
@@ -366,28 +366,6 @@ export function AddScreen() {
             resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
           }}
         />
-
-        {/* Optional type hint — part of the input setup, between box and button */}
-        <div style={{ display: 'flex', gap: 6, marginTop: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {(['film', 'book', 'music', 'tv'] as const).map(t => {
-            const active = typeHint === t
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTypeHint(active ? null : t)}
-                style={{
-                  padding: '4px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 12,
-                  border: active ? '1.5px solid #111' : '1.5px solid #E4E4E4',
-                  background: active ? '#111' : '#F7F7F7',
-                  color: active ? '#fff' : '#999', fontWeight: active ? 600 : 400,
-                }}
-              >
-                {t}
-              </button>
-            )
-          })}
-        </div>
 
         <button
           type="submit"
