@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 One opening sentence: name the sharpest pattern you see, grounded in specific titles. Not a mood word — a real observation.
 
-Then 4–5 bullet points (each starting with "- "), one sentence each. Say what you actually see. Draw on whichever media best illustrates each point — don't force balance or cross-medium connections that aren't there. Treat [loved] as core signal, [liked] as supporting evidence, notes as the person's own words. Specific examples, plain English, second person. No hedging.
+Then 4–5 bullet points (each starting with "- "), one sentence each. Say what you actually see. Treat [loved] as core signal, [liked] as supporting evidence, notes as the person's own words. Specific examples, plain English, second person. No hedging.
 
 Wrap media titles in *asterisks*. No preamble.`,
     messages: [{ role: 'user', content: `Here is the list:\n\n${list}` }],
