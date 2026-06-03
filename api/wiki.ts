@@ -54,28 +54,33 @@ async function fetchInfo(query: string): Promise<{ title: string; url: string; t
 
 // Fetch a Wikipedia article by its full URL (e.g. https://en.wikipedia.org/wiki/Mother_(2009_film)).
 // Returns a longer extract (5 sentences) for field parsing.
-async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: string; thumbnail: string | null; extract: string | null } | null> {
+async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: string; thumbnail: string | null; extract: string | null; categories: string[] } | null> {
   // Extract page title from URL path — handles encoded chars like parentheses.
   const match = wikiUrl.match(/wikipedia\.org\/wiki\/(.+)/)
   if (!match) return null
   const pageTitle = decodeURIComponent(match[1].replace(/_/g, ' '))
   const apiUrl =
     'https://en.wikipedia.org/w/api.php?action=query&format=json' +
-    '&prop=pageimages|info|extracts&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
-    '&exsentences=8&explaintext=1&redirects=1' +
+    '&prop=pageimages|info|extracts|categories&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
+    '&exsentences=8&explaintext=1&redirects=1&cllimit=30' +
     `&titles=${encodeURIComponent(pageTitle)}`
   const data = await (await fetch(apiUrl, {
     headers: { 'User-Agent': 'Nospaces/1.0 (https://nospaces.vercel.app; farahmokhtar94@gmail.com) node-fetch' },
   })).json()
   const pages = data?.query?.pages
   if (!pages) return null
-  const page = Object.values(pages)[0] as { missing?: boolean; title?: string; fullurl?: string; thumbnail?: { source?: string }; extract?: string } | undefined
+  const page = Object.values(pages)[0] as { missing?: boolean; title?: string; fullurl?: string; thumbnail?: { source?: string }; extract?: string; categories?: { title: string }[] } | undefined
   if (!page?.title || page.missing) return null
+  // Strip "Category:" prefix and keep only genre-informative ones (skip maintenance/stub categories).
+  const categories = (page.categories ?? [])
+    .map((c: { title: string }) => c.title.replace(/^Category:\s*/i, ''))
+    .filter((c: string) => !/stub|article|page|template|wikipedia|wikiproject|cs1|use |infobox/i.test(c))
   return {
     title: page.title,
     url: page.fullurl ?? wikiUrl,
     thumbnail: page.thumbnail?.source ?? null,
     extract: page.extract?.trim() || null,
+    categories,
   }
 }
 
@@ -96,22 +101,23 @@ const CREATOR_ROLE: Record<string, string> = {
   music:'primary recording artist or band (ignore producers, featured artists)',
 }
 
-// Use Haiku to pull structured fields out of a Wikipedia extract.
-async function parseFields(extract: string, type: string): Promise<ParsedFields> {
+// Use Haiku to pull structured fields out of a Wikipedia extract + categories.
+async function parseFields(extract: string, categories: string[], type: string): Promise<ParsedFields> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const vocab = (GENRE_VOCAB[type] ?? []).join(', ')
   const role = CREATOR_ROLE[type] ?? 'primary creator'
-  const prompt = `Extract structured data from this Wikipedia article extract. Return ONLY a JSON object, no markdown.
+  const catLine = categories.length ? `\nWikipedia categories: ${categories.slice(0, 20).join(' · ')}` : ''
+  const prompt = `Extract structured data from this Wikipedia article. Return ONLY a JSON object, no markdown.
 
 Media type: ${type}
-Article: """${extract}"""
+Article extract: """${extract}"""${catLine}
 
 JSON keys (use null if not found):
 - "year": release/publication year as integer
 - "creator": ${role} — single name as string (e.g. "Justine Triet", "Ursula K. Le Guin")
 - "runtime": running time in minutes as integer (${type === 'film' || type === 'tv' ? 'extract it' : 'always null'})
 - "pages": page count as integer (${type === 'book' ? 'extract it' : 'always null'})
-- "genres": array of 1–3 genres chosen ONLY from this list: [${vocab}]`
+- "genres": 1–3 genres from this list ONLY — use the categories above to identify genre: [${vocab}]`
 
   const msg = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -146,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!info) return res.json({ url: null, thumbnail: null, summary: null, parsed: null })
       const type = one(req.query.type)
       const parsed = (req.query.parse === '1' && type && info.extract)
-        ? await parseFields(info.extract, type)
+        ? await parseFields(info.extract, info.categories, type)
         : null
       return res.json({ url: info.url, thumbnail: info.thumbnail, summary: info.extract, parsed })
     } catch {
