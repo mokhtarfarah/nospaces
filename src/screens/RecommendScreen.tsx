@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 
@@ -32,22 +32,68 @@ export function RecommendScreen() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingLabel, setLoadingLabel] = useState('')
   const [error, setError] = useState('')
   const [source, setSource] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
   const [rows, setRows] = useState<Row[] | null>(null)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState<number | null>(null)
+  const pdfRef = useRef<HTMLInputElement>(null)
 
   const libraryKeys = useMemo(
     () => new Set(items.map(i => `${i.type}|${norm(i.title)}`)),
     [items],
   )
 
+  async function handlePdf(file: File) {
+    if (loading) return
+    // Vercel hard limit is 4.5MB — base64 adds ~33%, so warn above 3MB
+    if (file.size > 4 * 1024 * 1024) {
+      setError('PDF is too large (max ~4MB). Try saving just the article page, not the whole site.')
+      return
+    }
+    setError(''); setRows(null); setDone(null); setLoading(true)
+    setLoadingLabel('reading pdf… (~30s)')
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch('/api/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64: base64 }),
+      })
+      if (!res.ok) throw new Error('request failed')
+      const data = await res.json() as { source: string; sourceUrl: string; items: RecItem[]; error?: string }
+      if (data.error) { setError(data.error); return }
+      if (!data.items?.length) {
+        setError("Couldn't find a list in that PDF. Make sure the page contains a numbered or ranked list.")
+        return
+      }
+      setSource(data.source || file.name)
+      setSourceUrl(data.sourceUrl || '')
+      setRows(data.items.map(it => {
+        const inLibrary = libraryKeys.has(`${it.type}|${norm(it.title)}`)
+        return { ...it, inLibrary, checked: !inLibrary }
+      }))
+    } catch {
+      setError('Could not read the PDF. Try again or use a different file.')
+    } finally {
+      setLoading(false)
+      setLoadingLabel('')
+      if (pdfRef.current) pdfRef.current.value = ''
+    }
+  }
+
   async function handlePull(q: string) {
     const text = q.trim()
     if (!text || loading) return
     setError(''); setRows(null); setDone(null); setLoading(true)
+    setLoadingLabel('pulling the list… (~60s)')
     try {
       const res = await fetch('/api/recommend', {
         method: 'POST',
@@ -55,9 +101,10 @@ export function RecommendScreen() {
         body: JSON.stringify({ query: text }),
       })
       if (!res.ok) throw new Error('request failed')
-      const data = await res.json() as { source: string; sourceUrl: string; items: RecItem[] }
+      const data = await res.json() as { source: string; sourceUrl: string; items: RecItem[]; error?: string }
+      if (data.error) { setError(data.error); return }
       if (!data.items?.length) {
-        setError("Couldn't find that list. Try naming the outlet and year, e.g. \"Time best films 2025\", or paste a direct URL.")
+        setError("Couldn't find that list. Try naming the outlet and year (e.g. \"Pitchfork best albums 2025\"), or paste a direct URL for anything from 2026.")
         return
       }
       setSource(data.source || text)
@@ -70,6 +117,7 @@ export function RecommendScreen() {
       setError('Could not reach the recommender. Try again in a moment.')
     } finally {
       setLoading(false)
+      setLoadingLabel('')
     }
   }
 
@@ -134,15 +182,15 @@ export function RecommendScreen() {
         recommendations
       </h1>
       <p style={{ fontSize: 14, color: '#777', lineHeight: 1.5, margin: '0 0 18px' }}>
-        Name a list or paste a URL — a "best of", a critic's roundup, a publication's picks.
-        I'll pull the real list, skip what you already have, and let you save the rest to <b>want to</b>.
+        Name a list, paste a URL, or upload a PDF — a "best of", a critic's roundup, a publication's picks.
+        I'll extract the list, skip what you already have, and let you save the rest to <b>want to</b>.
       </p>
 
       <textarea
         value={query}
         onChange={e => setQuery(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePull(query) } }}
-        placeholder="e.g. NYT best books summer 2026 — or paste a URL"
+        placeholder="e.g. Pitchfork best albums 2025 — or paste a URL"
         rows={2}
         style={{
           width: '100%', boxSizing: 'border-box', padding: '14px', fontSize: 16,
@@ -162,8 +210,38 @@ export function RecommendScreen() {
           cursor: query.trim() && !loading ? 'pointer' : 'default',
         }}
       >
-        {loading ? 'pulling the list… (~30s)' : 'get recommendations'}
+        {loading && loadingLabel ? loadingLabel : loading ? 'loading…' : 'get recommendations'}
       </button>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 4px' }}>
+        <div style={{ flex: 1, height: 1, background: '#EEE' }} />
+        <span style={{ fontSize: 11, color: '#BBB' }}>or</span>
+        <div style={{ flex: 1, height: 1, background: '#EEE' }} />
+      </div>
+
+      <button
+        onClick={() => !loading && pdfRef.current?.click()}
+        disabled={loading}
+        style={{
+          width: '100%', padding: '12px', border: '1.5px dashed #D8D8D8', borderRadius: 12,
+          background: '#FAFAFA', color: loading ? '#CCC' : '#555', fontSize: 14,
+          cursor: loading ? 'default' : 'pointer', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: 8,
+        }}
+      >
+        <PdfIcon />
+        upload a PDF of the list
+      </button>
+      <p style={{ fontSize: 12, color: '#AAA', margin: '6px 0 0', textAlign: 'center' }}>
+        great for paywalled sites — save the article as PDF while logged in, then upload
+      </p>
+      <input
+        ref={pdfRef}
+        type="file"
+        accept="application/pdf"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handlePdf(f) }}
+        style={{ display: 'none' }}
+      />
 
       {!rows && done == null && (
         <div style={{ marginTop: 18 }}>
@@ -297,5 +375,16 @@ export function RecommendScreen() {
         </div>
       )}
     </div>
+  )
+}
+
+function PdfIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="9" y1="13" x2="15" y2="13"/>
+      <line x1="9" y1="17" x2="13" y2="17"/>
+    </svg>
   )
 }

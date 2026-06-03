@@ -73,10 +73,104 @@ interface RecItem {
   blurb: string
 }
 
+function buildPdfPrompt(): string {
+  const genreBlock = Object.entries(GENRE_VOCAB).map(([t, g]) => `  ${t}: ${g.join(', ')}`).join('\n')
+  return `Extract the ranked list from this PDF document.
+
+Return ONLY a JSON object in this exact shape:
+
+{
+  "source": "list name + outlet as it appears in the document",
+  "sourceUrl": "",
+  "items": [
+    {
+      "rank": 1,
+      "title": "exact title",
+      "creator": "director / author / artist / showrunner",
+      "type": "film|book|music|tv|other",
+      "year": 2025,
+      "tags": ["genre1", "genre2"],
+      "blurb": "1–2 sentences about what this item sounds, reads, or feels like — its style, themes, or what makes it distinctive. Use the document's own writing if present; otherwise your own knowledge. Never mention rankings or list placement."
+    }
+  ]
+}
+
+Rules:
+- Preserve the original list order. rank is 1-based.
+- Return ALL items, up to 50.
+- type: film, book, music, tv, or other. Albums → music. Movies → film. Series → tv.
+- Always fill creator. Only null if genuinely unknowable.
+- tags: 1–3 genres from vocab only:
+${genreBlock}
+- year: release/publication year as a number, or null.
+- If you cannot find a list, return {"source":"","sourceUrl":"","items":[]}.
+- Output the JSON object only.`
+}
+
+const validTypes = new Set(['film', 'book', 'music', 'tv', 'other'])
+
+function parseResponse(text: string, fallbackSourceUrl: string) {
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) return { source: '', sourceUrl: '', items: [] }
+  const parsed = JSON.parse(match[0]) as { source?: string; sourceUrl?: string; items?: RecItem[] }
+  const items = (parsed.items ?? [])
+    .filter(i => i && i.title)
+    .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
+    .map((i, idx) => {
+      const type = validTypes.has(i.type) ? i.type : 'other'
+      const vocab = GENRE_VOCAB[type] ?? []
+      const tags = (Array.isArray(i.tags) ? i.tags : [])
+        .map(t => String(t).toLowerCase().trim())
+        .filter(t => vocab.includes(t))
+        .slice(0, 3)
+      return {
+        rank: typeof i.rank === 'number' ? i.rank : idx + 1,
+        title: String(i.title).trim(),
+        creator: i.creator ? String(i.creator).trim() : null,
+        type,
+        year: typeof i.year === 'number' ? i.year : null,
+        tags,
+        blurb: i.blurb ? String(i.blurb).trim() : '',
+      }
+    })
+  return {
+    source: parsed.source ?? '',
+    sourceUrl: parsed.sourceUrl ?? fallbackSourceUrl,
+    items,
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { query } = req.body as { query?: string }
+  const body = req.body as { query?: string; pdfBase64?: string }
+
+  // PDF path: document block, no web_search needed
+  if (body.pdfBase64) {
+    try {
+      const message = await client.messages.create({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 8000,
+        system: SYSTEM_PROMPT,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: body.pdfBase64 } },
+            { type: 'text', text: buildPdfPrompt() },
+          ],
+        }],
+      })
+      const text = message.content
+        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+        .map(b => b.text).join('\n')
+      return res.status(200).json(parseResponse(text, ''))
+    } catch (err) {
+      console.error(err)
+      return res.status(500).json({ error: 'Failed to parse PDF' })
+    }
+  }
+
+  const { query } = body
   if (!query || !query.trim()) return res.status(400).json({ error: 'Missing query' })
 
   const input = query.trim()
@@ -96,38 +190,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .map(b => b.text)
       .join('\n')
 
-    const match = text.match(/\{[\s\S]*\}/)
-    if (!match) return res.status(200).json({ source: '', sourceUrl: '', items: [] })
-
-    const parsed = JSON.parse(match[0]) as { source?: string; sourceUrl?: string; items?: RecItem[] }
-
-    const validTypes = new Set(['film', 'book', 'music', 'tv', 'other'])
-    const items = (parsed.items ?? [])
-      .filter(i => i && i.title)
-      .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
-      .map((i, idx) => {
-        const type = validTypes.has(i.type) ? i.type : 'other'
-        const vocab = GENRE_VOCAB[type] ?? []
-        const tags = (Array.isArray(i.tags) ? i.tags : [])
-          .map(t => String(t).toLowerCase().trim())
-          .filter(t => vocab.includes(t))
-          .slice(0, 3)
-        return {
-          rank: typeof i.rank === 'number' ? i.rank : idx + 1,
-          title: String(i.title).trim(),
-          creator: i.creator ? String(i.creator).trim() : null,
-          type,
-          year: typeof i.year === 'number' ? i.year : null,
-          tags,
-          blurb: i.blurb ? String(i.blurb).trim() : '',
-        }
-      })
-
-    res.status(200).json({
-      source: parsed.source ?? '',
-      sourceUrl: parsed.sourceUrl ?? (url ? input : ''),
-      items,
-    })
+    res.status(200).json(parseResponse(text, url ? input : ''))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to fetch recommendations' })
