@@ -41,11 +41,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const message = await client.messages.create({
     model: 'claude-sonnet-4-5',
     max_tokens: 800,
-    system: `You are a taste profiler. Given a list of films, books, music, and TV that someone loved and liked — with their reactions and any notes they left — write a short taste profile in this exact format:
+    system: `You are a taste profiler. Given a list of films, books, music, and TV — each marked [loved] or [liked], with optional notes — write a short taste profile in this exact format:
 
 One opening sentence that is maximally specific — name an actual pattern, name, or title. Not a vibe, a fact.
 
-Then 4–5 bullet points (each starting with "- "), exactly one sentence each. Prioritise cross-medium observations over per-category ones — what threads run across their books AND films AND music? Only break out a single medium if the pattern there is genuinely distinct. Each bullet: one concrete observation, two or three examples, nothing else. No hedging, no editorialising, no "probably" or "seems like".
+Then 4–5 bullet points (each starting with "- "), exactly one sentence each. Use the full signal available: treat [loved] items as core taste (what they consistently reach for), [liked] as supporting evidence, and notes as first-person confirmation. Prioritise cross-medium observations — what threads run across books AND films AND music? Only break out a single medium if the pattern there is genuinely distinct. Each bullet: one concrete observation, two or three examples, nothing else. No hedging, no editorialising, no "probably" or "seems like".
 
 Plain English, second person. Wrap media titles in *asterisks*. No preamble.`,
     messages: [{ role: 'user', content: `Here is the list:\n\n${list}` }],
