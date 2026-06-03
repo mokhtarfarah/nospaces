@@ -14,7 +14,7 @@ export const GENRES: Record<string, string[]> = {
   ],
   book: [
     'biography', 'business', 'classics', 'crime', 'essay',
-    'fantasy', 'history', 'horror', 'literary fiction', 'mystery',
+    'fantasy', 'historical fiction', 'history', 'horror', 'literary fiction', 'mystery',
     'period piece', 'philosophy', 'poetry', 'romance', 'satire',
     'sci-fi', 'self-help', 'short stories', 'thriller', 'travel',
   ],

@@ -221,13 +221,18 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         { headers }
       )
       if (!res.ok) return
-      const data = await res.json() as { parsed?: { year?: number | null; creator?: string | null; runtime?: number | null; pages?: number | null } | null }
+      const data = await res.json() as { parsed?: { year?: number | null; creator?: string | null; runtime?: number | null; pages?: number | null; genres?: string[] } | null }
       const p = data.parsed
       if (!p) return
       if (p.year && !year) setYear(String(p.year))
       if (p.creator && !creator.trim()) setCreator(p.creator)
       if (p.runtime && !runtimeEdit) setRuntimeEdit(String(p.runtime))
       if (p.pages && !pagesEdit) setPagesEdit(String(p.pages))
+      // Pre-fill genres only if no genre tags currently set.
+      if (p.genres?.length && !editTags.some(isGenreTag)) {
+        const descriptors = editTags.filter(t => !isGenreTag(t))
+        setEditTags([...p.genres, ...descriptors])
+      }
       setWikiFilled(true)
     } finally {
       setWikiParsing(false)

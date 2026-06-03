@@ -62,7 +62,7 @@ async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: st
   const apiUrl =
     'https://en.wikipedia.org/w/api.php?action=query&format=json' +
     '&prop=pageimages|info|extracts&inprop=url&piprop=thumbnail&pithumbsize=160&pilicense=any' +
-    '&exsentences=5&explaintext=1&redirects=1' +
+    '&exsentences=8&explaintext=1&redirects=1' +
     `&titles=${encodeURIComponent(pageTitle)}`
   const data = await (await fetch(apiUrl, {
     headers: { 'User-Agent': 'Nospaces/1.0 (https://nospaces.vercel.app; farahmokhtar94@gmail.com) node-fetch' },
@@ -79,27 +79,58 @@ async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: st
   }
 }
 
-interface ParsedFields { year: number | null; creator: string | null; runtime: number | null; pages: number | null }
+interface ParsedFields { year: number | null; creator: string | null; runtime: number | null; pages: number | null; genres: string[] }
+
+// Genre vocab per type — must stay in sync with src/lib/genres.ts.
+const GENRE_VOCAB: Record<string, string[]> = {
+  film: ['action','animation','classic','comedy','crime','documentary','drama','fantasy','horror','musical','period piece','romance','satire','sci-fi','thriller','western'],
+  tv:   ['animation','classic','comedy','crime','documentary','drama','fantasy','horror','period piece','reality','satire','sci-fi','thriller'],
+  book: ['biography','business','classics','crime','essay','fantasy','historical fiction','history','horror','literary fiction','mystery','period piece','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
+  music:['afrobeats','ambient','classical','country','electronic','folk','hip-hop','indie','jazz','latin','metal','pop','punk','r&b','rock','soul'],
+}
+
+const CREATOR_ROLE: Record<string, string> = {
+  film: 'primary director (ignore writers, producers, actors)',
+  tv:   'primary director or showrunner (ignore writers, actors)',
+  book: 'author (ignore editors, translators)',
+  music:'primary recording artist or band (ignore producers, featured artists)',
+}
 
 // Use Haiku to pull structured fields out of a Wikipedia extract.
 async function parseFields(extract: string, type: string): Promise<ParsedFields> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const prompt = `Extract these fields from the Wikipedia article extract below.
-Type: ${type}
-Extract: """${extract}"""
+  const vocab = (GENRE_VOCAB[type] ?? []).join(', ')
+  const role = CREATOR_ROLE[type] ?? 'primary creator'
+  const prompt = `Extract structured data from this Wikipedia article extract. Return ONLY a JSON object, no markdown.
 
-Return ONLY valid JSON (no markdown) with these keys:
-- "year": the release/publication year as a number, or null
-- "creator": the director (film/tv), author (book), or primary artist (music) as a string, or null
-- "runtime": runtime in minutes as a number (film/tv only), or null
-- "pages": page count as a number (book only), or null`
+Media type: ${type}
+Article: """${extract}"""
+
+JSON keys (use null if not found):
+- "year": release/publication year as integer
+- "creator": ${role} — single name as string (e.g. "Justine Triet", "Ursula K. Le Guin")
+- "runtime": running time in minutes as integer (${type === 'film' || type === 'tv' ? 'extract it' : 'always null'})
+- "pages": page count as integer (${type === 'book' ? 'extract it' : 'always null'})
+- "genres": array of 1–3 genres chosen ONLY from this list: [${vocab}]`
+
   const msg = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 128,
+    max_tokens: 200,
     messages: [{ role: 'user', content: prompt }],
   })
   const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '{}'
-  try { return JSON.parse(text) } catch { return { year: null, creator: null, runtime: null, pages: null } }
+  try {
+    const parsed = JSON.parse(text)
+    return {
+      year: parsed.year ?? null,
+      creator: parsed.creator ?? null,
+      runtime: parsed.runtime ?? null,
+      pages: parsed.pages ?? null,
+      genres: Array.isArray(parsed.genres) ? parsed.genres : [],
+    }
+  } catch {
+    return { year: null, creator: null, runtime: null, pages: null, genres: [] }
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
