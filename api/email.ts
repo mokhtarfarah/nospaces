@@ -129,7 +129,7 @@ Return JSON only:
       "creator": "director / author / artist / showrunner",
       "type": "film|book|music|tv|other",
       "year": 1234,
-      "summary": "One sentence about why this was recommended",
+      "summary": "The newsletter's own description of this item — quote/paraphrase what the email actually says about it (1-2 sentences). Only if the email says nothing about it, write one sentence from your own knowledge. Null if there is genuinely nothing to say.",
       "confidence": "high|medium|low",
       "metadata": {},
       "tags": []
@@ -293,12 +293,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   console.log('[email] itemsToSave:', itemsToSave.length, JSON.stringify(itemsToSave))
 
-  // Save items
+  // Save items. The model's per-item `summary` (e.g. the newsletter's blurb on that album)
+  // is stored as a recommendation-style blurb attributed to the newsletter, so the action
+  // card shows it under a "via [newsletter]" toggle — same as recommendation-list items.
   const rows = itemsToSave.map((item: {
     title: string
     creator?: string
     type?: string
     year?: number
+    summary?: string
     metadata?: Record<string, unknown>
     tags?: string[]
   }) => ({
@@ -310,7 +313,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     status: 'want_to',
     source: 'email',
     source_detail: parsed.newsletter_name ?? null,
-    metadata: item.metadata ?? {},
+    recommended_by: parsed.newsletter_name ?? null,
+    metadata: {
+      ...(item.metadata ?? {}),
+      ...(item.summary?.trim() ? { recommendationBlurb: item.summary.trim() } : {}),
+    },
     tags: item.tags ?? [],
   }))
 
