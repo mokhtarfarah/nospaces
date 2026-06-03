@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './_auth'
+import { requireAuth } from './auth'
 
 // Both text queries and URL input go through web_search_20250305. Direct
 // server-side fetch doesn't work for modern editorial sites (JS-rendered, e.g.

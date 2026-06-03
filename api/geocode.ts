@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './_auth'
+import { requireAuth } from './auth'
 
 // Turns a typed place ("barcelona", "berlin, de") into a clean label + lat/lng,
 // so custom cities can be distance-filtered like the built-in ones. Uses
