@@ -154,6 +154,25 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
     const genres = genresScored.filter(s => s.score >= 0).slice(0, 6)
     const lowGenres = genresScored.filter(s => s.score < 0).slice(0, 6)
 
+    // Per-category vibes — same scoring as top-level but filtered to this type.
+    const categoryVibes = scoreTags(items, 'moods', type)
+      .filter(s => VIBES.includes(s.label) && s.score >= 0)
+      .slice(0, 6)
+
+    // Creator loyalty — creators with 2+ rated items, ranked by reaction score.
+    const creatorMap = new Map<string, { score: number; count: number }>()
+    for (const i of items) {
+      if (i.type !== type || i.status !== 'done' || !i.reaction || !i.creator) continue
+      const w = WEIGHTS[i.reaction]
+      const e = creatorMap.get(i.creator) ?? { score: 0, count: 0 }
+      creatorMap.set(i.creator, { score: e.score + w, count: e.count + 1 })
+    }
+    const creators = Array.from(creatorMap.entries())
+      .filter(([, v]) => v.count >= 2)
+      .map(([label, v]) => ({ label, score: v.score, count: v.count }))
+      .sort((a, b) => b.score - a.score || b.count - a.count)
+      .slice(0, 6)
+
     // Era — positively-rated decades from `year`.
     const eraMap = new Map<string, { score: number; count: number }>()
     for (const i of items) {
@@ -179,10 +198,10 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
       .slice(0, 6)
 
     const ratedCount = items.filter(i => i.type === type && i.status === 'done' && i.reaction).length
-    return { genres, lowGenres, era, backlog, ratedCount }
+    return { genres, lowGenres, categoryVibes, creators, era, backlog, ratedCount }
   }, [items, type])
 
-  const { genres, lowGenres, era, backlog, ratedCount } = data
+  const { genres, lowGenres, categoryVibes, creators, era, backlog, ratedCount } = data
   if (ratedCount === 0 && backlog.length === 0) return null
 
   return (
@@ -192,10 +211,22 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
           <ReactionBar items={items} type={type} />
         </div>
       )}
+      {categoryVibes.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <SubLabel>vibes</SubLabel>
+          <RankedLine scored={categoryVibes} limit={6} />
+        </div>
+      )}
       {genres.length > 0 && (
         <div style={{ marginBottom: 18 }}>
           <SubLabel>genres you love</SubLabel>
           <RankedLine scored={genres} limit={6} />
+        </div>
+      )}
+      {creators.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <SubLabel>go-to creators</SubLabel>
+          <RankedLine scored={creators} limit={6} />
         </div>
       )}
       {era.length > 0 && (
