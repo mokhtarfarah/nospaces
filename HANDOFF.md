@@ -104,7 +104,33 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-03, updated session 12 end)
+## TODO / Roadmap (last edited 2026-06-03, updated session 15 end)
+
+### 📌 Session 15 summary (2026-06-03) — describe-to-add bug fix
+
+**Root cause fixed:** `api/lookup.ts` had `import { requireAuth } from './_auth'` in main. The `_auth` module doesn't exist at Vercel's runtime, so every request to `/api/lookup` crashed with `ERR_MODULE_NOT_FOUND` before doing any work — ALL media types (music, movies, books) returned "nothing found." The import survived through 6 PRs because GitHub's merge commits preserved the old file instead of the branch version.
+
+**Vercel gotcha (document for future sessions):** Vercel does NOT deploy helper TypeScript modules placed inside `api/` as bundled dependencies — even without the `_` prefix. It only deploys them as standalone function handlers. Shared auth logic **must** either (a) be inlined in each file using only `node_modules` imports, or (b) live outside `api/` in a location Vercel's bundler can find. We went with (a) — each api file now has a self-contained `requireAuth` using `@supabase/supabase-js` directly.
+
+All shipped to `main` / live:
+1. ✅ **Describe-to-add fully unblocked** — removed broken `_auth` import from `api/lookup.ts`, inlined auth check in all 12 API files using `@supabase/supabase-js` directly (no shared local module).
+2. ✅ **Book lookup made more resilient** — `bookSearch` now runs Google Books and Open Library in parallel (7s timeout) instead of sequentially. Google Books sometimes rate-limits from Vercel's shared IP range; parallel fetch means Open Library results arrive regardless.
+3. ✅ **Frontend diagnostics** — `console.log` added to `describeToSearch` and `catalogLookup` in `AddScreen.tsx` so you can see the search query and result count in browser DevTools when debugging.
+
+**Auth pattern going forward:** `requireAuth` is now inlined in every api file. If you add a new api endpoint that needs auth, copy the block from any existing file — do NOT create a new shared `api/*.ts` helper module. The inline block is:
+```typescript
+import { createClient } from '@supabase/supabase-js'
+const _ce = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
+let _sba: ReturnType<typeof createClient> | null = null
+const _ac = () => { if (!_sba) _sba = createClient(_ce(process.env.SUPABASE_URL), _ce(process.env.SUPABASE_SERVICE_ROLE_KEY)); return _sba }
+async function requireAuth(req: VercelRequest): Promise<boolean> { const a = req.headers['authorization']; if (!a?.startsWith('Bearer ')) return false; try { const { error } = await _ac().auth.getUser(a.slice(7)); return !error } catch { return false } }
+```
+
+**Still open (next session):**
+- **Visual element on taste page hero** — covers/collage
+- **Input workflow audit**
+
+---
 
 ### 📌 Session 12 summary (2026-06-03) — action card overhaul + small fixes
 
