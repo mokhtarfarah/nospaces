@@ -160,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             { type: 'text', text: buildPdfPrompt() },
           ],
         }],
-      })
+      }, { headers: { 'anthropic-beta': 'pdfs-2024-09-25' } })
       const text = message.content
         .filter((b): b is Anthropic.TextBlock => b.type === 'text')
         .map(b => b.text).join('\n')
