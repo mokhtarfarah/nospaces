@@ -138,10 +138,12 @@ export function TasteScreen() {
   const { tasteProfile, tasteProfileGeneratedAt, setTasteProfile } = usePrefs()
   const [generatingProfile, setGeneratingProfile] = useState(false)
   const [profileExpanded, setProfileExpanded] = useState(false)
+  const [profileError, setProfileError] = useState('')
 
   async function generateProfile() {
     if (generatingProfile) return
     setGeneratingProfile(true)
+    setProfileError('')
     try {
       const signal = items.filter(i => i.status === 'done' && (i.reaction === 'loved_it' || i.reaction === 'liked_it'))
       const res = await fetch('/api/taste-profile', {
@@ -151,9 +153,21 @@ export function TasteScreen() {
           items: signal.map(i => ({ title: i.title, creator: i.creator, type: i.type, reaction: i.reaction, note: i.note })),
         }),
       })
-      const { profile } = await res.json()
-      if (profile) await setTasteProfile(profile)
-    } catch { /* silent fail */ }
+      if (!res.ok) {
+        console.error('[taste-profile] HTTP', res.status)
+        setProfileError('couldn\'t regenerate — try again')
+      } else {
+        const { profile } = await res.json()
+        if (profile) {
+          await setTasteProfile(profile)
+        } else {
+          setProfileError('no profile returned — try again')
+        }
+      }
+    } catch (err) {
+      console.error('[taste-profile] error:', err instanceof Error ? err.message : err)
+      setProfileError('couldn\'t regenerate — try again')
+    }
     setGeneratingProfile(false)
   }
 
@@ -242,24 +256,32 @@ export function TasteScreen() {
                   {generatingProfile ? 'generating…' : 'regenerate'}
                 </TextLink>
               </div>
+              {profileError && (
+                <div style={{ fontSize: 11, color: '#C0392B', marginTop: 4 }}>{profileError}</div>
+              )}
             </>
           )
         })() : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, color: GRAPHITE }}>ai taste profile</span>
-            <button
-              onClick={generateProfile}
-              disabled={generatingProfile}
-              style={{
-                padding: '7px 16px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
-                border: '1.5px solid #111', background: '#111',
-                color: '#fff', fontSize: 12, fontWeight: 600,
-                opacity: generatingProfile ? 0.5 : 1,
-              }}
-            >
-              {generatingProfile ? 'generating…' : 'generate'}
-            </button>
-          </div>
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, color: GRAPHITE }}>ai taste profile</span>
+              <button
+                onClick={generateProfile}
+                disabled={generatingProfile}
+                style={{
+                  padding: '7px 16px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
+                  border: '1.5px solid #111', background: '#111',
+                  color: '#fff', fontSize: 12, fontWeight: 600,
+                  opacity: generatingProfile ? 0.5 : 1,
+                }}
+              >
+                {generatingProfile ? 'generating…' : 'generate'}
+              </button>
+            </div>
+            {profileError && (
+              <div style={{ fontSize: 11, color: '#C0392B', marginTop: 6 }}>{profileError}</div>
+            )}
+          </>
         )}
       </div>
 
