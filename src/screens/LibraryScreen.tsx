@@ -116,6 +116,7 @@ export function LibraryScreen() {
   // position themselves `fixed` relative to these.
   const vibeBtnRef = useRef<HTMLDivElement>(null)
   const genreBtnRef = useRef<HTMLDivElement>(null)
+  const seriesBtnRef = useRef<HTMLDivElement>(null)
 
   const handleSaveWiki = useCallback((id: string, wiki: WikiInfo) => {
     patchMetadata(id, { wikiUrl: wiki.url, wikiThumb: wiki.thumbnail, wikiSummary: wiki.summary })
@@ -128,7 +129,7 @@ export function LibraryScreen() {
   const [scratchOnly, setScratchOnly] = useState(false)
   const selectCategory = (t: string) => {
     setScratchOnly(false)
-    setVibeFilter(null); setGenreFilter(null); setOpenDropdown(null)
+    setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   }
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -136,7 +137,8 @@ export function LibraryScreen() {
   const [newMusicOnly, setNewMusicOnly] = useState(false)
   const [vibeFilter, setVibeFilter] = useState<string | null>(null)
   const [genreFilter, setGenreFilter] = useState<string | null>(null)
-  const [openDropdown, setOpenDropdown] = useState<'vibe' | 'genre' | null>(null)
+  const [seriesFilter, setSeriesFilter] = useState<string | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<'vibe' | 'genre' | 'series' | null>(null)
   const [view, setView] = useState<ViewMode>('recent')
   const [dir, setDir] = useState<SortDir>(VIEW_CONFIG.recent.defaultDir)
   const [layout, setLayout] = useState<'list' | 'grid'>('list')
@@ -191,26 +193,30 @@ export function LibraryScreen() {
     let result = baseFiltered
     if (vibeFilter)  result = result.filter(item => item.moods?.includes(vibeFilter))
     if (genreFilter) result = result.filter(item => item.tags?.includes(genreFilter))
+    if (seriesFilter) result = result.filter(item => item.metadata?.series === seriesFilter)
     return sortItems(result, sort, dir)
-  }, [baseFiltered, vibeFilter, genreFilter, sort, dir])
+  }, [baseFiltered, vibeFilter, genreFilter, seriesFilter, sort, dir])
 
   // Vibes and genres present in the current base-filtered set, for filter chips.
   const availableTags = useMemo(() => {
     const moodSet = new Set<string>()
     const genreSet = new Set<string>()
+    const seriesSet = new Set<string>()
     baseFiltered.forEach(i => {
       i.moods?.forEach(m => moodSet.add(m))
       i.tags?.forEach(t => genreSet.add(t))
+      const s = i.metadata?.series
+      if (typeof s === 'string' && s.trim()) seriesSet.add(s)
     })
     return {
       moods:  MOODS.filter(m => moodSet.has(m)),  // canonical MOODS order
       genres: [...genreSet].filter(isGenreTag).sort(),  // real genres only; descriptors stay searchable
-
+      series: [...seriesSet].sort(),
     }
   }, [baseFiltered])
 
   // Reset vibe/genre filters when base filters change so they don't silently hide results.
-  useEffect(() => { setVibeFilter(null); setGenreFilter(null); setOpenDropdown(null) }, [categories, statusFilter, reactionFilter, scratchOnly])
+  useEffect(() => { setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null) }, [categories, statusFilter, reactionFilter, scratchOnly])
 
   const grouped = useMemo(() => {
     if (group === 'creator') return groupByCreator(filtered)
@@ -317,7 +323,7 @@ export function LibraryScreen() {
               onClick={() => { setStatusFilter(s); if (s === 'want_to') setReactionFilter('all') }}
             />
           ))}
-          {(availableTags.moods.length > 0 || availableTags.genres.length > 0) && (
+          {(availableTags.moods.length > 0 || availableTags.genres.length > 0 || availableTags.series.length > 0) && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
               {availableTags.moods.length > 0 && (
@@ -354,6 +360,25 @@ export function LibraryScreen() {
                       options={availableTags.genres}
                       selected={genreFilter}
                       onSelect={g => { setGenreFilter(f => f === g ? null : g); setOpenDropdown(null) }}
+                    />
+                  )}
+                </div>
+              )}
+              {availableTags.series.length > 0 && (
+                <div ref={seriesBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
+                  <DropdownButton
+                    label="series"
+                    value={seriesFilter}
+                    active={openDropdown === 'series'}
+                    onToggle={() => setOpenDropdown(d => d === 'series' ? null : 'series')}
+                    onClear={() => { setSeriesFilter(null); setOpenDropdown(null) }}
+                  />
+                  {openDropdown === 'series' && (
+                    <DropdownMenu
+                      anchorRef={seriesBtnRef}
+                      options={availableTags.series}
+                      selected={seriesFilter}
+                      onSelect={s => { setSeriesFilter(f => f === s ? null : s); setOpenDropdown(null) }}
                     />
                   )}
                 </div>

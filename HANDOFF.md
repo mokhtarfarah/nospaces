@@ -65,6 +65,8 @@ cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 ## Email capture
 Forward anything to `anything@nospaces.xyz` from an allowed address. AI finds every media item + saves as `want_to`. Photo attachments (incl. HEIC) work.
 
+**Newsletter blurbs (session 14):** each item's per-item `summary` from the email (the newsletter's own words about it — prompt now tells the model to quote/paraphrase the email, not invent) is saved as `metadata.recommendationBlurb` with `recommended_by = <newsletter name>`. The action card shows it under a "via [newsletter]" toggle — same display as recommendation-list items (e.g. New Music Tuesday album descriptions). Header source label dedups against the blurb toggle so the source isn't named twice. **Only applies to newly forwarded emails** — existing items can't be backfilled (the newsletter text isn't stored).
+
 **Big photo attachments don't work via email (by design, 2026-06-02).** Vercel caps inbound requests at 4.5MB (hard limit, not configurable); Postmark always inlines the full attachment; Gmail can't shrink attachments. So a full-res photo email → HTTP 413, whole email rejected (all-or-nothing). Text/newsletters and small screenshots always work. **For big photos use the in-app "Add from a photo" button** — it now downscales to 1600px/JPEG client-side (`prepareImage` in AddScreen.tsx), so it always fits, runs faster, and handles HEIC. No email re-architecture planned.
 
 **Talkback** (code live, not yet active): replies to sender with what was saved. To activate:
@@ -119,7 +121,7 @@ All shipped to `main` / live:
   - (2b) `api/lookup.ts`, **books** `openLibraryByAuthor()`: search by `author=`, dedupe editions onto base title (split on " / "), drop non-Latin translations, sort by `first_publish_year` desc. Open Library's own `sort=new` is unusable (floats recent *reprints* of old books); `first_publish_year` is the cleanest real date. Verified across Moshfegh/Rooney/McCarthy — latest real book lands at/near #1; some box-set/foreign-edition noise remains below but it's a picker so user chooses.
   - (3) `AddScreen` threads the flag through `catalogLookup(q, recency)`; handler floats newest across all types when recency.
   - **Film/TV recency NOT built** ("that new Villeneuve movie") — TMDB needs a person-search → credits path (different shape from search/multi, which returns the person and gets filtered out). Own session.
-- **Series tag** — added to roadmap, not built yet.
+- ✅ **Series tag** — SHIPPED (session 14). Free-text `metadata.series` field. Input in the action-card edit view (shown for film/book/tv only). `↳ series name` line on the action card under the subtitle. `series ▾` filter dropdown in the library header (same pattern as vibe/genre; only appears when items have a series). Manual entry only — no AI auto-detect (deferrable later).
 - **Visual element on taste page hero** — covers/collage
 - **Input workflow audit**
 
@@ -196,7 +198,7 @@ All shipped to `main` / live:
 4. ✅ **"Owned" toggle** — `⌂ own it?` pill on action card header. Saves as `metadata.owned=true`. `⌂` marker on list rows. `⌂ owned` filter chip in library header.
 5. ✅ **✕ close button** — top-right of both ItemActionSheet and MarkDoneSheet. Action card opens to 96dvh. Top padding tightened.
 6. **Design polish** — editorial identity pass done (all-lowercase, 3-col grid, square music grid). Needs eye on real covers.
-7. **Manual link** — paste Wikipedia/URL to fix wrong cover/blurb. Store in `metadata.wikiUrl`.
+7. **⚠️ Manual Wikipedia override — BUILT then REVERTED (session 14), revisit.** Added a "wikipedia url (override if wrong)" input in the edit view that re-resolved an exact article via a new `api/wiki.ts?page=<url>` branch (`titles=`+`redirects=1`, SSRF-guarded to `*.wikipedia.org`), persisting `metadata.wikiUrl/wikiThumb/wikiSummary` + a `wikiManual:true` authoritative flag. **Reverted before commit** because Farah noticed a bunch of existing Wikipedia links went missing after the change — suspected regression, not root-caused yet. The revert restored `api/wiki.ts`, `src/lib/wikipedia.ts`, and the `ItemActionSheet` edit view to their pre-change state. **Before re-attempting:** figure out *why* links disappeared — likely suspects to investigate: the `wikiSeed`/`wikiManual` gating change at the `useWikipediaInfo` call site (did it stop seeding valid stored links?), or the new top-of-handler `page` branch in `api/wiki.ts` interfering with normal lookups. Reproduce locally with items that had working links first.
 8. ✅ **Manual cover art edit** — paste image URL in edit view → stored in `metadata.coverUrl`.
 9. ✅ **Re-identify** — on main card (auto-saves title/creator/type/year/tags/runtime/pages, sheet stays open) + in edit view (populates fields for review) + prominent "identify now" for scratch items.
 10. ✅ **Re-identify type anchor** — re-identify now passes `typeHint: item.type` + year in the input string, preventing a film from silently reverting to the book it was adapted from. Auto-save never overrides the stored type. `clearWikiCache` called after re-identify so Wikipedia re-fetches with updated values.
@@ -214,7 +216,7 @@ All shipped to `main` / live:
 - **Still missing:** foreign-language titles where Wikipedia article name differs entirely from item title (e.g. Ponyo). Needs a different approach if this becomes a priority.
 
 ### 📚 Content / types
-1. **Book & film series tag** — `metadata.series` field on each item (e.g. "Lord of the Rings"). Series field in edit view. "series ▾" filter dropdown in library header (same pattern as genre/vibe). Series label on action card subtitle. ~30–45 min. Decision: series tag (not TV-season model) because each book/film is its own experience with its own reaction/note.
+1. ✅ **Book & film series tag** — SHIPPED (session 14). `metadata.series` free-text field, edit-view input (film/book/tv), `↳` label on action card, `series ▾` library filter. Decision held: series tag (not TV-season model) because each book/film is its own experience with its own reaction/note. Future option: AI auto-detect the series at identify time (not built — manual entry only for now).
 2. **Magazines / articles** — new media type(s).
 3. **TV season ratings** — per-season, not just whole show.
 

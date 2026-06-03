@@ -72,6 +72,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     )
   }
   const [coverUrl, setCoverUrl] = useState((item.metadata?.coverUrl as string | null) ?? '')
+  const [series, setSeries] = useState((item.metadata?.series as string | null) ?? '')
   const [reidentifying, setReidentifying] = useState(false)
   // After a re-identify, hold the other candidates so the user can pick the right
   // one if the AI grabbed the wrong match. null = picker hidden.
@@ -136,6 +137,8 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   function handleSaveDetails() {
     const metadata: Record<string, unknown> = { ...item.metadata, coverUrl: coverUrl.trim() || null }
     delete metadata.scratch  // clear scratch flag when user confirms the identity
+    if (series.trim()) metadata.series = series.trim()
+    else delete metadata.series
     onEdit({
       title: title.trim() || item.title,
       creator: creator.trim() || null,
@@ -276,6 +279,9 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item)].filter(Boolean).join(' · ')}
                   {item.reaction && ` · ${REACTION_LABELS[item.reaction]}`}
                 </div>
+                {typeof item.metadata?.series === 'string' && item.metadata.series.trim() && (
+                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>↳ {item.metadata.series}</div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   {(() => {
                     // Recommendation: show URL link if available; skip plain-text label
@@ -290,6 +296,9 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     // Keep meaningful sources (letterboxd, spotify, email, photo, …) visible.
                     const label = item.source_detail?.trim()
                       || (item.source === 'quick_add' ? '' : item.source.replace(/_/g, ' '))
+                    // Don't say it twice: if the blurb toggle already shows "via [source]"
+                    // (e.g. a newsletter item with its blurb), skip the header label.
+                    if (label && blurb && blurbSource && label.toLowerCase() === blurbSource.toLowerCase()) return null
                     return label
                       ? <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {label}</div>
                       : null
@@ -569,10 +578,13 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={inputStyle} />
               <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={inputStyle} />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {(type === 'film' || type === 'book' || type === 'tv') && (
+                  <input value={series} onChange={e => setSeries(e.target.value)} placeholder="series (e.g. Dune)" style={{ ...inputStyle, flex: 1 }} />
+                )}
                 <input
                   value={coverUrl}
                   onChange={e => setCoverUrl(e.target.value)}
-                  placeholder="cover image url (optional override)"
+                  placeholder="cover image url"
                   style={{ ...inputStyle, flex: 1 }}
                 />
                 {coverUrl.trim() && (
