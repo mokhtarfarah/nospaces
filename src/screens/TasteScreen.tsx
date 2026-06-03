@@ -47,6 +47,18 @@ function inlineItalics(text: string) {
   return parts.map((part, i) => i % 2 === 1 ? <em key={i}>{part}</em> : part)
 }
 
+// Consistent inline text link used throughout the taste page.
+function TextLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: '0 0 0 5px', textDecoration: 'underline', verticalAlign: 'baseline', fontFamily: 'inherit' }}
+    >
+      {children}
+    </button>
+  )
+}
+
 
 // Ranked tags as a flowing typographic line (editorial, no pills). The lead
 // term is emphasized in ink; the rest are graphite, middot-separated. Order
@@ -409,45 +421,34 @@ export function TasteScreen() {
                 <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
                   {inlineItalics(opener)}
                   {bullets.length > 0 && !profileExpanded && (
-                    <button
-                      onClick={() => setProfileExpanded(true)}
-                      style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: '0 0 0 6px', textDecoration: 'underline', verticalAlign: 'baseline' }}
-                    >
-                      see more
-                    </button>
+                    <TextLink onClick={() => setProfileExpanded(true)}>see more</TextLink>
                   )}
                 </div>
                 {bullets.length > 0 && profileExpanded && (
-                  <>
-                    <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
-                      {bullets.map((line, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
+                  <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
+                    {bullets.map((line, i) => {
+                      const isLast = i === bullets.length - 1
+                      return (
+                        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: isLast ? 0 : 5 }}>
                           <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6 }}>—</span>
-                          <span>{inlineItalics(line.replace(/^[\s-]+/, ''))}</span>
+                          <span>
+                            {inlineItalics(line.replace(/^[\s-]+/, ''))}
+                            {isLast && <TextLink onClick={() => setProfileExpanded(false)}>see less</TextLink>}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setProfileExpanded(false)}
-                      style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                    >
-                      see less
-                    </button>
-                  </>
+                      )
+                    })}
+                  </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8 }}>
                   {tasteProfileGeneratedAt && (
                     <span style={{ fontSize: 11, color: MUTE }}>
-                      {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ·
                     </span>
                   )}
-                  <button
-                    onClick={generateProfile}
-                    disabled={generatingProfile}
-                    style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
-                  >
+                  <TextLink onClick={generateProfile}>
                     {generatingProfile ? 'generating…' : 'regenerate'}
-                  </button>
+                  </TextLink>
                 </div>
               </>
             )
