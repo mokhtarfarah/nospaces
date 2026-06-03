@@ -3,6 +3,7 @@ import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { NoteInput } from './NoteInput'
 import { MoodChips } from './MoodChips'
+import { VIBES, VERDICTS } from '../lib/moods'
 import { useWikipediaInfo, clearWikiCache } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { useBookBlurb } from '../lib/blurb'
@@ -80,7 +81,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [lookingUp, setLookingUp] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showBlurb, setShowBlurb] = useState(false)
-  const [genrePickerOpen, setGenrePickerOpen] = useState(false)
+  const [tagsEditing, setTagsEditing] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
   const color = typeColor(item.type)
@@ -316,13 +317,21 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     {item.metadata?.owned ? '⌂ owned' : '⌂ own it?'}
                   </button>
                   {!item.metadata?.scratch && (
-                    <button
-                      onClick={() => handleReidentify(true)}
-                      disabled={reidentifying}
-                      style={{ background: 'none', border: 'none', fontSize: 11, color: reidentifying ? '#CCC' : '#B0B0B0', cursor: reidentifying ? 'default' : 'pointer', padding: 0, flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
-                    >
-                      {reidentifying ? 'identifying…' : 're-identify'}
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setView('edit')}
+                        style={{ background: 'none', border: 'none', fontSize: 11, color: '#B0B0B0', cursor: 'pointer', padding: 0, flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                      >
+                        edit
+                      </button>
+                      <button
+                        onClick={() => handleReidentify(true)}
+                        disabled={reidentifying}
+                        style={{ background: 'none', border: 'none', fontSize: 11, color: reidentifying ? '#CCC' : '#B0B0B0', cursor: reidentifying ? 'default' : 'pointer', padding: 0, flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                      >
+                        {reidentifying ? 'identifying…' : 're-identify'}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -468,68 +477,86 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             )}
 
-            {/* Genre tags — active genres shown as removable chips; full picker expands on demand */}
-            {(() => {
+            {/* Tags — editorial typographic lines at rest; "edit tags" reveals the chip
+                editors. Genre + feel (vibes) + how-it-landed (verdicts, done items only). */}
+            {!item.metadata?.scratch && (() => {
               const vocab = genresForType(item.type)
-              if (!vocab.length) return null
               const descriptors = (item.tags ?? []).filter(t => !isGenreTag(t))
               const activeGenres = [...new Set((item.tags ?? []).filter(t => isGenreTag(t)))]
+              const feel = (item.moods ?? []).filter(m => VIBES.includes(m))
+              const landed = item.status === 'want_to' ? [] : (item.moods ?? []).filter(m => VERDICTS.includes(m))
+              const hasAny = activeGenres.length > 0 || feel.length > 0 || landed.length > 0
+              const inactiveGenres = vocab.filter(g => !activeGenres.includes(g))
+
               function toggleGenre(genre: string) {
                 const next = new Set(activeGenres)
                 next.has(genre) ? next.delete(genre) : next.add(genre)
                 onSetTags([...next, ...descriptors])
               }
-              const inactive = vocab.filter(g => !activeGenres.includes(g))
+              function toggleMood(mood: string) {
+                const next = (item.moods ?? []).includes(mood)
+                  ? (item.moods ?? []).filter(m => m !== mood)
+                  : [...(item.moods ?? []), mood]
+                setSelectedMoods(next)
+                onSetMoods(next)
+              }
+
+              // One editorial line — lead term emphasized, middot-separated.
+              const line = (terms: string[]) => terms.length === 0 ? null : (
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: '#1C1B19' }}>
+                  {terms.map((t, i) => (
+                    <span key={t}>
+                      {i > 0 && <span style={{ color: '#ABA69C', margin: '0 7px' }}>·</span>}
+                      <span style={{ fontWeight: i === 0 ? 600 : 400 }}>{t}</span>
+                    </span>
+                  ))}
+                </div>
+              )
+              const revealLink: React.CSSProperties = { background: 'none', border: 'none', padding: 0, fontSize: 11, color: '#6F6B64', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }
+              const editChip = (label: string, on: boolean, onClick: () => void) => (
+                <button key={label} onClick={onClick} style={{
+                  padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', flexShrink: 0,
+                  border: on ? '1.5px solid #111' : '1px solid #E6E3DE',
+                  background: on ? '#111' : '#fff', color: on ? '#fff' : '#888', fontWeight: on ? 600 : 400,
+                }}>{on ? `${label} ×` : label}</button>
+              )
+
               return (
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                    {activeGenres.map(genre => (
-                      <button key={genre} onClick={() => toggleGenre(genre)} style={{
-                        padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
-                        border: 'none', background: '#1C1B19', color: '#fff', fontWeight: 600,
-                      }}>{genre} ×</button>
-                    ))}
-                    {inactive.length > 0 && (
-                      <button onClick={() => setGenrePickerOpen(v => !v)} style={{
-                        padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
-                        border: '1.5px dashed #CCC', background: 'none', color: '#AAA',
-                      }}>{genrePickerOpen ? 'done' : '+ genre'}</button>
-                    )}
-                  </div>
-                  {genrePickerOpen && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                      {inactive.map(genre => (
-                        <button key={genre} onClick={() => toggleGenre(genre)} style={{
-                          padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
-                          border: '1.5px solid #E0E0E0', background: '#fff', color: '#888',
-                        }}>{genre}</button>
-                      ))}
+                <div style={{ marginBottom: 14 }}>
+                  {!tagsEditing ? (
+                    <>
+                      {hasAny && (
+                        <div style={{ marginBottom: 7 }}>
+                          {line(activeGenres)}
+                          {line(feel)}
+                          {line(landed)}
+                        </div>
+                      )}
+                      <button onClick={() => setTagsEditing(true)} style={revealLink}>{hasAny ? 'edit tags ▾' : '+ add tags'}</button>
+                    </>
+                  ) : (
+                    <div>
+                      {vocab.length > 0 && (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>genre</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {activeGenres.map(g => editChip(g, true, () => toggleGenre(g)))}
+                            {inactiveGenres.map(g => editChip(g, false, () => toggleGenre(g)))}
+                          </div>
+                        </div>
+                      )}
+                      <MoodChips
+                        size="sm"
+                        groups={item.status === 'want_to' ? 'vibes-only' : 'all'}
+                        isActive={m => (item.moods ?? []).includes(m)}
+                        onToggle={toggleMood}
+                      />
+                      <button onClick={() => setTagsEditing(false)} style={revealLink}>done ▴</button>
                     </div>
                   )}
                 </div>
               )
             })()}
-
-            {/* Mood chips — interactive on main view, tap to toggle + save immediately */}
-            {/* HOW IT LANDED (verdicts) only shown for done items — can't know how it landed before finishing */}
-            {!item.metadata?.scratch && (
-              <div style={{ marginBottom: 12 }}>
-                <MoodChips
-                  size="sm"
-                  collapsible
-                  groups={item.status === 'want_to' ? 'vibes-only' : 'all'}
-                  isActive={m => (item.moods ?? []).includes(m)}
-                  onToggle={mood => {
-                    const active = (item.moods ?? []).includes(mood)
-                    const next = active
-                      ? (item.moods ?? []).filter(m => m !== mood)
-                      : [...(item.moods ?? []), mood]
-                    setSelectedMoods(next)
-                    onSetMoods(next)
-                  }}
-                />
-              </div>
-            )}
 
             {confirmDelete ? (
               <div style={footer}>
@@ -554,8 +581,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             ) : (
               <div style={{ ...footer, display: 'flex', gap: 8 }}>
-                <button onClick={() => setView('edit')} style={{ ...actionBtn('#333'), flex: 1 }}>edit</button>
-                <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
+                <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 2 }}>
                   {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
                 </button>
                 <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>

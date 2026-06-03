@@ -148,6 +148,15 @@ export function LibraryScreen() {
   const [dupesOpen, setDupesOpen] = useState(false)
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const toggleSelect = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+  const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()); setConfirmBulkDelete(false) }
 
   const sort: SortOption = VIEW_CONFIG[view].sort
   const group = VIEW_CONFIG[view].group
@@ -276,6 +285,12 @@ export function LibraryScreen() {
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: 4 }}
             >
               <SearchIcon />
+            </button>
+            <button
+              onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: selectMode ? '#111' : '#555', fontWeight: selectMode ? 600 : 400, padding: '4px 4px' }}
+            >
+              {selectMode ? 'cancel' : 'select'}
             </button>
           </div>
         </div>
@@ -419,7 +434,7 @@ export function LibraryScreen() {
       </header>
 
       {/* List */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 150 : 80 }}>
         {dupes > 0 && !loading && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', background: '#F4F4F4', borderRadius: 8 }}>
             <span style={{ fontSize: 12, color: '#666' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>
@@ -448,7 +463,14 @@ export function LibraryScreen() {
               {layout === 'grid' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '4px 14px 12px' }}>
                   {monthItems.map(item => (
-                    <GridCard key={item.id} item={item} square={musicOnly} onTap={() => setActionItem(item)} />
+                    <GridCard
+                      key={item.id}
+                      item={item}
+                      square={musicOnly}
+                      onTap={() => (selectMode ? toggleSelect(item.id) : setActionItem(item))}
+                      selectMode={selectMode}
+                      selected={selectedIds.has(item.id)}
+                    />
                   ))}
                 </div>
               ) : (
@@ -457,10 +479,12 @@ export function LibraryScreen() {
                     key={item.id}
                     item={item}
                     showType={categories.length !== 1}
-                    onTap={() => setActionItem(item)}
+                    onTap={() => (selectMode ? toggleSelect(item.id) : setActionItem(item))}
                     onMarkDone={() => setDoneItem(item)}
                     onMarkWantTo={() => markWantTo(item.id)}
                     onSaveWiki={handleSaveWiki}
+                    selectMode={selectMode}
+                    selected={selectedIds.has(item.id)}
                   />
                 ))
               )}
@@ -468,6 +492,48 @@ export function LibraryScreen() {
           ))
         )}
       </div>
+
+      {/* Bulk-select action bar — floats above the bottom nav while in select mode */}
+      {selectMode && (() => {
+        const visibleIds = filtered.map(i => i.id)
+        const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id))
+        const n = selectedIds.size
+        return (
+          <div style={{
+            position: 'fixed', left: 0, right: 0, bottom: 'calc(56px + env(safe-area-inset-bottom))', zIndex: 101,
+            background: '#fff', borderTop: '1px solid #E8E8E8', boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
+            padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 14,
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: n > 0 ? '#111' : '#999' }}>{n} selected</span>
+            <button
+              onClick={() => setSelectedIds(allSelected ? new Set() : new Set(visibleIds))}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', textDecoration: 'underline', textUnderlineOffset: 2, padding: 0 }}
+            >
+              {allSelected ? 'clear' : 'select all'}
+            </button>
+            <div style={{ flex: 1 }} />
+            {confirmBulkDelete ? (
+              <>
+                <button onClick={() => setConfirmBulkDelete(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#555', padding: '6px 8px' }}>cancel</button>
+                <button
+                  onClick={async () => { await deleteMany([...selectedIds]); exitSelect() }}
+                  style={{ background: '#C0392B', color: '#fff', border: 'none', borderRadius: 20, cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: '7px 16px' }}
+                >
+                  delete {n}
+                </button>
+              </>
+            ) : (
+              <button
+                disabled={n === 0}
+                onClick={() => setConfirmBulkDelete(true)}
+                style={{ background: 'none', border: `1.5px solid ${n === 0 ? '#EEE' : '#C0392B'}`, color: n === 0 ? '#CCC' : '#C0392B', borderRadius: 20, cursor: n === 0 ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, padding: '6px 16px' }}
+              >
+                delete
+              </button>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Mark as done sheet */}
       {doneItem && (
@@ -636,13 +702,15 @@ function FilterChip({ label, active, onClick, disabled }: { label: string; activ
   )
 }
 
-function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki }: {
+function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, selectMode = false, selected = false }: {
   item: Item
   showType: boolean
   onTap: () => void
   onMarkDone: () => void
   onMarkWantTo: () => void
   onSaveWiki?: (id: string, wiki: WikiInfo) => void
+  selectMode?: boolean
+  selected?: boolean
 }) {
   const color = typeColor(item.type)
 
@@ -680,8 +748,16 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki }
   return (
     <div
       onClick={onTap}
-      style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #F4F4F4', padding: '4px 16px', cursor: 'pointer' }}
+      style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #F4F4F4', padding: '4px 16px', cursor: 'pointer', background: selected ? '#FAFAF8' : 'transparent' }}
     >
+      {selectMode && (
+        <div style={{
+          width: 21, height: 21, borderRadius: '50%', flexShrink: 0, marginRight: 11,
+          border: selected ? '1.5px solid #111' : '1.5px solid #CCC',
+          background: selected ? '#111' : '#fff', color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
+        }}>{selected ? '✓' : ''}</div>
+      )}
       <Thumb src={thumbnail} type={item.type} color={color} />
       <div style={{ flex: 1, minWidth: 0, alignSelf: 'center' }}>
         <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
@@ -698,7 +774,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki }
         )}
       </div>
       {/* Spotify quick-link — music only */}
-      {item.type === 'music' && (
+      {!selectMode && item.type === 'music' && (
         <button
           onClick={e => {
             e.stopPropagation()
@@ -718,7 +794,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki }
         </button>
       )}
       {/* Wikipedia quick-link — film/tv/book (music uses Spotify instead) */}
-      {item.type !== 'music' && wikiUrl && (
+      {!selectMode && item.type !== 'music' && wikiUrl && (
         <button
           onClick={e => {
             e.stopPropagation()
@@ -735,6 +811,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki }
         </button>
       )}
       {/* Action button */}
+      {!selectMode && (
       <button
         onClick={e => { e.stopPropagation(); item.status === 'want_to' ? onMarkDone() : onMarkWantTo() }}
         title={item.status === 'want_to' ? 'Mark as done' : 'Move back to want to'}
@@ -757,6 +834,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki }
       >
         ✓
       </button>
+      )}
     </div>
   )
 }
@@ -779,7 +857,7 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
 }
 
 // Grid layout cover card. square=true for music (album covers are 1:1).
-function GridCard({ item, square, onTap }: { item: Item; square: boolean; onTap: () => void }) {
+function GridCard({ item, square, onTap, selectMode = false, selected = false }: { item: Item; square: boolean; onTap: () => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const aspect = square ? '1 / 1' : '2 / 3'
@@ -790,10 +868,18 @@ function GridCard({ item, square, onTap }: { item: Item; square: boolean; onTap:
     : null
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
-      <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #EBEBEB' }}>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : '1px solid #EBEBEB' }}>
         {artwork
-          ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: selectMode && !selected ? 0.55 : 1 }} />
           : <div style={{ fontSize: 18, color: color.border, opacity: 0.4 }}>✦</div>}
+        {selectMode && (
+          <div style={{
+            position: 'absolute', top: 6, left: 6, width: 20, height: 20, borderRadius: '50%',
+            border: selected ? '1.5px solid #111' : '1.5px solid rgba(255,255,255,0.9)',
+            background: selected ? '#111' : 'rgba(0,0,0,0.25)', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
+          }}>{selected ? '✓' : ''}</div>
+        )}
         {reactionDot && (
           <div style={{
             position: 'absolute', bottom: 5, right: 5,
