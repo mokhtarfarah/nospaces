@@ -113,7 +113,7 @@ All shipped to `main` / live:
 4. ✅ **Spotify link** — synced albums link directly to album page. Manually-added music falls back to Spotify search (kept — search link preferred over no link).
 
 **Still open (next session):**
-- **Describe-to-add** — PRIORITIZED. Code read, approach decided (Option A: Haiku intent parse → `/api/lookup` catalog). Not built yet. See roadmap entry below.
+- **Describe-to-add recency sort** — NEXT SMALL FIX. The flow works (Haiku → catalog picker → ConfirmSheet) but "rosalía's latest album" returns old albums because iTunes sorts by relevance, not date. Fix: have `api/describe.ts` return a `sortByRecency: boolean` flag when input contains temporal words ("latest", "new", "recent", "newest"), then sort picker candidates by year descending in AddScreen when that flag is true.
 - **Series tag** — added to roadmap, not built yet.
 - **Visual element on taste page hero** — covers/collage
 - **Input workflow audit**
@@ -147,7 +147,7 @@ All shipped to `main` / live:
 3. ✅ **Bulk photo upload** — "add from photos" accepts multiple files. Single pick → single ConfirmSheet. Multi-pick → BulkConfirmSheet: identifies all in parallel, each row checkable/editable, saves all as want_to. Low-confidence results start unchecked.
 4. **Manual source field** — set where an item came from (person/site/newsletter). Decide where it surfaces.
 5. **Music / songs** — today albums-only. Figure out adding individual songs + cleanest flow.
-6. **Describe-to-add — PRIORITIZED next small feature (session 12, in progress).** "rosalía's latest album", "that new Villeneuve movie" → Haiku parses intent {creator, type} → catalog search via `/api/lookup` → confirm + save. Option A (catalog-first) chosen: cheap (~$0.001 Haiku + free catalog APIs), handles recency/cutoff correctly. **Future state Option B:** for vague plot-description queries with no named entity ("thriller about a woman in the forest"), route to `/api/identify` (Sonnet) instead — model handles associative matching better than keyword catalog search. Not built; add a query classifier to detect named entities vs pure descriptions if this becomes needed.
+6. **Describe-to-add ✅ BUILT (session 13).** "rosalía's latest album", "that new Villeneuve movie" → `api/describe.ts` (Haiku) parses intent {searchQuery, type} → `/api/lookup` catalog (iTunes/TMDB/Open Library) → `PickerSheet` in AddScreen → ConfirmSheet. Falls back to Sonnet with explicit prompt when catalog returns nothing. **Known issue:** recency words ("latest", "new") are stripped from search query, so results sort by relevance not date. Fix: add `sortByRecency` flag from Haiku + sort picker candidates by year desc. **Future state Option B:** for vague plot-description queries with no named entity ("thriller about a woman in the forest"), route to `/api/identify` (Sonnet) instead — not built; add a query classifier if needed.
 7. **Descriptive library search (A) — LOWER priority.** Search your *own* library in plain language ("cozy films I haven't watched", "intense books"). Mostly a light AI step that turns a sentence into filters you already support (status + vibe/genre tags). ~1 session. Do alongside (B) only if cheap; otherwise defer.
 7. **Screenshot shortcut reliability** — clipboard flow flaky. Improve or retire.
 8. **Photo-blurb / OCR** — snap back cover → Claude reads blurb → save.
