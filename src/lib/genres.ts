@@ -4,18 +4,19 @@
 export const GENRES: Record<string, string[]> = {
   film: [
     'action', 'animation', 'comedy', 'crime', 'documentary',
-    'drama', 'fantasy', 'horror', 'musical', 'romance',
-    'satire', 'sci-fi', 'thriller', 'western',
+    'drama', 'fantasy', 'horror', 'musical', 'period piece',
+    'romance', 'satire', 'sci-fi', 'thriller', 'western',
   ],
   tv: [
     'animation', 'comedy', 'crime', 'documentary', 'drama',
-    'fantasy', 'horror', 'reality', 'satire', 'sci-fi', 'thriller',
+    'fantasy', 'horror', 'period piece', 'reality', 'satire',
+    'sci-fi', 'thriller',
   ],
   book: [
     'biography', 'business', 'classics', 'crime', 'essay',
     'fantasy', 'history', 'horror', 'literary fiction', 'mystery',
-    'philosophy', 'poetry', 'romance', 'satire', 'sci-fi', 'self-help',
-    'short stories', 'thriller', 'travel',
+    'period piece', 'philosophy', 'poetry', 'romance', 'satire',
+    'sci-fi', 'self-help', 'short stories', 'thriller', 'travel',
   ],
   music: [
     'afrobeats', 'ambient', 'classical', 'country', 'electronic',
