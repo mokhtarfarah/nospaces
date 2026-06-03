@@ -163,14 +163,16 @@ export function LibraryScreen() {
   const [dupesOpen, setDupesOpen] = useState(false)
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
+  // When deep-linked from the data-gaps list with &edit=1, open straight into edit.
+  const [actionEdit, setActionEdit] = useState(false)
   // Deep-link: arriving with ?item=<id> (e.g. from the data-gaps list) opens that
   // item's action sheet so it can be filled in place, then clears the param.
   useEffect(() => {
     const id = searchParams.get('item')
     if (!id || loading) return
     const target = items.find(i => i.id === id)
-    if (target) setActionItem(target)
-    setSearchParams(prev => { prev.delete('item'); return prev }, { replace: true })
+    if (target) { setActionItem(target); setActionEdit(searchParams.get('edit') === '1') }
+    setSearchParams(prev => { prev.delete('item'); prev.delete('edit'); return prev }, { replace: true })
   }, [searchParams, loading, items, setSearchParams])
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -516,7 +518,7 @@ export function LibraryScreen() {
                       key={item.id}
                       item={item}
                       square={musicOnly}
-                      onTap={() => (selectMode ? toggleSelect(item.id) : setActionItem(item))}
+                      onTap={() => (selectMode ? toggleSelect(item.id) : (setActionEdit(false), setActionItem(item)))}
                       onSaveArt={handleSaveArt}
                       selectMode={selectMode}
                       selected={selectedIds.has(item.id)}
@@ -529,7 +531,7 @@ export function LibraryScreen() {
                     key={item.id}
                     item={item}
                     showType={categories.length !== 1}
-                    onTap={() => (selectMode ? toggleSelect(item.id) : setActionItem(item))}
+                    onTap={() => (selectMode ? toggleSelect(item.id) : (setActionEdit(false), setActionItem(item)))}
                     onMarkDone={() => setDoneItem(item)}
                     onMarkWantTo={() => markWantTo(item.id)}
                     onSaveWiki={handleSaveWiki}
@@ -604,7 +606,9 @@ export function LibraryScreen() {
         const fresh = items.find(i => i.id === actionItem.id) ?? actionItem
         return (
           <ItemActionSheet
+            key={fresh.id}
             item={fresh}
+            initialEdit={actionEdit}
             onEdit={fields => { editItem(fresh.id, fields) }}
             onSetMoods={moods => editItem(fresh.id, { moods })}
             onSetTags={tags => editItem(fresh.id, { tags })}
@@ -613,7 +617,7 @@ export function LibraryScreen() {
             onEditReaction={(reaction, note, moods) => { editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }}
             onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
             onDelete={() => { deleteItem(fresh.id); setActionItem(null) }}
-            onClose={() => setActionItem(null)}
+            onClose={() => { setActionItem(null); setActionEdit(false) }}
           />
         )
       })()}
@@ -648,8 +652,8 @@ function DropdownButton({ label, value, active, onToggle, onClear }: {
   label: string; value: string | null; active: boolean
   onToggle: () => void; onClear: () => void
 }) {
-  // Underline-tab style to match TabChip — the whole filter row shares one flat
-  // language (no border chips). A selected value or open menu draws the underline.
+  // Matches TabChip — the whole filter row shares one flat language (no border
+  // chips). A selected value or open menu shows as ink + italics.
   const on = !!value || active
   return (
     <button
@@ -657,11 +661,10 @@ function DropdownButton({ label, value, active, onToggle, onClear }: {
       style={{
         display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
         padding: '4px 2px 8px', border: 'none', background: 'none',
-        borderBottom: on ? '1.5px solid #111' : '1.5px solid transparent',
         color: on ? '#111' : '#888',
         fontSize: 13, fontWeight: value ? 600 : 400,
+        fontStyle: on ? 'italic' : 'normal',
         cursor: 'pointer', whiteSpace: 'nowrap',
-        letterSpacing: on ? '-0.1px' : '0',
       }}
     >
       <span>{value ?? label}</span>
@@ -732,7 +735,8 @@ function EmptyState({ hasItems }: { hasItems: boolean }) {
   )
 }
 
-// Tab-style: used for category row + status row. No pill, underline indicates active.
+// Tab-style: used for category row + status row. No pill — active is shown by
+// ink colour + italics (trying italics instead of the underline).
 function TabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
@@ -741,14 +745,13 @@ function TabChip({ label, active, onClick }: { label: string; active: boolean; o
         flexShrink: 0,
         padding: '4px 2px 8px',
         border: 'none',
-        borderBottom: active ? '1.5px solid #111' : '1.5px solid transparent',
         background: 'none',
         color: active ? '#111' : '#888',
         fontSize: 13,
         fontWeight: active ? 600 : 400,
+        fontStyle: active ? 'italic' : 'normal',
         cursor: 'pointer',
         whiteSpace: 'nowrap',
-        letterSpacing: active ? '-0.1px' : '0',
       }}
     >
       {label}

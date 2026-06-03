@@ -23,6 +23,8 @@ interface Props {
   onToggleOwned: (owned: boolean) => void
   onDelete: () => void
   onClose: () => void
+  // Open straight into the edit view (e.g. deep-linked from the data-gaps list).
+  initialEdit?: boolean
 }
 
 const TYPES = ['film', 'book', 'music', 'tv', 'other']
@@ -57,8 +59,8 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose }: Props) {
-  const [view, setView] = useState<View>('main')
+export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, initialEdit }: Props) {
+  const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
   const [type, setType] = useState(item.type)
@@ -346,8 +348,8 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     {item.metadata?.owned ? '⌂ owned' : '⌂ own it?'}
                   </button>
                   {!item.metadata?.scratch && (
-                    <button onClick={() => setTagsEditing(true)} className="tlink" style={{ flexShrink: 0 }}>
-                      {((item.tags ?? []).some(isGenreTag) || (item.moods ?? []).length > 0) ? 'edit tags' : '+ tags'}
+                    <button onClick={() => setTagsEditing(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
+                      {tagsEditing ? 'done ▴' : (((item.tags ?? []).some(isGenreTag) || (item.moods ?? []).length > 0) ? 'edit tags ▾' : '+ tags')}
                     </button>
                   )}
                 </div>
@@ -507,13 +509,14 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 onSetMoods(next)
               }
 
-              // One editorial line — lead term emphasized, middot-separated.
+              // One editorial line — middot-separated. Order carries the ranking
+              // (no bold lead term — matches the taste page).
               const line = (terms: string[]) => terms.length === 0 ? null : (
                 <div style={{ fontSize: 13, lineHeight: 1.7, color: '#1C1B19' }}>
                   {terms.map((t, i) => (
                     <span key={t}>
                       {i > 0 && <span style={{ color: '#ABA69C', margin: '0 7px' }}>·</span>}
-                      <span style={{ fontWeight: i === 0 ? 600 : 400 }}>{t}</span>
+                      <span>{t}</span>
                     </span>
                   ))}
                 </div>
@@ -528,39 +531,35 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 }}>{label}</button>
               )
 
+              // The open/collapse toggle lives in the header ("edit tags ▾ / done ▴" /
+              // "+ tags"). The body just shows the tag lines at rest, or the chip
+              // editors when editing — no buttons of its own.
+              if (!tagsEditing) {
+                return hasAny ? (
+                  <div style={{ marginBottom: 14 }}>
+                    {line(activeGenres)}
+                    {line(feel)}
+                    {line(landed)}
+                  </div>
+                ) : null
+              }
               return (
                 <div style={{ marginBottom: 14 }}>
-                  {!tagsEditing ? (
-                    <>
-                      {hasAny && (
-                        <div style={{ marginBottom: 7 }}>
-                          {line(activeGenres)}
-                          {line(feel)}
-                          {line(landed)}
-                        </div>
-                      )}
-                      <button onClick={() => setTagsEditing(true)} className="tlink">{hasAny ? 'edit tags ▾' : '+ add tags'}</button>
-                    </>
-                  ) : (
-                    <div>
-                      {vocab.length > 0 && (
-                        <div style={{ marginBottom: 12 }}>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>genre</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                            {activeGenres.map(g => editChip(g, true, () => toggleGenre(g)))}
-                            {inactiveGenres.map(g => editChip(g, false, () => toggleGenre(g)))}
-                          </div>
-                        </div>
-                      )}
-                      <MoodChips
-                        size="sm"
-                        groups={item.status === 'want_to' ? 'vibes-only' : 'all'}
-                        isActive={m => (item.moods ?? []).includes(m)}
-                        onToggle={toggleMood}
-                      />
-                      <button onClick={() => setTagsEditing(false)} className="tlink">done ▴</button>
+                  {vocab.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>genre</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {activeGenres.map(g => editChip(g, true, () => toggleGenre(g)))}
+                        {inactiveGenres.map(g => editChip(g, false, () => toggleGenre(g)))}
+                      </div>
                     </div>
                   )}
+                  <MoodChips
+                    size="sm"
+                    groups={item.status === 'want_to' ? 'vibes-only' : 'all'}
+                    isActive={m => (item.moods ?? []).includes(m)}
+                    onToggle={toggleMood}
+                  />
                 </div>
               )
             })()}

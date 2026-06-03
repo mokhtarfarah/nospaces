@@ -423,7 +423,7 @@ function LibraryTools({ items, editItem, open }: {
               )}
               <div style={{ marginTop: 8, maxHeight: 340, overflowY: 'auto', border: '1px solid #ECEAE6', borderRadius: 6 }}>
                 {shownIncomplete.map(({ item, gaps }) => (
-                  <GapRow key={item.id} item={item} gaps={gaps} onOpen={() => navigate(`/library?item=${item.id}`)} />
+                  <GapRow key={item.id} item={item} gaps={gaps} onOpen={() => navigate(`/library?item=${item.id}&edit=1`)} />
                 ))}
               </div>
             </>
