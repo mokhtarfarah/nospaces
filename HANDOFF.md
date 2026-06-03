@@ -147,7 +147,7 @@ All shipped to `main` / live:
 3. ✅ **Bulk photo upload** — "add from photos" accepts multiple files. Single pick → single ConfirmSheet. Multi-pick → BulkConfirmSheet: identifies all in parallel, each row checkable/editable, saves all as want_to. Low-confidence results start unchecked.
 4. **Manual source field** — set where an item came from (person/site/newsletter). Decide where it surfaces.
 5. **Music / songs** — today albums-only. Figure out adding individual songs + cleanest flow.
-6. **Describe-to-add (B) — PRIORITIZED next small feature.** "rosalía's latest album", "that new Villeneuve movie" → AI parses the description into intent {creator, type, ordinal/recency} → server resolves to the real item via live catalog → confirm + save. **Reuses the `/api/lookup` catalog search already wired into re-identify (session 8)** + a small intent-parse step. ~1 session, low risk. This is the Add-screen flow (describe something you can't name → get the real item).
+6. **Describe-to-add — PRIORITIZED next small feature (session 12, in progress).** "rosalía's latest album", "that new Villeneuve movie" → Haiku parses intent {creator, type} → catalog search via `/api/lookup` → confirm + save. Option A (catalog-first) chosen: cheap (~$0.001 Haiku + free catalog APIs), handles recency/cutoff correctly. **Future state Option B:** for vague plot-description queries with no named entity ("thriller about a woman in the forest"), route to `/api/identify` (Sonnet) instead — model handles associative matching better than keyword catalog search. Not built; add a query classifier to detect named entities vs pure descriptions if this becomes needed.
 7. **Descriptive library search (A) — LOWER priority.** Search your *own* library in plain language ("cozy films I haven't watched", "intense books"). Mostly a light AI step that turns a sentence into filters you already support (status + vibe/genre tags). ~1 session. Do alongside (B) only if cheap; otherwise defer.
 7. **Screenshot shortcut reliability** — clipboard flow flaky. Improve or retire.
 8. **Photo-blurb / OCR** — snap back cover → Claude reads blurb → save.
@@ -209,7 +209,7 @@ All shipped to `main` / live:
 - **Still missing:** foreign-language titles where Wikipedia article name differs entirely from item title (e.g. Ponyo). Needs a different approach if this becomes a priority.
 
 ### 📚 Content / types
-1. **Book & movie series** — group like TV seasons.
+1. **Book & film series tag** — `metadata.series` field on each item (e.g. "Lord of the Rings"). Series field in edit view. "series ▾" filter dropdown in library header (same pattern as genre/vibe). Series label on action card subtitle. ~30–45 min. Decision: series tag (not TV-season model) because each book/film is its own experience with its own reaction/note.
 2. **Magazines / articles** — new media type(s).
 3. **TV season ratings** — per-season, not just whole show.
 
