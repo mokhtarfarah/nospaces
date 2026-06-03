@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
@@ -61,8 +61,131 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
   return res.json()
 }
 
+import type { Item } from '../lib/database.types'
+
+function LibraryTools({ items, editItem }: {
+  items: Item[]
+  editItem: (id: string, fields: Record<string, unknown>) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillProgress, setBackfillProgress] = useState(0)
+  const [backfillTotal, setBackfillTotal] = useState(0)
+  const cancelRef = useRef(false)
+  const [rtBackfilling, setRtBackfilling] = useState(false)
+  const [rtProgress, setRtProgress] = useState(0)
+  const [rtTotal, setRtTotal] = useState(0)
+  const rtCancelRef = useRef(false)
+  const [migrating, setMigrating] = useState(false)
+  const [migrateProgress, setMigrateProgress] = useState(0)
+
+  const untagged = useMemo(() =>
+    items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type)), [items])
+  const needsRuntime = useMemo(() =>
+    items.filter(i => {
+      if (i.type === 'film' || i.type === 'tv') return !i.metadata?.runtime
+      if (i.type === 'book') return !i.metadata?.pages
+      return false
+    }), [items])
+  const needsMoodMigration = useMemo(() =>
+    items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy')), [items])
+
+  const total = untagged.length + needsRuntime.length + needsMoodMigration.length
+  if (total === 0) return null
+
+  async function runBackfill() {
+    if (backfilling || untagged.length === 0) return
+    cancelRef.current = false
+    setBackfilling(true); setBackfillProgress(0); setBackfillTotal(untagged.length)
+    const BATCH = 5
+    for (let i = 0; i < untagged.length; i += BATCH) {
+      if (cancelRef.current) break
+      await Promise.all(untagged.slice(i, i + BATCH).map(async item => {
+        try {
+          const res = await fetch('/api/genres', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type }) })
+          const { tags } = await res.json()
+          if (tags?.length > 0) await editItem(item.id, { tags })
+        } catch { /* skip */ }
+      }))
+      setBackfillProgress(Math.min(i + BATCH, untagged.length))
+    }
+    setBackfilling(false); cancelRef.current = false
+  }
+
+  async function runRtBackfill() {
+    if (rtBackfilling || needsRuntime.length === 0) return
+    rtCancelRef.current = false
+    setRtBackfilling(true); setRtProgress(0); setRtTotal(needsRuntime.length)
+    const BATCH = 5
+    for (let i = 0; i < needsRuntime.length; i += BATCH) {
+      if (rtCancelRef.current) break
+      await Promise.all(needsRuntime.slice(i, i + BATCH).map(async item => {
+        try {
+          const res = await fetch('/api/runtime', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }) })
+          const data = await res.json()
+          const patch: Record<string, unknown> = { ...item.metadata }
+          if (item.type === 'book' && typeof data.pages === 'number') patch.pages = data.pages
+          if ((item.type === 'film' || item.type === 'tv') && typeof data.runtime === 'number') patch.runtime = data.runtime
+          if (patch.pages !== item.metadata?.pages || patch.runtime !== item.metadata?.runtime) await editItem(item.id, { metadata: patch })
+        } catch { /* skip */ }
+      }))
+      setRtProgress(Math.min(i + BATCH, needsRuntime.length))
+    }
+    setRtBackfilling(false); rtCancelRef.current = false
+  }
+
+  async function runMoodMigration() {
+    if (migrating || needsMoodMigration.length === 0) return
+    setMigrating(true); setMigrateProgress(0)
+    for (const item of needsMoodMigration) {
+      const next = (item.moods ?? []).map(m => m === 'gripping' ? 'intense' : m).filter(m => m !== 'project' && m !== 'easy')
+      try { await editItem(item.id, { moods: [...new Set(next)] }) } catch { /* skip */ }
+      setMigrateProgress(p => p + 1)
+    }
+    setMigrating(false)
+  }
+
+  const btnStyle = { padding: '7px 16px', borderRadius: 20, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
+
+  return (
+    <div style={{ marginTop: 32, borderTop: '1px solid #ECEAE6', paddingTop: 16 }}>
+      <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#AAA', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+        {open ? 'hide library tools' : 'library tools'}
+      </button>
+      {open && (
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {untagged.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags</span>
+              {backfilling
+                ? <span style={{ fontSize: 13, color: '#555' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)} of {backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
+                : <button onClick={runBackfill} style={btnStyle}>tag my library</button>}
+            </div>
+          )}
+          {needsRuntime.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, color: '#888' }}>{needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or pages</span>
+              {rtBackfilling
+                ? <span style={{ fontSize: 13, color: '#555' }}>filling {Math.min(rtProgress + 5, rtTotal)} of {rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
+                : <button onClick={runRtBackfill} style={btnStyle}>fill in</button>}
+            </div>
+          )}
+          {needsMoodMigration.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, color: '#888' }}>{needsMoodMigration.length} item{needsMoodMigration.length !== 1 ? 's' : ''} use old vibe words</span>
+              {migrating
+                ? <span style={{ fontSize: 13, color: '#555' }}>updating {migrateProgress} of {needsMoodMigration.length}…</span>
+                : <button onClick={runMoodMigration} style={btnStyle}>clean up</button>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function AddScreen() {
-  const { addItem } = useItems()
+  const { addItem, items, editItem } = useItems()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [title, setTitle] = useState('')
@@ -330,6 +453,9 @@ export function AddScreen() {
           sync from Spotify
         </button>
       </div>
+
+      {/* Library tools — backfill genre tags, runtime, and vibe cleanup */}
+      <LibraryTools items={items} editItem={editItem} />
 
       {/* Image input — single pick → single confirm, multi-pick → bulk confirm */}
       <input ref={imageRef} type="file" accept="image/*" multiple

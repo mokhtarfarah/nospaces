@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useItems } from '../hooks/useItems'
 import { usePrefs } from '../hooks/usePrefs'
 import type { Item, ItemReaction } from '../lib/database.types'
@@ -80,29 +80,6 @@ function RankedLine({ scored, limit }: { scored: Scored[]; limit?: number }) {
   )
 }
 
-// Collapsible section with the uppercase label header + chevron.
-function Section({ title, defaultOpen = false, children }: {
-  title: string; defaultOpen?: boolean; children: ReactNode
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <div style={{ borderBottom: `1px solid ${HAIR}` }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'none', border: 'none', cursor: 'pointer', padding: '14px 0 8px',
-        }}
-      >
-        <span style={{ fontSize: 15, fontWeight: 700, color: INK, letterSpacing: '1px', textTransform: 'uppercase' }}>
-          {title}
-        </span>
-        <span style={{ fontSize: 10, color: MUTE }}>{open ? '▾' : '▸'}</span>
-      </button>
-      {open && <div style={{ paddingTop: 2, paddingBottom: 18 }}>{children}</div>}
-    </div>
-  )
-}
 
 
 
@@ -156,7 +133,7 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
 }
 
 export function TasteScreen() {
-  const { items, loading, editItem } = useItems()
+  const { items, loading } = useItems()
   const { tasteProfile, tasteProfileGeneratedAt, setTasteProfile } = usePrefs()
   const [generatingProfile, setGeneratingProfile] = useState(false)
   const [profileExpanded, setProfileExpanded] = useState(false)
@@ -177,116 +154,6 @@ export function TasteScreen() {
       if (profile) await setTasteProfile(profile)
     } catch { /* silent fail */ }
     setGeneratingProfile(false)
-  }
-
-  const [backfilling, setBackfilling] = useState(false)
-  const [backfillProgress, setBackfillProgress] = useState(0)
-  const [backfillTotal, setBackfillTotal] = useState(0)
-  const cancelRef = useRef(false)
-
-  const [rtBackfilling, setRtBackfilling] = useState(false)
-  const [rtProgress, setRtProgress] = useState(0)
-  const [rtTotal, setRtTotal] = useState(0)
-  const rtCancelRef = useRef(false)
-
-  const [migrating, setMigrating] = useState(false)
-  const [migrateProgress, setMigrateProgress] = useState(0)
-
-  // Items still tagged with retired mood words. gripping→intense; project/easy dropped.
-  const needsMoodMigration = useMemo(() =>
-    items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy')),
-    [items],
-  )
-
-  async function runMoodMigration() {
-    if (migrating || needsMoodMigration.length === 0) return
-    setMigrating(true)
-    setMigrateProgress(0)
-    for (const item of needsMoodMigration) {
-      const next = (item.moods ?? [])
-        .map(m => (m === 'gripping' ? 'intense' : m))
-        .filter(m => m !== 'project' && m !== 'easy')
-      try { await editItem(item.id, { moods: [...new Set(next)] }) } catch { /* skip on error */ }
-      setMigrateProgress(p => p + 1)
-    }
-    setMigrating(false)
-  }
-
-  const untagged = useMemo(() =>
-    items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type)),
-    [items],
-  )
-
-  const needsRuntime = useMemo(() =>
-    items.filter(i => {
-      if (i.type === 'film' || i.type === 'tv') return !i.metadata?.runtime
-      if (i.type === 'book') return !i.metadata?.pages
-      return false
-    }),
-    [items],
-  )
-
-  async function runBackfill() {
-    if (backfilling || untagged.length === 0) return
-    cancelRef.current = false
-    setBackfilling(true)
-    setBackfillProgress(0)
-    setBackfillTotal(untagged.length)
-
-    const BATCH = 5
-    for (let i = 0; i < untagged.length; i += BATCH) {
-      if (cancelRef.current) break
-      const batch = untagged.slice(i, i + BATCH)
-      await Promise.all(batch.map(async item => {
-        try {
-          const res = await fetch('/api/genres', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type }),
-          })
-          const { tags } = await res.json()
-          if (tags?.length > 0) await editItem(item.id, { tags })
-        } catch { /* skip on error */ }
-      }))
-      setBackfillProgress(Math.min(i + BATCH, untagged.length))
-    }
-
-    setBackfilling(false)
-    cancelRef.current = false
-  }
-
-  async function runRtBackfill() {
-    if (rtBackfilling || needsRuntime.length === 0) return
-    rtCancelRef.current = false
-    setRtBackfilling(true)
-    setRtProgress(0)
-    setRtTotal(needsRuntime.length)
-
-    const BATCH = 5
-    for (let i = 0; i < needsRuntime.length; i += BATCH) {
-      if (rtCancelRef.current) break
-      const batch = needsRuntime.slice(i, i + BATCH)
-      await Promise.all(batch.map(async item => {
-        try {
-          const res = await fetch('/api/runtime', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }),
-          })
-          const data = await res.json()
-          const patch: Record<string, unknown> = { ...item.metadata }
-          if (item.type === 'book' && typeof data.pages === 'number') patch.pages = data.pages
-          if ((item.type === 'film' || item.type === 'tv') && typeof data.runtime === 'number') patch.runtime = data.runtime
-          if (patch.pages !== item.metadata?.pages || patch.runtime !== item.metadata?.runtime) {
-            await editItem(item.id, { metadata: patch })
-          }
-        } catch { /* skip on error */ }
-      }))
-      setRtProgress(Math.min(i + BATCH, needsRuntime.length))
-    }
-
-    setRtBackfilling(false)
-    rtCancelRef.current = false
   }
 
   const doneWithReaction = useMemo(() => items.filter(i => i.status === 'done' && i.reaction), [items])
@@ -405,129 +272,6 @@ export function TasteScreen() {
         <CategoryCard key={type} items={items} type={type} />
       ))}
 
-      {/* Maintenance chores — bundled + collapsed so they don't interrupt insights */}
-      {(untagged.length > 0 || needsRuntime.length > 0 || needsMoodMigration.length > 0) && (
-        <Section title="tidy up">
-
-      {untagged.length > 0 && (
-          <div style={{ paddingBottom: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>
-              genre tags
-            </div>
-            {backfilling ? (
-              <div>
-                <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
-                  tagging {Math.min(backfillProgress + 5, backfillTotal)} of {backfillTotal}…
-                </div>
-                <div style={{ background: '#F0F0F0', borderRadius: 4, height: 4, overflow: 'hidden', marginBottom: 10 }}>
-                  <div style={{
-                    height: '100%', borderRadius: 4, background: '#111',
-                    width: `${backfillTotal ? (backfillProgress / backfillTotal) * 100 : 0}%`,
-                    transition: 'width 0.3s ease',
-                  }} />
-                </div>
-                <button
-                  onClick={() => { cancelRef.current = true }}
-                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
-                >
-                  cancel
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 13, color: '#888' }}>
-                  {untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags
-                </span>
-                <button
-                  onClick={runBackfill}
-                  style={{
-                    padding: '7px 16px', borderRadius: 20, cursor: 'pointer',
-                    border: '1.5px solid #111', background: '#111',
-                    color: '#fff', fontSize: 12, fontWeight: 600,
-                  }}
-                >
-                  tag my library
-                </button>
-              </div>
-            )}
-          </div>
-      )}
-
-      {needsRuntime.length > 0 && (
-          <div style={{ paddingBottom: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>
-              runtime &amp; pages
-            </div>
-            {rtBackfilling ? (
-              <div>
-                <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
-                  filling in {Math.min(rtProgress + 5, rtTotal)} of {rtTotal}…
-                </div>
-                <div style={{ background: '#F0F0F0', borderRadius: 4, height: 4, overflow: 'hidden', marginBottom: 10 }}>
-                  <div style={{
-                    height: '100%', borderRadius: 4, background: '#111',
-                    width: `${rtTotal ? (rtProgress / rtTotal) * 100 : 0}%`,
-                    transition: 'width 0.3s ease',
-                  }} />
-                </div>
-                <button
-                  onClick={() => { rtCancelRef.current = true }}
-                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
-                >
-                  cancel
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 13, color: '#888' }}>
-                  {needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or page count
-                </span>
-                <button
-                  onClick={runRtBackfill}
-                  style={{
-                    padding: '7px 16px', borderRadius: 20, cursor: 'pointer',
-                    border: '1.5px solid #111', background: '#111',
-                    color: '#fff', fontSize: 12, fontWeight: 600,
-                  }}
-                >
-                  fill in
-                </button>
-              </div>
-            )}
-          </div>
-      )}
-
-      {needsMoodMigration.length > 0 && (
-          <div style={{ paddingBottom: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase', marginBottom: 10 }}>
-              vibe cleanup
-            </div>
-            {migrating ? (
-              <div style={{ fontSize: 13, color: '#555' }}>
-                updating {migrateProgress} of {needsMoodMigration.length}…
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <span style={{ fontSize: 13, color: '#888' }}>
-                  {needsMoodMigration.length} item{needsMoodMigration.length !== 1 ? 's' : ''} use old vibe words
-                </span>
-                <button
-                  onClick={runMoodMigration}
-                  style={{
-                    flexShrink: 0,
-                    padding: '7px 16px', borderRadius: 20, cursor: 'pointer',
-                    border: '1.5px solid #111', background: '#111',
-                    color: '#fff', fontSize: 12, fontWeight: 600,
-                  }}
-                >
-                  clean up
-                </button>
-              </div>
-            )}
-          </div>
-      )}
-        </Section>
-      )}
     </div>
   )
 }
