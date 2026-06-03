@@ -297,13 +297,6 @@ export function TasteScreen() {
   const lowVibes = moodScores.filter(s => VIBES.includes(s.label) && s.score < 0)
 
   // Cross-medium love rate — must be before early returns (Rules of Hooks).
-  const mediumRates = useMemo(() => {
-    return (['film', 'book', 'music', 'tv'] as const).map(type => {
-      const rated = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
-      const loved = rated.filter(i => i.reaction === 'loved_it').length
-      return { type, pct: rated.length >= 5 ? Math.round((loved / rated.length) * 100) : null }
-    }).filter(m => m.pct !== null) as { type: string; pct: number }[]
-  }, [items])
 
 
   if (loading) return (
