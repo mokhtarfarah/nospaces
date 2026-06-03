@@ -5,6 +5,7 @@ import type { Item, ItemReaction } from '../lib/database.types'
 import { VIBES } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { authHeaders } from '../lib/supabase'
+import { useArtwork } from '../lib/artwork'
 
 // Editorial palette — monochrome, warm ink on white. Low-contrast, print-like.
 const INK = '#1C1B19'      // primary text / lead term
@@ -83,6 +84,51 @@ function RankedLine({ scored, limit }: { scored: Scored[]; limit?: number }) {
 
 
 
+
+// One cover tile in the hero shelf. Resolves art the same way the library does
+// (useArtwork → stored wiki thumb → lowercase type-word placeholder, no emoji).
+function CoverTile({ item }: { item: Item }) {
+  const stored = (item.metadata?.coverUrl as string | null) ?? (item.metadata?.wikiThumb as string | null) ?? null
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
+  const src = artwork ?? stored
+  return (
+    <div
+      title={item.title}
+      style={{
+        flex: '0 0 auto', width: 58, height: 86, borderRadius: 4, overflow: 'hidden',
+        border: `1px solid ${HAIR}`, background: '#fff',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      {src
+        ? <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <span style={{ fontSize: 10, color: MUTE, textAlign: 'center', padding: '0 4px', lineHeight: 1.3 }}>{TYPE_LABEL[item.type] ?? item.type}</span>}
+    </div>
+  )
+}
+
+// Editorial "shelf" of the most-loved covers across media — gives the all-text
+// hero a personal, at-a-glance visual. Loved items first, prefer ones with a
+// stored cover so art shows instantly, mix media for variety.
+function HeroCovers({ items }: { items: Item[] }) {
+  const featured = useMemo(() => {
+    const loved = items.filter(i => i.status === 'done' && i.reaction === 'loved_it')
+    const hasCover = (i: Item) => !!(i.metadata?.coverUrl || i.metadata?.wikiThumb)
+    return [...loved]
+      .sort((a, b) => {
+        if (hasCover(a) !== hasCover(b)) return hasCover(a) ? -1 : 1
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      })
+      .slice(0, 6)
+  }, [items])
+
+  if (featured.length < 3) return null
+  return (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      {featured.map(item => <CoverTile key={item.id} item={item} />)}
+    </div>
+  )
+}
 
 // Compact bordered card per medium — title + stats on header line, no sublabels.
 function CategoryCard({ items, type }: { items: Item[]; type: string }) {
@@ -203,8 +249,9 @@ export function TasteScreen() {
     <div style={{ padding: '44px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
       <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 14px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
 
-      {/* Hero header — non-collapsible: vibes chips + prose */}
+      {/* Hero header — non-collapsible: loved-covers shelf + vibes chips + prose */}
       <div style={{ borderBottom: `1.5px solid ${INK}`, paddingBottom: 18, marginBottom: 16 }}>
+        <HeroCovers items={items} />
         {topVibes.length > 0 && (
           <div style={{ marginBottom: 14 }}>
             <RankedLine scored={topVibes} limit={8} />

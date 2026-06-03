@@ -143,7 +143,11 @@
       "Bash(sed -n '150p' src/screens/SpotifyScreen.tsx)",
       "Bash(sed -n '462p' src/screens/LibraryScreen.tsx)",
       "Bash(sed -n '191p' src/screens/ShowsScreen.tsx)",
-      "Bash(echo \"tsc:$?\")"
+      "Bash(echo \"tsc:$?\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(GIT_EDITOR=true git rebase --continue)"
     ]
   }
 }
