@@ -5,6 +5,13 @@ import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
 import { BulkConfirmSheet, type BulkItem } from '../components/BulkConfirmSheet'
 import type { ItemReaction } from '../lib/database.types'
 
+interface Candidate {
+  title: string
+  creator: string
+  type: string
+  year: number | null
+}
+
 async function identifyText(input: string, typeHint?: string | null): Promise<AiResult> {
   const res = await fetch('/api/identify', {
     method: 'POST',
@@ -13,6 +20,23 @@ async function identifyText(input: string, typeHint?: string | null): Promise<Ai
   })
   if (!res.ok) throw new Error('AI request failed')
   return res.json()
+}
+
+async function describeToSearch(input: string): Promise<{ searchQuery: string; type: string | null }> {
+  const res = await fetch('/api/describe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input }),
+  })
+  if (!res.ok) return { searchQuery: input, type: null }
+  return res.json()
+}
+
+async function catalogLookup(q: string): Promise<Candidate[]> {
+  const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}`)
+  if (!res.ok) return []
+  const { results } = await res.json()
+  return Array.isArray(results) ? results : []
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -192,6 +216,8 @@ export function AddScreen() {
   const [bulkItems, setBulkItems] = useState<BulkItem[] | null>(null)
   const [bulkLoading, setBulkLoading] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [pickerCandidates, setPickerCandidates] = useState<Candidate[] | null>(null)
+  const [sonnetPrompt, setSonnetPrompt] = useState(false)
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
@@ -304,6 +330,57 @@ export function AddScreen() {
     setError('')
     setLoading(true)
     try {
+      // Step 1: Haiku intent parse
+      const { searchQuery, type: parsedType } = await describeToSearch(title.trim())
+
+      // Step 2: Catalog lookup
+      if (searchQuery.trim()) {
+        const all = await catalogLookup(searchQuery.trim())
+        const typed = parsedType ? all.filter(r => r.type === parsedType) : all
+        const candidates = typed.length > 0 ? typed : all
+        if (candidates.length > 0) {
+          setPickerCandidates(candidates)
+          setLoading(false)
+          return
+        }
+      }
+
+      // Step 3: No catalog results — prompt before using Sonnet
+      setSonnetPrompt(true)
+    } catch {
+      setError('Could not reach AI — saved as typed.')
+      await addItem(title.trim())
+      setTitle('')
+      navigate('/library')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handlePickCandidate(candidate: Candidate) {
+    const result: AiResult = {
+      title: candidate.title,
+      creator: candidate.creator,
+      type: candidate.type,
+      year: candidate.year,
+      confidence: 'high',
+      metadata: {},
+      tags: [],
+      blurb: null,
+      ambiguous: false,
+      alternatives: [],
+    }
+    setPickerCandidates(null)
+    setAiSource('quick add')
+    setAiQuery(title.trim())
+    setAiResult(result)
+  }
+
+  async function handleFallbackIdentify() {
+    setPickerCandidates(null)
+    setSonnetPrompt(false)
+    setLoading(true)
+    try {
       const result = await identifyText(title.trim(), typeHint)
       setAiSource('quick add')
       setAiQuery(title.trim())
@@ -414,6 +491,28 @@ export function AddScreen() {
         )}
 
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
+
+        {sonnetPrompt && !loading && (
+          <div style={{ marginTop: 16, padding: '14px 16px', background: '#F7F7F7', borderRadius: 12, textAlign: 'center' }}>
+            <p style={{ margin: '0 0 10px', fontSize: 13, color: '#555' }}>
+              nothing found in the catalog — identify with Sonnet instead?
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                onClick={handleFallbackIdentify}
+                style={{ padding: '8px 18px', borderRadius: 20, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                identify with Sonnet
+              </button>
+              <button
+                onClick={() => setSonnetPrompt(false)}
+                style={{ padding: '8px 18px', borderRadius: 20, border: '1px solid #DDD', background: 'none', color: '#888', fontSize: 13, cursor: 'pointer' }}
+              >
+                cancel
+              </button>
+            </div>
+          </div>
+        )}
       </form>
 
       <div style={{ marginTop: 20, borderTop: '1px solid #ECEAE6', paddingTop: 16 }}>
@@ -471,6 +570,16 @@ export function AddScreen() {
           onClose={() => { bulkItems.forEach(i => URL.revokeObjectURL(i.preview)); setBulkItems(null) }}
         />
       )}
+
+      {pickerCandidates && (
+        <PickerSheet
+          query={title.trim()}
+          candidates={pickerCandidates}
+          onPick={handlePickCandidate}
+          onFallback={handleFallbackIdentify}
+          onClose={() => setPickerCandidates(null)}
+        />
+      )}
     </div>
   )
 }
@@ -478,5 +587,70 @@ export function AddScreen() {
 
 function CameraIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+}
+
+const TYPE_ICON: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
+
+function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
+  query: string
+  candidates: Candidate[]
+  onPick: (c: Candidate) => void
+  onFallback: () => void
+  onClose: () => void
+}) {
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }}
+      />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201,
+        background: '#fff', borderRadius: '20px 20px 0 0',
+        padding: '20px 0 calc(env(safe-area-inset-bottom) + 24px)',
+        maxHeight: '70dvh', display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ padding: '0 20px 16px', borderBottom: '1px solid #ECEAE6', flexShrink: 0 }}>
+          <p style={{ margin: 0, fontSize: 11, color: '#999', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            results for "{query}"
+          </p>
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {candidates.map((c, i) => (
+            <button
+              key={i}
+              onClick={() => onPick(c)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                width: '100%', padding: '14px 20px',
+                background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer',
+                borderBottom: i < candidates.length - 1 ? '1px solid #F4F4F4' : 'none',
+              }}
+            >
+              <span style={{ fontSize: 20, flexShrink: 0 }}>{TYPE_ICON[c.type] ?? '✦'}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 15, fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.title}
+                </span>
+                <span style={{ display: 'block', fontSize: 13, color: '#888', marginTop: 1 }}>
+                  {[c.creator, c.year].filter(Boolean).join(' · ')}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ padding: '16px 20px 0', borderTop: '1px solid #ECEAE6', flexShrink: 0, textAlign: 'center' }}>
+          <button
+            onClick={onFallback}
+            style={{ background: 'none', border: 'none', fontSize: 13, color: '#999', cursor: 'pointer', padding: 0 }}
+          >
+            none of these — identify with Sonnet instead
+          </button>
+        </div>
+      </div>
+    </>
+  )
 }
 
