@@ -8,6 +8,8 @@ const db = () => (supabase as any)
 
 interface Prefs {
   cities?: City[]
+  tasteProfile?: string
+  tasteProfileGeneratedAt?: string
 }
 
 // Per-user preferences, synced across devices via the public.user_prefs table.
@@ -50,5 +52,14 @@ export function usePrefs() {
 
   const setCities = (next: City[]) => patch({ cities: next })
 
-  return { cities, setCities, prefsLoaded: loaded }
+  const setTasteProfile = (profile: string) =>
+    patch({ tasteProfile: profile, tasteProfileGeneratedAt: new Date().toISOString() })
+
+  return {
+    cities, setCities,
+    tasteProfile: prefs.tasteProfile,
+    tasteProfileGeneratedAt: prefs.tasteProfileGeneratedAt,
+    setTasteProfile,
+    prefsLoaded: loaded,
+  }
 }

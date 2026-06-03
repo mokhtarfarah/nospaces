@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, type ReactNode } from 'react'
 import { useItems } from '../hooks/useItems'
+import { usePrefs } from '../hooks/usePrefs'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { VIBES, VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
@@ -193,6 +194,27 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
 
 export function TasteScreen() {
   const { items, loading, editItem } = useItems()
+  const { tasteProfile, tasteProfileGeneratedAt, setTasteProfile } = usePrefs()
+  const [generatingProfile, setGeneratingProfile] = useState(false)
+
+  async function generateProfile() {
+    if (generatingProfile) return
+    setGeneratingProfile(true)
+    try {
+      const signal = items.filter(i => i.status === 'done' && (i.reaction === 'loved_it' || i.reaction === 'liked_it'))
+      const res = await fetch('/api/taste-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: signal.map(i => ({ title: i.title, creator: i.creator, type: i.type, reaction: i.reaction, note: i.note })),
+        }),
+      })
+      const { profile } = await res.json()
+      if (profile) await setTasteProfile(profile)
+    } catch { /* silent fail */ }
+    setGeneratingProfile(false)
+  }
+
   const [backfilling, setBackfilling] = useState(false)
   const [backfillProgress, setBackfillProgress] = useState(0)
   const [backfillTotal, setBackfillTotal] = useState(0)
@@ -341,6 +363,43 @@ export function TasteScreen() {
   return (
     <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
       <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 10px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
+
+      {/* Taste profile prose — AI-generated editorial summary, cached in user_prefs */}
+      <div style={{ marginBottom: 28 }}>
+        {tasteProfile ? (
+          <>
+            <p style={{ fontSize: 15, lineHeight: 1.75, color: INK, margin: '0 0 10px', letterSpacing: '-0.1px' }}>
+              {tasteProfile}
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {tasteProfileGeneratedAt && (
+                <span style={{ fontSize: 11, color: MUTE }}>
+                  generated {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              )}
+              <button
+                onClick={generateProfile}
+                disabled={generatingProfile}
+                style={{ background: 'none', border: 'none', fontSize: 11, color: generatingProfile ? MUTE : GRAPHITE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
+              >
+                {generatingProfile ? 'generating…' : 'refresh'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <button
+            onClick={generateProfile}
+            disabled={generatingProfile}
+            style={{
+              padding: '8px 18px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
+              border: `1.5px solid ${INK}`, background: generatingProfile ? HAIR : INK,
+              color: generatingProfile ? GRAPHITE : '#fff', fontSize: 12, fontWeight: 600,
+            }}
+          >
+            {generatingProfile ? 'generating…' : 'describe my taste'}
+          </button>
+        )}
+      </div>
 
       {/* OVERALL — vibes + verdicts are cross-type (a vibe doesn't belong to a medium). */}
       {/* Vibes (feel) — your taste fingerprint. Top of the page, open by default. */}
