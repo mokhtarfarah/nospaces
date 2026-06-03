@@ -407,7 +407,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             {item.note && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>note</div>
-                <div style={{ fontSize: 13.5, color: '#2A2926', lineHeight: 1.55, paddingLeft: 13, borderLeft: '2px solid #1C1B19', fontStyle: 'italic' }}>
+                <div style={{ fontSize: 13, color: '#57534E', lineHeight: 1.65, fontStyle: 'italic' }}>
                   {renderNote(item.note)}
                 </div>
               </div>
@@ -569,7 +569,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             ) : (
               <div style={{ ...footer, display: 'flex', gap: 8 }}>
-                <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 2 }}>
+                <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
                   {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
                 </button>
                 <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
@@ -654,10 +654,16 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             <div style={{ marginBottom: 16 }}>
               <NoteInput value={note} onChange={setNote} />
             </div>
-            <p style={fieldLabel}>vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span></p>
-            <div style={{ marginBottom: 16 }}>
-              <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
-            </div>
+            {/* Hybrid: vibe picker only on first mark-as-done. For "edit reaction" on a
+                done item it's redundant — vibes are editable on the card via "edit tags". */}
+            {item.status === 'want_to' && (
+              <>
+                <p style={fieldLabel}>vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span></p>
+                <div style={{ marginBottom: 16 }}>
+                  <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
+                </div>
+              </>
+            )}
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
               <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#111111' : '#ccc', border: 'none' }}>save</button>
