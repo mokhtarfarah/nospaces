@@ -30,14 +30,19 @@ async function describeToSearch(input: string): Promise<{ searchQuery: string; t
     headers: await authHeaders(),
     body: JSON.stringify({ input }),
   })
-  if (!res.ok) return { searchQuery: input, type: null }
-  return res.json()
+  if (!res.ok) { console.warn('[describe] HTTP', res.status, '— using raw input'); return { searchQuery: input, type: null } }
+  const r = await res.json()
+  console.log('[describe]', input, '→', r)
+  return r
 }
 
 async function catalogLookup(q: string, recency = false): Promise<Candidate[]> {
-  const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}${recency ? '&recency=1' : ''}`, { headers: await authHeaders() })
-  if (!res.ok) return []
-  const { results } = await res.json()
+  const url = `/api/lookup?q=${encodeURIComponent(q)}${recency ? '&recency=1' : ''}`
+  const res = await fetch(url)
+  if (!res.ok) { console.error('[lookup] HTTP', res.status, url); return [] }
+  const data = await res.json()
+  console.log('[lookup]', url, '→', data.results?.length ?? 0, 'results')
+  const { results } = data
   return Array.isArray(results) ? results : []
 }
 
