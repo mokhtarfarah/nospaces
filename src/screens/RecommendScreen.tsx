@@ -49,8 +49,9 @@ export function RecommendScreen() {
   async function handlePdf(file: File) {
     if (loading) return
     // Vercel hard limit is 4.5MB — base64 adds ~33%, so warn above 3MB
-    if (file.size > 4 * 1024 * 1024) {
-      setError('PDF is too large (max ~4MB). Try saving just the article page, not the whole site.')
+    // Vercel hard limit is 4.5MB total. Base64 adds ~33%, so 3MB PDF → ~4MB request.
+    if (file.size > 3 * 1024 * 1024) {
+      setError(`PDF is too large (${(file.size / 1024 / 1024).toFixed(1)}MB — max 3MB). In Safari: Print → PDF → crop to just the article, or use Print Selection.`)
       return
     }
     setError(''); setRows(null); setDone(null); setLoading(true)
@@ -67,7 +68,15 @@ export function RecommendScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pdfBase64: base64 }),
       })
-      if (!res.ok) throw new Error('request failed')
+      if (!res.ok) {
+        if (res.status === 413) {
+          setError('PDF is too large for the server. Try a smaller file or print just the article page.')
+        } else {
+          const body = await res.json().catch(() => ({})) as { error?: string }
+          setError(body.error ?? `Server error ${res.status} — try again.`)
+        }
+        return
+      }
       const data = await res.json() as { source: string; sourceUrl: string; items: RecItem[]; error?: string }
       if (data.error) { setError(data.error); return }
       if (!data.items?.length) {

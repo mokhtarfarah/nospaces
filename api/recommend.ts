@@ -147,6 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // PDF path: document block, no web_search needed
   if (body.pdfBase64) {
+    console.log('pdf path: base64 length', body.pdfBase64.length, 'approx MB', (body.pdfBase64.length * 0.75 / 1024 / 1024).toFixed(2))
     try {
       const message = await client.messages.create({
         model: 'claude-sonnet-4-5',
@@ -165,8 +166,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .map(b => b.text).join('\n')
       return res.status(200).json(parseResponse(text, ''))
     } catch (err) {
-      console.error(err)
-      return res.status(500).json({ error: 'Failed to parse PDF' })
+      console.error('pdf error:', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      return res.status(500).json({ error: `Failed to parse PDF: ${msg}` })
     }
   }
 
