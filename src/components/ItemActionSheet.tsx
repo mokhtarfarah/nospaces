@@ -308,27 +308,18 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     onClick={() => onToggleOwned(!item.metadata?.owned)}
                     style={{
                       padding: '2px 8px', borderRadius: 20, cursor: 'pointer', fontSize: 11,
-                      border: item.metadata?.owned ? '1.5px solid #111' : '1.5px solid #DDD',
-                      background: item.metadata?.owned ? '#111' : '#fff',
-                      color: item.metadata?.owned ? '#fff' : '#AAA',
-                      fontWeight: 500, flexShrink: 0,
+                      border: item.metadata?.owned ? '1px solid #ECEAE6' : '1.5px solid #DDD',
+                      background: '#fff',
+                      color: item.metadata?.owned ? '#ABA69C' : '#AAA',
+                      fontWeight: 400, flexShrink: 0,
                     }}
                   >
                     {item.metadata?.owned ? '⌂ owned' : '⌂ own it?'}
                   </button>
                   {!item.metadata?.scratch && (
                     <>
-                      <button
-                        onClick={() => setView('edit')}
-                        style={{ background: 'none', border: 'none', fontSize: 11, color: '#B0B0B0', cursor: 'pointer', padding: 0, flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
-                      >
-                        edit
-                      </button>
-                      <button
-                        onClick={() => handleReidentify(true)}
-                        disabled={reidentifying}
-                        style={{ background: 'none', border: 'none', fontSize: 11, color: reidentifying ? '#CCC' : '#B0B0B0', cursor: reidentifying ? 'default' : 'pointer', padding: 0, flexShrink: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
-                      >
+                      <button onClick={() => setView('edit')} className="tlink" style={{ flexShrink: 0 }}>edit</button>
+                      <button onClick={() => handleReidentify(true)} disabled={reidentifying} className="tlink" style={{ flexShrink: 0 }}>
                         {reidentifying ? 'identifying…' : 're-identify'}
                       </button>
                     </>
@@ -370,10 +361,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   {blurb && (
-                    <button
-                      onClick={() => setShowBlurb(v => !v)}
-                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: '#B0B0B0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
-                    >
+                    <button onClick={() => setShowBlurb(v => !v)} className="tlink">
                       {/* Wikipedia blurbs always read "about this" (not "via Wikipedia") so
                           cards stay consistent across categories — and it avoids duplicating
                           the wikipedia ↗ link when that's shown. Other sources keep "via [source]". */}
@@ -382,17 +370,17 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     </button>
                   )}
                   {spotifyUrl && (
-                    <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" style={inlineLink}>
+                    <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" className="tlink">
                       <SpotifyIcon /> spotify
                     </a>
                   )}
                   {wikiUrl && (
-                    <a href={wikiUrl} target="_blank" rel="noopener noreferrer" style={inlineLink}>
+                    <a href={wikiUrl} target="_blank" rel="noopener noreferrer" className="tlink">
                       wikipedia ↗
                     </a>
                   )}
                   {(item.type === 'film' || item.type === 'tv') && (
-                    <button onClick={() => setWatchOpen(true)} style={{ ...inlineLink, background: 'none', border: 'none', cursor: 'pointer' }}>
+                    <button onClick={() => setWatchOpen(true)} className="tlink">
                       ▶ watch
                     </button>
                   )}
@@ -405,7 +393,8 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                         href={item.metadata?.recommendationUrl as string}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ color: '#B0B0B0', fontSize: 11, fontStyle: 'normal', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}
+                        className="tlink"
+                        style={{ fontStyle: 'normal', whiteSpace: 'nowrap', display: 'inline' }}
                       >
                         see source ↗
                       </a>
@@ -417,8 +406,8 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
 
             {item.note && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#AAA', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 5 }}>your note</div>
-                <div style={{ fontSize: 13, color: '#333', lineHeight: 1.5, paddingLeft: 12, borderLeft: '3px solid #111', fontStyle: 'italic' }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>note</div>
+                <div style={{ fontSize: 13.5, color: '#2A2926', lineHeight: 1.55, paddingLeft: 13, borderLeft: '2px solid #1C1B19', fontStyle: 'italic' }}>
                   {renderNote(item.note)}
                 </div>
               </div>
@@ -512,7 +501,6 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   ))}
                 </div>
               )
-              const revealLink: React.CSSProperties = { background: 'none', border: 'none', padding: 0, fontSize: 11, color: '#6F6B64', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }
               const editChip = (label: string, on: boolean, onClick: () => void) => (
                 <button key={label} onClick={onClick} style={{
                   padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', flexShrink: 0,
@@ -532,7 +520,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                           {line(landed)}
                         </div>
                       )}
-                      <button onClick={() => setTagsEditing(true)} style={revealLink}>{hasAny ? 'edit tags ▾' : '+ add tags'}</button>
+                      <button onClick={() => setTagsEditing(true)} className="tlink">{hasAny ? 'edit tags ▾' : '+ add tags'}</button>
                     </>
                   ) : (
                     <div>
@@ -551,7 +539,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                         isActive={m => (item.moods ?? []).includes(m)}
                         onToggle={toggleMood}
                       />
-                      <button onClick={() => setTagsEditing(false)} style={revealLink}>done ▴</button>
+                      <button onClick={() => setTagsEditing(false)} className="tlink">done ▴</button>
                     </div>
                   )}
                 </div>
@@ -672,13 +660,12 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </button>
               ))}
             </div>
+            <div style={{ marginBottom: 16 }}>
+              <NoteInput value={note} onChange={setNote} />
+            </div>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 10 }}>vibe? <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></p>
             <div style={{ marginBottom: 16 }}>
               <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <NoteInput value={note} onChange={setNote} />
             </div>
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
@@ -746,13 +733,6 @@ function actionBtn(color: string): React.CSSProperties {
     borderRadius: 10, background: '#fff', fontSize: 13,
     fontWeight: 500, color, cursor: 'pointer',
   }
-}
-
-// Small inline text links that sit on the same row as the blurb toggle.
-const inlineLink: React.CSSProperties = {
-  fontSize: 11, color: '#B0B0B0', textDecoration: 'none',
-  display: 'inline-flex', alignItems: 'center', gap: 3,
-  padding: 0, background: 'none', border: 'none',
 }
 
 const inputStyle: React.CSSProperties = {

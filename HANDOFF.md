@@ -236,6 +236,7 @@ All shipped to `main` / live:
    - **Note:** the library `vibe` dropdown still lists VIBES + VERDICTS mixed (only the taste page splits the two axes). Possible small follow-up to split it there too.
 
 ### 🎨 Polish
+00. ✅ **Action / edit-reaction polish (session 14).** (a) **Universal link style** — new `.tlink` class in `src/index.css` (graphite `#6F6B64` at rest, inks to `#1C1B19` + underline on hover, no permanent underline). Applied to every action-card link: edit, re-identify, about-this toggle, spotify, wikipedia, watch, see-source, edit-tags. Roll out to other screens (LibraryScreen header buttons etc.) as a follow-up. (b) **Note display** — editorial: lowercase `note` mute label + 2px ink left rule + darker italic (`#2A2926`); distinct from the lighter blurb without the old heavy 3px bar. (c) **Owned pill** — subtle when selected (ghost/hairline, mute text) instead of a filled black blob. (d) **Edit-reaction + mark-done** — `note` input moved **above** the vibe selectors (tags are now editable on the card, so the note is the priority in the reaction flow).
 0. ✅ **Header declutter (session 3)** — reaction chips only show when "done" status is active (hidden for "all" and "want to"). Category → want-to/done fast path kept. Removed "recently added" chips from the Add screen.
 1. ✅ **All lowercase** — done; h1/h2/h3 via CSS, all chips/buttons/sheet copy updated.
 2. ✅ **Grid card** — 3 columns, square for music-only view, bigger title + creator line, reaction dot on done items.

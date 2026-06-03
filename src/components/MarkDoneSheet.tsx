@@ -93,13 +93,12 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         </div>
 
         {/* Moods */}
+        <div style={{ marginBottom: 16 }}>
+          <NoteInput value={note} onChange={setNote} />
+        </div>
         <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 10 }}>vibe? <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></p>
         <div style={{ marginBottom: 16 }}>
           <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <NoteInput value={note} onChange={setNote} />
         </div>
 
         <button
