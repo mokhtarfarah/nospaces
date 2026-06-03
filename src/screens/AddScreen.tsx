@@ -4,6 +4,7 @@ import { useItems } from '../hooks/useItems'
 import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
 import { BulkConfirmSheet, type BulkItem } from '../components/BulkConfirmSheet'
 import type { ItemReaction } from '../lib/database.types'
+import { fetchWikiInfo } from '../lib/wikipedia'
 
 interface Candidate {
   title: string
@@ -102,6 +103,10 @@ function LibraryTools({ items, editItem, open }: {
   const rtCancelRef = useRef(false)
   const [migrating, setMigrating] = useState(false)
   const [migrateProgress, setMigrateProgress] = useState(0)
+  const [wikiBackfilling, setWikiBackfilling] = useState(false)
+  const [wikiProgress, setWikiProgress] = useState(0)
+  const [wikiTotal, setWikiTotal] = useState(0)
+  const wikiCancelRef = useRef(false)
 
   const untagged = useMemo(() =>
     items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type)), [items])
@@ -113,8 +118,10 @@ function LibraryTools({ items, editItem, open }: {
     }), [items])
   const needsMoodMigration = useMemo(() =>
     items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy')), [items])
+  const needsWiki = useMemo(() =>
+    items.filter(i => !i.metadata?.wikiUrl && ['film','tv','book','music'].includes(i.type)), [items])
 
-  const total = untagged.length + needsRuntime.length + needsMoodMigration.length
+  const total = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length
   if (total === 0 || !open) return null
 
   async function runBackfill() {
@@ -169,6 +176,27 @@ function LibraryTools({ items, editItem, open }: {
     setMigrating(false)
   }
 
+  // One-time warm of every item's Wikipedia link/cover/summary into the DB, so the
+  // library stops re-fetching them on each load. Resolved results are persisted; items
+  // with no Wikipedia page are left for next time (nothing to save).
+  async function runWikiBackfill() {
+    if (wikiBackfilling || needsWiki.length === 0) return
+    wikiCancelRef.current = false
+    setWikiBackfilling(true); setWikiProgress(0); setWikiTotal(needsWiki.length)
+    const BATCH = 6
+    for (let i = 0; i < needsWiki.length; i += BATCH) {
+      if (wikiCancelRef.current) break
+      await Promise.all(needsWiki.slice(i, i + BATCH).map(async item => {
+        try {
+          const info = await fetchWikiInfo(item.type, item.title, item.creator, item.year)
+          if (info.url) await editItem(item.id, { metadata: { ...item.metadata, wikiUrl: info.url, wikiThumb: info.thumbnail, wikiSummary: info.summary } })
+        } catch { /* skip */ }
+      }))
+      setWikiProgress(Math.min(i + BATCH, needsWiki.length))
+    }
+    setWikiBackfilling(false); wikiCancelRef.current = false
+  }
+
   const btnStyle = { padding: '7px 16px', borderRadius: 20, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
 
   return (
@@ -195,6 +223,14 @@ function LibraryTools({ items, editItem, open }: {
           {migrating
             ? <span style={{ fontSize: 13, color: '#555' }}>updating {migrateProgress} of {needsMoodMigration.length}…</span>
             : <button onClick={runMoodMigration} style={btnStyle}>clean up</button>}
+        </div>
+      )}
+      {needsWiki.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, color: '#888' }}>{needsWiki.length} item{needsWiki.length !== 1 ? 's' : ''} missing saved wiki links</span>
+          {wikiBackfilling
+            ? <span style={{ fontSize: 13, color: '#555' }}>fetching {Math.min(wikiProgress + 6, wikiTotal)} of {wikiTotal}… <button onClick={() => { wikiCancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
+            : <button onClick={runWikiBackfill} style={btnStyle}>fill in links</button>}
         </div>
       )}
     </div>
