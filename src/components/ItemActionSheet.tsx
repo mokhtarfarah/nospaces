@@ -89,6 +89,8 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [pagesEdit, setPagesEdit] = useState(String((item.metadata?.pages as number | null) ?? ''))
   const [wikiUrlEdit, setWikiUrlEdit] = useState(String((item.metadata?.wikiUrl as string | null) ?? ''))
   const [genrePickerOpen, setGenrePickerOpen] = useState(false)
+  const [wikiParsing, setWikiParsing] = useState(false)
+  const [wikiFilled, setWikiFilled] = useState(false)
   const [reidentifying, setReidentifying] = useState(false)
   // After a re-identify, hold the other candidates so the user can pick the right
   // one if the AI grabbed the wrong match. null = picker hidden.
@@ -204,6 +206,32 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   function handleSaveNext() {
     persistEditFields()
     onSaveNext?.()
+  }
+
+  // Fetch + parse fields from a user-supplied Wikipedia URL.
+  // Only pre-fills fields that are currently empty (never overwrites).
+  async function handleWikiFill() {
+    if (wikiParsing || !wikiUrlEdit.trim()) return
+    setWikiParsing(true)
+    setWikiFilled(false)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(
+        `/api/wiki?url=${encodeURIComponent(wikiUrlEdit.trim())}&type=${encodeURIComponent(type)}&parse=1`,
+        { headers }
+      )
+      if (!res.ok) return
+      const data = await res.json() as { parsed?: { year?: number | null; creator?: string | null; runtime?: number | null; pages?: number | null } | null }
+      const p = data.parsed
+      if (!p) return
+      if (p.year && !year) setYear(String(p.year))
+      if (p.creator && !creator.trim()) setCreator(p.creator)
+      if (p.runtime && !runtimeEdit) setRuntimeEdit(String(p.runtime))
+      if (p.pages && !pagesEdit) setPagesEdit(String(p.pages))
+      setWikiFilled(true)
+    } finally {
+      setWikiParsing(false)
+    }
   }
 
   // autoSave=true (main card): save result immediately, no edit view.
@@ -716,14 +744,25 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </div>
               )}
 
-              {/* Wikipedia URL */}
+              {/* Wikipedia URL + auto-fill trigger */}
               <div style={{ marginBottom: 10 }}>
-                <input
-                  value={wikiUrlEdit}
-                  onChange={e => setWikiUrlEdit(e.target.value)}
-                  placeholder="wikipedia url (paste to override)"
-                  style={smInput}
-                />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    value={wikiUrlEdit}
+                    onChange={e => { setWikiUrlEdit(e.target.value); setWikiFilled(false) }}
+                    placeholder="wikipedia url (paste to override)"
+                    style={{ ...smInput, flex: 1 }}
+                  />
+                  {wikiUrlEdit.includes('wikipedia.org') && (
+                    <button
+                      onClick={handleWikiFill}
+                      disabled={wikiParsing}
+                      style={{ background: 'none', border: 'none', fontSize: 11, color: wikiFilled ? '#ABA69C' : '#1C1B19', cursor: wikiParsing ? 'default' : 'pointer', padding: 0, flexShrink: 0, fontWeight: 600, whiteSpace: 'nowrap' }}
+                    >
+                      {wikiParsing ? 'filling…' : wikiFilled ? 'filled ✓︎' : 'fill from wiki →'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Series + cover URL */}

@@ -95,6 +95,7 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
 import type { Item } from '../lib/database.types'
 import { useArtwork } from '../lib/artwork'
 import { itemGaps } from '../lib/gaps'
+import { isGenreTag } from '../lib/genres'
 
 // One row in the "fill by hand" list. Resolves art the same way the library does
 // so it can flag a genuinely missing cover (no stored image AND nothing the art
@@ -161,7 +162,7 @@ function LibraryTools({ items, editItem, open }: {
   const [gapFilter, setGapFilter] = useState<string | null>(null)
 
   const untagged = useMemo(() =>
-    items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type)), [items])
+    items.filter(i => !(i.tags ?? []).some(isGenreTag) && ['film','tv','book','music'].includes(i.type)), [items])
   const needsRuntime = useMemo(() =>
     items.filter(i => {
       if (i.type === 'film' || i.type === 'tv') return !i.metadata?.runtime
