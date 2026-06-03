@@ -33,7 +33,7 @@ export function NoteInput({ value, onChange, placeholder = 'Any thoughts...', ro
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase' }}>note</span>
+        <span style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase' }}>thoughts</span>
         <button
           type="button"
           onClick={insertBullet}

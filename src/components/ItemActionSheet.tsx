@@ -13,7 +13,7 @@ import { genresForType, isGenreTag } from '../lib/genres'
 
 interface Props {
   item: Item
-  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; metadata?: Record<string, unknown> }) => void
+  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; source_detail?: string | null; metadata?: Record<string, unknown> }) => void
   onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
   onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
@@ -74,6 +74,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   }
   const [coverUrl, setCoverUrl] = useState((item.metadata?.coverUrl as string | null) ?? '')
   const [series, setSeries] = useState((item.metadata?.series as string | null) ?? '')
+  const [sourceDetail, setSourceDetail] = useState(item.source_detail ?? '')
   const [reidentifying, setReidentifying] = useState(false)
   // After a re-identify, hold the other candidates so the user can pick the right
   // one if the AI grabbed the wrong match. null = picker hidden.
@@ -82,6 +83,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showBlurb, setShowBlurb] = useState(false)
   const [tagsEditing, setTagsEditing] = useState(false)
+  const [reactionTagsOpen, setReactionTagsOpen] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
   const color = typeColor(item.type)
@@ -145,6 +147,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
       creator: creator.trim() || null,
       type,
       year: year ? parseInt(year) : null,
+      source_detail: sourceDetail.trim() || null,
       metadata,
     })
     onClose()
@@ -404,15 +407,6 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             )}
 
-            {item.note && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>note</div>
-                <div style={{ fontSize: 13, color: '#57534E', lineHeight: 1.65, fontStyle: 'italic' }}>
-                  {renderNote(item.note)}
-                </div>
-              </div>
-            )}
-
             {item.type === 'tv' && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#444', marginBottom: 8 }}>
@@ -546,6 +540,15 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               )
             })()}
 
+            {item.note && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>thoughts</div>
+                <div style={{ fontSize: 13, color: '#57534E', lineHeight: 1.65, fontStyle: 'italic' }}>
+                  {renderNote(item.note)}
+                </div>
+              </div>
+            )}
+
             {confirmDelete ? (
               <div style={footer}>
                 <p style={{ fontSize: 13, color: '#C0392B', textAlign: 'center', marginBottom: 10 }}>
@@ -594,6 +597,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={inputStyle} />
               <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={inputStyle} />
               <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={inputStyle} />
+              <input value={sourceDetail} onChange={e => setSourceDetail(e.target.value)} placeholder="source (e.g. a friend, NYT, a newsletter)" style={inputStyle} />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {(type === 'film' || type === 'book' || type === 'tv') && (
                   <input value={series} onChange={e => setSeries(e.target.value)} placeholder="series (e.g. Dune)" style={{ ...inputStyle, flex: 1 }} />
@@ -654,15 +658,24 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             <div style={{ marginBottom: 16 }}>
               <NoteInput value={note} onChange={setNote} />
             </div>
-            {/* Hybrid: vibe picker only on first mark-as-done. For "edit reaction" on a
-                done item it's redundant — vibes are editable on the card via "edit tags". */}
-            {item.status === 'want_to' && (
+            {/* Hybrid: first "mark as done" shows the full vibe picker. "edit reaction" on a
+                done item keeps it minimal — a quiet "edit tags" link reveals it on demand. */}
+            {item.status === 'want_to' ? (
               <>
                 <p style={fieldLabel}>vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span></p>
                 <div style={{ marginBottom: 16 }}>
                   <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
                 </div>
               </>
+            ) : (
+              <div style={{ marginBottom: 16 }}>
+                <button onClick={() => setReactionTagsOpen(v => !v)} className="tlink">{reactionTagsOpen ? 'done ▴' : 'edit tags ▾'}</button>
+                {reactionTagsOpen && (
+                  <div style={{ marginTop: 10 }}>
+                    <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
+                  </div>
+                )}
+              </div>
             )}
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
