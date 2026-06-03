@@ -20,7 +20,7 @@ type StatusFilter = 'all' | ItemStatus
 const PREFS_KEY = 'nospaces.libraryPrefs'
 type LibraryPrefs = {
   categories: string[]; statusFilter: StatusFilter; reactionFilter: ReactionFilter
-  view: ViewMode; dir: SortDir; layout: 'list' | 'grid'
+  view: ViewMode; dir: SortDir; layout: 'list' | 'grid'; gridCols: 3 | 4
 }
 function loadPrefs(): Partial<LibraryPrefs> {
   try { return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') } catch { return {} }
@@ -157,6 +157,9 @@ export function LibraryScreen() {
   const [view, setView] = useState<ViewMode>(() => loadPrefs().view ?? 'recent')
   const [dir, setDir] = useState<SortDir>(() => loadPrefs().dir ?? VIEW_CONFIG.recent.defaultDir)
   const [layout, setLayout] = useState<'list' | 'grid'>(() => loadPrefs().layout ?? 'list')
+  // 3 vs 4 columns in grid view — 3 reads well on mobile, 4 is tighter for desktop.
+  // Persisted per-device (localStorage), so each device keeps its own preference.
+  const [gridCols, setGridCols] = useState<3 | 4>(() => loadPrefs().gridCols ?? 3)
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [viewSheetOpen, setViewSheetOpen] = useState(false)
@@ -186,9 +189,18 @@ export function LibraryScreen() {
 
   // Persist filters/view so a refresh keeps the user where they were.
   useEffect(() => {
-    const prefs: LibraryPrefs = { categories, statusFilter, reactionFilter, view, dir, layout }
+    const prefs: LibraryPrefs = { categories, statusFilter, reactionFilter, view, dir, layout, gridCols }
     try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* ignore quota/private-mode */ }
-  }, [categories, statusFilter, reactionFilter, view, dir, layout])
+  }, [categories, statusFilter, reactionFilter, view, dir, layout, gridCols])
+
+  // Clear-all-filters — only offered when something is actually narrowing the list.
+  const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
+    || !!vibeFilter || !!genreFilter || !!seriesFilter || scratchOnly || newMusicOnly || !!query.trim()
+  function clearFilters() {
+    setCategories([]); setStatusFilter('all'); setReactionFilter('all')
+    setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null)
+    setScratchOnly(false); setNewMusicOnly(false); setQuery(''); setOpenDropdown(null)
+  }
 
   const sort: SortOption = VIEW_CONFIG[view].sort
   const group = VIEW_CONFIG[view].group
@@ -315,12 +327,30 @@ export function LibraryScreen() {
             >
               {layout === 'list' ? <GridIcon /> : <ListIcon />}
             </button>
+            {layout === 'grid' && (
+              <button
+                onClick={() => setGridCols(c => (c === 3 ? 4 : 3))}
+                title="Columns"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 4px', lineHeight: 1 }}
+              >
+                {gridCols} col
+              </button>
+            )}
             <button
               onClick={() => setSearchOpen(v => !v)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: 4 }}
             >
               <SearchIcon />
             </button>
+            {filtersActive && (
+              <button
+                onClick={clearFilters}
+                title="Clear all filters"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#999', padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 3 }}
+              >
+                clear<span style={{ fontSize: 13, lineHeight: 1 }}>×</span>
+              </button>
+            )}
             <button
               onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: selectMode ? '#111' : '#555', fontWeight: selectMode ? 600 : 400, padding: '4px 4px' }}
@@ -512,12 +542,13 @@ export function LibraryScreen() {
                 </div>
               )}
               {layout === 'grid' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '4px 14px 12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: 10, padding: '4px 14px 12px' }}>
                   {monthItems.map(item => (
                     <GridCard
                       key={item.id}
                       item={item}
                       square={musicOnly}
+                      showType={categories.length !== 1}
                       onTap={() => (selectMode ? toggleSelect(item.id) : (setActionEdit(false), setActionItem(item)))}
                       onSaveArt={handleSaveArt}
                       selectMode={selectMode}
@@ -922,7 +953,7 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
 }
 
 // Grid layout cover card. square=true for music (album covers are 1:1).
-function GridCard({ item, square, onTap, onSaveArt, selectMode = false, selected = false }: { item: Item; square: boolean; onTap: () => void; onSaveArt?: (id: string, url: string) => void; selectMode?: boolean; selected?: boolean }) {
+function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; onTap: () => void; onSaveArt?: (id: string, url: string) => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const artSaved = useRef(false)
@@ -933,6 +964,14 @@ function GridCard({ item, square, onTap, onSaveArt, selectMode = false, selected
     }
   }, [artwork]) // eslint-disable-line react-hooks/exhaustive-deps
   const aspect = square ? '1 / 1' : '2 / 3'
+  // Same subtitle fields as the list row: type · year · seasons · genre · reaction.
+  const topGenre = (item.tags ?? []).find(isGenreTag) ?? null
+  const tvSeasons = item.type === 'tv' ? getSeasons(item.metadata) : []
+  const seasonsLabel = tvSeasons.length > 0 ? `${tvSeasons.filter(s => s.done).length}/${tvSeasons.length} seasons` : null
+  const subtitle = [
+    showType ? item.type : null, item.year, seasonsLabel, topGenre,
+    item.status === 'done' && item.reaction ? REACTION_LABELS[item.reaction] : null,
+  ].filter(Boolean).join(' · ')
   const reactionDot = item.status === 'done' && item.reaction === 'loved_it'
     ? '#1A1A1A'
     : item.status === 'done'
@@ -964,6 +1003,9 @@ function GridCard({ item, square, onTap, onSaveArt, selectMode = false, selected
         <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>{item.title}</div>
         {item.creator && (
           <div style={{ fontSize: 10, color: '#AAA', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>
+        )}
+        {subtitle && (
+          <div style={{ fontSize: 10, color: '#B0B0B0', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle}</div>
         )}
       </div>
     </div>
