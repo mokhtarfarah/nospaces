@@ -548,10 +548,11 @@ export function AddScreen() {
     }))
   }
 
-  async function handleBulkConfirm(items: BulkItem[]) {
+  async function handleBulkConfirm(items: BulkItem[], status: 'want_to' | 'done') {
+    const done = status === 'done' ? { reaction: null, note: '' } : undefined
     for (const item of items) {
       if (!item.result) continue
-      await addItem(item.result.title, item.result.type, item.result.creator, item.result.year, item.result.metadata, item.result.tags)
+      await addItem(item.result.title, item.result.type, item.result.creator, item.result.year, item.result.metadata, item.result.tags, done)
     }
     // Revoke object URLs to free memory
     bulkItems?.forEach(i => URL.revokeObjectURL(i.preview))

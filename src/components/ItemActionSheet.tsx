@@ -584,15 +584,22 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </div>
               </div>
             ) : item.metadata?.scratch ? (
-              <div style={{ ...footer, display: 'flex', gap: 8 }}>
+              // Un-identified capture: still a normal item — you can react / note it
+              // now and identify it whenever. "identify now" is the primary nudge.
+              <div style={{ ...footer, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button
                   onClick={() => handleReidentify(false)}
                   disabled={reidentifying}
-                  style={{ ...actionBtn('#fff'), flex: 2, background: reidentifying ? '#CCC' : '#111', border: 'none' }}
+                  style={{ ...actionBtn('#fff'), width: '100%', background: reidentifying ? '#CCC' : '#111', border: 'none' }}
                 >
                   {reidentifying ? 'identifying…' : 'identify now'}
                 </button>
-                <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
+                    {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
+                  </button>
+                  <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
+                </div>
               </div>
             ) : (
               <div style={{ ...footer, display: 'flex', gap: 8 }}>

@@ -91,10 +91,13 @@ function ResultRow({ item, onToggle, onEdit }: {
 
 export function BulkConfirmSheet({ items: initialItems, onConfirm, onClose }: {
   items: BulkItem[]
-  onConfirm: (items: BulkItem[]) => void
+  onConfirm: (items: BulkItem[], status: 'want_to' | 'done') => void
   onClose: () => void
 }) {
   const [items, setItems] = useState(initialItems)
+  // One status for the whole batch — a photo dump is usually all-backlog or
+  // all-already-done. Reactions can be added per item later in the library.
+  const [status, setStatus] = useState<'want_to' | 'done'>('want_to')
 
   const checked = items.filter(i => i.checked && i.result)
   const identifiedCount = items.filter(i => i.result).length
@@ -131,6 +134,28 @@ export function BulkConfirmSheet({ items: initialItems, onConfirm, onClose }: {
           tap title to edit · uncheck to skip
         </p>
 
+        {/* Whole-batch status — want to (backlog) vs already did */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexShrink: 0 }}>
+          {(['want_to', 'done'] as const).map(s => {
+            const active = status === s
+            return (
+              <button
+                key={s}
+                onClick={() => setStatus(s)}
+                style={{
+                  flex: 1, padding: '8px 8px', borderRadius: 8, cursor: 'pointer',
+                  border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+                  background: active ? '#F4F2EE' : '#fff',
+                  color: active ? '#111' : '#777',
+                  fontSize: 13, fontWeight: active ? 600 : 400,
+                }}
+              >
+                {s === 'want_to' ? 'want to' : 'already did'}
+              </button>
+            )
+          })}
+        </div>
+
         <div style={{ flex: 1, overflowY: 'auto', marginRight: -20, paddingRight: 20 }}>
           {items.map(item => (
             <ResultRow
@@ -144,7 +169,7 @@ export function BulkConfirmSheet({ items: initialItems, onConfirm, onClose }: {
 
         <div style={{ flexShrink: 0, paddingTop: 12, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))' }}>
           <button
-            onClick={() => onConfirm(checked)}
+            onClick={() => onConfirm(checked, status)}
             disabled={checked.length === 0}
             style={{
               width: '100%', padding: '13px 0', borderRadius: 12,
@@ -152,7 +177,9 @@ export function BulkConfirmSheet({ items: initialItems, onConfirm, onClose }: {
               fontSize: 15, fontWeight: 600, cursor: checked.length ? 'pointer' : 'default',
             }}
           >
-            {checked.length ? `save ${checked.length} item${checked.length > 1 ? 's' : ''} as want to` : 'nothing selected'}
+            {checked.length
+              ? `save ${checked.length} item${checked.length > 1 ? 's' : ''} as ${status === 'done' ? 'done' : 'want to'}`
+              : 'nothing selected'}
           </button>
         </div>
       </div>
