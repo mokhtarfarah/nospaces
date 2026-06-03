@@ -229,7 +229,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: prepped.mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: prepped.data } },
-            { type: 'text', text: 'Identify the film, book, music album, or TV show shown in this image (e.g. a screenshot, poster, or cover). Use your own knowledge to give the exact canonical title, creator (director/author/artist/showrunner), and release year. Return JSON only: {"title":"...","creator":"...","type":"film|book|music|tv|other","year":1234,"confidence":"high|medium|low","metadata":{},"tags":[]}. If no media is identifiable, return {"title":null}.' },
+            { type: 'text', text: 'Identify the film, book, music album, or TV show shown in this image (e.g. a screenshot, poster, or cover). Use your own knowledge to give the exact canonical title, creator (director/author/artist/showrunner), and release year. If the image contains visible descriptive text about the item — a caption, a list annotation, back-cover copy, a review excerpt, a friend\'s note — capture it verbatim or closely paraphrased in "blurb"; otherwise null. Do not invent a description. Return JSON only: {"title":"...","creator":"...","type":"film|book|music|tv|other","year":1234,"confidence":"high|medium|low","blurb":null,"metadata":{},"tags":[]}. If no media is identifiable, return {"title":null}.' },
           ],
         }],
       })
@@ -318,6 +318,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     type?: string
     year?: number
     summary?: string
+    blurb?: string
     metadata?: Record<string, unknown>
     tags?: string[]
   }) => ({
@@ -333,6 +334,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     metadata: {
       ...(item.metadata ?? {}),
       ...(item.summary?.trim() ? { recommendationBlurb: item.summary.trim() } : {}),
+      // Visible blurb text read off an emailed screenshot/photo — stored like the
+      // in-app photo path so the action card shows it (beats the Wikipedia fallback).
+      ...(item.blurb?.trim() ? { capturedBlurb: item.blurb.trim() } : {}),
     },
     tags: item.tags ?? [],
   }))
