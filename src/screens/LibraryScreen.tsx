@@ -206,6 +206,9 @@ export function LibraryScreen() {
 
   // "New Music Tuesday" toggle only applies while viewing the Music category alone.
   const musicOnly = categories.length === 1 && categories[0] === 'music'
+  // Series only makes sense inside a single medium that actually has series
+  // (film / book / tv) — never on "all" or music.
+  const seriesRelevant = categories.length === 1 && ['film', 'book', 'tv'].includes(categories[0])
 
   // Base filter: everything except the tag/vibe filter. Used to compute which
   // vibe/genre chips should be shown so they don't vanish when one is selected.
@@ -384,7 +387,7 @@ export function LibraryScreen() {
               onClick={() => { setStatusFilter(s); if (s === 'want_to') setReactionFilter('all') }}
             />
           ))}
-          {(availableTags.moods.length > 0 || availableTags.genres.length > 0 || availableTags.series.length > 0) && (
+          {(availableTags.moods.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0)) && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
               {availableTags.moods.length > 0 && (
@@ -425,7 +428,7 @@ export function LibraryScreen() {
                   )}
                 </div>
               )}
-              {availableTags.series.length > 0 && (
+              {seriesRelevant && availableTags.series.length > 0 && (
                 <div ref={seriesBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
                   <DropdownButton
                     label="series"
@@ -450,7 +453,7 @@ export function LibraryScreen() {
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
               {REACTION_ORDER.map(r => (
-                <FilterChip
+                <TabChip
                   key={r}
                   label={REACTION_LABELS[r]}
                   active={reactionFilter === r}
@@ -463,7 +466,7 @@ export function LibraryScreen() {
           {musicOnly && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-              <FilterChip
+              <TabChip
                 label="new music tuesday"
                 active={newMusicOnly}
                 onClick={() => setNewMusicOnly(v => !v)}
@@ -645,17 +648,20 @@ function DropdownButton({ label, value, active, onToggle, onClear }: {
   label: string; value: string | null; active: boolean
   onToggle: () => void; onClear: () => void
 }) {
+  // Underline-tab style to match TabChip — the whole filter row shares one flat
+  // language (no border chips). A selected value or open menu draws the underline.
+  const on = !!value || active
   return (
     <button
       onClick={onToggle}
       style={{
-        display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
-        padding: '4px 10px', borderRadius: 4,
-        border: (value || active) ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-        background: value ? '#EDEDED' : active ? '#F4F4F4' : '#fff',
-        color: (value || active) ? '#111' : '#555',
+        display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+        padding: '4px 2px 8px', border: 'none', background: 'none',
+        borderBottom: on ? '1.5px solid #111' : '1.5px solid transparent',
+        color: on ? '#111' : '#888',
         fontSize: 13, fontWeight: value ? 600 : 400,
         cursor: 'pointer', whiteSpace: 'nowrap',
+        letterSpacing: on ? '-0.1px' : '0',
       }}
     >
       <span>{value ?? label}</span>
@@ -743,31 +749,6 @@ function TabChip({ label, active, onClick }: { label: string; active: boolean; o
         cursor: 'pointer',
         whiteSpace: 'nowrap',
         letterSpacing: active ? '-0.1px' : '0',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-// Chip-style: used for toggleable filters (reactions, new music tuesday).
-function FilterChip({ label, active, onClick, disabled }: { label: string; active: boolean; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-      style={{
-        flexShrink: 0,
-        padding: '4px 10px',
-        border: active && !disabled ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-        borderRadius: 4,
-        background: active && !disabled ? '#EDEDED' : '#fff',
-        color: disabled ? '#C4C4C4' : active ? '#111' : '#555',
-        fontSize: 12,
-        fontWeight: active ? 600 : 400,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.6 : 1,
-        whiteSpace: 'nowrap',
       }}
     >
       {label}

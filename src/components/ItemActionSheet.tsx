@@ -75,6 +75,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [coverUrl, setCoverUrl] = useState((item.metadata?.coverUrl as string | null) ?? '')
   const [series, setSeries] = useState((item.metadata?.series as string | null) ?? '')
   const [sourceDetail, setSourceDetail] = useState(item.source_detail ?? '')
+  const [blurbText, setBlurbText] = useState((item.metadata?.manualBlurb as string | null) ?? '')
   const [reidentifying, setReidentifying] = useState(false)
   // After a re-identify, hold the other candidates so the user can pick the right
   // one if the AI grabbed the wrong match. null = picker hidden.
@@ -120,11 +121,15 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const cover = artwork ?? wikiThumb
   // For books with no Wikipedia summary, fall back to an Open Library / Apple Books blurb.
   const bookBlurb = useBookBlurb(item.title, item.creator, item.year, item.type === 'book' && !summary)
-  // Priority: recommendation blurb (from list) > captured blurb (from photo) > wiki > book
+  // Priority: manual blurb (you wrote it) > recommendation blurb (from list) >
+  // captured blurb (from photo) > wiki > book
+  const manualBlurb = item.metadata?.manualBlurb as string | undefined
   const recBlurb = item.metadata?.recommendationBlurb as string | undefined
   const capturedBlurb = item.metadata?.capturedBlurb as string | undefined
-  const blurb = recBlurb ?? capturedBlurb ?? summary ?? bookBlurb.summary
-  const blurbSource = recBlurb
+  const blurb = manualBlurb ?? recBlurb ?? capturedBlurb ?? summary ?? bookBlurb.summary
+  const blurbSource = manualBlurb
+    ? null
+    : recBlurb
     ? (item.recommended_by ?? 'recommendation')
     : capturedBlurb ? null
     : summary ? 'Wikipedia'
@@ -149,6 +154,8 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     delete metadata.scratch  // clear scratch flag when user confirms the identity
     if (series.trim()) metadata.series = series.trim()
     else delete metadata.series
+    if (blurbText.trim()) metadata.manualBlurb = blurbText.trim()
+    else delete metadata.manualBlurb
     onEdit({
       title: newTitle,
       creator: newCreator,
@@ -318,6 +325,14 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                       ? <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {label}</div>
                       : null
                   })()}
+                  {!item.metadata?.scratch && (
+                    <>
+                      <button onClick={() => setView('edit')} className="tlink" style={{ flexShrink: 0 }}>edit</button>
+                      <button onClick={() => handleReidentify(true)} disabled={reidentifying} className="tlink" style={{ flexShrink: 0 }}>
+                        {reidentifying ? 'identifying…' : 're-identify'}
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => onToggleOwned(!item.metadata?.owned)}
                     style={{
@@ -331,12 +346,9 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     {item.metadata?.owned ? '⌂ owned' : '⌂ own it?'}
                   </button>
                   {!item.metadata?.scratch && (
-                    <>
-                      <button onClick={() => setView('edit')} className="tlink" style={{ flexShrink: 0 }}>edit</button>
-                      <button onClick={() => handleReidentify(true)} disabled={reidentifying} className="tlink" style={{ flexShrink: 0 }}>
-                        {reidentifying ? 'identifying…' : 're-identify'}
-                      </button>
-                    </>
+                    <button onClick={() => setTagsEditing(true)} className="tlink" style={{ flexShrink: 0 }}>
+                      {((item.tags ?? []).some(isGenreTag) || (item.moods ?? []).length > 0) ? 'edit tags' : '+ tags'}
+                    </button>
                   )}
                 </div>
               </div>
@@ -506,12 +518,14 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   ))}
                 </div>
               )
+              // Matches the MoodChips 'sm' chip exactly (border weight/colour, fill,
+              // text colour) so genre + vibe chips read as one family.
               const editChip = (label: string, on: boolean, onClick: () => void) => (
                 <button key={label} onClick={onClick} style={{
                   padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
-                  border: on ? '1.5px solid #111' : '1px solid #E6E3DE',
-                  background: on ? '#111' : '#fff', color: on ? '#fff' : '#888', fontWeight: on ? 600 : 400,
-                }}>{on ? `${label} ×` : label}</button>
+                  border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+                  background: on ? '#111' : '#fff', color: on ? '#fff' : '#AAA', fontWeight: on ? 600 : 400,
+                }}>{label}</button>
               )
 
               return (
@@ -628,6 +642,13 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   />
                 )}
               </div>
+              <textarea
+                value={blurbText}
+                onChange={e => setBlurbText(e.target.value)}
+                placeholder="about this — a description in your words (overrides the auto blurb)"
+                rows={3}
+                style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }}
+              />
             </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
               {TYPES.map(t => {

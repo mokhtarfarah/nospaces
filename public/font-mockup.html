@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>nospaces — font comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  @font-face {
+    font-family: 'Geist';
+    src: url('/fonts/Geist-Variable.woff2') format('woff2');
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  :root { --ink:#1C1B19; --graphite:#6F6B64; --mute:#ABA69C; --hair:#ECEAE6; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#F4F2EE; color:var(--ink); padding:24px 16px 64px; }
+  .intro { max-width:1100px; margin:0 auto 24px; }
+  .intro h1 { font-family:'Geist',sans-serif; font-size:18px; margin:0 0 4px; }
+  .intro p { font-family:'Geist',sans-serif; font-size:13px; color:var(--graphite); margin:0; line-height:1.5; }
+  .grid { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  @media (max-width:780px){ .grid{ grid-template-columns:1fr; } }
+  .card { background:#fff; border:1px solid var(--hair); border-radius:10px; padding:20px 18px; }
+  .fontname { font-family:'Geist',sans-serif; font-size:10px; font-weight:600; letter-spacing:.8px; text-transform:uppercase; color:var(--mute); border-bottom:1px solid var(--hair); padding-bottom:10px; margin-bottom:16px; }
+
+  /* everything below inherits the per-column test font */
+  .h1 { font-size:22px; font-weight:600; letter-spacing:-.2px; margin:0 0 20px; }
+  .seclabel { font-size:10px; font-weight:600; letter-spacing:.8px; text-transform:uppercase; color:var(--mute); margin:0 0 8px; }
+
+  .row { display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--hair); }
+  .thumb { width:40px; height:58px; border-radius:3px; background:#EFEBE4; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--mute); }
+  .thumb.sq { height:40px; width:40px; }
+  .title { font-size:14px; font-weight:500; line-height:1.25; }
+  .sub { font-size:11px; color:var(--mute); margin-top:3px; }
+
+  .prose { font-size:14px; line-height:1.6; color:var(--graphite); margin:18px 0; }
+  .prose b { color:var(--ink); font-weight:600; }
+
+  .ranked { font-size:14px; line-height:1.85; color:var(--graphite); letter-spacing:-.1px; margin-bottom:18px; }
+  .ranked .lead { color:var(--ink); }
+  .ranked .dot { color:var(--mute); }
+
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .chip { padding:3px 10px; border-radius:4px; font-size:11px; border:1.5px solid #E0E0E0; color:#AAA; background:#fff; }
+  .chip.on { border-color:#111; background:#111; color:#fff; font-weight:600; }
+
+  .tabs { display:flex; gap:16px; border-bottom:1px solid var(--hair); margin-bottom:16px; }
+  .tab { font-size:13px; color:#888; padding:4px 2px 8px; border-bottom:1.5px solid transparent; }
+  .tab.on { color:#111; font-weight:600; border-bottom-color:#111; }
+</style>
+</head>
+<body>
+  <div class="intro">
+    <h1>font comparison</h1>
+    <p>Same nospaces UI rendered three ways. Left is the current font (Geist). Compare headings, the library row, taste prose, the ranked taste line, and chips. Open on your phone too — text rendering differs on iOS.</p>
+  </div>
+
+  <div class="grid">
+    <!-- GEIST (current) -->
+    <div class="card" style="font-family:'Geist',sans-serif">
+      <div class="fontname">Geist — current</div>
+      <div class="h1">taste</div>
+      <div class="tabs"><span class="tab on">all</span><span class="tab">want to</span><span class="tab">done</span></div>
+      <div class="prose">You lean toward <b>slow, melancholic character studies</b> — films that sit in silence and trust the viewer. Warm lo-fi and downtempo on the music side.</div>
+      <div class="seclabel">go-to directors</div>
+      <div class="ranked"><span class="lead">Paul Thomas Anderson</span><span class="dot"> · </span>Wong Kar-wai<span class="dot"> · </span>Sofia Coppola</div>
+      <div class="seclabel">genres you love</div>
+      <div class="ranked"><span class="lead">drama</span><span class="dot"> · </span>romance<span class="dot"> · </span>thriller</div>
+      <div class="row"><div class="thumb">film</div><div><div class="title">Phantom Thread</div><div class="sub">film · 2017 · drama · loved it</div></div></div>
+      <div class="row"><div class="thumb sq">music</div><div><div class="title">Long Season</div><div class="sub">music · Fishmans · 1996</div></div></div>
+      <div class="chips"><span class="chip on">drama</span><span class="chip on">gripping</span><span class="chip">comfort</span><span class="chip">nostalgia</span></div>
+    </div>
+
+    <!-- DM SANS -->
+    <div class="card" style="font-family:'DM Sans',sans-serif">
+      <div class="fontname">DM Sans</div>
+      <div class="h1">taste</div>
+      <div class="tabs"><span class="tab on">all</span><span class="tab">want to</span><span class="tab">done</span></div>
+      <div class="prose">You lean toward <b>slow, melancholic character studies</b> — films that sit in silence and trust the viewer. Warm lo-fi and downtempo on the music side.</div>
+      <div class="seclabel">go-to directors</div>
+      <div class="ranked"><span class="lead">Paul Thomas Anderson</span><span class="dot"> · </span>Wong Kar-wai<span class="dot"> · </span>Sofia Coppola</div>
+      <div class="seclabel">genres you love</div>
+      <div class="ranked"><span class="lead">drama</span><span class="dot"> · </span>romance<span class="dot"> · </span>thriller</div>
+      <div class="row"><div class="thumb">film</div><div><div class="title">Phantom Thread</div><div class="sub">film · 2017 · drama · loved it</div></div></div>
+      <div class="row"><div class="thumb sq">music</div><div><div class="title">Long Season</div><div class="sub">music · Fishmans · 1996</div></div></div>
+      <div class="chips"><span class="chip on">drama</span><span class="chip on">gripping</span><span class="chip">comfort</span><span class="chip">nostalgia</span></div>
+    </div>
+
+    <!-- PLUS JAKARTA SANS -->
+    <div class="card" style="font-family:'Plus Jakarta Sans',sans-serif">
+      <div class="fontname">Plus Jakarta Sans</div>
+      <div class="h1">taste</div>
+      <div class="tabs"><span class="tab on">all</span><span class="tab">want to</span><span class="tab">done</span></div>
+      <div class="prose">You lean toward <b>slow, melancholic character studies</b> — films that sit in silence and trust the viewer. Warm lo-fi and downtempo on the music side.</div>
+      <div class="seclabel">go-to directors</div>
+      <div class="ranked"><span class="lead">Paul Thomas Anderson</span><span class="dot"> · </span>Wong Kar-wai<span class="dot"> · </span>Sofia Coppola</div>
+      <div class="seclabel">genres you love</div>
+      <div class="ranked"><span class="lead">drama</span><span class="dot"> · </span>romance<span class="dot"> · </span>thriller</div>
+      <div class="row"><div class="thumb">film</div><div><div class="title">Phantom Thread</div><div class="sub">film · 2017 · drama · loved it</div></div></div>
+      <div class="row"><div class="thumb sq">music</div><div><div class="title">Long Season</div><div class="sub">music · Fishmans · 1996</div></div></div>
+      <div class="chips"><span class="chip on">drama</span><span class="chip on">gripping</span><span class="chip">comfort</span><span class="chip">nostalgia</span></div>
+    </div>
+  </div>
+</body>
+</html>

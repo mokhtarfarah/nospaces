@@ -135,6 +135,13 @@ Return JSON only:
     }
   ]
 }
+
+GENRES — for each item, populate "tags" with 1–3 genres from the list for that item's type
+(use values from this list ONLY, no other words). Leave [] for type "other" or if unsure.
+film: action, animation, classic, comedy, crime, documentary, drama, fantasy, horror, musical, period piece, romance, satire, sci-fi, thriller, western
+tv: animation, classic, comedy, crime, documentary, drama, fantasy, horror, period piece, reality, satire, sci-fi, thriller
+book: biography, business, classics, crime, essay, fantasy, history, horror, literary fiction, mystery, period piece, philosophy, poetry, romance, satire, sci-fi, self-help, short stories, thriller, travel
+music: afrobeats, ambient, classical, country, electronic, folk, hip-hop, indie, jazz, latin, metal, pop, punk, r&b, rock, soul
 `
 
 // Parse the model's JSON defensively. If the reply is truncated/malformed, salvage every

@@ -169,6 +169,12 @@ function LibraryTools({ items, editItem, open }: {
 
   const navigate = useNavigate()
   const [openList, setOpenList] = useState<string | null>(null)
+  // Collapse the whole "fill automatically" block — once you've decided to fill by
+  // hand, the auto buttons are just taking up space.
+  const [autoOpen, setAutoOpen] = useState(true)
+  // Optional gap-type filter on the fill-by-hand list ("show me only what's missing
+  // a wiki link", etc.). null = show every gap.
+  const [gapFilter, setGapFilter] = useState<string | null>(null)
 
   const untagged = useMemo(() =>
     items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type)), [items])
@@ -189,6 +195,15 @@ function LibraryTools({ items, editItem, open }: {
       .map(i => ({ item: i, gaps: itemGaps(i) }))
       .filter(x => x.gaps.length > 0)
       .sort((a, b) => b.gaps.length - a.gaps.length), [items])
+
+  // Which gap types actually exist, ordered for the filter row.
+  const gapTypes = useMemo(() => {
+    const order = ['wiki', 'genre', 'creator', 'year', 'runtime', 'pages']
+    const present = new Set<string>()
+    incomplete.forEach(x => x.gaps.forEach(g => present.add(g)))
+    return order.filter(g => present.has(g))
+  }, [incomplete])
+  const shownIncomplete = gapFilter ? incomplete.filter(x => x.gaps.includes(gapFilter)) : incomplete
 
   const autoTotal = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length
   if ((autoTotal === 0 && incomplete.length === 0) || !open) return null
@@ -306,8 +321,15 @@ function LibraryTools({ items, editItem, open }: {
   const sectionLabel = { fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C' } as const
 
   return (
-    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {autoTotal > 0 && <div style={sectionLabel}>fill automatically</div>}
+    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {autoTotal > 0 && (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={sectionLabel}>fill automatically</span>
+          <button onClick={() => setAutoOpen(v => !v)} style={listLinkBtn}>{autoOpen ? 'hide' : 'show'}</button>
+        </div>
+        {autoOpen && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
       {untagged.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags</span>
@@ -364,9 +386,13 @@ function LibraryTools({ items, editItem, open }: {
             : <button onClick={runWikiBackfill} style={btnStyle}>fill in links</button>}
         </div>
       )}
+        </div>
+        )}
+      </div>
+      )}
 
       {incomplete.length > 0 && (
-        <div style={{ borderTop: autoTotal > 0 ? '1px solid #ECEAE6' : 'none', paddingTop: autoTotal > 0 ? 16 : 0 }}>
+        <div style={{ borderTop: autoTotal > 0 ? '1px solid #ECEAE6' : 'none', paddingTop: autoTotal > 0 ? 14 : 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span style={sectionLabel}>fill by hand</span>
             {toggleLink('incomplete')}
@@ -375,11 +401,32 @@ function LibraryTools({ items, editItem, open }: {
             {incomplete.length} item{incomplete.length !== 1 ? 's' : ''} with data gaps
           </div>
           {openList === 'incomplete' && (
-            <div style={{ marginTop: 8, maxHeight: 340, overflowY: 'auto', border: '1px solid #ECEAE6', borderRadius: 6 }}>
-              {incomplete.map(({ item, gaps }) => (
-                <GapRow key={item.id} item={item} gaps={gaps} onOpen={() => navigate(`/library?item=${item.id}`)} />
-              ))}
-            </div>
+            <>
+              {gapTypes.length > 1 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                  {(() => {
+                    const chip = (label: string, on: boolean, onClick: () => void) => (
+                      <button key={label} onClick={onClick} style={{
+                        padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
+                        border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+                        background: on ? '#111' : '#fff', color: on ? '#fff' : '#AAA', fontWeight: on ? 600 : 400,
+                      }}>{label}</button>
+                    )
+                    return (
+                      <>
+                        {chip('all', gapFilter === null, () => setGapFilter(null))}
+                        {gapTypes.map(g => chip(`missing ${g}`, gapFilter === g, () => setGapFilter(g)))}
+                      </>
+                    )
+                  })()}
+                </div>
+              )}
+              <div style={{ marginTop: 8, maxHeight: 340, overflowY: 'auto', border: '1px solid #ECEAE6', borderRadius: 6 }}>
+                {shownIncomplete.map(({ item, gaps }) => (
+                  <GapRow key={item.id} item={item} gaps={gaps} onOpen={() => navigate(`/library?item=${item.id}`)} />
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}

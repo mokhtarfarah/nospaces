@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, authHeaders } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import type { Item, ItemReaction } from '../lib/database.types'
+
+// Types we keep genres for. Anything else (other) never gets auto-genred.
+const GENRE_TYPES = ['film', 'tv', 'book', 'music']
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = () => (supabase as any)
@@ -50,7 +53,7 @@ export function useItems() {
     done?: { reaction: ItemReaction | null; note: string },
   ) {
     if (!user) return
-    await db().from('items').insert({
+    const { data: inserted } = await db().from('items').insert({
       user_id: user.id,
       title,
       type,
@@ -63,8 +66,35 @@ export function useItems() {
       note: done?.note?.trim() || null,
       date_done: done ? new Date().toISOString() : null,
       source: 'quick_add',
-    })
+    }).select('id').single()
     await fetch()
+    // Auto-fill genres in the background when the add path didn't supply any
+    // (catalog-pick, bulk photo, shortcut, save-as-typed all arrive tagless —
+    // only the AI-identify path carries genres). Fire-and-forget; the realtime
+    // subscription refreshes the row when it lands.
+    if (inserted?.id && tags.length === 0 && GENRE_TYPES.includes(type) && title) {
+      void fillGenres(inserted.id, title, creator, type)
+    }
+  }
+
+  // Ask /api/genres (Haiku, cheap) for 1–3 genres and patch them onto the row.
+  async function fillGenres(id: string, title: string, creator: string | null, type: string) {
+    try {
+      const res = await fetch_genres(title, creator, type)
+      if (res.length) {
+        await db().from('items').update({ tags: res }).eq('id', id)
+        await fetch({ silent: true })
+      }
+    } catch { /* leave untagged — the library-tools backfill can retry */ }
+  }
+  async function fetch_genres(title: string, creator: string | null, type: string): Promise<string[]> {
+    const r = await window.fetch('/api/genres', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ title, creator, type }),
+    })
+    const data = await r.json()
+    return Array.isArray(data.tags) ? data.tags : []
   }
 
   async function markDone(id: string, reaction: ItemReaction, note: string, moods: string[] = []) {

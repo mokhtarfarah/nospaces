@@ -74,7 +74,7 @@ function RankedLine({ scored, limit }: { scored: Scored[]; limit?: number }) {
         return (
           <span key={s.label}>
             {i > 0 && <span style={{ color: MUTE }}> · </span>}
-            <span style={{ color: isLead ? INK : GRAPHITE, fontWeight: isLead ? 600 : 400 }}>{s.label}</span>
+            <span style={{ color: isLead ? INK : GRAPHITE }}>{s.label}</span>
           </span>
         )
       })}
