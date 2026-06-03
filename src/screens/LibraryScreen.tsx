@@ -15,6 +15,17 @@ import { isGenreTag } from '../lib/genres'
 
 type StatusFilter = 'all' | ItemStatus
 
+// Persist the main library filters/view across reloads so a refresh doesn't reset
+// everything back to "all / recent". Stored in localStorage (per device).
+const PREFS_KEY = 'nospaces.libraryPrefs'
+type LibraryPrefs = {
+  categories: string[]; statusFilter: StatusFilter; reactionFilter: ReactionFilter
+  view: ViewMode; dir: SortDir; layout: 'list' | 'grid'
+}
+function loadPrefs(): Partial<LibraryPrefs> {
+  try { return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') } catch { return {} }
+}
+
 const REACTION_LABELS: Record<ItemReaction, string> = {
   loved_it:   'loved it',
   liked_it:   'liked it',
@@ -125,23 +136,23 @@ export function LibraryScreen() {
 
   // Empty array = all categories. Single-select: tapping a type switches to just that
   // one (tap it again to clear back to All). Array kept so multi-select can return later.
-  const [categories, setCategories] = useState<string[]>([])
+  const [categories, setCategories] = useState<string[]>(() => loadPrefs().categories ?? [])
   const [scratchOnly, setScratchOnly] = useState(false)
   const selectCategory = (t: string) => {
     setScratchOnly(false)
     setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   }
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [reactionFilter, setReactionFilter] = useState<ReactionFilter>('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => loadPrefs().statusFilter ?? 'all')
+  const [reactionFilter, setReactionFilter] = useState<ReactionFilter>(() => loadPrefs().reactionFilter ?? 'all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
   const [vibeFilter, setVibeFilter] = useState<string | null>(null)
   const [genreFilter, setGenreFilter] = useState<string | null>(null)
   const [seriesFilter, setSeriesFilter] = useState<string | null>(null)
   const [openDropdown, setOpenDropdown] = useState<'vibe' | 'genre' | 'series' | null>(null)
-  const [view, setView] = useState<ViewMode>('recent')
-  const [dir, setDir] = useState<SortDir>(VIEW_CONFIG.recent.defaultDir)
-  const [layout, setLayout] = useState<'list' | 'grid'>('list')
+  const [view, setView] = useState<ViewMode>(() => loadPrefs().view ?? 'recent')
+  const [dir, setDir] = useState<SortDir>(() => loadPrefs().dir ?? VIEW_CONFIG.recent.defaultDir)
+  const [layout, setLayout] = useState<'list' | 'grid'>(() => loadPrefs().layout ?? 'list')
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [viewSheetOpen, setViewSheetOpen] = useState(false)
@@ -157,6 +168,12 @@ export function LibraryScreen() {
     return next
   })
   const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()); setConfirmBulkDelete(false) }
+
+  // Persist filters/view so a refresh keeps the user where they were.
+  useEffect(() => {
+    const prefs: LibraryPrefs = { categories, statusFilter, reactionFilter, view, dir, layout }
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* ignore quota/private-mode */ }
+  }, [categories, statusFilter, reactionFilter, view, dir, layout])
 
   const sort: SortOption = VIEW_CONFIG[view].sort
   const group = VIEW_CONFIG[view].group
@@ -296,17 +313,33 @@ export function LibraryScreen() {
         </div>
 
         {searchOpen && (
-          <input
-            autoFocus
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search titles, creators..."
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              padding: '8px 12px', border: '1px solid #ddd',
-              borderRadius: 8, fontSize: 16, marginBottom: 8, outline: 'none',
-            }}
-          />
+          <div style={{ position: 'relative', marginBottom: 8 }}>
+            <input
+              autoFocus
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search titles, creators..."
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                padding: '8px 34px 8px 12px', border: '1px solid #ddd',
+                borderRadius: 8, fontSize: 16, outline: 'none',
+              }}
+            />
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                title="Clear search"
+                style={{
+                  position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                  width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#ECEAE6',
+                  color: '#6F6B64', fontSize: 13, lineHeight: 1, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                ×
+              </button>
+            )}
+          </div>
         )}
 
         {/* Filter row 1 — category */}

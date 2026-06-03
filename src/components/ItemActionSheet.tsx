@@ -581,7 +581,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         {view === 'edit' && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#444', margin: 0 }}>edit details</p>
+              <p style={{ ...sectionHeading, margin: 0 }}>edit details</p>
               <button
                 onClick={() => handleReidentify(false)}
                 disabled={reidentifying}
@@ -641,21 +641,12 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
 
         {view === 'reaction' && (
           <>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 16 }}>
+            <p style={sectionHeading}>
               {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
               {REACTIONS.map(r => (
-                <button key={r.value} onClick={() => setReaction(r.value)} style={{
-                  padding: '12px 8px',
-                  border: reaction === r.value ? `2px solid ${color.border}` : '1.5px solid #E0E0E0',
-                  borderRadius: 10,
-                  background: reaction === r.value ? color.bg : '#fff',
-                  fontSize: 14,
-                  fontWeight: reaction === r.value ? 600 : 400,
-                  color: reaction === r.value ? color.border : '#444',
-                  cursor: 'pointer',
-                }}>
+                <button key={r.value} onClick={() => setReaction(r.value)} style={reactionBtnStyle(reaction === r.value)}>
                   {r.label}
                 </button>
               ))}
@@ -663,7 +654,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             <div style={{ marginBottom: 16 }}>
               <NoteInput value={note} onChange={setNote} />
             </div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 10 }}>vibe? <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></p>
+            <p style={fieldLabel}>vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span></p>
             <div style={{ marginBottom: 16 }}>
               <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
             </div>
@@ -738,5 +729,21 @@ function actionBtn(color: string): React.CSSProperties {
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
   padding: '10px 12px', border: '1.5px solid #E0E0E0',
-  borderRadius: 10, fontSize: 14, fontFamily: 'inherit', outline: 'none',
+  // 16px keeps iOS Safari from auto-zooming the page when the field is focused.
+  borderRadius: 10, fontSize: 16, fontFamily: 'inherit', outline: 'none',
+}
+
+// Editorial heading + field-label styles, shared so the sub-views match the main card.
+const sectionHeading: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }
+const fieldLabel: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }
+
+// Monochrome reaction button — matches the editorial ink-on-white palette (no type colour).
+function reactionBtnStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: '12px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 14,
+    border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
+    background: active ? '#F4F2EE' : '#fff',
+    color: active ? '#1C1B19' : '#6F6B64',
+    fontWeight: active ? 600 : 400,
+  }
 }

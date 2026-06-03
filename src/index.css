@@ -30,16 +30,18 @@ button, input, textarea, select {
   gap: 3px;
   font-size: 11px;
   color: #6F6B64;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: #D8D5CF;
+  text-underline-offset: 2px;
   cursor: pointer;
   background: none;
   border: none;
   padding: 0;
   font-family: inherit;
-  transition: color 0.12s ease;
+  transition: color 0.12s ease, text-decoration-color 0.12s ease;
 }
-.tlink:hover { color: #1C1B19; text-decoration: underline; text-underline-offset: 2px; }
-.tlink:disabled { color: #CCC; cursor: default; text-decoration: none; }
+.tlink:hover { color: #1C1B19; text-decoration-color: #1C1B19; }
+.tlink:disabled { color: #CCC; cursor: default; text-decoration-color: transparent; }
 
 /* Hide scrollbars while keeping scroll */
 ::-webkit-scrollbar {

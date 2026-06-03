@@ -32,8 +32,8 @@ export function NoteInput({ value, onChange, placeholder = 'Any thoughts...', ro
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <span style={{ fontSize: 11, color: '#AAA' }}>note</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase' }}>note</span>
         <button
           type="button"
           onClick={insertBullet}
@@ -56,7 +56,8 @@ export function NoteInput({ value, onChange, placeholder = 'Any thoughts...', ro
         style={{
           width: '100%', boxSizing: 'border-box',
           padding: '10px 12px', border: '1.5px solid #E0E0E0',
-          borderRadius: 10, fontSize: 14, fontFamily: 'inherit',
+          // 16px avoids iOS Safari focus-zoom.
+          borderRadius: 10, fontSize: 16, fontFamily: 'inherit',
           resize: 'none', outline: 'none', color: '#333', lineHeight: 1.5,
         }}
       />

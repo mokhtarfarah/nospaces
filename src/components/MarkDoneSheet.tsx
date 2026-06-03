@@ -68,35 +68,35 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
           </div>
         </div>
 
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 12 }}>what did you think?</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }}>what did you think?</p>
 
-        {/* 2×2 reaction grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-          {REACTIONS.map(r => (
-            <button
-              key={r.value}
-              onClick={() => setReaction(r.value)}
-              style={{
-                padding: '12px 8px',
-                border: reaction === r.value ? `2px solid ${color.border}` : '1.5px solid #E0E0E0',
-                borderRadius: 10,
-                background: reaction === r.value ? color.bg : '#fff',
-                fontSize: 14,
-                fontWeight: reaction === r.value ? 600 : 400,
-                color: reaction === r.value ? color.border : '#444',
-                cursor: 'pointer',
-              }}
-            >
-              {r.label}
-            </button>
-          ))}
+        {/* 2×2 reaction grid — monochrome to match the editorial card */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+          {REACTIONS.map(r => {
+            const active = reaction === r.value
+            return (
+              <button
+                key={r.value}
+                onClick={() => setReaction(r.value)}
+                style={{
+                  padding: '12px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 14,
+                  border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
+                  background: active ? '#F4F2EE' : '#fff',
+                  color: active ? '#1C1B19' : '#6F6B64',
+                  fontWeight: active ? 600 : 400,
+                }}
+              >
+                {r.label}
+              </button>
+            )
+          })}
         </div>
 
         {/* Moods */}
         <div style={{ marginBottom: 16 }}>
           <NoteInput value={note} onChange={setNote} />
         </div>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 10 }}>vibe? <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></p>
+        <p style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }}>vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span></p>
         <div style={{ marginBottom: 16 }}>
           <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
         </div>
