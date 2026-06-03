@@ -305,6 +305,10 @@ export function TasteScreen() {
     }).filter(m => m.pct !== null) as { type: string; pct: number }[]
   }, [items])
 
+  const mediumComparison = useMemo(() => {
+    if (mediumRates.length < 2) return null
+    return [...mediumRates].sort((a, b) => b.pct - a.pct)
+  }, [mediumRates])
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh' }}>
@@ -323,12 +327,6 @@ export function TasteScreen() {
     </div>
   )
 
-  // Cross-medium love% comparison — all media with enough data, sorted by love%.
-  const mediumComparison = useMemo(() => {
-    if (mediumRates.length < 2) return null
-    const sorted = [...mediumRates].sort((a, b) => b.pct - a.pct)
-    return sorted
-  }, [mediumRates])
 
   return (
     <div style={{ padding: '44px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
