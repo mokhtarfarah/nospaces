@@ -343,33 +343,13 @@ export function AddScreen() {
     navigate('/library')
   }
 
+  const [moreWaysOpen, setMoreWaysOpen] = useState(false)
+
   return (
     <div style={{ padding: '56px 16px 0', background: '#fff', minHeight: '100dvh' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 24px', letterSpacing: '-0.2px' }}>Add</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 32px', letterSpacing: '-0.2px' }}>add</h1>
 
       <form onSubmit={handleSubmit}>
-        {/* Optional type hint (above the box) — helps the AI pick the right category */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-          {(['film', 'book', 'music', 'tv'] as const).map(t => {
-            const active = typeHint === t
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTypeHint(active ? null : t)}
-                style={{
-                  padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
-                  border: active ? '1.5px solid #111111' : '1.5px solid #E4E4E4',
-                  background: active ? '#F0F0F0' : '#fff',
-                  color: active ? '#111111' : '#777', fontWeight: active ? 600 : 400,
-                }}
-              >
-                {t === 'tv' ? 'tv' : t}
-              </button>
-            )
-          })}
-        </div>
-
         <textarea
           ref={inputRef}
           value={title}
@@ -401,28 +381,56 @@ export function AddScreen() {
           {loading ? 'identifying…' : 'identify & save'}
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
+        {/* Optional type hint — helps the AI, not a required step */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+          {(['film', 'book', 'music', 'tv'] as const).map(t => {
+            const active = typeHint === t
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTypeHint(active ? null : t)}
+                style={{
+                  padding: '4px 11px', borderRadius: 20, cursor: 'pointer', fontSize: 12,
+                  border: active ? '1.5px solid #111111' : '1.5px solid #E4E4E4',
+                  background: active ? '#F0F0F0' : '#fff',
+                  color: active ? '#111111' : '#AAA', fontWeight: active ? 600 : 400,
+                }}
+              >
+                {t}
+              </button>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
           <div style={{ flex: 1, height: 1, background: '#EEE' }} />
           <span style={{ fontSize: 11, color: '#BBB' }}>or</span>
           <div style={{ flex: 1, height: 1, background: '#EEE' }} />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <CaptureButton
-            label={bulkLoading ? 'identifying…' : 'add from photos'}
-            icon={<CameraIcon />}
-            onClick={() => !bulkLoading && imageRef.current?.click()}
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => !bulkLoading && imageRef.current?.click()}
+          style={{
+            width: '100%', boxSizing: 'border-box', padding: '13px 16px',
+            border: '1px solid #E4E4E4', borderRadius: 12,
+            background: '#fff', fontSize: 14, color: '#444', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          <CameraIcon />
+          {bulkLoading ? 'identifying…' : 'add from photos'}
+        </button>
 
         {!loading && (
-          <div style={{ textAlign: 'center', marginTop: 12, display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ textAlign: 'center', marginTop: 16, display: 'flex', justifyContent: 'center', gap: 20 }}>
             <button
               type="button"
               onClick={handleSaveAsScratch}
-              style={{ border: 'none', background: 'none', color: title.trim() ? '#777' : '#AAA', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+              style={{ border: 'none', background: 'none', color: '#AAA', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
             >
-              can't identify it? jot a description for later
+              save as note
             </button>
             <button
               type="button"
@@ -437,21 +445,31 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
       </form>
 
-      <div style={{ textAlign: 'center', marginTop: 20, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+      <div style={{ marginTop: 32, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
         <button
-          type="button"
-          onClick={() => navigate('/import')}
-          style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+          onClick={() => setMoreWaysOpen(o => !o)}
+          style={{ background: 'none', border: 'none', fontSize: 12, color: '#AAA', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
         >
-          import from Letterboxd
+          {moreWaysOpen ? 'hide' : 'more ways to add'}
         </button>
-        <button
-          type="button"
-          onClick={() => navigate('/spotify')}
-          style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
-        >
-          sync from Spotify
-        </button>
+        {moreWaysOpen && (
+          <div style={{ marginTop: 12, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => navigate('/import')}
+              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+            >
+              import from Letterboxd
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/spotify')}
+              style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+            >
+              sync from Spotify
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Library tools — backfill genre tags, runtime, and vibe cleanup */}
@@ -489,23 +507,6 @@ export function AddScreen() {
   )
 }
 
-function CaptureButton({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: '9px 16px',
-        border: '1px solid #E4E4E4', borderRadius: 20,
-        background: '#fff', fontSize: 13, color: '#555', cursor: 'pointer',
-        display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
-      }}
-    >
-      {icon}
-      {label}
-    </button>
-  )
-}
 
 function CameraIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
