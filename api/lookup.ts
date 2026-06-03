@@ -140,14 +140,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!q) return res.status(200).json({ results: [] })
   const recency = req.query.recency === '1'
   const [music, screen, books] = await Promise.all([
-    (recency ? itunesByArtist(q) : itunes(q)).catch(() => []),
-    tmdb(q).catch(() => []),
-    (recency ? openLibraryByAuthor(q) : bookSearch(q)).catch(() => []),
+    (recency ? itunesByArtist(q) : itunes(q)).catch((e) => { console.error('[lookup] itunes error:', e?.message); return [] }),
+    tmdb(q).catch((e) => { console.error('[lookup] tmdb error:', e?.message); return [] }),
+    (recency ? openLibraryByAuthor(q) : bookSearch(q)).catch((e) => { console.error('[lookup] books error:', e?.message); return [] }),
   ])
   let results = [...music, ...screen, ...books].filter(r => r.title)
   // For recency queries, float the newest release to the top across all types.
   if (recency) results = results.sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
   results = results.slice(0, 10)
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate')
+  console.log('[lookup] q=%s results=%d (music=%d screen=%d books=%d)', q, results.length, music.length, screen.length, books.length)
   return res.status(200).json({ results })
 }

@@ -40,8 +40,10 @@ Input: "${input.trim().replace(/"/g, '\\"')}"`,
 
     const text = message.content[0].type === 'text' ? message.content[0].text : ''
     const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
+    const searchQuery = typeof json.searchQuery === 'string' ? json.searchQuery : ''
+    console.log('[describe] input=%s → searchQuery=%s type=%s', input, searchQuery, json.type ?? null)
     return res.status(200).json({
-      searchQuery: typeof json.searchQuery === 'string' ? json.searchQuery : '',
+      searchQuery,
       type: json.type ?? null,
       sortByRecency,
     })
