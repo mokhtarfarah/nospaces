@@ -83,6 +83,12 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [series, setSeries] = useState((item.metadata?.series as string | null) ?? '')
   const [sourceDetail, setSourceDetail] = useState(item.source_detail ?? '')
   const [blurbText, setBlurbText] = useState((item.metadata?.manualBlurb as string | null) ?? '')
+  // Edit-view draft state for new gap fields — separate from item to support cancel.
+  const [editTags, setEditTags] = useState<string[]>(item.tags ?? [])
+  const [runtimeEdit, setRuntimeEdit] = useState(String((item.metadata?.runtime as number | null) ?? ''))
+  const [pagesEdit, setPagesEdit] = useState(String((item.metadata?.pages as number | null) ?? ''))
+  const [wikiUrlEdit, setWikiUrlEdit] = useState(String((item.metadata?.wikiUrl as string | null) ?? ''))
+  const [genrePickerOpen, setGenrePickerOpen] = useState(false)
   const [reidentifying, setReidentifying] = useState(false)
   // After a re-identify, hold the other candidates so the user can pick the right
   // one if the AI grabbed the wrong match. null = picker hidden.
@@ -163,11 +169,27 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     else delete metadata.series
     if (blurbText.trim()) metadata.manualBlurb = blurbText.trim()
     else delete metadata.manualBlurb
+    // Wiki URL — save directly; display hook re-fetches thumb/summary on next render.
+    if (wikiUrlEdit.trim()) metadata.wikiUrl = wikiUrlEdit.trim()
+    else delete metadata.wikiUrl
+    // Clear cached wiki data when URL changes so it re-fetches.
+    if (wikiUrlEdit.trim() !== String((item.metadata?.wikiUrl as string | null) ?? '')) {
+      delete metadata.wikiThumb
+      delete metadata.wikiSummary
+    }
+    // Runtime / pages — save as numbers.
+    const rt = parseInt(runtimeEdit)
+    if (!isNaN(rt) && rt > 0) metadata.runtime = rt
+    else if (!runtimeEdit.trim()) delete metadata.runtime
+    const pg = parseInt(pagesEdit)
+    if (!isNaN(pg) && pg > 0) metadata.pages = pg
+    else if (!pagesEdit.trim()) delete metadata.pages
     onEdit({
       title: newTitle,
       creator: newCreator,
       type,
       year: newYear,
+      tags: editTags,
       source_detail: sourceDetail.trim() || null,
       metadata,
     })
@@ -343,12 +365,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                       : null
                   })()}
                   {!item.metadata?.scratch && (
-                    <>
-                      <button onClick={() => setView('edit')} className="tlink" style={{ flexShrink: 0 }}>edit</button>
-                      <button onClick={() => handleReidentify(true)} disabled={reidentifying} className="tlink" style={{ flexShrink: 0 }}>
-                        {reidentifying ? 'identifying…' : 're-identify'}
-                      </button>
-                    </>
+                    <button onClick={() => setView('edit')} className="tlink" style={{ flexShrink: 0 }}>edit</button>
                   )}
                   <button
                     onClick={() => onToggleOwned(!item.metadata?.owned)}
@@ -627,90 +644,142 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
           </>
         )}
 
-        {view === 'edit' && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <p style={{ ...sectionHeading, margin: 0 }}>
-                edit details
-                {tidyPosition && (
-                  <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: '#ABA69C', textTransform: 'none', letterSpacing: 0 }}>
-                    tidying · {tidyPosition.index + 1} of {tidyPosition.total}
-                  </span>
-                )}
-              </p>
-              <button
-                onClick={() => handleReidentify(false)}
-                disabled={reidentifying}
-                style={{ background: 'none', border: 'none', fontSize: 12, color: reidentifying ? '#BBB' : '#111', cursor: reidentifying ? 'default' : 'pointer', padding: 0 }}
-              >
-                {reidentifying ? 'identifying…' : 're-identify'}
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={inputStyle} />
-              <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={inputStyle} />
-              <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={inputStyle} />
-              <input value={sourceDetail} onChange={e => setSourceDetail(e.target.value)} placeholder="source (e.g. a friend, NYT, a newsletter)" style={inputStyle} />
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {(type === 'film' || type === 'book' || type === 'tv') && (
-                  <input value={series} onChange={e => setSeries(e.target.value)} placeholder="series (e.g. Dune)" style={{ ...inputStyle, flex: 1 }} />
-                )}
+        {view === 'edit' && (() => {
+          const vocab = genresForType(type)
+          const descriptors = editTags.filter(t => !isGenreTag(t))
+          const activeGenres = editTags.filter(t => isGenreTag(t))
+          const inactiveGenres = vocab.filter(g => !activeGenres.includes(g))
+          function toggleGenreEdit(g: string) {
+            const next = new Set(activeGenres)
+            next.has(g) ? next.delete(g) : next.add(g)
+            setEditTags([...next, ...descriptors])
+          }
+          const chip = (label: string, on: boolean, fn: () => void) => (
+            <button key={label} onClick={fn} style={{
+              padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
+              border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+              background: on ? '#111' : '#fff', color: on ? '#fff' : '#AAA', fontWeight: on ? 600 : 400,
+            }}>{label}</button>
+          )
+          return (
+            <>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <p style={{ ...sectionHeading, margin: 0 }}>
+                  edit details
+                  {tidyPosition && (
+                    <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: '#ABA69C', textTransform: 'none', letterSpacing: 0 }}>
+                      tidying · {tidyPosition.index + 1} of {tidyPosition.total}
+                    </span>
+                  )}
+                </p>
+                <button
+                  onClick={() => handleReidentify(false)}
+                  disabled={reidentifying}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: reidentifying ? '#BBB' : '#111', cursor: reidentifying ? 'default' : 'pointer', padding: 0 }}
+                >
+                  {reidentifying ? 'identifying…' : 're-identify'}
+                </button>
+              </div>
+
+              {/* Core identity */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={smInput} />
+                <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={smInput} />
+                {/* Year + runtime/pages on one row */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={{ ...smInput, flex: 1 }} />
+                  {(type === 'film' || type === 'tv') && (
+                    <input value={runtimeEdit} onChange={e => setRuntimeEdit(e.target.value)} placeholder="runtime (min)" type="number" style={{ ...smInput, flex: 1 }} />
+                  )}
+                  {type === 'book' && (
+                    <input value={pagesEdit} onChange={e => setPagesEdit(e.target.value)} placeholder="pages" type="number" style={{ ...smInput, flex: 1 }} />
+                  )}
+                </div>
+              </div>
+
+              {/* Genre */}
+              {vocab.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+                    {activeGenres.map(g => chip(g, true, () => toggleGenreEdit(g)))}
+                    {genrePickerOpen
+                      ? inactiveGenres.map(g => chip(g, false, () => toggleGenreEdit(g)))
+                      : <button onClick={() => setGenrePickerOpen(true)} style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #DDD', background: '#fff', color: '#BBB' }}>
+                          {activeGenres.length === 0 ? '+ genre' : '…'}
+                        </button>
+                    }
+                    {genrePickerOpen && (
+                      <button onClick={() => setGenrePickerOpen(false)} style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: 'none', background: 'none', color: '#BBB' }}>done</button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Wikipedia URL */}
+              <div style={{ marginBottom: 10 }}>
                 <input
-                  value={coverUrl}
-                  onChange={e => setCoverUrl(e.target.value)}
-                  placeholder="cover image url"
-                  style={{ ...inputStyle, flex: 1 }}
+                  value={wikiUrlEdit}
+                  onChange={e => setWikiUrlEdit(e.target.value)}
+                  placeholder="wikipedia url (paste to override)"
+                  style={smInput}
                 />
+              </div>
+
+              {/* Series + cover URL */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
+                {(type === 'film' || type === 'book' || type === 'tv') && (
+                  <input value={series} onChange={e => setSeries(e.target.value)} placeholder="series" style={{ ...smInput, flex: 1 }} />
+                )}
+                <input value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="cover url" style={{ ...smInput, flex: 1 }} />
                 {coverUrl.trim() && (
-                  <img
-                    src={coverUrl.trim()}
-                    alt=""
-                    onError={e => (e.currentTarget.style.display = 'none')}
-                    style={{ width: 36, height: 36, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }}
-                  />
+                  <img src={coverUrl.trim()} alt="" onError={e => (e.currentTarget.style.display = 'none')}
+                    style={{ width: 30, height: 30, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
                 )}
               </div>
-              <textarea
-                value={blurbText}
-                onChange={e => setBlurbText(e.target.value)}
-                placeholder="about this — a description in your words (overrides the auto blurb)"
-                rows={3}
-                style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
-              {TYPES.map(t => {
-                const c = typeColor(t)
-                const active = type === t
-                return (
-                  <button key={t} onClick={() => setType(t)} style={{
-                    padding: '5px 12px',
-                    border: active ? `1.5px solid ${c.border}` : '1.5px solid #E0E0E0',
-                    borderRadius: 4,
-                    background: active ? c.bg : '#fff',
-                    color: active ? c.border : '#555',
-                    fontSize: 13, fontWeight: active ? 600 : 400, cursor: 'pointer',
-                  }}>
-                    {TYPE_COLORS[t]?.label ?? t}
-                  </button>
-                )
-              })}
-            </div>
-            <div style={{ ...footer, display: 'flex', gap: 8 }}>
-              {onSaveNext ? (
-                <>
-                  <button onClick={onSkipNext} style={{ ...actionBtn('#333'), flex: 1 }}>skip ›</button>
-                  <button onClick={handleSaveNext} style={{ ...actionBtn('#fff'), flex: 2, background: '#111111', border: 'none' }}>save &amp; next ›</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
-                  <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>save</button>
-                </>
-              )}
-            </div>
-          </>
-        )}
+
+              {/* Source + blurb */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                <input value={sourceDetail} onChange={e => setSourceDetail(e.target.value)} placeholder="source (e.g. a friend, NYT)" style={smInput} />
+                <textarea value={blurbText} onChange={e => setBlurbText(e.target.value)}
+                  placeholder="about this — your own description" rows={2}
+                  style={{ ...smInput, resize: 'none', lineHeight: 1.5 }} />
+              </div>
+
+              {/* Type chips */}
+              <div style={{ display: 'flex', gap: 5, marginBottom: 14, flexWrap: 'wrap' }}>
+                {TYPES.map(t => {
+                  const c = typeColor(t)
+                  const active = type === t
+                  return (
+                    <button key={t} onClick={() => setType(t)} style={{
+                      padding: '4px 10px', border: active ? `1.5px solid ${c.border}` : '1.5px solid #E0E0E0',
+                      borderRadius: 4, background: active ? c.bg : '#fff', color: active ? c.border : '#888',
+                      fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer',
+                    }}>
+                      {TYPE_COLORS[t]?.label ?? t}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Footer */}
+              <div style={{ ...footer, display: 'flex', gap: 8 }}>
+                {onSaveNext ? (
+                  <>
+                    <button onClick={onSkipNext} style={{ ...actionBtn('#333'), flex: 1 }}>skip ›</button>
+                    <button onClick={handleSaveNext} style={{ ...actionBtn('#fff'), flex: 2, background: '#111111', border: 'none' }}>save &amp; next ›</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
+                    <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>save</button>
+                  </>
+                )}
+              </div>
+            </>
+          )
+        })()}
 
         {view === 'reaction' && (
           <>
@@ -814,10 +883,11 @@ function actionBtn(color: string): React.CSSProperties {
   }
 }
 
-const inputStyle: React.CSSProperties = {
+// Tighter input for the edit view where vertical space matters.
+const smInput: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
-  padding: '10px 12px', border: '1.5px solid #E0E0E0',
-  borderRadius: 10, fontSize: 14, fontFamily: 'inherit', outline: 'none',
+  padding: '7px 10px', border: '1.5px solid #E0E0E0',
+  borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none',
 }
 
 // Editorial heading + field-label styles, shared so the sub-views match the main card.

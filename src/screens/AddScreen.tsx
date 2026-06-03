@@ -291,7 +291,7 @@ function LibraryTools({ items, editItem, open }: {
     setWikiBackfilling(false); wikiCancelRef.current = false
   }
 
-  const btnStyle = { padding: '7px 16px', borderRadius: 4, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
+  const runBtn = { background: 'none', border: 'none', fontSize: 12, color: '#1C1B19', cursor: 'pointer', padding: 0, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 } as const
   const ghostBtn = { background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: '0 4px' } as const
   const warnBtn = { background: 'none', border: 'none', fontSize: 12, color: '#C00', cursor: 'pointer', padding: '0 4px', fontWeight: 600 } as const
   const cost = (n: number) => `~${n} API calls (~$${(n * 0.001).toFixed(2)})`
@@ -316,58 +316,56 @@ function LibraryTools({ items, editItem, open }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
       {untagged.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags</span>
+          <span style={{ fontSize: 12, color: '#888' }}>genres — {untagged.length} untagged</span>
           {backfilling
-            ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)}/{backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={ghostBtn}>cancel</button></span>
+            ? <span style={{ fontSize: 12, color: '#555' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)}/{backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : backfillResult
-              ? <span style={{ fontSize: 12, color: '#555', whiteSpace: 'nowrap' }}>
-                  tagged {backfillResult.ok}
-                  {backfillResult.fail > 0 && <> · <span style={{ color: '#C00' }}>{backfillResult.fail} failed</span> <button onClick={() => runBackfill(backfillFailed)} style={warnBtn}>retry {backfillResult.fail}</button></>}
-                  <button onClick={() => setBackfillResult(null)} style={ghostBtn}>done</button>
+              ? <span style={{ fontSize: 12, color: '#555' }}>
+                  {backfillResult.ok} tagged
+                  {backfillResult.fail > 0 && <> · <button onClick={() => runBackfill(backfillFailed)} style={warnBtn}>retry {backfillResult.fail}</button></>}
+                  <button onClick={() => setBackfillResult(null)} style={ghostBtn}>×</button>
                 </span>
               : backfillConfirm
-                ? <span style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
-                    {cost(untagged.length)} ·{' '}
-                    <button onClick={() => runBackfill()} style={{ ...ghostBtn, color: '#111', fontWeight: 600 }}>run</button>
+                ? <span style={{ fontSize: 12, color: '#888' }}>
+                    {cost(untagged.length)} · <button onClick={() => runBackfill()} style={runBtn}>run</button>
                     <button onClick={() => setBackfillConfirm(false)} style={ghostBtn}>cancel</button>
                   </span>
-                : <button onClick={() => setBackfillConfirm(true)} style={btnStyle}>tag my library</button>}
+                : <button onClick={() => setBackfillConfirm(true)} style={runBtn}>tag →</button>}
         </div>
       )}
       {needsRuntime.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or pages</span>
+          <span style={{ fontSize: 12, color: '#888' }}>runtime / pages — {needsRuntime.length} missing</span>
           {rtBackfilling
-            ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>filling {Math.min(rtProgress + 5, rtTotal)}/{rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
+            ? <span style={{ fontSize: 12, color: '#555' }}>filling {Math.min(rtProgress + 5, rtTotal)}/{rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : rtResult
-              ? <span style={{ fontSize: 12, color: '#555', whiteSpace: 'nowrap' }}>
-                  filled {rtResult.ok}
-                  {rtResult.fail > 0 && <> · <span style={{ color: '#C00' }}>{rtResult.fail} failed</span> <button onClick={() => runRtBackfill(rtFailed)} style={warnBtn}>retry {rtResult.fail}</button></>}
-                  <button onClick={() => setRtResult(null)} style={ghostBtn}>done</button>
+              ? <span style={{ fontSize: 12, color: '#555' }}>
+                  {rtResult.ok} filled
+                  {rtResult.fail > 0 && <> · <button onClick={() => runRtBackfill(rtFailed)} style={warnBtn}>retry {rtResult.fail}</button></>}
+                  <button onClick={() => setRtResult(null)} style={ghostBtn}>×</button>
                 </span>
               : rtConfirm
-                ? <span style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
-                    {cost(needsRuntime.length)} ·{' '}
-                    <button onClick={() => runRtBackfill()} style={{ ...ghostBtn, color: '#111', fontWeight: 600 }}>run</button>
+                ? <span style={{ fontSize: 12, color: '#888' }}>
+                    {cost(needsRuntime.length)} · <button onClick={() => runRtBackfill()} style={runBtn}>run</button>
                     <button onClick={() => setRtConfirm(false)} style={ghostBtn}>cancel</button>
                   </span>
-                : <button onClick={() => setRtConfirm(true)} style={btnStyle}>fill in</button>}
+                : <button onClick={() => setRtConfirm(true)} style={runBtn}>fill →</button>}
         </div>
       )}
       {needsMoodMigration.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{needsMoodMigration.length} item{needsMoodMigration.length !== 1 ? 's' : ''} use old vibe words</span>
+          <span style={{ fontSize: 12, color: '#888' }}>old vibe words — {needsMoodMigration.length} items</span>
           {migrating
-            ? <span style={{ fontSize: 13, color: '#555' }}>updating {migrateProgress} of {needsMoodMigration.length}…</span>
-            : <button onClick={runMoodMigration} style={btnStyle}>clean up</button>}
+            ? <span style={{ fontSize: 12, color: '#555' }}>updating {migrateProgress}/{needsMoodMigration.length}…</span>
+            : <button onClick={runMoodMigration} style={runBtn}>clean up →</button>}
         </div>
       )}
       {needsWiki.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{needsWiki.length} item{needsWiki.length !== 1 ? 's' : ''} missing saved wiki links</span>
+          <span style={{ fontSize: 12, color: '#888' }}>wiki links — {needsWiki.length} missing</span>
           {wikiBackfilling
-            ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>fetching {Math.min(wikiProgress + 6, wikiTotal)}/{wikiTotal}… <button onClick={() => { wikiCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
-            : <button onClick={runWikiBackfill} style={btnStyle}>fill in links</button>}
+            ? <span style={{ fontSize: 12, color: '#555' }}>fetching {Math.min(wikiProgress + 6, wikiTotal)}/{wikiTotal}… <button onClick={() => { wikiCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
+            : <button onClick={runWikiBackfill} style={runBtn}>fill →</button>}
         </div>
       )}
         </div>
