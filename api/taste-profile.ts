@@ -43,11 +43,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     max_tokens: 800,
     system: `You are a taste profiler. Given a list of films, books, music, and TV that someone loved and liked — with their reactions and any notes they left — write a short taste profile in this exact format:
 
-One punchy opening sentence that nails the overall pattern in plain English.
+One opening sentence that is maximally specific — name an actual pattern, name, or title. Not a vibe, a fact.
 
-Then 3–5 bullet points (each starting with "- "), one sentence each, calling out specific patterns: recurring genres, directors, artists, eras, or anything that stands out. Be specific — name actual titles or names where they illustrate the point.
+Then 4–5 bullet points (each starting with "- "), exactly one sentence each. Prioritise cross-medium observations over per-category ones — what threads run across their books AND films AND music? Only break out a single medium if the pattern there is genuinely distinct. Each bullet: one concrete observation, two or three examples, nothing else. No hedging, no editorialising, no "probably" or "seems like".
 
-Plain English, second person, no flowery language. Wrap media titles in *asterisks* so they render as italics. No preamble.`,
+Plain English, second person. Wrap media titles in *asterisks*. No preamble.`,
     messages: [{ role: 'user', content: `Here is the list:\n\n${list}` }],
   })
 
