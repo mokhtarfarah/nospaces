@@ -408,24 +408,30 @@ export function TasteScreen() {
               <>
                 <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
                   {inlineItalics(opener)}
-                </div>
-                {bullets.length > 0 && (
-                  <>
-                    {profileExpanded && (
-                      <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
-                        {bullets.map((line, i) => (
-                          <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-                            <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6 }}>—</span>
-                            <span>{inlineItalics(line.replace(/^[\s-]+/, ''))}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  {bullets.length > 0 && !profileExpanded && (
                     <button
-                      onClick={() => setProfileExpanded(e => !e)}
+                      onClick={() => setProfileExpanded(true)}
+                      style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: '0 0 0 6px', textDecoration: 'underline', verticalAlign: 'baseline' }}
+                    >
+                      see more
+                    </button>
+                  )}
+                </div>
+                {bullets.length > 0 && profileExpanded && (
+                  <>
+                    <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
+                      {bullets.map((line, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
+                          <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6 }}>—</span>
+                          <span>{inlineItalics(line.replace(/^[\s-]+/, ''))}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setProfileExpanded(false)}
                       style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
                     >
-                      {profileExpanded ? 'see less' : 'see more'}
+                      see less
                     </button>
                   </>
                 )}
