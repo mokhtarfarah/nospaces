@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './auth'
+import { requireAuth } from '../lib/auth'
 
 // Proxy for Ticketmaster's Discovery API. We go through Vercel so we can attach
 // the API key (kept server-side), normalise the response to just what the UI

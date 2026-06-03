@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './auth'
+import { requireAuth } from '../lib/auth'
 
 // Lighter v1 of "where to watch": look up streaming availability (US) for a title via
 // TMDB (data powered by JustWatch). Self-contained — safe to delete this file to remove
