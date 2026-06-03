@@ -26,7 +26,6 @@ interface Props {
 
 const TYPES = ['film', 'book', 'music', 'tv', 'other']
 
-const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'loved_it',   label: 'loved it'   },
@@ -275,7 +274,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 const box: React.CSSProperties = { width: w, height: h, borderRadius: 0, flexShrink: 0, objectFit: 'cover', border: '1px solid #EEE' }
                 return cover
                   ? <img src={cover} alt="" style={box} />
-                  : <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{TYPE_EMOJI[item.type] ?? '✦'}</div>
+                  : <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, letterSpacing: '0.5px', color: color.border }}>{item.type === 'other' ? '' : item.type}</div>
               })()}
               <div style={{ minWidth: 0, paddingTop: 1 }}>
                 <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.25 }}>{item.title}</div>
@@ -379,12 +378,12 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   )}
                   {wikiUrl && (
                     <a href={wikiUrl} target="_blank" rel="noopener noreferrer" className="tlink">
-                      wikipedia ↗
+                      {'wikipedia ↗︎'}
                     </a>
                   )}
                   {(item.type === 'film' || item.type === 'tv') && (
                     <button onClick={() => setWatchOpen(true)} className="tlink">
-                      ▶ watch
+                      {'▶︎ watch'}
                     </button>
                   )}
                 </div>
@@ -399,7 +398,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                         className="tlink"
                         style={{ fontStyle: 'normal', whiteSpace: 'nowrap', display: 'inline' }}
                       >
-                        see source ↗
+                        {'see source ↗︎'}
                       </a>
                     )}
                   </div>

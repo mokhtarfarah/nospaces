@@ -85,7 +85,7 @@ export function WhereToWatchSheet({ item, onClose }: {
             background: '#FAFAFA', color: '#333', fontSize: 13, fontWeight: 500, textDecoration: 'none',
           }}
         >
-          More detail on JustWatch ↗
+          {'More detail on JustWatch ↗︎'}
         </a>
       </div>
     </>
@@ -128,7 +128,7 @@ function ProviderGroup({ label, providers, title, fallback }: { label: string; p
             rel="noreferrer"
             style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', border: '1px solid #EEE', borderRadius: 8, background: '#FAFAFA', textDecoration: 'none', color: '#333' }}
           >
-            <span style={{ fontSize: 12 }}>{p.name} ↗</span>
+            <span style={{ fontSize: 12 }}>{p.name}{' ↗︎'}</span>
           </a>
         ))}
       </div>

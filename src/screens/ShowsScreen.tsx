@@ -188,7 +188,7 @@ export function ShowsScreen() {
               disabled={locating}
               style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: locating ? 'default' : 'pointer' }}
             >
-              {locating ? 'locating…' : '📍 use my location'}
+              {locating ? 'locating…' : 'use my location'}
             </button>
           </div>
           <div style={{ marginBottom: 10 }}>
@@ -249,7 +249,7 @@ export function ShowsScreen() {
             placeholder="filter by place (optional) — e.g. spain, japan, berlin"
             style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 10, fontSize: 14, outline: 'none', marginBottom: 10 }}
           />
-          <Chip label="♥ loved only" active={lovedOnly} onClick={() => setLovedOnly(v => !v)} />
+          <Chip label="♥︎ loved only" active={lovedOnly} onClick={() => setLovedOnly(v => !v)} />
         </div>
       )}
 
@@ -291,7 +291,7 @@ export function ShowsScreen() {
                   style={{ display: 'flex', alignItems: 'baseline', gap: 8, width: '100%', textAlign: 'left', padding: '12px 0 10px', borderBottom: '1px solid #EEE', background: 'none', border: 'none', borderBottomStyle: 'solid', cursor: 'pointer' }}
                 >
                   <span style={{ fontSize: 11, color: '#BBB', alignSelf: 'center', width: 10, flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{loved && <span style={{ color: '#111' }}>♥ </span>}{artist}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{loved && <span style={{ color: '#111' }}>{'♥︎ '}</span>}{artist}</span>
                   <span style={{ fontSize: 12, color: '#AAA', marginLeft: 'auto', alignSelf: 'center' }}>{shows.length} date{shows.length === 1 ? '' : 's'}</span>
                 </button>
                 {open && shows.map(s => <ShowRow key={s.id} show={s} origin={null} showDate />)}
@@ -325,7 +325,7 @@ function ShowRow({ show, origin, showDate }: { show: Show; origin: Origin; showD
           {dist != null && <span style={{ color: '#AAA' }}>  ·  {dist} mi</span>}
         </div>
       </div>
-      {show.url && <span style={{ flexShrink: 0, fontSize: 12, color: '#111', alignSelf: 'center' }}>tickets ↗</span>}
+      {show.url && <span style={{ flexShrink: 0, fontSize: 12, color: '#111', alignSelf: 'center' }}>{'tickets ↗︎'}</span>}
     </div>
   )
 

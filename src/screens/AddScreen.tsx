@@ -631,7 +631,6 @@ function CameraIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
 }
 
-const TYPE_ICON: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
 
 function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
   query: string
@@ -670,7 +669,7 @@ function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
                 borderBottom: i < candidates.length - 1 ? '1px solid #F4F4F4' : 'none',
               }}
             >
-              <span style={{ fontSize: 20, flexShrink: 0 }}>{TYPE_ICON[c.type] ?? '✦'}</span>
+              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.3px', color: '#AAA', flexShrink: 0, width: 30 }}>{c.type === 'other' ? '' : c.type}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: 15, fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {c.title}

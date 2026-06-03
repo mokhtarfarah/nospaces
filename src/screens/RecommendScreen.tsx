@@ -278,7 +278,7 @@ export function RecommendScreen() {
       {done != null && (
         <div style={{ marginTop: 24, textAlign: 'center' }}>
           <p style={{ fontSize: 15, color: '#111', fontWeight: 600 }}>
-            saved {done} to want to ✨
+            saved {done} to want to
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 12 }}>
             <button

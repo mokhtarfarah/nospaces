@@ -128,7 +128,7 @@ export function ImportScreen() {
       {done != null && (
         <div style={{ marginTop: 24, textAlign: 'center' }}>
           <p style={{ fontSize: 15, color: '#111', fontWeight: 600 }}>
-            Imported {done} film{done === 1 ? '' : 's'} 🎬
+            Imported {done} film{done === 1 ? '' : 's'}
           </p>
           <button
             onClick={() => navigate('/library')}

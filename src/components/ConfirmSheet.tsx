@@ -10,7 +10,6 @@ const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'not_for_me', label: 'not for me' },
 ]
 
-const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
 
 export interface AiResult {
   title: string
@@ -192,7 +191,7 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
               const box: React.CSSProperties = { width: w, height: h, borderRadius: 0, flexShrink: 0, objectFit: 'cover', border: '1px solid #EEE' }
               return artwork
                 ? <img src={artwork} alt="" style={box} />
-                : <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{TYPE_EMOJI[item.type] ?? '✦'}</div>
+                : <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, letterSpacing: '0.5px', color: color.border }}>{item.type === 'other' ? '' : item.type}</div>
             })()}
             <div style={{ minWidth: 0, paddingTop: 1 }}>
               <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.25 }}>{item.title}</div>

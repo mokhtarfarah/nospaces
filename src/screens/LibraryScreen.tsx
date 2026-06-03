@@ -459,7 +459,7 @@ export function LibraryScreen() {
                 onClick={() => navigate('/shows')}
                 style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
               >
-                📍 shows near you
+                shows near you
               </button>
             </>
           )}
@@ -872,7 +872,6 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
   )
 }
 
-const TYPE_EMOJI: Record<string, string> = { film: '🎬', tv: '📺', music: '🎵', book: '📚', other: '✦' }
 
 const CATEGORY_LABEL: Record<string, string> = { film: 'films', book: 'books', music: 'music', tv: 'tv', other: 'other' }
 
@@ -883,8 +882,8 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
     return <img src={src} alt="" loading="lazy" style={{ ...box, objectFit: 'cover', border: '1px solid #EEE', background: '#F4F4F4' }} />
   }
   return (
-    <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-      {TYPE_EMOJI[type] ?? '✦'}
+    <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 600, letterSpacing: '0.3px', color: color.border }}>
+      {type === 'other' ? '' : type}
     </div>
   )
 }
