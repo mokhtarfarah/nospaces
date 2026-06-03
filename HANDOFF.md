@@ -88,7 +88,7 @@ All shipped to `main` / live (commit `3a747c8`):
 3. ✅ **Scratch entry always visible** (Seamless capture #9) — "can't identify it? jot a description for later" link always shows on Add (was hidden until you typed). (`AddScreen.tsx`)
 4. ✅ **Hide "from: quick add" label** (Action card #12) — only shows meaningful sources now. (`ItemActionSheet.tsx`)
 
-**Next up (Farah's queue):** recommendations (Taste arc #3, the big one) — its own session + design pass. Descriptive search is the smaller adjacent option.
+**Next up (Farah's queue):** ⭐ **recommendations (Taste arc #3, the big one) — STARTING NOW** (own session + design pass; see Taste arc #3 for the build plan). Then the small adjacent features: **describe-to-add (B)** [Seamless capture #6, prioritized], **manual genre edit** [Action card #13], and lower-priority **descriptive library search (A)** [#7]. Open research thread: an *inferred-taste* model that profiles taste beyond hand tags (notes below in Taste arc #5).
 
 ### 📌 Session 7 summary (2026-06-02) — touring bands / "shows near you"
 All shipped to `main` / live unless noted (5 commits: `61e1399`, `8a99f26`, `b1ee3f8`, `badaaf0`, + this doc):
@@ -121,7 +121,8 @@ All shipped to `main` / live unless noted:
 3. ✅ **Bulk photo upload** — "add from photos" accepts multiple files. Single pick → single ConfirmSheet. Multi-pick → BulkConfirmSheet: identifies all in parallel, each row checkable/editable, saves all as want_to. Low-confidence results start unchecked.
 4. **Manual source field** — set where an item came from (person/site/newsletter). Decide where it surfaces.
 5. **Music / songs** — today albums-only. Figure out adding individual songs + cleanest flow.
-6. **Descriptive queries** (PARKED): "rosalía latest album" → AI returns intent {creator, type, ordinal}; server resolves via live catalog. Revisit after taste arc.
+6. **Describe-to-add (B) — PRIORITIZED next small feature.** "rosalía's latest album", "that new Villeneuve movie" → AI parses the description into intent {creator, type, ordinal/recency} → server resolves to the real item via live catalog → confirm + save. **Reuses the `/api/lookup` catalog search already wired into re-identify (session 8)** + a small intent-parse step. ~1 session, low risk. This is the Add-screen flow (describe something you can't name → get the real item).
+7. **Descriptive library search (A) — LOWER priority.** Search your *own* library in plain language ("cozy films I haven't watched", "intense books"). Mostly a light AI step that turns a sentence into filters you already support (status + vibe/genre tags). ~1 session. Do alongside (B) only if cheap; otherwise defer.
 7. **Screenshot shortcut reliability** — clipboard flow flaky. Improve or retire.
 8. **Photo-blurb / OCR** — snap back cover → Claude reads blurb → save.
 9. **🐛 Scratch page not reachable from Add** (flagged session 7) — the scratch "save a description" path exists but there's no obvious way into it from the Add screen. Add a clear entry point / button on AddScreen so scratch is accessible. (Defer to its own session.)
@@ -147,6 +148,13 @@ All shipped to `main` / live unless noted:
    - **TODO (come back to): typeface.** Currently using the refined **sans** (existing Helvetica Neue) as a placeholder. Considered editorial serifs via a quick mockup at `public/taste-mockup.html` (open at `localhost:5173/taste-mockup.html` — shows Bodoni Moda / Cormorant / Playfair in the chosen treatment). Decision deferred. When revisiting: pick a serif for section heads + lead terms (Bodoni Moda = sharp Vogue, Cormorant = luxe/timeless), load via Google Fonts or self-host; premium options that nail the look are Canela / Domaine / GT Sectra / Reckless (paid). Delete the mockup file once decided.
    - **Parked future axes:** *effort* (project/easy — pairs with runtime/pages data) and *occasion* (derived backlog filter — "what do I put on tonight"; never hand-tagged). See memory `taste-tags-structure`.
 
+5. **🔭 Inferred-taste model (research thread, not scheduled).** A model that profiles Farah's taste *beyond the hand-applied tags* — reading the actual titles + reactions (and notes) to describe taste in its own words and recommend. What it'd take:
+   - **Input signal:** the library is already a rich dataset — every item's title/creator/year/type, reaction (loved→not-for-me), vibes/verdicts, notes. The model reasons over the *names themselves* (it knows what "Phantom Thread" or "Fishmans" connote), not just our tag vocab. So even untagged items carry signal.
+   - **v1 (cheap, ~1 session): "describe my taste" pass.** Send the loved/liked list to Claude → get a short editorial taste profile in prose ("you lean toward slow, melancholic character studies and warm lo-fi…"). Pure read, no new infra. Doubles as content for the taste page.
+   - **v2: taste-aware ranking.** When recommendations pulls a candidate list, score/rank each candidate against the taste profile + library (cheap re-rank call). Recommendations #3 v3 already anticipates this.
+   - **v3: generative recommendations** — ask the model directly "given this taste, what 10 films am I missing?" No external list needed. Risk: hallucinated/recency-blind picks (model's training cutoff), so pair with a catalog/`/api/lookup` resolve to confirm each pick is real.
+   - **Honest limits:** it's vibes-based reasoning, not a trained recommender — no collaborative filtering ("people like you also…"), and it can't know 2026 releases past its cutoff without web fetch. Strength is *describing* taste and *explaining* picks, which fits the editorial north star. Revisit after recommendations v1 ships (it shares most of the plumbing).
+
 ### 🃏 Action card
 1. ✅ **Mark done / edit reaction inline** — "mark as done" in action sheet footer for want_to items; transitions to reaction view inside the sheet (no second overlay). "edit reaction" for done items.
 2. ✅ **Notes display** — note renders below the blurb. Bullet-list support: lines starting with -, *, • render as a list. `NoteInput` component (shared) has a "• bullet" button that inserts at cursor. Font 14px, 3-row textarea.
@@ -159,7 +167,8 @@ All shipped to `main` / live unless noted:
 9. ✅ **Re-identify** — on main card (auto-saves title/creator/type/year/tags/runtime/pages, sheet stays open) + in edit view (populates fields for review) + prominent "identify now" for scratch items.
 10. ✅ **Re-identify type anchor** — re-identify now passes `typeHint: item.type` + year in the input string, preventing a film from silently reverting to the book it was adapted from. Auto-save never overrides the stored type. `clearWikiCache` called after re-identify so Wikipedia re-fetches with updated values.
 11. ✅ **Vibe chips condensed** — mood chips in both main view and mark-done flow are now a single horizontal scrollable row (same pattern as header filter chips).
-12. **🧹 Remove "from: quick add" on the card** (flagged session 7) — the source label "from: quick add" is noise (it's the obvious default). Hide it on the action card (and any row subtitle) when `source === 'quick_add'`. Keep meaningful sources (letterboxd, spotify, email, etc.) visible. (Defer to its own session.)
+13. **✏️ Manual genre edit** (small tweak, requested session 8) — let the user add/remove an item's genre tags by hand on the action card (today genres are AI-auto-picked only; vibes/verdicts are already hand-toggleable, genres are not). Edit against the genres vocab in `src/lib/genres.ts`. Small, self-contained.
+12. ✅ **Remove "from: quick add" on the card** (shipped session 8) — was flagged session 7 — the source label "from: quick add" is noise (it's the obvious default). Hide it on the action card (and any row subtitle) when `source === 'quick_add'`. Keep meaningful sources (letterboxd, spotify, email, etc.) visible. (Defer to its own session.)
 
 ### 🔗 Wikipedia coverage
 - ✅ Multi-fallback cascade: tries up to 4 queries per film (with year → without year → drop "The" → bare title). Films/TV trust search result; books/music use title guard.
