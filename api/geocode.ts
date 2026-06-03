@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Turns a typed place ("barcelona", "berlin, de") into a clean label + lat/lng,
 // so custom cities can be distance-filtered like the built-in ones. Uses
@@ -7,6 +8,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? ''
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!await requireAuth(req)) return res.status(401).end()
   const q = one(req.query.q).trim()
   if (!q) return res.status(400).json({ error: 'missing q' })
 

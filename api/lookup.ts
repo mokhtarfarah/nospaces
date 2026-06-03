@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Real-catalog search for the "look it up online" action: queries iTunes (music),
 // TMDB (film/TV), and Open Library (books) for the literal text and returns concrete
@@ -95,6 +96,7 @@ async function openLibraryByAuthor(q: string): Promise<Candidate[]> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!await requireAuth(req)) return res.status(401).end()
   const q = String(req.query.q ?? '')
   if (!q) return res.status(200).json({ results: [] })
   const recency = req.query.recency === '1'

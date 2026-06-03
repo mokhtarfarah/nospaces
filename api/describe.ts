@@ -1,10 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
+  if (!await requireAuth(req)) return res.status(401).end()
 
   const { input } = req.body as { input?: string }
   if (!input?.trim()) return res.status(200).json({ searchQuery: '', type: null, sortByRecency: false })
@@ -43,8 +45,8 @@ Input: "${input.trim().replace(/"/g, '\\"')}"`,
       type: json.type ?? null,
       sortByRecency,
     })
-  } catch {
-    // Fall through — caller will fall back to Sonnet identify
+  } catch (err) {
+    console.error('[describe] error:', err instanceof Error ? err.message : err)
     return res.status(200).json({ searchQuery: input.trim(), type: null, sortByRecency })
   }
 }

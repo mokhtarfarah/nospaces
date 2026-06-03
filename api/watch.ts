@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Lighter v1 of "where to watch": look up streaming availability (US) for a title via
 // TMDB (data powered by JustWatch). Self-contained — safe to delete this file to remove
@@ -17,6 +18,7 @@ const mapProviders = (arr: TmdbProvider[] | undefined) =>
   }))
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!await requireAuth(req)) return res.status(401).end()
   if (!KEY) return res.status(200).json({ configured: false })
 
   const { title, year, type } = req.query as { title?: string; year?: string; type?: string }
@@ -40,7 +42,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       rent: mapProviders(us.rent),
       buy: mapProviders(us.buy),
     })
-  } catch {
+  } catch (err) {
+    console.error('[watch] error for', JSON.stringify({ title, type }), ':', err instanceof Error ? err.message : err)
     return res.status(200).json({ configured: true, error: true })
   }
 }

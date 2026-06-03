@@ -4,6 +4,7 @@ import { usePrefs } from '../hooks/usePrefs'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { VIBES } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
+import { authHeaders } from '../lib/supabase'
 
 // Editorial palette — monochrome, warm ink on white. Low-contrast, print-like.
 const INK = '#1C1B19'      // primary text / lead term
@@ -145,7 +146,7 @@ export function TasteScreen() {
       const signal = items.filter(i => i.status === 'done' && (i.reaction === 'loved_it' || i.reaction === 'liked_it'))
       const res = await fetch('/api/taste-profile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           items: signal.map(i => ({ title: i.title, creator: i.creator, type: i.type, reaction: i.reaction, note: i.note })),
         }),

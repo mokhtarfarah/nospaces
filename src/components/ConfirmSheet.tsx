@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useArtwork } from '../lib/artwork'
+import { authHeaders } from '../lib/supabase'
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'loved_it',   label: 'loved it'   },
@@ -59,7 +60,7 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
     try {
       const res = await fetch('/api/identify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ input: queryText.trim() }),
       })
       const r = (await res.json()) as AiResult
@@ -94,7 +95,7 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
     setLoadingMore(true)
     try {
       // Search the real catalogs (iTunes / TMDB / Open Library) for actual matches.
-      const res = await fetch(`/api/lookup?q=${encodeURIComponent(origQuery)}`)
+      const res = await fetch(`/api/lookup?q=${encodeURIComponent(origQuery)}`, { headers: await authHeaders() })
       const data = await res.json()
       const more: AiResult[] = (data.results ?? []).map((r: Partial<AiResult>) => normalizeAlt(r as AiResult))
       setCandidates(prev => {

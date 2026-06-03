@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Both text queries and URL input go through web_search_20250305. Direct
 // server-side fetch doesn't work for modern editorial sites (JS-rendered, e.g.
@@ -112,7 +113,36 @@ const validTypes = new Set(['film', 'book', 'music', 'tv', 'other'])
 function parseResponse(text: string, fallbackSourceUrl: string) {
   const match = text.match(/\{[\s\S]*\}/)
   if (!match) return { source: '', sourceUrl: '', items: [] }
-  const parsed = JSON.parse(match[0]) as { source?: string; sourceUrl?: string; items?: RecItem[] }
+  let parsed: { source?: string; sourceUrl?: string; items?: RecItem[] }
+  try {
+    parsed = JSON.parse(match[0])
+  } catch {
+    // Salvage any complete item objects from a truncated response
+    const arrStart = match[0].indexOf('[', match[0].indexOf('"items"'))
+    if (arrStart < 0) return { source: '', sourceUrl: '', items: [] }
+    const items: RecItem[] = []
+    let depth = 0, objStart = -1, inStr = false, esc = false
+    const s = match[0]
+    for (let i = arrStart + 1; i < s.length; i++) {
+      const ch = s[i]
+      if (inStr) {
+        if (esc) esc = false
+        else if (ch === '\\') esc = true
+        else if (ch === '"') inStr = false
+        continue
+      }
+      if (ch === '"') inStr = true
+      else if (ch === '{') { if (depth === 0) objStart = i; depth++ }
+      else if (ch === '}') {
+        depth--
+        if (depth === 0 && objStart >= 0) {
+          try { items.push(JSON.parse(s.slice(objStart, i + 1)) as RecItem) } catch { /* skip */ }
+          objStart = -1
+        }
+      } else if (ch === ']' && depth === 0) break
+    }
+    parsed = { items }
+  }
   const items = (parsed.items ?? [])
     .filter(i => i && i.title)
     .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
@@ -142,6 +172,7 @@ function parseResponse(text: string, fallbackSourceUrl: string) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
+  if (!await requireAuth(req)) return res.status(401).end()
 
   const body = req.body as { query?: string; pdfBase64?: string }
 
@@ -194,7 +225,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json(parseResponse(text, url ? input : ''))
   } catch (err) {
-    console.error(err)
+    console.error('[recommend] error for query', JSON.stringify(input), ':', err instanceof Error ? err.message : err)
     res.status(500).json({ error: 'Failed to fetch recommendations' })
   }
 }

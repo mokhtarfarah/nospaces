@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
+import { authHeaders } from '../lib/supabase'
 
 interface RecItem {
   rank: number
@@ -53,7 +54,7 @@ export function RecommendScreen() {
       })
       const res = await fetch('/api/recommend', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ pdfBase64: base64 }),
       })
       if (!res.ok) {

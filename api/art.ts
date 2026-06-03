@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Best-source artwork resolver:
 //   film/tv  -> TMDB poster (falls back to a season poster for shows with none)
@@ -109,6 +110,7 @@ async function bookCover(title: string, creator: string, year?: number): Promise
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!await requireAuth(req)) return res.status(401).end()
   const type = one(req.query.type)
   const title = one(req.query.title)
   const creator = one(req.query.creator)
@@ -123,7 +125,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     else if (type === 'book') url = await bookCover(title, creator, year ? Number(year) : undefined)
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate')
     return res.status(200).json({ url })
-  } catch {
+  } catch (err) {
+    console.error('[art] error for', JSON.stringify({ type, title }), ':', err instanceof Error ? err.message : err)
     return res.status(200).json({ url: null })
   }
 }

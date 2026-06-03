@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Genre vocab — keep in sync with src/lib/genres.ts (server-side copy, Vercel
 // functions can't import from src/).
@@ -54,6 +55,7 @@ If you cannot identify anything, return type "other" with the input as the title
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
+  if (!await requireAuth(req)) return res.status(401).end()
 
   const { input, imageBase64, mimeType, typeHint } = req.body as {
     input?: string
@@ -100,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json(json)
   } catch (err) {
-    console.error(err)
+    console.error('[identify] error:', err instanceof Error ? err.message : err)
     res.status(500).json({ error: 'Failed to identify item' })
   }
 }

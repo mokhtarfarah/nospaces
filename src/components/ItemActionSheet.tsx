@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
+import { authHeaders } from '../lib/supabase'
 import { NoteInput } from './NoteInput'
 import { MoodChips } from './MoodChips'
 import { VIBES, VERDICTS } from '../lib/moods'
@@ -169,7 +170,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
 
       const res = await fetch('/api/identify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ input: inputStr, typeHint: currentType }),
       })
       const r = await res.json()
@@ -224,7 +225,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     setLookingUp(true)
     try {
       const q = year ? `${title.trim() || item.title} (${year})` : (title.trim() || item.title)
-      const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}`)
+      const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}`, { headers: await authHeaders() })
       const data = await res.json()
       const more: Candidate[] = (data.results ?? [])
         .filter((r: Candidate) => r?.title)

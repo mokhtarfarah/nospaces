@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { authHeaders } from './supabase'
 
 // Fetches a short book blurb (Open Library / Apple Books) for the action card when
 // Wikipedia has no summary. Returns { summary, source }. Cached per book.
@@ -20,14 +21,15 @@ export function useBookBlurb(title: string, creator: string | null, year: number
     const sp = new URLSearchParams({ title })
     if (creator) sp.set('creator', creator)
     if (year) sp.set('year', String(year))
-    fetch(`/api/blurb?${sp}`)
-      .then(r => r.json())
-      .then((d: Blurb) => {
+    ;(async () => {
+      try {
+        const h = await authHeaders()
+        const d: Blurb = await (await fetch(`/api/blurb?${sp}`, { headers: h })).json()
         const val: Blurb = { summary: d.summary ?? null, source: d.source ?? null }
         cache.set(key, val)
         if (!cancelled) setBlurb(val)
-      })
-      .catch(() => { if (!cancelled) setBlurb(EMPTY) })
+      } catch { if (!cancelled) setBlurb(EMPTY) }
+    })()
     return () => { cancelled = true }
   }, [title, creator, year, enabled])
   return blurb

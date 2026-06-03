@@ -1,5 +1,6 @@
 import type { Item } from './database.types'
 import type { Show } from '../../api/shows'
+import { authHeaders } from './supabase'
 
 export type { Show }
 
@@ -61,7 +62,8 @@ export function likedArtists(items: Item[]): string[] {
 // null if nothing matches.
 export async function geocodeCity(q: string): Promise<City | null> {
   try {
-    const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`)
+    const h = await authHeaders()
+    const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`, { headers: h })
     const data = await res.json()
     return data.result ?? null
   } catch {
@@ -84,7 +86,8 @@ export function lovedArtistKeys(items: Item[]): Set<string> {
 // Fetch one artist's upcoming shows via our proxy.
 async function fetchArtistShows(artist: string): Promise<Show[]> {
   try {
-    const res = await fetch(`/api/shows?artist=${encodeURIComponent(artist)}`)
+    const h = await authHeaders()
+    const res = await fetch(`/api/shows?artist=${encodeURIComponent(artist)}`, { headers: h })
     const data = await res.json()
     return Array.isArray(data.shows) ? data.shows : []
   } catch {

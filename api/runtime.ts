@@ -1,10 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
+  if (!await requireAuth(req)) return res.status(401).end()
 
   const { title, creator, type, year } = req.body as {
     title: string
@@ -29,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
     res.status(200).json(json)
   } catch (err) {
-    console.error(err)
+    console.error('[runtime] error for', JSON.stringify({ title, type }), ':', err instanceof Error ? err.message : err)
     res.status(500).json({ error: 'Failed to fetch runtime/pages' })
   }
 }

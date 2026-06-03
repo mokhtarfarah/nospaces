@@ -10,3 +10,10 @@ export const supabase = createClient<Database>(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder',
 )
+
+export async function authHeaders(): Promise<HeadersInit> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (session?.access_token) h['Authorization'] = `Bearer ${session.access_token}`
+  return h
+}
