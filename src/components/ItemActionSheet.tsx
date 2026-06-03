@@ -8,6 +8,7 @@ import { useArtwork } from '../lib/artwork'
 import { useBookBlurb } from '../lib/blurb'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
 import { WhereToWatchSheet } from './WhereToWatchSheet'
+import { genresForType, isGenreTag } from '../lib/genres'
 
 interface Props {
   item: Item
@@ -16,6 +17,7 @@ interface Props {
   onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
   onSetMoods: (moods: string[]) => void
+  onSetTags: (tags: string[]) => void
   onToggleOwned: (owned: boolean) => void
   onDelete: () => void
   onClose: () => void
@@ -54,7 +56,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onToggleOwned, onDelete, onClose }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose }: Props) {
   const [view, setView] = useState<View>('main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -300,12 +302,13 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   {(() => {
-                    // Recommendation: plain attribution with optional link — no blurb toggle here.
+                    // Recommendation: show URL link if available; skip plain-text label
+                    // when a blurb toggle already shows the same source name.
                     if (item.source_detail === 'recommendation' && item.recommended_by) {
                       const url = item.metadata?.recommendationUrl as string | undefined
-                      return url
-                        ? <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#B0B0B0', textDecoration: 'underline', textUnderlineOffset: 2 }}>from {item.recommended_by}</a>
-                        : <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {item.recommended_by}</div>
+                      if (url) return <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#B0B0B0', textDecoration: 'underline', textUnderlineOffset: 2 }}>from {item.recommended_by}</a>
+                      if (blurb) return null  // blurb toggle already says "via [list]"
+                      return <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {item.recommended_by}</div>
                     }
                     // "quick add" is the obvious default — it's noise, so hide it.
                     // Keep meaningful sources (letterboxd, spotify, email, photo, …) visible.
@@ -447,17 +450,34 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             )}
 
-            {/* Genre tags (auto-tagged at identify time) */}
-            {item.tags && item.tags.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                {item.tags.map(tag => (
-                  <span key={tag} style={{
-                    padding: '3px 10px', borderRadius: 20, fontSize: 11,
-                    background: '#F2F2F2', color: '#555', fontWeight: 500,
-                  }}>{tag}</span>
-                ))}
-              </div>
-            )}
+            {/* Genre tags — toggleable from the full vocab for this type */}
+            {(() => {
+              const vocab = genresForType(item.type)
+              if (!vocab.length) return null
+              const descriptors = (item.tags ?? []).filter(t => !isGenreTag(t))
+              const activeGenres = new Set((item.tags ?? []).filter(t => isGenreTag(t)))
+              function toggleGenre(genre: string) {
+                const next = new Set(activeGenres)
+                next.has(genre) ? next.delete(genre) : next.add(genre)
+                onSetTags([...next, ...descriptors])
+              }
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                  {vocab.map(genre => {
+                    const active = activeGenres.has(genre)
+                    return (
+                      <button key={genre} onClick={() => toggleGenre(genre)} style={{
+                        padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
+                        border: 'none',
+                        background: active ? '#1C1B19' : '#F2F2F2',
+                        color: active ? '#fff' : '#888',
+                        fontWeight: active ? 600 : 400,
+                      }}>{genre}</button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
 
             {/* Mood chips — interactive on main view, tap to toggle + save immediately */}
             {!item.metadata?.scratch && (
