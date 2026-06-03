@@ -41,7 +41,7 @@ Return ONLY a JSON object in this exact shape:
       "type": "film|book|music|tv|other",
       "year": 2025,
       "tags": ["genre1", "genre2"],
-      "blurb": "2–3 sentences drawn from the source's own writing about this item — what it sounds, reads, or feels like; its style, themes, or what makes it distinctive. Be specific. Never say things like 'ranked #1' or 'makes this list' or 'pushes boundaries'."
+      "blurb": "2–3 sentences about what this item sounds, reads, or feels like — its style, themes, or what makes it distinctive. Use the source's own writing if you have it; otherwise draw on your own knowledge of the work. Be specific. Never say things like 'ranked #1' or 'makes this list' or 'pushes boundaries'."
     }
   ]
 }
@@ -85,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 6000,
+      max_tokens: 8000,
       system: SYSTEM_PROMPT,
       tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
       messages: [{ role: 'user', content: buildPrompt(input, url) }],
