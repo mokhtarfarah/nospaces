@@ -39,7 +39,7 @@ export function NoteInput({ value, onChange, placeholder = 'Any thoughts...', ro
           onClick={insertBullet}
           title="Add bullet point"
           style={{
-            padding: '2px 8px', borderRadius: 20, cursor: 'pointer',
+            padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
             border: '1px solid #E0E0E0', background: '#fff',
             fontSize: 11, color: '#666', lineHeight: 1.4,
           }}

@@ -321,7 +321,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   <button
                     onClick={() => onToggleOwned(!item.metadata?.owned)}
                     style={{
-                      padding: '2px 8px', borderRadius: 20, cursor: 'pointer', fontSize: 11,
+                      padding: '2px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 11,
                       border: item.metadata?.owned ? '1px solid #ECEAE6' : '1.5px solid #DDD',
                       background: '#fff',
                       color: item.metadata?.owned ? '#ABA69C' : '#AAA',
@@ -508,7 +508,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               )
               const editChip = (label: string, on: boolean, onClick: () => void) => (
                 <button key={label} onClick={onClick} style={{
-                  padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', flexShrink: 0,
+                  padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
                   border: on ? '1.5px solid #111' : '1px solid #E6E3DE',
                   background: on ? '#111' : '#fff', color: on ? '#fff' : '#888', fontWeight: on ? 600 : 400,
                 }}>{on ? `${label} ×` : label}</button>
@@ -637,7 +637,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   <button key={t} onClick={() => setType(t)} style={{
                     padding: '5px 12px',
                     border: active ? `1.5px solid ${c.border}` : '1.5px solid #E0E0E0',
-                    borderRadius: 20,
+                    borderRadius: 4,
                     background: active ? c.bg : '#fff',
                     color: active ? c.border : '#555',
                     fontSize: 13, fontWeight: active ? 600 : 400, cursor: 'pointer',

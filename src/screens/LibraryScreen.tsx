@@ -335,7 +335,7 @@ export function LibraryScreen() {
               style={{
                 width: '100%', boxSizing: 'border-box',
                 padding: '8px 34px 8px 12px', border: '1px solid #ddd',
-                borderRadius: 8, fontSize: 16, outline: 'none',
+                borderRadius: 4, fontSize: 16, outline: 'none',
               }}
             />
             {query && (
@@ -355,11 +355,11 @@ export function LibraryScreen() {
           </div>
         )}
 
-        {/* Filter row 1 — category */}
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 8 }}>
-          <FilterChip label="all" active={categories.length === 0 && !scratchOnly} onClick={() => { setCategories([]); setScratchOnly(false) }} />
+        {/* Filter row 1 — category (tab style: navigation, not selection) */}
+        <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 0 }}>
+          <TabChip label="all" active={categories.length === 0 && !scratchOnly} onClick={() => { setCategories([]); setScratchOnly(false) }} />
           {['film', 'book', 'music', 'tv', ...types.filter(t => !['film','book','music','tv'].includes(t))].map(t => (
-            <FilterChip
+            <TabChip
               key={t}
               label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
               active={categories.includes(t) && !scratchOnly}
@@ -367,17 +367,17 @@ export function LibraryScreen() {
             />
           ))}
           {!types.includes('other') && (
-            <FilterChip label="other" active={categories.includes('other') && !scratchOnly} onClick={() => selectCategory('other')} />
+            <TabChip label="other" active={categories.includes('other') && !scratchOnly} onClick={() => selectCategory('other')} />
           )}
           {hasScratch && (
-            <FilterChip label="? scratch" active={scratchOnly} onClick={() => { setScratchOnly(v => !v); setCategories([]) }} />
+            <TabChip label="? scratch" active={scratchOnly} onClick={() => { setScratchOnly(v => !v); setCategories([]) }} />
           )}
         </div>
 
         {/* Filter row 2 — status + vibe/genre dropdowns (+ reaction chips when on "done") */}
-        <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none' }}>
+        <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', marginTop: 2 }}>
           {(['all', 'want_to', 'done'] as StatusFilter[]).map(s => (
-            <FilterChip
+            <TabChip
               key={s}
               label={s === 'all' ? 'all' : s === 'want_to' ? 'want to' : 'done'}
               active={statusFilter === s}
@@ -470,7 +470,7 @@ export function LibraryScreen() {
               />
               <button
                 onClick={() => navigate('/shows')}
-                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 4, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
               >
                 shows near you
               </button>
@@ -482,11 +482,11 @@ export function LibraryScreen() {
       {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 150 : 80 }}>
         {dupes > 0 && !loading && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', background: '#F4F4F4', borderRadius: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', border: '1px solid #E8E8E8', borderRadius: 4 }}>
             <span style={{ fontSize: 12, color: '#666' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>
             <button
               onClick={() => setDupesOpen(true)}
-              style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+              style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 4, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
             >
               review
             </button>
@@ -565,7 +565,7 @@ export function LibraryScreen() {
                 <button onClick={() => setConfirmBulkDelete(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#555', padding: '6px 8px' }}>cancel</button>
                 <button
                   onClick={async () => { await deleteMany([...selectedIds]); exitSelect() }}
-                  style={{ background: '#C0392B', color: '#fff', border: 'none', borderRadius: 20, cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: '7px 16px' }}
+                  style={{ background: '#C0392B', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: '7px 16px' }}
                 >
                   delete {n}
                 </button>
@@ -574,7 +574,7 @@ export function LibraryScreen() {
               <button
                 disabled={n === 0}
                 onClick={() => setConfirmBulkDelete(true)}
-                style={{ background: 'none', border: `1.5px solid ${n === 0 ? '#EEE' : '#C0392B'}`, color: n === 0 ? '#CCC' : '#C0392B', borderRadius: 20, cursor: n === 0 ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, padding: '6px 16px' }}
+                style={{ background: 'none', border: `1.5px solid ${n === 0 ? '#EEE' : '#C0392B'}`, color: n === 0 ? '#CCC' : '#C0392B', borderRadius: 4, cursor: n === 0 ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, padding: '6px 16px' }}
               >
                 delete
               </button>
@@ -650,7 +650,7 @@ function DropdownButton({ label, value, active, onToggle, onClear }: {
       onClick={onToggle}
       style={{
         display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
-        padding: '5px 12px', borderRadius: 20,
+        padding: '4px 10px', borderRadius: 4,
         border: (value || active) ? '1.5px solid #111' : '1.5px solid #E0E0E0',
         background: value ? '#EDEDED' : active ? '#F4F4F4' : '#fff',
         color: (value || active) ? '#111' : '#555',
@@ -690,7 +690,7 @@ function DropdownMenu({ options, selected, onSelect, anchorRef }: {
     <div style={{
       position: 'fixed', top: pos.top, left: pos.left,
       background: '#fff', border: '1px solid #E8E8E8',
-      borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
+      borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
       zIndex: 200, minWidth: 160, maxHeight: 220, overflowY: 'auto',
       padding: '4px 0',
     }}>
@@ -726,6 +726,31 @@ function EmptyState({ hasItems }: { hasItems: boolean }) {
   )
 }
 
+// Tab-style: used for category row + status row. No pill, underline indicates active.
+function TabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flexShrink: 0,
+        padding: '4px 2px 8px',
+        border: 'none',
+        borderBottom: active ? '1.5px solid #111' : '1.5px solid transparent',
+        background: 'none',
+        color: active ? '#111' : '#888',
+        fontSize: 13,
+        fontWeight: active ? 600 : 400,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        letterSpacing: active ? '-0.1px' : '0',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
+// Chip-style: used for toggleable filters (reactions, new music tuesday).
 function FilterChip({ label, active, onClick, disabled }: { label: string; active: boolean; onClick: () => void; disabled?: boolean }) {
   return (
     <button
@@ -733,12 +758,12 @@ function FilterChip({ label, active, onClick, disabled }: { label: string; activ
       disabled={disabled}
       style={{
         flexShrink: 0,
-        padding: '5px 12px',
-        border: active && !disabled ? '1.5px solid #111111' : '1.5px solid #E0E0E0',
-        borderRadius: 20,
+        padding: '4px 10px',
+        border: active && !disabled ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+        borderRadius: 4,
         background: active && !disabled ? '#EDEDED' : '#fff',
-        color: disabled ? '#C4C4C4' : active ? '#111111' : '#555',
-        fontSize: 13,
+        color: disabled ? '#C4C4C4' : active ? '#111' : '#555',
+        fontSize: 12,
         fontWeight: active ? 600 : 400,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.6 : 1,

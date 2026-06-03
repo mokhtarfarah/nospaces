@@ -30,7 +30,7 @@ export function MoodChips({ isActive, onToggle, size = 'md', layout = 'wrap', gr
       key={mood}
       onClick={() => onToggle(mood)}
       style={{
-        padding: sm ? '3px 10px' : '5px 12px', borderRadius: 20, cursor: 'pointer', flexShrink: 0,
+        padding: sm ? '3px 10px' : '5px 12px', borderRadius: 4, cursor: 'pointer', flexShrink: 0,
         fontSize: sm ? 11 : 13,
         border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
         background: active ? (sm ? '#111' : '#EDEDED') : '#fff',
@@ -58,7 +58,7 @@ export function MoodChips({ isActive, onToggle, size = 'md', layout = 'wrap', gr
                   {list.filter(m => isActive(m)).map(m => chip(m, true))}
                   {inactive.length > 0 && (
                     <button onClick={() => setOpen(o => ({ ...o, [label]: !o[label] }))} style={{
-                      padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
+                      padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
                       border: '1.5px dashed #CCC', background: 'none', color: '#AAA', flexShrink: 0,
                     }}>{isOpen ? 'done' : '+ add'}</button>
                   )}

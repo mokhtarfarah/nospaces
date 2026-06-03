@@ -292,7 +292,7 @@ function LibraryTools({ items, editItem, open }: {
     setWikiBackfilling(false); wikiCancelRef.current = false
   }
 
-  const btnStyle = { padding: '7px 16px', borderRadius: 20, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
+  const btnStyle = { padding: '7px 16px', borderRadius: 4, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
   const ghostBtn = { background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: '0 4px' } as const
   const warnBtn = { background: 'none', border: 'none', fontSize: 12, color: '#C00', cursor: 'pointer', padding: '0 4px', fontWeight: 600 } as const
   const cost = (n: number) => `~${n} API calls (~$${(n * 0.001).toFixed(2)})`
@@ -664,7 +664,7 @@ export function AddScreen() {
             type="button"
             onClick={() => !bulkLoading && imageRef.current?.click()}
             style={{
-              padding: '10px 22px', borderRadius: 24, border: 'none',
+              padding: '10px 22px', borderRadius: 4, border: 'none',
               background: '#F0F0F0', fontSize: 14, color: '#444', cursor: 'pointer',
               display: 'inline-flex', alignItems: 'center', gap: 8,
             }}
@@ -696,13 +696,13 @@ export function AddScreen() {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button
                 onClick={handleFallbackIdentify}
-                style={{ padding: '8px 18px', borderRadius: 20, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '8px 18px', borderRadius: 4, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 identify with Sonnet
               </button>
               <button
                 onClick={() => setSonnetPrompt(false)}
-                style={{ padding: '8px 18px', borderRadius: 20, border: '1px solid #DDD', background: 'none', color: '#888', fontSize: 13, cursor: 'pointer' }}
+                style={{ padding: '8px 18px', borderRadius: 4, border: '1px solid #DDD', background: 'none', color: '#888', fontSize: 13, cursor: 'pointer' }}
               >
                 cancel
               </button>

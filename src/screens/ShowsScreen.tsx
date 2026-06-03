@@ -186,7 +186,7 @@ export function ShowsScreen() {
             <button
               onClick={useMyLocation}
               disabled={locating}
-              style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 16, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: locating ? 'default' : 'pointer' }}
+              style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 4, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: locating ? 'default' : 'pointer' }}
             >
               {locating ? 'locating…' : 'use my location'}
             </button>
@@ -198,7 +198,7 @@ export function ShowsScreen() {
                   <button
                     key={c.name}
                     onClick={() => removeCity(c)}
-                    style={{ padding: '5px 11px', borderRadius: 16, fontSize: 12, cursor: 'pointer', border: '1px solid #E0B4B4', background: '#FCF3F3', color: '#B0392B' }}
+                    style={{ padding: '5px 11px', borderRadius: 4, fontSize: 12, cursor: 'pointer', border: '1px solid #E0B4B4', background: '#FCF3F3', color: '#B0392B' }}
                   >
                     {c.name.toLowerCase()} ✕
                   </button>
@@ -355,7 +355,7 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
     <button
       onClick={onClick}
       style={{
-        padding: '5px 11px', borderRadius: 16, fontSize: 12, cursor: 'pointer',
+        padding: '5px 11px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
         border: `1px solid ${active ? '#111' : '#DDD'}`,
         background: active ? '#111' : '#fff',
         color: active ? '#fff' : '#555', fontWeight: active ? 600 : 400,

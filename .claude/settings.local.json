@@ -147,7 +147,15 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
       "Bash(git pull *)",
       "Bash(git stash *)",
-      "Bash(GIT_EDITOR=true git rebase --continue)"
+      "Bash(GIT_EDITOR=true git rebase --continue)",
+      "Bash(sed -i '' 's/borderRadius: 20,\\\\\\( background: item.confidence\\\\\\)/borderRadius: 4,\\\\1/' /Users/farahmokhtar/nospaces/src/components/ConfirmSheet.tsx)",
+      "Bash(sed -i '' 's/borderRadius: 20, background: active ? c.bg/borderRadius: 4, background: active ? c.bg/' /Users/farahmokhtar/nospaces/src/components/ConfirmSheet.tsx)",
+      "Bash(sed -i '' 's/borderRadius: 20, border: '\\\\''1\\\\.5px solid #111'\\\\''/borderRadius: 4, border: '\\\\''1.5px solid #111'\\\\''/g' /Users/farahmokhtar/nospaces/src/screens/AddScreen.tsx)",
+      "Bash(sed -i '' 's/borderRadius: 24, border: '\\\\''none'\\\\''/borderRadius: 4, border: '\\\\''none'\\\\''/g' /Users/farahmokhtar/nospaces/src/screens/AddScreen.tsx)",
+      "Bash(sed -i '' 's/borderRadius: 20, border: '\\\\''none'\\\\'', background: '\\\\''#111'\\\\''/borderRadius: 4, border: '\\\\''none'\\\\'', background: '\\\\''#111'\\\\''/g' /Users/farahmokhtar/nospaces/src/screens/AddScreen.tsx)",
+      "Bash(sed -i '' 's/borderRadius: 20, border: '\\\\''1px solid #DDD'\\\\''/borderRadius: 4, border: '\\\\''1px solid #DDD'\\\\''/g' /Users/farahmokhtar/nospaces/src/screens/AddScreen.tsx)",
+      "Bash(sed -i '' 's/borderRadius: 20, cursor: '\\\\''pointer'\\\\''/borderRadius: 4, cursor: '\\\\''pointer'\\\\''/g' /Users/farahmokhtar/nospaces/src/components/NoteInput.tsx)",
+      "Bash(sed -i '' 's/borderRadius: 16, border/borderRadius: 4, border/g; s/borderRadius: 16, fontSize/borderRadius: 4, fontSize/g' /Users/farahmokhtar/nospaces/src/screens/ShowsScreen.tsx)"
     ]
   }
 }

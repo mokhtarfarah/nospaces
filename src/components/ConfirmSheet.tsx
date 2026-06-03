@@ -211,7 +211,7 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
             return (
               <button key={t} onClick={() => setItem(v => ({ ...v, type: t }))} style={{
                 padding: '5px 12px', border: active ? `1.5px solid ${c.border}` : '1.5px solid #E0E0E0',
-                borderRadius: 20, background: active ? c.bg : '#fff',
+                borderRadius: 4, background: active ? c.bg : '#fff',
                 color: active ? c.border : '#555', fontSize: 13,
                 fontWeight: active ? 600 : 400, cursor: 'pointer',
               }}>
