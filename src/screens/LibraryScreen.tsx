@@ -12,7 +12,7 @@ import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
 import { MOODS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
-import { gapQueue } from '../lib/gaps'
+import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 
 type StatusFilter = 'all' | ItemStatus
 
@@ -327,26 +327,25 @@ export function LibraryScreen() {
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.2px' }}>Library</h1>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <button
+              onClick={() => setViewSheetOpen(true)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#333', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
+            >
+              {VIEW_CONFIG[view].label}
+              <span style={{ fontSize: 11, color: '#AAA' }}>▾</span>
+            </button>
+            {VIEW_CONFIG[view].directional && (
               <button
-                onClick={() => setViewSheetOpen(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 4 }}
+                onClick={() => setDir(d => (d === 'asc' ? 'desc' : 'asc'))}
+                title="Reverse order"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#111', padding: '4px 4px', lineHeight: 1 }}
               >
-                {VIEW_CONFIG[view].label}
-                <span style={{ fontSize: 12 }}>▾</span>
+                {dir === 'asc' ? '↑' : '↓'}
               </button>
-              {VIEW_CONFIG[view].directional && (
-                <button
-                  onClick={() => setDir(d => (d === 'asc' ? 'desc' : 'asc'))}
-                  title="Reverse order"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#111', padding: '4px 4px', lineHeight: 1 }}
-                >
-                  {dir === 'asc' ? '↑' : '↓'}
-                </button>
-              )}
-            </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <button
               onClick={() => setLayout(l => (l === 'list' ? 'grid' : 'list'))}
               title={layout === 'list' ? 'Grid view' : 'List view'}
@@ -354,15 +353,6 @@ export function LibraryScreen() {
             >
               {layout === 'list' ? <GridIcon /> : <ListIcon />}
             </button>
-            {layout === 'grid' && (
-              <button
-                onClick={() => setGridCols(c => (c === 3 ? 4 : 3))}
-                title="Columns"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', padding: '4px 4px', lineHeight: 1 }}
-              >
-                {gridCols} col
-              </button>
-            )}
             <button
               onClick={() => setSearchOpen(v => !v)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: 4 }}
@@ -373,14 +363,14 @@ export function LibraryScreen() {
               <button
                 onClick={clearFilters}
                 title="Clear all filters"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#999', padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 3 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#999', padding: '4px 4px' }}
               >
-                clear<span style={{ fontSize: 13, lineHeight: 1 }}>×</span>
+                clear×
               </button>
             )}
             <button
               onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: selectMode ? '#111' : '#555', fontWeight: selectMode ? 600 : 400, padding: '4px 4px' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: selectMode ? '#111' : '#888', fontWeight: selectMode ? 600 : 400, padding: '4px 4px' }}
             >
               {selectMode ? 'cancel' : 'select'}
             </button>
@@ -670,6 +660,7 @@ export function LibraryScreen() {
             tidyPosition={tidyQueue ? { index: tidyIndex, total: tidyQueue.length } : undefined}
             onSaveNext={tidyQueue ? () => goToTidy(tidyIndex + 1) : undefined}
             onSkipNext={tidyQueue ? () => goToTidy(tidyIndex + 1) : undefined}
+            onDismissNext={tidyQueue ? () => { editItem(fresh.id, { metadata: dismissGaps(fresh, itemGaps(fresh)) }); goToTidy(tidyIndex + 1) } : undefined}
             onEdit={fields => { editItem(fresh.id, fields) }}
             onSetMoods={moods => editItem(fresh.id, { moods })}
             onSetTags={tags => editItem(fresh.id, { tags })}
@@ -690,6 +681,9 @@ export function LibraryScreen() {
           dir={dir}
           onSelect={selectView}
           onClose={() => setViewSheetOpen(false)}
+          layout={layout}
+          gridCols={gridCols}
+          onGridCols={c => { setGridCols(c); setViewSheetOpen(false) }}
         />
       )}
 

@@ -38,9 +38,12 @@ interface Props {
   // Tapping a different view switches to it; tapping the active directional view reverses it.
   onSelect: (v: ViewMode) => void
   onClose: () => void
+  layout?: 'list' | 'grid'
+  gridCols?: 3 | 4
+  onGridCols?: (c: 3 | 4) => void
 }
 
-export function ViewSheet({ current, dir, onSelect, onClose }: Props) {
+export function ViewSheet({ current, dir, onSelect, onClose, layout, gridCols, onGridCols }: Props) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
@@ -81,6 +84,20 @@ export function ViewSheet({ current, dir, onSelect, onClose }: Props) {
             </button>
           )
         })}
+        {layout === 'grid' && onGridCols && gridCols && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, marginTop: 4 }}>
+            <span style={{ fontSize: 13, color: '#555' }}>grid columns</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {([3, 4] as const).map(n => (
+                <button key={n} onClick={() => onGridCols(n)} style={{
+                  padding: '4px 14px', borderRadius: 6, border: gridCols === n ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+                  background: gridCols === n ? '#111' : '#fff', color: gridCols === n ? '#fff' : '#888',
+                  fontSize: 13, fontWeight: gridCols === n ? 600 : 400, cursor: 'pointer',
+                }}>{n}</button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

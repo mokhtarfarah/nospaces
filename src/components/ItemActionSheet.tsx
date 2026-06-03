@@ -30,6 +30,7 @@ interface Props {
   tidyPosition?: { index: number; total: number }
   onSaveNext?: () => void
   onSkipNext?: () => void
+  onDismissNext?: () => void
 }
 
 const TYPES = ['film', 'book', 'music', 'tv', 'other']
@@ -64,7 +65,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, initialEdit, tidyPosition, onSaveNext, onSkipNext }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -715,6 +716,23 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </button>
               </div>
 
+              {/* Type chips — top so you confirm type before editing fields */}
+              <div style={{ display: 'flex', gap: 5, marginBottom: 12, flexWrap: 'wrap' }}>
+                {TYPES.map(t => {
+                  const c = typeColor(t)
+                  const active = type === t
+                  return (
+                    <button key={t} onClick={() => setType(t)} style={{
+                      padding: '4px 10px', border: active ? `1.5px solid ${c.border}` : '1.5px solid #E0E0E0',
+                      borderRadius: 4, background: active ? c.bg : '#fff', color: active ? c.border : '#888',
+                      fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer',
+                    }}>
+                      {TYPE_COLORS[t]?.label ?? t}
+                    </button>
+                  )
+                })}
+              </div>
+
               {/* Core identity */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
                 <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={smInput} />
@@ -790,23 +808,6 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   style={{ ...smInput, resize: 'none', lineHeight: 1.5 }} />
               </div>
 
-              {/* Type chips */}
-              <div style={{ display: 'flex', gap: 5, marginBottom: 14, flexWrap: 'wrap' }}>
-                {TYPES.map(t => {
-                  const c = typeColor(t)
-                  const active = type === t
-                  return (
-                    <button key={t} onClick={() => setType(t)} style={{
-                      padding: '4px 10px', border: active ? `1.5px solid ${c.border}` : '1.5px solid #E0E0E0',
-                      borderRadius: 4, background: active ? c.bg : '#fff', color: active ? c.border : '#888',
-                      fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer',
-                    }}>
-                      {TYPE_COLORS[t]?.label ?? t}
-                    </button>
-                  )
-                })}
-              </div>
-
               {/* Footer */}
               <div style={{ ...footer, display: 'flex', gap: 8 }}>
                 {onSaveNext ? (
@@ -821,6 +822,13 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   </>
                 )}
               </div>
+              {onDismissNext && (
+                <div style={{ textAlign: 'center', paddingBottom: 8 }}>
+                  <button onClick={onDismissNext} style={{ background: 'none', border: 'none', fontSize: 11, color: '#CCC', cursor: 'pointer', padding: '4px 0' }}>
+                    nothing to fill — dismiss
+                  </button>
+                </div>
+              )}
             </>
           )
         })()}
