@@ -365,7 +365,9 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                       onClick={() => setShowBlurb(v => !v)}
                       style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: '#B0B0B0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
                     >
-                      <span>{blurbSource ? `via ${blurbSource}` : 'about this'}</span>
+                      {/* Don't say "via Wikipedia" when the wikipedia ↗ link is right there —
+                          it reads as duplicative. Fall back to the neutral "about this". */}
+                      <span>{blurbSource && !(blurbSource === 'Wikipedia' && wikiUrl) ? `via ${blurbSource}` : 'about this'}</span>
                       <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
                     </button>
                   )}

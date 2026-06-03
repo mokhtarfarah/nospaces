@@ -14,7 +14,7 @@ const cache = new Map<string, WikiInfo>()
 
 // Limit concurrent Wikipedia lookups so we don't hammer the API when the
 // library renders many items at once (each item fires a request immediately).
-const MAX_CONCURRENT = 3
+const MAX_CONCURRENT = 6
 let active = 0
 const queue: Array<() => void> = []
 
@@ -61,6 +61,12 @@ async function resolve(type: string, title: string, creator: string | null, year
 export function clearWikiCache(type: string, title: string, creator: string | null, year: number | null) {
   const key = `${type}|${title}|${creator ?? ''}|${year ?? ''}`
   cache.delete(key)
+}
+
+// Imperative (non-hook) resolve for one-off use like the library backfill. Shares the
+// same cache + concurrency queue as the hook.
+export function fetchWikiInfo(type: string, title: string, creator: string | null, year: number | null): Promise<WikiInfo> {
+  return resolve(type, title, creator, year)
 }
 
 // Resolves the Wikipedia article URL + thumbnail for an item. Both may be null when
