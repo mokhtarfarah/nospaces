@@ -91,7 +91,7 @@ function Section({ title, defaultOpen = false, count, children }: {
         onClick={() => setOpen(o => !o)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0',
+          background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 10px',
         }}
       >
         <span style={{ fontSize: 15, fontWeight: 700, color: INK, letterSpacing: '1px', textTransform: 'uppercase' }}>
@@ -99,7 +99,7 @@ function Section({ title, defaultOpen = false, count, children }: {
         </span>
         <span style={{ fontSize: 10, color: MUTE }}>{open ? '▾' : '▸'}</span>
       </button>
-      {open && <div style={{ paddingBottom: 26 }}>{children}</div>}
+      {open && <div style={{ paddingTop: 2, paddingBottom: 26 }}>{children}</div>}
     </div>
   )
 }
@@ -178,7 +178,7 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
   if (ratedCount === 0) return null
 
   return (
-    <Section title={TYPE_LABEL[type] ?? type} count={ratedCount || undefined}>
+    <Section title={TYPE_LABEL[type] ?? type}>
       {ratedCount > 0 && <ReactionBar items={items} type={type} />}
       {categoryVibes.length > 0 && (
         <div style={{ marginBottom: 18 }}>
