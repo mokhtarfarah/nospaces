@@ -148,8 +148,8 @@ function LibraryTools({ items, editItem }: {
   const btnStyle = { padding: '7px 16px', borderRadius: 20, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
 
   return (
-    <div style={{ marginTop: 32, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#AAA', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+    <div style={{ marginTop: 16, paddingTop: 16, textAlign: 'center' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}>
         {open ? 'hide library tools' : 'library tools'}
       </button>
       {open && (
@@ -357,7 +357,7 @@ export function AddScreen() {
           onKeyDown={e => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) }
           }}
-          placeholder="A film, book, album, or show — or describe it"
+          placeholder="a film, book, album, or show — or describe it"
           rows={2}
           style={{
             width: '100%', boxSizing: 'border-box',
@@ -434,7 +434,7 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
       </form>
 
-      <div style={{ marginTop: 40, borderTop: '1px solid #ECEAE6', paddingTop: 16, textAlign: 'center' }}>
+      <div style={{ marginTop: 32, borderTop: '1px solid #ECEAE6', paddingTop: 20, textAlign: 'center' }}>
         <button
           onClick={() => setMoreWaysOpen(o => !o)}
           style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
