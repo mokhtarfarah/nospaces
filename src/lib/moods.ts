@@ -32,7 +32,6 @@ export const VERDICTS: string[] = [
   'guilty pleasure',
   'so bad it\'s good',
   'overhyped',
-  'classic',
 ]
 
 // Combined list — used anywhere that just needs "all mood tags" (e.g. the

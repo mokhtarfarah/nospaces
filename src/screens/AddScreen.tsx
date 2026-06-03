@@ -117,7 +117,7 @@ function LibraryTools({ items, editItem, open }: {
       return false
     }), [items])
   const needsMoodMigration = useMemo(() =>
-    items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy')), [items])
+    items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy' || m === 'classic')), [items])
   const needsWiki = useMemo(() =>
     items.filter(i => !i.metadata?.wikiUrl && ['film','tv','book','music'].includes(i.type)), [items])
 
@@ -169,8 +169,14 @@ function LibraryTools({ items, editItem, open }: {
     if (migrating || needsMoodMigration.length === 0) return
     setMigrating(true); setMigrateProgress(0)
     for (const item of needsMoodMigration) {
-      const next = (item.moods ?? []).map(m => m === 'gripping' ? 'intense' : m).filter(m => m !== 'project' && m !== 'easy')
-      try { await editItem(item.id, { moods: [...new Set(next)] }) } catch { /* skip */ }
+      // 'classic' moved from verdict → genre tag (use 'classics' for books, 'classic' elsewhere).
+      const next = (item.moods ?? []).map(m => m === 'gripping' ? 'intense' : m).filter(m => m !== 'project' && m !== 'easy' && m !== 'classic')
+      const fields: Record<string, unknown> = { moods: [...new Set(next)] }
+      if (item.moods?.includes('classic')) {
+        const tag = item.type === 'book' ? 'classics' : 'classic'
+        fields.tags = [...new Set([...(item.tags ?? []), tag])]
+      }
+      try { await editItem(item.id, fields) } catch { /* skip */ }
       setMigrateProgress(p => p + 1)
     }
     setMigrating(false)

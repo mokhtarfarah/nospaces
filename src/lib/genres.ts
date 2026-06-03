@@ -3,12 +3,12 @@
 // updates automatically (action card chips, filters, taste snapshot).
 export const GENRES: Record<string, string[]> = {
   film: [
-    'action', 'animation', 'comedy', 'crime', 'documentary',
+    'action', 'animation', 'classic', 'comedy', 'crime', 'documentary',
     'drama', 'fantasy', 'horror', 'musical', 'period piece',
     'romance', 'satire', 'sci-fi', 'thriller', 'western',
   ],
   tv: [
-    'animation', 'comedy', 'crime', 'documentary', 'drama',
+    'animation', 'classic', 'comedy', 'crime', 'documentary', 'drama',
     'fantasy', 'horror', 'period piece', 'reality', 'satire',
     'sci-fi', 'thriller',
   ],
