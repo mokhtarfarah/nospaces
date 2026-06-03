@@ -797,9 +797,10 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
 
   // Subtitle is kept lean: type · year · seasons · reaction. Vibe and runtime/pages
   // were removed here — runtime/pages now live in the action card instead.
+  const topGenre = (item.tags ?? []).find(isGenreTag) ?? null
   const subtitle = item.status === 'done'
-    ? [showType ? item.type : null, item.year, seasonsLabel, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
-    : [showType ? item.type : null, item.year, seasonsLabel].filter(Boolean).join(' · ')
+    ? [showType ? item.type : null, item.year, seasonsLabel, topGenre, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
+    : [showType ? item.type : null, item.year, seasonsLabel, topGenre].filter(Boolean).join(' · ')
 
   return (
     <div
