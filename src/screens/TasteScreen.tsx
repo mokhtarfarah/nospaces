@@ -447,13 +447,6 @@ export function TasteScreen() {
         </div>
       </Section>
 
-      {/* Verdicts (how it landed) — ranked by how often you reach for each, not by reaction. */}
-      {verdictTally.length > 0 && (
-        <Section title="your verdicts">
-          <p style={{ fontSize: 11, color: MUTE, margin: '0 0 12px' }}>how often you reach for each</p>
-          <RankedLine scored={verdictTally} />
-        </Section>
-      )}
 
       {/* PER CATEGORY — one card per medium holds its whole profile. tv last. */}
       {(['film', 'book', 'music', 'tv'] as const).map(type => (
