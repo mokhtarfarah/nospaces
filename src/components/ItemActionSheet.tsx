@@ -79,6 +79,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [lookingUp, setLookingUp] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showBlurb, setShowBlurb] = useState(false)
+  const [genrePickerOpen, setGenrePickerOpen] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
   const color = typeColor(item.type)
@@ -450,31 +451,44 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               </div>
             )}
 
-            {/* Genre tags — toggleable from the full vocab for this type */}
+            {/* Genre tags — active genres shown as removable chips; full picker expands on demand */}
             {(() => {
               const vocab = genresForType(item.type)
               if (!vocab.length) return null
               const descriptors = (item.tags ?? []).filter(t => !isGenreTag(t))
-              const activeGenres = new Set((item.tags ?? []).filter(t => isGenreTag(t)))
+              const activeGenres = [...new Set((item.tags ?? []).filter(t => isGenreTag(t)))]
               function toggleGenre(genre: string) {
                 const next = new Set(activeGenres)
                 next.has(genre) ? next.delete(genre) : next.add(genre)
                 onSetTags([...next, ...descriptors])
               }
+              const inactive = vocab.filter(g => !activeGenres.includes(g))
               return (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                  {vocab.map(genre => {
-                    const active = activeGenres.has(genre)
-                    return (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                    {activeGenres.map(genre => (
                       <button key={genre} onClick={() => toggleGenre(genre)} style={{
                         padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
-                        border: 'none',
-                        background: active ? '#1C1B19' : '#F2F2F2',
-                        color: active ? '#fff' : '#888',
-                        fontWeight: active ? 600 : 400,
-                      }}>{genre}</button>
-                    )
-                  })}
+                        border: 'none', background: '#1C1B19', color: '#fff', fontWeight: 600,
+                      }}>{genre} ×</button>
+                    ))}
+                    {inactive.length > 0 && (
+                      <button onClick={() => setGenrePickerOpen(v => !v)} style={{
+                        padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
+                        border: '1.5px dashed #CCC', background: 'none', color: '#AAA',
+                      }}>{genrePickerOpen ? 'done' : '+ genre'}</button>
+                    )}
+                  </div>
+                  {genrePickerOpen && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      {inactive.map(genre => (
+                        <button key={genre} onClick={() => toggleGenre(genre)} style={{
+                          padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
+                          border: '1.5px solid #E0E0E0', background: '#fff', color: '#888',
+                        }}>{genre}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })()}
@@ -484,6 +498,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               <div style={{ marginBottom: 12 }}>
                 <MoodChips
                   size="sm"
+                  layout="scroll"
                   isActive={m => (item.moods ?? []).includes(m)}
                   onToggle={mood => {
                     const active = (item.moods ?? []).includes(mood)
@@ -693,8 +708,8 @@ function actionBtn(color: string): React.CSSProperties {
 
 // Compact pill for the quick-link row (Spotify / Wikipedia / Watch).
 const linkPill: React.CSSProperties = {
-  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-  padding: '8px 6px', border: '1px solid #E6E6E6', borderRadius: 10,
+  display: 'inline-flex', alignItems: 'center', gap: 5,
+  padding: '6px 12px', border: '1px solid #E6E6E6', borderRadius: 20,
   background: '#FAFAFA', fontSize: 12, fontWeight: 500, color: '#333', cursor: 'pointer',
 }
 

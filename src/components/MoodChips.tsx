@@ -7,12 +7,16 @@ const GROUPS = [
   { label: 'how it landed', list: VERDICTS },
 ] as const
 
-export function MoodChips({ isActive, onToggle, size = 'md' }: {
+export function MoodChips({ isActive, onToggle, size = 'md', layout = 'wrap' }: {
   isActive: (mood: string) => boolean
   onToggle: (mood: string) => void
   size?: 'sm' | 'md'
+  layout?: 'wrap' | 'scroll'
 }) {
   const sm = size === 'sm'
+  const rowStyle: React.CSSProperties = layout === 'scroll'
+    ? { display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, paddingBottom: 4, WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }
+    : { display: 'flex', flexWrap: 'wrap', gap: 6 }
   return (
     <>
       {GROUPS.map(({ label, list }) => (
@@ -20,7 +24,7 @@ export function MoodChips({ isActive, onToggle, size = 'md' }: {
           <div style={{ fontSize: 10, fontWeight: 600, color: '#BBB', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 6 }}>
             {label}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <div style={rowStyle}>
             {list.map(mood => {
               const active = isActive(mood)
               return (
@@ -28,7 +32,7 @@ export function MoodChips({ isActive, onToggle, size = 'md' }: {
                   key={mood}
                   onClick={() => onToggle(mood)}
                   style={{
-                    padding: sm ? '3px 10px' : '5px 12px', borderRadius: 20, cursor: 'pointer',
+                    padding: sm ? '3px 10px' : '5px 12px', borderRadius: 20, cursor: 'pointer', flexShrink: 0,
                     fontSize: sm ? 11 : 13,
                     border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
                     background: active ? (sm ? '#111' : '#EDEDED') : '#fff',
