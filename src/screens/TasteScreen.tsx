@@ -47,27 +47,6 @@ function inlineItalics(text: string) {
   return parts.map((part, i) => i % 2 === 1 ? <em key={i}>{part}</em> : part)
 }
 
-// Renders the taste profile: handles prose lines and "- bullet" lines.
-function renderWithItalics(text: string) {
-  const lines = text.split('\n').filter(l => l.trim())
-  const hasBullets = lines.some(l => l.trimStart().startsWith('- '))
-  if (!hasBullets) return <>{inlineItalics(text)}</>
-  return (
-    <>
-      {lines.map((line, i) => {
-        if (line.trimStart().startsWith('- ')) {
-          return (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-              <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6 }}>—</span>
-              <span>{inlineItalics(line.replace(/^[\s-]+/, ''))}</span>
-            </div>
-          )
-        }
-        return <p key={i} style={{ margin: '0 0 10px' }}>{inlineItalics(line)}</p>
-      })}
-    </>
-  )
-}
 
 // Ranked tags as a flowing typographic line (editorial, no pills). The lead
 // term is emphasized in ink; the rest are graphite, middot-separated. Order
@@ -246,6 +225,7 @@ export function TasteScreen() {
   const { items, loading, editItem } = useItems()
   const { tasteProfile, tasteProfileGeneratedAt, setTasteProfile } = usePrefs()
   const [generatingProfile, setGeneratingProfile] = useState(false)
+  const [profileExpanded, setProfileExpanded] = useState(false)
 
   async function generateProfile() {
     if (generatingProfile) return
@@ -418,29 +398,54 @@ export function TasteScreen() {
           </div>
         )}
 
-        {/* Taste profile prose — lives inside vibes, no separate border */}
+        {/* Taste profile prose — opener always visible, bullets collapse behind "see more" */}
         <div style={{ marginTop: 18 }}>
-          {tasteProfile ? (
-            <>
-              <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 10, letterSpacing: '-0.1px' }}>
-                {renderWithItalics(tasteProfile)}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {tasteProfileGeneratedAt && (
-                  <span style={{ fontSize: 11, color: MUTE }}>
-                    {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
+          {tasteProfile ? (() => {
+            const lines = tasteProfile.split('\n').filter(l => l.trim())
+            const opener = lines.find(l => !l.trimStart().startsWith('- ')) ?? ''
+            const bullets = lines.filter(l => l.trimStart().startsWith('- '))
+            return (
+              <>
+                <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
+                  {inlineItalics(opener)}
+                </div>
+                {bullets.length > 0 && (
+                  <>
+                    {profileExpanded && (
+                      <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
+                        {bullets.map((line, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
+                            <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6 }}>—</span>
+                            <span>{inlineItalics(line.replace(/^[\s-]+/, ''))}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setProfileExpanded(e => !e)}
+                      style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                    >
+                      {profileExpanded ? 'see less' : 'see more'}
+                    </button>
+                  </>
                 )}
-                <button
-                  onClick={generateProfile}
-                  disabled={generatingProfile}
-                  style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
-                >
-                  {generatingProfile ? 'generating…' : 'regenerate'}
-                </button>
-              </div>
-            </>
-          ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                  {tasteProfileGeneratedAt && (
+                    <span style={{ fontSize: 11, color: MUTE }}>
+                      {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
+                  <button
+                    onClick={generateProfile}
+                    disabled={generatingProfile}
+                    style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
+                  >
+                    {generatingProfile ? 'generating…' : 'regenerate'}
+                  </button>
+                </div>
+              </>
+            )
+          })() : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, color: GRAPHITE }}>ai taste profile</span>
               <button
