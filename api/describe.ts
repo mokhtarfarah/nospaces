@@ -7,7 +7,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
   const { input } = req.body as { input?: string }
-  if (!input?.trim()) return res.status(200).json({ searchQuery: '', type: null })
+  if (!input?.trim()) return res.status(200).json({ searchQuery: '', type: null, sortByRecency: false })
+
+  // Temporal intent ("latest", "new", "recent"…) → caller should surface the newest release.
+  const sortByRecency = /\b(latest|newest|recent|new|current|this year)\b/i.test(input)
 
   try {
     const message = await client.messages.create({
@@ -38,9 +41,10 @@ Input: "${input.trim().replace(/"/g, '\\"')}"`,
     return res.status(200).json({
       searchQuery: typeof json.searchQuery === 'string' ? json.searchQuery : '',
       type: json.type ?? null,
+      sortByRecency,
     })
   } catch {
     // Fall through — caller will fall back to Sonnet identify
-    return res.status(200).json({ searchQuery: input.trim(), type: null })
+    return res.status(200).json({ searchQuery: input.trim(), type: null, sortByRecency })
   }
 }

@@ -113,7 +113,12 @@ All shipped to `main` / live:
 4. ✅ **Spotify link** — synced albums link directly to album page. Manually-added music falls back to Spotify search (kept — search link preferred over no link).
 
 **Still open (next session):**
-- **Describe-to-add recency sort** — NEXT SMALL FIX. The flow works (Haiku → catalog picker → ConfirmSheet) but "rosalía's latest album" returns old albums because iTunes sorts by relevance, not date. Fix: have `api/describe.ts` return a `sortByRecency: boolean` flag when input contains temporal words ("latest", "new", "recent", "newest"), then sort picker candidates by year descending in AddScreen when that flag is true.
+- ✅ **Describe-to-add recency sort (music + books)** — SHIPPED (session 14). "rosalía's latest album" → LUX (2025) first; "Ottessa Moshfegh's latest book" → Lapvona (2022) first. Client-side year sort alone wasn't enough — each catalog's relevance search buries or omits the newest release. Fix:
+  - (1) `api/describe.ts` returns `sortByRecency` (regex on temporal words — latest/new/recent/newest/current/this year).
+  - (2) `api/lookup.ts`, **music** `itunesByArtist()`: resolve artist → `lookup?id=…&entity=album` full discography → drop singles (`- Single` suffix or trackCount <4) → collapse deluxe variants ("LUX (Complete Works)", "MOTOMAMI +") onto base title (shortest name, earliest year) → sort newest-first. (iTunes relevance search omitted MOTOMAMI + LUX entirely.)
+  - (2b) `api/lookup.ts`, **books** `openLibraryByAuthor()`: search by `author=`, dedupe editions onto base title (split on " / "), drop non-Latin translations, sort by `first_publish_year` desc. Open Library's own `sort=new` is unusable (floats recent *reprints* of old books); `first_publish_year` is the cleanest real date. Verified across Moshfegh/Rooney/McCarthy — latest real book lands at/near #1; some box-set/foreign-edition noise remains below but it's a picker so user chooses.
+  - (3) `AddScreen` threads the flag through `catalogLookup(q, recency)`; handler floats newest across all types when recency.
+  - **Film/TV recency NOT built** ("that new Villeneuve movie") — TMDB needs a person-search → credits path (different shape from search/multi, which returns the person and gets filtered out). Own session.
 - **Series tag** — added to roadmap, not built yet.
 - **Visual element on taste page hero** — covers/collage
 - **Input workflow audit**
