@@ -17,22 +17,13 @@ interface Row extends RecItem {
   checked: boolean
 }
 
-const EXAMPLES = [
-  'NYT 100 best books of the 21st century',
-  "Pitchfork's best albums of 2025",
-  'A24 films I should see',
-  'best new sci-fi shows 2026',
-]
-
 const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
 const typeLabel = (t: string) => (t === 'tv' ? 'tv' : t)
 
 export function RecommendScreen() {
   const { items, importItems } = useItems()
   const navigate = useNavigate()
-  const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
-  const [loadingLabel, setLoadingLabel] = useState('')
   const [error, setError] = useState('')
   const [source, setSource] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
@@ -48,14 +39,11 @@ export function RecommendScreen() {
 
   async function handlePdf(file: File) {
     if (loading) return
-    // Vercel hard limit is 4.5MB — base64 adds ~33%, so warn above 3MB
-    // Vercel hard limit is 4.5MB total. Base64 adds ~33%, so 3MB PDF → ~4MB request.
     if (file.size > 3 * 1024 * 1024) {
-      setError(`PDF is too large (${(file.size / 1024 / 1024).toFixed(1)}MB — max 3MB). In Safari: Print → PDF → crop to just the article, or use Print Selection.`)
+      setError(`PDF is too large (${(file.size / 1024 / 1024).toFixed(1)}MB — max 3MB). Try printing just the article page.`)
       return
     }
     setError(''); setRows(null); setDone(null); setLoading(true)
-    setLoadingLabel('reading pdf… (~30s)')
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
@@ -70,7 +58,7 @@ export function RecommendScreen() {
       })
       if (!res.ok) {
         if (res.status === 413) {
-          setError('PDF is too large for the server. Try a smaller file or print just the article page.')
+          setError('PDF is too large for the server. Try printing just the article page.')
         } else {
           const body = await res.json().catch(() => ({})) as { error?: string }
           setError(body.error ?? `Server error ${res.status} — try again.`)
@@ -80,7 +68,7 @@ export function RecommendScreen() {
       const data = await res.json() as { source: string; sourceUrl: string; items: RecItem[]; error?: string }
       if (data.error) { setError(data.error); return }
       if (!data.items?.length) {
-        setError("Couldn't find a list in that PDF. Make sure the page contains a numbered or ranked list.")
+        setError("Couldn't find a list in that PDF. Make sure it contains a numbered or ranked list.")
         return
       }
       setSource(data.source || file.name)
@@ -93,40 +81,7 @@ export function RecommendScreen() {
       setError('Could not read the PDF. Try again or use a different file.')
     } finally {
       setLoading(false)
-      setLoadingLabel('')
       if (pdfRef.current) pdfRef.current.value = ''
-    }
-  }
-
-  async function handlePull(q: string) {
-    const text = q.trim()
-    if (!text || loading) return
-    setError(''); setRows(null); setDone(null); setLoading(true)
-    setLoadingLabel('pulling the list… (~60s)')
-    try {
-      const res = await fetch('/api/recommend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: text }),
-      })
-      if (!res.ok) throw new Error('request failed')
-      const data = await res.json() as { source: string; sourceUrl: string; items: RecItem[]; error?: string }
-      if (data.error) { setError(data.error); return }
-      if (!data.items?.length) {
-        setError("Couldn't find that list. Try naming the outlet and year (e.g. \"Pitchfork best albums 2025\"), or paste a direct URL for anything from 2026.")
-        return
-      }
-      setSource(data.source || text)
-      setSourceUrl(data.sourceUrl || '')
-      setRows(data.items.map(it => {
-        const inLibrary = libraryKeys.has(`${it.type}|${norm(it.title)}`)
-        return { ...it, inLibrary, checked: !inLibrary }
-      }))
-    } catch {
-      setError('Could not reach the recommender. Try again in a moment.')
-    } finally {
-      setLoading(false)
-      setLoadingLabel('')
     }
   }
 
@@ -190,93 +145,43 @@ export function RecommendScreen() {
       <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 6px', letterSpacing: '-0.2px' }}>
         recommendations
       </h1>
-      <p style={{ fontSize: 14, color: '#777', lineHeight: 1.5, margin: '0 0 18px' }}>
-        Name a list, paste a URL, or upload a PDF — a "best of", a critic's roundup, a publication's picks.
-        I'll extract the list, skip what you already have, and let you save the rest to <b>want to</b>.
+      <p style={{ fontSize: 14, color: '#777', lineHeight: 1.5, margin: '0 0 24px' }}>
+        Save any "best of" or ranked list as a PDF, upload it here, and pick what to add to your library.
+        Works for paywalled sites — save while logged in.
       </p>
-
-      <textarea
-        value={query}
-        onChange={e => setQuery(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePull(query) } }}
-        placeholder="e.g. Pitchfork best albums 2025 — or paste a URL"
-        rows={2}
-        style={{
-          width: '100%', boxSizing: 'border-box', padding: '14px', fontSize: 16,
-          border: '1px solid #E4E4E4', borderRadius: 12, resize: 'none',
-          fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
-        }}
-      />
-
-      <button
-        onClick={() => handlePull(query)}
-        disabled={!query.trim() || loading}
-        style={{
-          width: '100%', marginTop: 12, padding: '14px',
-          background: query.trim() && !loading ? '#111111' : '#E2E2E2',
-          color: '#fff', border: 'none', borderRadius: 12,
-          fontSize: 15, fontWeight: 600, letterSpacing: '0.2px',
-          cursor: query.trim() && !loading ? 'pointer' : 'default',
-        }}
-      >
-        {loading && loadingLabel ? loadingLabel : loading ? 'loading…' : 'get recommendations'}
-      </button>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 4px' }}>
-        <div style={{ flex: 1, height: 1, background: '#EEE' }} />
-        <span style={{ fontSize: 11, color: '#BBB' }}>or</span>
-        <div style={{ flex: 1, height: 1, background: '#EEE' }} />
-      </div>
-
-      <button
-        onClick={() => !loading && pdfRef.current?.click()}
-        disabled={loading}
-        style={{
-          width: '100%', padding: '12px', border: '1.5px dashed #D8D8D8', borderRadius: 12,
-          background: '#FAFAFA', color: loading ? '#CCC' : '#555', fontSize: 14,
-          cursor: loading ? 'default' : 'pointer', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', gap: 8,
-        }}
-      >
-        <PdfIcon />
-        upload a PDF of the list
-      </button>
-      <p style={{ fontSize: 12, color: '#AAA', margin: '6px 0 0', textAlign: 'center' }}>
-        great for paywalled sites — save the article as PDF while logged in, then upload
-      </p>
-      <input
-        ref={pdfRef}
-        type="file"
-        accept="application/pdf"
-        onChange={e => { const f = e.target.files?.[0]; if (f) handlePdf(f) }}
-        style={{ display: 'none' }}
-      />
 
       {!rows && done == null && (
-        <div style={{ marginTop: 18 }}>
-          <div style={{ fontSize: 11, color: '#AAA', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>try</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {EXAMPLES.map(ex => (
-              <button
-                key={ex}
-                onClick={() => { setQuery(ex); handlePull(ex) }}
-                disabled={loading}
-                style={{
-                  padding: '7px 12px', borderRadius: 20, border: '1px solid #E4E4E4',
-                  background: '#fff', color: '#555', fontSize: 13, cursor: 'pointer',
-                }}
-              >
-                {ex}
-              </button>
-            ))}
-          </div>
-        </div>
+        <>
+          <button
+            onClick={() => !loading && pdfRef.current?.click()}
+            disabled={loading}
+            style={{
+              width: '100%', padding: '20px 16px', border: '1.5px dashed #D8D8D8', borderRadius: 14,
+              background: '#FAFAFA', color: loading ? '#CCC' : '#555', fontSize: 15,
+              cursor: loading ? 'default' : 'pointer', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: 10,
+            }}
+          >
+            <PdfIcon />
+            {loading ? 'reading pdf… (~30s)' : 'choose a PDF'}
+          </button>
+          <p style={{ fontSize: 12, color: '#AAA', margin: '8px 0 0', textAlign: 'center' }}>
+            on iPhone: open the article, share → print → pinch out on the preview → share PDF
+          </p>
+          <input
+            ref={pdfRef}
+            type="file"
+            accept="application/pdf"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handlePdf(f) }}
+            style={{ display: 'none' }}
+          />
+        </>
       )}
 
       {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 14 }}>{error}</p>}
 
       {rows && (
-        <div style={{ marginTop: 24 }}>
+        <div>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
             {source && (
               sourceUrl
@@ -309,12 +214,9 @@ export function RecommendScreen() {
                   opacity: r.inLibrary ? 0.45 : 1,
                 }}
               >
-                {/* Rank number */}
                 <div style={{ flexShrink: 0, width: 22, textAlign: 'right', fontSize: 12, color: '#BBB', paddingTop: 3, fontVariantNumeric: 'tabular-nums' }}>
                   {r.rank}
                 </div>
-
-                {/* Checkbox */}
                 <div style={{
                   flexShrink: 0, marginTop: 2, width: 20, height: 20, borderRadius: 6,
                   border: r.checked ? '1.5px solid #111' : '1.5px solid #CCC',
@@ -323,7 +225,6 @@ export function RecommendScreen() {
                 }}>
                   {!r.inLibrary && r.checked ? '✓' : ''}
                 </div>
-
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, color: '#111', lineHeight: 1.3 }}>
                     {r.title}
@@ -364,6 +265,13 @@ export function RecommendScreen() {
           >
             {saving ? 'saving…' : `save ${selected.length} to want to`}
           </button>
+
+          <button
+            onClick={() => { setRows(null); setSource(''); setSourceUrl('') }}
+            style={{ width: '100%', marginTop: 10, padding: '10px', background: 'none', border: 'none', color: '#999', fontSize: 13, cursor: 'pointer' }}
+          >
+            upload a different PDF
+          </button>
         </div>
       )}
 
@@ -372,15 +280,20 @@ export function RecommendScreen() {
           <p style={{ fontSize: 15, color: '#111', fontWeight: 600 }}>
             saved {done} to want to ✨
           </p>
-          <button
-            onClick={() => navigate('/library')}
-            style={{
-              marginTop: 12, padding: '12px 24px', background: '#111111', color: '#fff',
-              border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            go to library
-          </button>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 12 }}>
+            <button
+              onClick={() => { setDone(null) }}
+              style={{ padding: '12px 20px', background: '#fff', border: '1px solid #E4E4E4', borderRadius: 12, fontSize: 14, cursor: 'pointer', color: '#555' }}
+            >
+              upload another
+            </button>
+            <button
+              onClick={() => navigate('/library')}
+              style={{ padding: '12px 20px', background: '#111111', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            >
+              go to library
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -389,7 +302,7 @@ export function RecommendScreen() {
 
 function PdfIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
       <polyline points="14 2 14 8 20 8"/>
       <line x1="9" y1="13" x2="15" y2="13"/>
