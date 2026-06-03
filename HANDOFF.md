@@ -101,72 +101,44 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 10 end)
+## TODO / Roadmap (last edited 2026-06-03, updated session 11 end)
 
-### 📌 Session 10 summary (2026-06-02) — taste page overhaul + add page cleanup
+### 📌 Session 11 summary (2026-06-03) — add page redesign
 
-**Taste page — all shipped:**
-1. ✅ **"Describe my taste" AI prose block** — `api/taste-profile.ts`. Sends loved/liked items to Claude Sonnet → editorial paragraph + bullets. Cached in `user_prefs`. See more/see less inline. Regenerate button. Prompt is tuned: blunt, specific, second-person, *italics* for titles, cross-medium observations, loved > liked signal weighting.
-2. ✅ **Taste page layout overhaul** — non-collapsible hero header (vibes chips + prose, heavy INK divider below). Compact bordered category cards (FILMS/BOOKS/MUSIC/TV) with title + rated/loved% on header line, go-to creators, genres. "by medium" bridge label. Per-category vibes and era removed. Verdicts section removed.
-3. ✅ **Creator loyalty** — go-to creators (2+ items, reaction-scored) added to each category card.
-4. ✅ **Tidy up moved to Add page** — `LibraryTools` component in `AddScreen.tsx`, collapsed behind "library tools" link, only shows when there's work to do.
-5. ✅ **Add page quick fixes** — equal spacing around "or" divider, "find recommendations" moved inline with scratch link, "library tools" centered, Letterboxd/Spotify grouped separately.
+All shipped to `main` / live:
+1. ✅ **Add page layout overhaul** — textarea first, black identify button, photo as a compact grey-fill pill (not a full-width box), type chips removed entirely. Clean hierarchy: one primary action, one clear secondary.
+2. ✅ **Scratch label** → "save as note" (shorter). Single link below the photo button, no underline.
+3. ✅ **Letterboxd + Spotify + find recommendations** tucked behind "more ways to add" disclosure — one-time imports no longer competing with regular-use actions.
+4. ✅ **"more ways to add" and "library tools" on the same line** — shared footer row, one separator, clean.
+5. ✅ **Placeholder lowercase** — "a film, book, album, or show…"
 
-**Outstanding taste page feedback (do next session):**
-- h1 "Add" → "add" (lowercase, consistent with design language)
-- Shorten scratch label: "can't identify it? jot a description for later" → "save as note" (too wordy for an escape hatch)
-- Photo upload deserves more prominence — it's a first-class input, not a secondary action
-- Letterboxd + Spotify are one-time imports — should be visually quieter or behind a "more ways to add" disclosure, not same weight as regular-use links
-- Type chips feel mandatory but aren't — reconsider placement/visibility
-- Overall: too many decisions on first load, primary action (type + identify) needs to dominate more clearly
-- Visual element on taste page hero (covers/collage) — see Taste arc TODO
-
-**Still open from session 9 queue:**
+**Still open:**
 - **Blurb source duplication fix** (Action card #14) — cosmetic, small
 - **Manual genre edit** (Action card #13) — small, self-contained
-- **Input workflow audit** — full list of all input sources + friction analysis + streamlining (see 📥 Input workflow streamlining below)
+- **Visual element on taste page hero** — covers/collage (see Taste arc TODO)
+- **Input workflow audit** — full list of all input sources + friction analysis
 
 ---
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 8 end)
+### 📌 Session 10 summary (2026-06-02) — taste page overhaul
 
-### 📌 Session 8 summary (2026-06-02) — quick wins
-All shipped to `main` / live (commit `3a747c8`):
-1. ✅ **Shows / all tours collapsible** — each artist row collapses, **collapsed by default**, so you scan who's touring without scrolling every band's dates. Tap `▸` to expand. (`ShowsScreen.tsx`)
-2. ✅ **Re-identify match picker** (was Farah's queue) — on the action card, re-identify now surfaces the other candidates in a "got the wrong one? pick the right match" panel + a "look it up online" catalog search (`/api/lookup`). Picking applies instantly, keeping the existing type. Fixes the silent wrong-match grab. (`ItemActionSheet.tsx`)
-3. ✅ **Scratch entry always visible** (Seamless capture #9) — "can't identify it? jot a description for later" link always shows on Add (was hidden until you typed). (`AddScreen.tsx`)
-4. ✅ **Hide "from: quick add" label** (Action card #12) — only shows meaningful sources now. (`ItemActionSheet.tsx`)
-5. ✅ **Hide "From: quick add" on the Add/confirm sheet too** — the same noise on the save-to-library sheet, now hidden for the default source. (`ConfirmSheet.tsx`)
-6. ✅ **Leaner list subtitle** — removed the vibe/mood word AND runtime/pages from the library row subtitle. Subtitle is now `type · year · seasons · reaction`. (`LibraryScreen.tsx`)
-7. ✅ **Runtime / page count moved into the action card** — now appears on the card's meta line (`type · creator · year · 120 min`), not the list row. (`ItemActionSheet.tsx`)
+All shipped to `main` / live:
+1. ✅ **"Describe my taste" AI prose block** — `api/taste-profile.ts`. Sends loved/liked items to Claude Sonnet → editorial paragraph + bullets. Cached in `user_prefs`. See more/see less inline. Regenerate button.
+2. ✅ **Taste page layout overhaul** — non-collapsible hero header (vibes chips + prose, heavy INK divider). Compact bordered category cards (FILMS/BOOKS/MUSIC/TV) with title + rated/loved%, go-to creators, genres. Verdicts section removed.
+3. ✅ **Creator loyalty** — go-to creators (2+ items, reaction-scored) per category card.
+4. ✅ **LibraryTools** moved to Add page, collapsed behind "library tools" link.
 
-**🟡 Open question parked for Farah (scratch / quick-capture rethink):** Is the dedicated "scratch" page the right model, or is it simpler to just save a **plain un-identified entry** you edit/identify later? Also: should low-friction capture **work offline**? Decision pending — see Seamless capture #2/#10 for the current scratch behavior and the offline note. Likely outcome: keep one quick-capture path, make it dead simple, and explore offline via the existing PWA service worker + a local queue that syncs when back online.
+---
 
-**Next up (Farah's queue):** ⭐ **recommendations (Taste arc #3, the big one) — STARTING NOW** (own session + design pass; see Taste arc #3 for the build plan). Then the small adjacent features: **describe-to-add (B)** [Seamless capture #6, prioritized], **manual genre edit** [Action card #13], and lower-priority **descriptive library search (A)** [#7]. Open research thread: an *inferred-taste* model that profiles taste beyond hand tags (notes below in Taste arc #5).
+### 📌 Sessions 6–9 summary (2026-06-02) — key features shipped
 
-### 📌 Session 7 summary (2026-06-02) — touring bands / "shows near you"
-All shipped to `main` / live unless noted (5 commits: `61e1399`, `8a99f26`, `b1ee3f8`, `badaaf0`, + this doc):
-1. **New "shows near you" feature** — `/shows` (`ShowsScreen.tsx`), entry from the **music** category filter row. Two tabs: **near me** (location + radius) and **all tours** (band-first, every show worldwide grouped by artist, loved bands first — for planning a trip around a band). Full details in **Music** section below.
-2. **Provider = Ticketmaster Discovery** (`api/shows.ts`), not Bandsintown — Bandsintown's API is now gated (unregistered app_id → "explicit deny"). ⚠️ Ticketmaster covers TM/Live Nation only (misses indie/intl). ✅ **`TICKETMASTER_API_KEY` set in Vercel.** Bandsintown-merge left as a future TODO.
-3. **Editable, device-synced city list** — near-me cities are add/removable (tap **edit**). New `public.user_prefs` table (✅ **migration run in Supabase**), `usePrefs` hook, `/api/geocode` (OpenStreetMap, no key) to resolve typed cities → lat/lng.
-4. **Library:** moved `new music tuesday` + `📍 shows near you` onto the same row as the status/vibe/genre filters (music view only).
-5. ✅ **Live endpoint confirmed returning data** (`/api/shows?artist=Coldplay` returns events). Still needs Farah's in-app eyeball.
-6. ✅ **Tribute/cover-band noise fixed** (`api/shows.ts`) — now resolves each artist to its exact Ticketmaster **`attractionId`** (normalised name equality, so "Ultimate Coldplay" ≠ "Coldplay") via `/discovery/v2/attractions`, then queries events by `attractionId` (not fuzzy keyword). If the real artist isn't in TM's catalogue, returns **no shows** rather than wrong ones. Costs a 2nd TM call per artist (cached 12h). *Trade-off: very strict — an artist TM lists under a slightly different name could return nothing; revisit if Farah sees gaps for artists she knows are touring.*
-7. ✅ **Library filter row scrolls** (was wrap) — Filter row 2 is now horizontal-scroll. Vibe/genre dropdown menus switched to `position: fixed` (anchored to their button via ref) so the scroll container's overflow doesn't clip them.
-
-**Two small TODOs flagged this session (deferred):** remove "from: quick add" source label on the card (Action card #12); make the scratch page reachable from Add (Seamless capture #9).
-
-**Next up (Farah's queue):** recommendations (Taste arc #3, the big one) + re-identify manual-pick bug fix (let user pick the right result/Wikipedia page when it grabs the wrong one).
-
-### 📌 Session 6 summary (2026-06-02) — taste page deep work
-All shipped to `main` / live unless noted:
-1. **Library:** vibe/genre filter dropdowns moved onto the same row as the status chips (`all / want to / done`) — see Sort & filter #7.
-2. **Vibe tags split into two axes** (`src/lib/moods.ts`): **VIBES** (feel — ranked by reaction) + **VERDICTS** (how it landed — ranked by frequency, not reaction). Both stored in the one `moods[]` array; partitioned by vocab. New shared `MoodChips` component renders them as two labelled groups ("feel" / "how it landed") in MarkDoneSheet + both ItemActionSheet spots. One-time "vibe cleanup" backfill on the taste page migrates retired words (gripping→intense, drops project/easy).
-3. **New vibes added:** `intense` (was gripping), `epic`, `romantic`, `relaxed`, `upbeat`, `cozy`, `funny`. (`bittersweet` considered + skipped — overlaps melancholic/nostalgic.)
-4. **Genre vs descriptor split** (`isGenreTag` in `src/lib/genres.ts`): a tag is a "genre" only if it's in the genres vocab; free-text descriptors ("New York", "sitcom", "ensemble cast") are hidden from all genre surfaces but **stay on the item card and are now matched by library search** (search previously only hit title+creator).
-5. **Taste page reorganized category-first** + **new insights** (era lean, backlog-vs-taste) — see Taste arc #4.
-6. **Editorial aesthetic overhaul** of the taste page — see Taste arc #4. ⚠️ **Farah doesn't love it yet — parked.**
-7. Mockup tool committed at `public/taste-mockup.html` (font exploration; delete once typeface decided — note it's also live at `nospaces.vercel.app/taste-mockup.html`).
+- ✅ **Recommendations v1** (`/recommend`, PDF-upload only) — `RecommendScreen.tsx` + `api/recommend.ts`. Claude reads PDF → ranked items with blurbs → deduped vs library → checklist → save as `want_to`. Max 3MB PDF. `source_detail:'recommendation'`.
+- ✅ **Spotify sync** — saved-albums on demand, PKCE OAuth, deduped, `source_detail:'spotify'`. See Spotify section above.
+- ✅ **Letterboxd CSV import** — watchlist/watched/ratings, deduped, reactions mapped from star ratings. See Letterboxd section above.
+- ✅ **Shows near you** — Ticketmaster, two tabs (near me + all tours), editable city list, tribute-band noise fixed. `ShowsScreen.tsx`, `api/shows.ts`.
+- ✅ **Vibe tags split** — VIBES (feel) + VERDICTS (how it landed) in `src/lib/moods.ts`. `MoodChips` component.
+- ✅ **Re-identify match picker** — surfaces candidates, pick the right one. `ItemActionSheet.tsx`.
+- ✅ **Various small fixes** — scratch always visible, hide "from: quick add", leaner list subtitle, runtime on action card.
 
 
 ### 📥 Seamless capture
