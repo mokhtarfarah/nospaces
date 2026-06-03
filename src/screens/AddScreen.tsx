@@ -93,6 +93,51 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
 }
 
 import type { Item } from '../lib/database.types'
+import { isGenreTag } from '../lib/genres'
+import { useArtwork } from '../lib/artwork'
+
+const GAP_MEDIA_TYPES = ['film', 'tv', 'book', 'music']
+
+// Cheap, data-only gaps for an item (cover is resolved separately per row, since
+// it needs the art API). Returns the human labels of what's missing.
+function itemGaps(item: Item): string[] {
+  if (!GAP_MEDIA_TYPES.includes(item.type)) return []
+  const gaps: string[] = []
+  if (!item.year) gaps.push('year')
+  if (!item.creator?.trim()) gaps.push('creator')
+  if (!(item.tags ?? []).some(isGenreTag)) gaps.push('genre')
+  if (item.type === 'book') { if (!item.metadata?.pages) gaps.push('pages') }
+  else if (item.type === 'film' || item.type === 'tv') { if (!item.metadata?.runtime) gaps.push('runtime') }
+  if (!item.metadata?.wikiUrl) gaps.push('wiki')
+  return gaps
+}
+
+// One row in the "fill by hand" list. Resolves art the same way the library does
+// so it can flag a genuinely missing cover (no stored image AND nothing the art
+// API can find). Tapping jumps to the library and opens the item to fill.
+function GapRow({ item, gaps, onOpen }: { item: Item; gaps: string[]; onOpen: () => void }) {
+  const art = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
+  const storedThumb = (item.metadata?.wikiThumb as string | null) ?? null
+  const allGaps = !art && !storedThumb ? [...gaps, 'cover'] : gaps
+  return (
+    <button
+      onClick={onOpen}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid #F4F2EE', padding: '9px 10px', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
+    >
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, flex: 1 }}>
+        <span style={{ fontSize: 13, color: '#1C1B19', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
+        <span style={{ fontSize: 11, color: '#ABA69C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {item.creator || item.type}
+        </span>
+      </span>
+      <span style={{ display: 'flex', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '52%' }}>
+        {allGaps.map(g => (
+          <span key={g} style={{ fontSize: 10, color: '#6F6B64', background: '#F4F2EE', borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap' }}>{g}</span>
+        ))}
+      </span>
+    </button>
+  )
+}
 
 function LibraryTools({ items, editItem, open }: {
   items: Item[]
@@ -138,8 +183,15 @@ function LibraryTools({ items, editItem, open }: {
   const needsWiki = useMemo(() =>
     items.filter(i => !i.metadata?.wikiUrl && ['film','tv','book','music'].includes(i.type)), [items])
 
-  const total = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length
-  if (total === 0 || !open) return null
+  // Holistic, item-first view for manual filling — any item missing any data field.
+  const incomplete = useMemo(() =>
+    items
+      .map(i => ({ item: i, gaps: itemGaps(i) }))
+      .filter(x => x.gaps.length > 0)
+      .sort((a, b) => b.gaps.length - a.gaps.length), [items])
+
+  const autoTotal = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length
+  if ((autoTotal === 0 && incomplete.length === 0) || !open) return null
 
   async function runBackfill(targetItems: Item[] = untagged) {
     if (backfilling || targetItems.length === 0) return
@@ -246,38 +298,19 @@ function LibraryTools({ items, editItem, open }: {
   const cost = (n: number) => `~${n} API calls (~$${(n * 0.001).toFixed(2)})`
   const listLinkBtn = { background: 'none', border: 'none', fontSize: 12, color: '#6F6B64', cursor: 'pointer', padding: 0, textDecoration: 'underline' } as const
 
-  // Expandable "see full list" of the items with this gap — tap one to jump to
-  // the library and open it for manual filling. Read-only, no API calls.
-  const gapList = (key: string, list: Item[]) => {
-    if (openList !== key) return null
-    return (
-      <div style={{ marginTop: 8, maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', border: '1px solid #ECEAE6', borderRadius: 6 }}>
-        {list.map((it, idx) => (
-          <button
-            key={it.id}
-            onClick={() => navigate(`/library?item=${it.id}`)}
-            style={{ display: 'flex', alignItems: 'baseline', gap: 6, textAlign: 'left', background: 'none', border: 'none', borderTop: idx === 0 ? 'none' : '1px solid #F4F2EE', padding: '8px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            <span style={{ fontSize: 13, color: '#1C1B19' }}>{it.title}</span>
-            {it.creator && <span style={{ fontSize: 12, color: '#ABA69C' }}>{it.creator}</span>}
-            <span style={{ fontSize: 11, color: '#ABA69C', marginLeft: 'auto', flexShrink: 0 }}>{it.type}</span>
-          </button>
-        ))}
-      </div>
-    )
-  }
   const toggleLink = (key: string) => (
     <button onClick={() => setOpenList(openList === key ? null : key)} style={listLinkBtn}>
       {openList === key ? 'hide' : 'see full list'}
     </button>
   )
+  const sectionLabel = { fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C' } as const
 
   return (
     <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {autoTotal > 0 && <div style={sectionLabel}>fill automatically</div>}
       {untagged.length > 0 && (
-        <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags · {toggleLink('genre')}</span>
+          <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags</span>
           {backfilling
             ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)}/{backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : backfillResult
@@ -294,13 +327,10 @@ function LibraryTools({ items, editItem, open }: {
                   </span>
                 : <button onClick={() => setBackfillConfirm(true)} style={btnStyle}>tag my library</button>}
         </div>
-        {gapList('genre', untagged)}
-        </div>
       )}
       {needsRuntime.length > 0 && (
-        <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or pages · {toggleLink('runtime')}</span>
+          <span style={{ fontSize: 13, color: '#888' }}>{needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or pages</span>
           {rtBackfilling
             ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>filling {Math.min(rtProgress + 5, rtTotal)}/{rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : rtResult
@@ -317,8 +347,6 @@ function LibraryTools({ items, editItem, open }: {
                   </span>
                 : <button onClick={() => setRtConfirm(true)} style={btnStyle}>fill in</button>}
         </div>
-        {gapList('runtime', needsRuntime)}
-        </div>
       )}
       {needsMoodMigration.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -329,14 +357,30 @@ function LibraryTools({ items, editItem, open }: {
         </div>
       )}
       {needsWiki.length > 0 && (
-        <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{needsWiki.length} item{needsWiki.length !== 1 ? 's' : ''} missing saved wiki links · {toggleLink('wiki')}</span>
+          <span style={{ fontSize: 13, color: '#888' }}>{needsWiki.length} item{needsWiki.length !== 1 ? 's' : ''} missing saved wiki links</span>
           {wikiBackfilling
             ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>fetching {Math.min(wikiProgress + 6, wikiTotal)}/{wikiTotal}… <button onClick={() => { wikiCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : <button onClick={runWikiBackfill} style={btnStyle}>fill in links</button>}
         </div>
-        {gapList('wiki', needsWiki)}
+      )}
+
+      {incomplete.length > 0 && (
+        <div style={{ borderTop: autoTotal > 0 ? '1px solid #ECEAE6' : 'none', paddingTop: autoTotal > 0 ? 16 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={sectionLabel}>fill by hand</span>
+            {toggleLink('incomplete')}
+          </div>
+          <div style={{ fontSize: 13, color: '#888', marginTop: 6 }}>
+            {incomplete.length} item{incomplete.length !== 1 ? 's' : ''} with data gaps
+          </div>
+          {openList === 'incomplete' && (
+            <div style={{ marginTop: 8, maxHeight: 340, overflowY: 'auto', border: '1px solid #ECEAE6', borderRadius: 6 }}>
+              {incomplete.map(({ item, gaps }) => (
+                <GapRow key={item.id} item={item} gaps={gaps} onOpen={() => navigate(`/library?item=${item.id}`)} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
