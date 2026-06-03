@@ -22,7 +22,7 @@ async function identifyText(input: string, typeHint?: string | null): Promise<Ai
   return res.json()
 }
 
-async function describeToSearch(input: string): Promise<{ searchQuery: string; type: string | null }> {
+async function describeToSearch(input: string): Promise<{ searchQuery: string; type: string | null; sortByRecency?: boolean }> {
   const res = await fetch('/api/describe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -32,8 +32,8 @@ async function describeToSearch(input: string): Promise<{ searchQuery: string; t
   return res.json()
 }
 
-async function catalogLookup(q: string): Promise<Candidate[]> {
-  const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}`)
+async function catalogLookup(q: string, recency = false): Promise<Candidate[]> {
+  const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}${recency ? '&recency=1' : ''}`)
   if (!res.ok) return []
   const { results } = await res.json()
   return Array.isArray(results) ? results : []
@@ -331,11 +331,11 @@ export function AddScreen() {
     setLoading(true)
     try {
       // Step 1: Haiku intent parse
-      const { searchQuery, type: parsedType } = await describeToSearch(title.trim())
+      const { searchQuery, type: parsedType, sortByRecency } = await describeToSearch(title.trim())
 
       // Step 2: Catalog lookup
       if (searchQuery.trim()) {
-        const all = await catalogLookup(searchQuery.trim())
+        const all = await catalogLookup(searchQuery.trim(), sortByRecency)
         const typed = parsedType ? all.filter(r => r.type === parsedType) : all
         const candidates = typed.length > 0 ? typed : all
         if (candidates.length > 0) {
