@@ -45,10 +45,32 @@ function scoreTags(items: Item[], field: 'tags' | 'moods', type?: string): Score
     .sort((a, b) => b.score - a.score)
 }
 
-// Renders text with *word* → <em>word</em> for media titles.
-function renderWithItalics(text: string) {
+// Renders inline *text* → <em> for media titles.
+function inlineItalics(text: string) {
   const parts = text.split(/\*([^*]+)\*/)
   return parts.map((part, i) => i % 2 === 1 ? <em key={i}>{part}</em> : part)
+}
+
+// Renders the taste profile: handles prose lines and "- bullet" lines.
+function renderWithItalics(text: string) {
+  const lines = text.split('\n').filter(l => l.trim())
+  const hasBullets = lines.some(l => l.trimStart().startsWith('- '))
+  if (!hasBullets) return <>{inlineItalics(text)}</>
+  return (
+    <>
+      {lines.map((line, i) => {
+        if (line.trimStart().startsWith('- ')) {
+          return (
+            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
+              <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6 }}>—</span>
+              <span>{inlineItalics(line.replace(/^[\s-]+/, ''))}</span>
+            </div>
+          )
+        }
+        return <p key={i} style={{ margin: '0 0 10px' }}>{inlineItalics(line)}</p>
+      })}
+    </>
+  )
 }
 
 // Ranked tags as a flowing typographic line (editorial, no pills). The lead
