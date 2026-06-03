@@ -81,8 +81,8 @@ function RankedLine({ scored, limit }: { scored: Scored[]; limit?: number }) {
 }
 
 // Collapsible section with the uppercase label header + chevron.
-function Section({ title, defaultOpen = false, count, children }: {
-  title: string; defaultOpen?: boolean; count?: number; children: ReactNode
+function Section({ title, defaultOpen = false, children }: {
+  title: string; defaultOpen?: boolean; children: ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
@@ -91,15 +91,15 @@ function Section({ title, defaultOpen = false, count, children }: {
         onClick={() => setOpen(o => !o)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 10px',
+          background: 'none', border: 'none', cursor: 'pointer', padding: '14px 0 8px',
         }}
       >
         <span style={{ fontSize: 15, fontWeight: 700, color: INK, letterSpacing: '1px', textTransform: 'uppercase' }}>
-          {title}{count != null && <span style={{ color: MUTE, fontWeight: 500 }}>  {count}</span>}
+          {title}
         </span>
         <span style={{ fontSize: 10, color: MUTE }}>{open ? '▾' : '▸'}</span>
       </button>
-      {open && <div style={{ paddingTop: 2, paddingBottom: 26 }}>{children}</div>}
+      {open && <div style={{ paddingTop: 2, paddingBottom: 18 }}>{children}</div>}
     </div>
   )
 }
@@ -136,11 +136,6 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
     const genres = genresScored.filter(s => s.score >= 0).slice(0, 6)
     const lowGenres = genresScored.filter(s => s.score < 0).slice(0, 6)
 
-    // Per-category vibes — same scoring as top-level but filtered to this type.
-    const categoryVibes = scoreTags(items, 'moods', type)
-      .filter(s => VIBES.includes(s.label) && s.score >= 0)
-      .slice(0, 6)
-
     // Creator loyalty — creators with 2+ rated items, ranked by reaction score.
     const creatorMap = new Map<string, { score: number; count: number }>()
     for (const i of items) {
@@ -155,53 +150,26 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
       .sort((a, b) => b.score - a.score || b.count - a.count)
       .slice(0, 6)
 
-    // Era — positively-rated decades from `year`.
-    const eraMap = new Map<string, { score: number; count: number }>()
-    for (const i of items) {
-      if (i.type !== type || i.status !== 'done' || !i.reaction || !i.year) continue
-      const decade = `${Math.floor(i.year / 10) * 10}s`
-      const w = WEIGHTS[i.reaction]
-      const e = eraMap.get(decade) ?? { score: 0, count: 0 }
-      eraMap.set(decade, { score: e.score + w, count: e.count + 1 })
-    }
-    const era = Array.from(eraMap.entries())
-      .map(([label, v]) => ({ label, score: v.score, count: v.count }))
-      .filter(s => s.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6)
-
     const ratedCount = items.filter(i => i.type === type && i.status === 'done' && i.reaction).length
-    return { genres, lowGenres, categoryVibes, creators, era, ratedCount }
+    return { genres, lowGenres, creators, ratedCount }
   }, [items, type])
 
-  const { genres, lowGenres, categoryVibes, creators, era, ratedCount } = data
+  const { genres, lowGenres, creators, ratedCount } = data
   if (ratedCount === 0) return null
 
   return (
     <Section title={TYPE_LABEL[type] ?? type}>
       {ratedCount > 0 && <ReactionBar items={items} type={type} />}
-      {categoryVibes.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <SubLabel>vibes</SubLabel>
-          <RankedLine scored={categoryVibes} limit={6} />
-        </div>
-      )}
-      {genres.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <SubLabel>genres you love</SubLabel>
-          <RankedLine scored={genres} limit={6} />
-        </div>
-      )}
       {creators.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
+        <div style={{ marginBottom: 16 }}>
           <SubLabel>go-to creators</SubLabel>
           <RankedLine scored={creators} limit={6} />
         </div>
       )}
-      {era.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <SubLabel>era</SubLabel>
-          <RankedLine scored={era} limit={6} />
+      {genres.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <SubLabel>genres you love</SubLabel>
+          <RankedLine scored={genres} limit={6} />
         </div>
       )}
       {lowGenres.length > 0 && (
@@ -374,87 +342,109 @@ export function TasteScreen() {
     </div>
   )
 
-  return (
-    <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 10px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
+  // Cross-medium love rate — compare loved% across media with enough data.
+  const mediumRates = useMemo(() => {
+    return (['film', 'book', 'music', 'tv'] as const).map(type => {
+      const rated = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
+      const loved = rated.filter(i => i.reaction === 'loved_it').length
+      return { type, pct: rated.length >= 5 ? Math.round((loved / rated.length) * 100) : null }
+    }).filter(m => m.pct !== null) as { type: string; pct: number }[]
+  }, [items])
 
-      {/* OVERALL — vibes + verdicts are cross-type (a vibe doesn't belong to a medium). */}
-      {/* Vibes (feel) — your taste fingerprint. Top of the page, open by default. */}
+  const mediumInsight = useMemo(() => {
+    if (mediumRates.length < 2) return null
+    const sorted = [...mediumRates].sort((a, b) => b.pct - a.pct)
+    const top = sorted[0], bottom = sorted[sorted.length - 1]
+    if (top.pct - bottom.pct < 10) return null
+    return `you love ${top.pct}% of ${TYPE_LABEL[top.type]} you finish — more than any other medium (${bottom.pct}% for ${TYPE_LABEL[bottom.type]})`
+  }, [mediumRates])
+
+  return (
+    <div style={{ padding: '44px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 6px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
+
+      {/* Vibes — quick-scan fingerprint. Open by default. */}
       <Section title="vibes" defaultOpen>
         {topVibes.length > 0
           ? <RankedLine scored={topVibes} limit={8} />
           : <p style={{ fontSize: 13, color: MUTE, margin: 0 }}>tag a vibe when you mark things done.</p>}
         {lowVibes.length > 0 && (
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 14 }}>
             <SubLabel>rarely lands</SubLabel>
             <RankedLine scored={lowVibes} limit={6} />
           </div>
         )}
-
-        {/* Taste profile prose — opener always visible, bullets collapse behind "see more" */}
-        <div style={{ marginTop: 18 }}>
-          {tasteProfile ? (() => {
-            const lines = tasteProfile.split('\n').filter(l => l.trim())
-            const opener = lines.find(l => !l.trimStart().startsWith('- ')) ?? ''
-            const bullets = lines.filter(l => l.trimStart().startsWith('- '))
-            return (
-              <>
-                <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
-                  {inlineItalics(opener)}
-                  {bullets.length > 0 && !profileExpanded && (
-                    <TextLink onClick={() => setProfileExpanded(true)}>see more</TextLink>
-                  )}
-                </div>
-                {bullets.length > 0 && profileExpanded && (
-                  <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
-                    {bullets.map((line, i) => {
-                      const isLast = i === bullets.length - 1
-                      return (
-                        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: isLast ? 0 : 5 }}>
-                          <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6 }}>—</span>
-                          <span>
-                            {inlineItalics(line.replace(/^[\s-]+/, ''))}
-                            {isLast && <TextLink onClick={() => setProfileExpanded(false)}>see less</TextLink>}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8 }}>
-                  {tasteProfileGeneratedAt && (
-                    <span style={{ fontSize: 11, color: MUTE }}>
-                      {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ·
-                    </span>
-                  )}
-                  <TextLink onClick={generateProfile}>
-                    {generatingProfile ? 'generating…' : 'regenerate'}
-                  </TextLink>
-                </div>
-              </>
-            )
-          })() : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: GRAPHITE }}>ai taste profile</span>
-              <button
-                onClick={generateProfile}
-                disabled={generatingProfile}
-                style={{
-                  padding: '7px 16px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
-                  border: '1.5px solid #111', background: '#111',
-                  color: '#fff', fontSize: 12, fontWeight: 600,
-                  opacity: generatingProfile ? 0.5 : 1,
-                }}
-              >
-                {generatingProfile ? 'generating…' : 'generate'}
-              </button>
-            </div>
-          )}
-        </div>
       </Section>
 
+      {/* Taste profile prose — standalone block, survives vibes collapse */}
+      <div style={{ borderBottom: `1px solid ${HAIR}`, padding: '14px 0 16px' }}>
+        {tasteProfile ? (() => {
+          const lines = tasteProfile.split('\n').filter(l => l.trim())
+          const opener = lines.find(l => !l.trimStart().startsWith('- ')) ?? ''
+          const bullets = lines.filter(l => l.trimStart().startsWith('- '))
+          return (
+            <>
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
+                {inlineItalics(opener)}
+                {bullets.length > 0 && !profileExpanded && (
+                  <TextLink onClick={() => setProfileExpanded(true)}>see more</TextLink>
+                )}
+              </div>
+              {bullets.length > 0 && profileExpanded && (
+                <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
+                  {bullets.map((line, i) => {
+                    const isLast = i === bullets.length - 1
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: 8, marginBottom: isLast ? 0 : 5 }}>
+                        <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6 }}>—</span>
+                        <span>
+                          {inlineItalics(line.replace(/^[\s-]+/, ''))}
+                          {isLast && <TextLink onClick={() => setProfileExpanded(false)}>see less</TextLink>}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                {tasteProfileGeneratedAt && (
+                  <span style={{ fontSize: 11, color: MUTE }}>
+                    {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ·
+                  </span>
+                )}
+                <TextLink onClick={generateProfile}>
+                  {generatingProfile ? 'generating…' : 'regenerate'}
+                </TextLink>
+              </div>
+            </>
+          )
+        })() : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, color: GRAPHITE }}>ai taste profile</span>
+            <button
+              onClick={generateProfile}
+              disabled={generatingProfile}
+              style={{
+                padding: '7px 16px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
+                border: '1.5px solid #111', background: '#111',
+                color: '#fff', fontSize: 12, fontWeight: 600,
+                opacity: generatingProfile ? 0.5 : 1,
+              }}
+            >
+              {generatingProfile ? 'generating…' : 'generate'}
+            </button>
+          </div>
+        )}
+      </div>
 
-      {/* PER CATEGORY — one card per medium holds its whole profile. tv last. */}
+      {/* Cross-medium insight */}
+      {mediumInsight && (
+        <div style={{ borderBottom: `1px solid ${HAIR}`, padding: '12px 0' }}>
+          <span style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.5 }}>{mediumInsight}</span>
+        </div>
+      )}
+
+      {/* PER CATEGORY — one card per medium. tv last. */}
       {(['film', 'book', 'music', 'tv'] as const).map(type => (
         <CategoryCard key={type} items={items} type={type} />
       ))}
