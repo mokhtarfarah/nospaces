@@ -101,22 +101,21 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-03, updated session 11 end)
+## TODO / Roadmap (last edited 2026-06-03, updated session 12 end)
 
-### 📌 Session 11 summary (2026-06-03) — add page redesign
+### 📌 Session 12 summary (2026-06-03) — action card overhaul + small fixes
 
 All shipped to `main` / live:
-1. ✅ **Add page layout overhaul** — textarea first, black identify button, photo as a compact grey-fill pill (not a full-width box), type chips removed entirely. Clean hierarchy: one primary action, one clear secondary.
-2. ✅ **Scratch label** → "save as note" (shorter). Single link below the photo button, no underline.
-3. ✅ **Letterboxd + Spotify + find recommendations** tucked behind "more ways to add" disclosure — one-time imports no longer competing with regular-use actions.
-4. ✅ **"more ways to add" and "library tools" on the same line** — shared footer row, one separator, clean.
-5. ✅ **Placeholder lowercase** — "a film, book, album, or show…"
+1. ✅ **Blurb source duplication fix** — recommendation items no longer show "from [list]" in the header when the blurb toggle already says "via [list]". URL link kept (different affordance).
+2. ✅ **Manual genre edit** — genre chips on action card are now fully interactive. Shows active genres only (dark chips with ×). `+ genre` dashed button expands the full type vocab for picking. Saves immediately via `onSetTags`. Same pattern as mood chips.
+3. ✅ **Action card density overhaul** — genre active-only chips + expander (replaces 16-chip wall). Mood chips now single horizontal scroll rows (FEEL + HOW IT LANDED). HOW IT LANDED hidden entirely for `want_to` items (can't know how it landed before finishing). Spotify / Wikipedia / Watch moved inline with blurb toggle row — one light text-link row, no pill buttons.
+4. ✅ **Spotify link** — synced albums link directly to album page. Manually-added music falls back to Spotify search (kept — search link preferred over no link).
 
-**Still open:**
-- **Blurb source duplication fix** (Action card #14) — cosmetic, small
-- **Manual genre edit** (Action card #13) — small, self-contained
-- **Visual element on taste page hero** — covers/collage (see Taste arc TODO)
-- **Input workflow audit** — full list of all input sources + friction analysis
+**Still open (next session):**
+- **Describe-to-add** — PRIORITIZED. Code read, approach decided (Option A: Haiku intent parse → `/api/lookup` catalog). Not built yet. See roadmap entry below.
+- **Series tag** — added to roadmap, not built yet.
+- **Visual element on taste page hero** — covers/collage
+- **Input workflow audit**
 
 ---
 
