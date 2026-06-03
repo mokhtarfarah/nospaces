@@ -23,7 +23,7 @@ cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 - `src/screens/TasteScreen.tsx` — taste snapshot (3rd nav tab)
 - `src/screens/ImportScreen.tsx` — Letterboxd CSV import
 - `src/lib/letterboxd.ts` — Letterboxd parsing + mapping logic (pure, unit-tested)
-- `src/lib/genres.ts` — **editable** genre vocab per type (film/tv/book/music). Edit here to add/remove genres.
+- `src/lib/genres.ts` — **editable** genre vocab per type (film/tv/book/music). Edit here to add/remove genres. ⚠️ **Also update `GENRE_VOCAB` in `api/wiki.ts`** (manual copy used for wiki auto-fill — kept in sync by hand).
 - `src/lib/moods.ts` — **editable** mood/vibe list. Edit here to add/remove moods.
 - `src/components/{MarkDoneSheet,ItemActionSheet,ConfirmSheet,ViewSheet,NoteInput}.tsx`
 - `src/hooks/{useItems,useAuth}.tsx`
