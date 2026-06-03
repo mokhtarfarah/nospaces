@@ -31,6 +31,28 @@ cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 - `src/lib/{artwork,blurb,wikipedia,seasons}.ts`
 - `supabase/schema.sql`
 
+## API costs — read before every session
+
+**Two completely separate billing systems. Do not confuse them.**
+
+| System | What it is | How billed |
+|---|---|---|
+| **Claude Code (this chat)** | Farah's Claude Code subscription | Flat subscription — no per-token cost, no risk of running out mid-session |
+| **Nospaces `ANTHROPIC_API_KEY`** | Pay-as-you-go API key in Vercel | Charged per token. Balance can run out. Top up at console.anthropic.com → Billing |
+
+**Per-call cost estimates for the app:**
+- `/api/identify` (Sonnet, single item): ~$0.01
+- `/api/genres` (Haiku, batch): ~$0.001
+- `/api/recommend` text/URL query (Sonnet + web_search): **~$0.15–0.20** ← expensive
+- `/api/recommend` PDF upload (Sonnet, no web_search): ~$0.05–0.10
+- All other endpoints (blurb, art, wiki, shows): free (external APIs, no Anthropic)
+
+**Rules for Claude during development sessions:**
+- **Never run more than 2–3 test API calls** to verify a feature. Confirm the approach in code/types first; test sparingly.
+- **web_search is the most expensive tool** ($10/1,000 searches + token cost). Never run it in loops or exploratory tests.
+- If verifying something can be done by reading types or code, do that instead of making a live call.
+- Flag the cost impact whenever suggesting a new Anthropic API feature (web_search, PDF, etc.).
+
 ## Vercel env vars
 - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (frontend)
 - `ANTHROPIC_API_KEY`
