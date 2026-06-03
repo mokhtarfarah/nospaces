@@ -8,7 +8,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 // for a safe margin.
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-export const config = { maxDuration: 90 }
+export const config = { maxDuration: 120 }
 
 const GENRE_VOCAB: Record<string, string[]> = {
   film:  ['action','animation','comedy','crime','documentary','drama','fantasy','horror','musical','romance','sci-fi','thriller','western'],
@@ -41,14 +41,14 @@ Return ONLY a JSON object in this exact shape:
       "type": "film|book|music|tv|other",
       "year": 2025,
       "tags": ["genre1", "genre2"],
-      "blurb": "2–3 sentences about what this item sounds, reads, or feels like — its style, themes, or what makes it distinctive. Use the source's own writing if you have it; otherwise draw on your own knowledge of the work. Be specific. Never say things like 'ranked #1' or 'makes this list' or 'pushes boundaries'."
+      "blurb": "1–2 sentences about what this item sounds, reads, or feels like — its style, themes, or what makes it distinctive. Use the source's own writing if you have it; otherwise draw on your own knowledge of the work. Be specific. Never say things like 'ranked #1' or 'makes this list' or 'pushes boundaries'."
     }
   ]
 }
 
 Rules:
 - Preserve the original list order. rank is 1-based.
-- Cap at 30 items.
+- Return ALL items on the list, up to 50.
 - type must be one of: film, book, music, tv, other. Albums → music. Movies → film. Series → tv.
 - Always fill creator. Only null if genuinely unknowable.
 - tags: 1–3 genres from the vocab below — use only these values, no others:
