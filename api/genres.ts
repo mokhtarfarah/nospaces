@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Genre vocab — keep in sync with src/lib/genres.ts
 const GENRE_VOCAB: Record<string, string[]> = {
@@ -13,6 +14,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
+  if (!await requireAuth(req)) return res.status(401).end()
 
   const { title, creator, type } = req.body as { title?: string; creator?: string; type?: string }
   if (!title || !type) return res.status(400).json({ tags: [] })

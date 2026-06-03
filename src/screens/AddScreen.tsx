@@ -5,6 +5,7 @@ import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
 import { BulkConfirmSheet, type BulkItem } from '../components/BulkConfirmSheet'
 import type { ItemReaction } from '../lib/database.types'
 import { fetchWikiInfo } from '../lib/wikipedia'
+import { authHeaders } from '../lib/supabase'
 
 interface Candidate {
   title: string
@@ -16,7 +17,7 @@ interface Candidate {
 async function identifyText(input: string, typeHint?: string | null): Promise<AiResult> {
   const res = await fetch('/api/identify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(),
     body: JSON.stringify({ input, typeHint: typeHint || undefined }),
   })
   if (!res.ok) throw new Error('AI request failed')
@@ -26,7 +27,7 @@ async function identifyText(input: string, typeHint?: string | null): Promise<Ai
 async function describeToSearch(input: string): Promise<{ searchQuery: string; type: string | null; sortByRecency?: boolean }> {
   const res = await fetch('/api/describe', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(),
     body: JSON.stringify({ input }),
   })
   if (!res.ok) return { searchQuery: input, type: null }
@@ -79,7 +80,7 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
   const { base64, mimeType } = await prepareImage(file)
   const res = await fetch('/api/identify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(),
     body: JSON.stringify({ imageBase64: base64, mimeType, typeHint: typeHint || undefined }),
   })
   if (!res.ok) throw new Error('AI request failed')
@@ -97,10 +98,18 @@ function LibraryTools({ items, editItem, open }: {
   const [backfillProgress, setBackfillProgress] = useState(0)
   const [backfillTotal, setBackfillTotal] = useState(0)
   const cancelRef = useRef(false)
+  const [backfillConfirm, setBackfillConfirm] = useState(false)
+  const [backfillFailed, setBackfillFailed] = useState<Item[]>([])
+  const [backfillResult, setBackfillResult] = useState<{ ok: number; fail: number } | null>(null)
+
   const [rtBackfilling, setRtBackfilling] = useState(false)
   const [rtProgress, setRtProgress] = useState(0)
   const [rtTotal, setRtTotal] = useState(0)
   const rtCancelRef = useRef(false)
+  const [rtConfirm, setRtConfirm] = useState(false)
+  const [rtFailed, setRtFailed] = useState<Item[]>([])
+  const [rtResult, setRtResult] = useState<{ ok: number; fail: number } | null>(null)
+
   const [migrating, setMigrating] = useState(false)
   const [migrateProgress, setMigrateProgress] = useState(0)
   const [wikiBackfilling, setWikiBackfilling] = useState(false)
@@ -124,52 +133,75 @@ function LibraryTools({ items, editItem, open }: {
   const total = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length
   if (total === 0 || !open) return null
 
-  async function runBackfill() {
-    if (backfilling || untagged.length === 0) return
+  async function runBackfill(targetItems: Item[] = untagged) {
+    if (backfilling || targetItems.length === 0) return
     cancelRef.current = false
-    setBackfilling(true); setBackfillProgress(0); setBackfillTotal(untagged.length)
+    setBackfillConfirm(false)
+    setBackfillResult(null)
+    setBackfilling(true)
+    setBackfillProgress(0)
+    setBackfillTotal(targetItems.length)
     const BATCH = 5
-    for (let i = 0; i < untagged.length; i += BATCH) {
+    const failed: Item[] = []
+    let ok = 0
+    for (let i = 0; i < targetItems.length; i += BATCH) {
       if (cancelRef.current) break
-      await Promise.all(untagged.slice(i, i + BATCH).map(async item => {
+      await Promise.all(targetItems.slice(i, i + BATCH).map(async item => {
         try {
-          const res = await fetch('/api/genres', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type }) })
+          const res = await fetch('/api/genres', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type }) })
+          if (!res.ok) { failed.push(item); return }
           const { tags } = await res.json()
-          if (tags?.length > 0) await editItem(item.id, { tags })
-        } catch { /* skip */ }
+          if (tags?.length > 0) { await editItem(item.id, { tags }); ok++ }
+          else failed.push(item)
+        } catch { failed.push(item) }
       }))
-      setBackfillProgress(Math.min(i + BATCH, untagged.length))
+      setBackfillProgress(Math.min(i + BATCH, targetItems.length))
+      if (i + BATCH < targetItems.length) await new Promise(r => setTimeout(r, 300))
     }
-    setBackfilling(false); cancelRef.current = false
+    setBackfilling(false)
+    cancelRef.current = false
+    setBackfillFailed(failed)
+    setBackfillResult({ ok, fail: failed.length })
   }
 
-  async function runRtBackfill() {
-    if (rtBackfilling || needsRuntime.length === 0) return
+  async function runRtBackfill(targetItems: Item[] = needsRuntime) {
+    if (rtBackfilling || targetItems.length === 0) return
     rtCancelRef.current = false
-    setRtBackfilling(true); setRtProgress(0); setRtTotal(needsRuntime.length)
+    setRtConfirm(false)
+    setRtResult(null)
+    setRtBackfilling(true)
+    setRtProgress(0)
+    setRtTotal(targetItems.length)
     const BATCH = 5
-    for (let i = 0; i < needsRuntime.length; i += BATCH) {
+    const failed: Item[] = []
+    let ok = 0
+    for (let i = 0; i < targetItems.length; i += BATCH) {
       if (rtCancelRef.current) break
-      await Promise.all(needsRuntime.slice(i, i + BATCH).map(async item => {
+      await Promise.all(targetItems.slice(i, i + BATCH).map(async item => {
         try {
-          const res = await fetch('/api/runtime', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }) })
+          const res = await fetch('/api/runtime', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }) })
+          if (!res.ok) { failed.push(item); return }
           const data = await res.json()
           const patch: Record<string, unknown> = { ...item.metadata }
           if (item.type === 'book' && typeof data.pages === 'number') patch.pages = data.pages
           if ((item.type === 'film' || item.type === 'tv') && typeof data.runtime === 'number') patch.runtime = data.runtime
-          if (patch.pages !== item.metadata?.pages || patch.runtime !== item.metadata?.runtime) await editItem(item.id, { metadata: patch })
-        } catch { /* skip */ }
+          if (patch.pages !== item.metadata?.pages || patch.runtime !== item.metadata?.runtime) { await editItem(item.id, { metadata: patch }); ok++ }
+          else ok++ // got a response, just no change needed
+        } catch { failed.push(item) }
       }))
-      setRtProgress(Math.min(i + BATCH, needsRuntime.length))
+      setRtProgress(Math.min(i + BATCH, targetItems.length))
+      if (i + BATCH < targetItems.length) await new Promise(r => setTimeout(r, 300))
     }
-    setRtBackfilling(false); rtCancelRef.current = false
+    setRtBackfilling(false)
+    rtCancelRef.current = false
+    setRtFailed(failed)
+    setRtResult({ ok, fail: failed.length })
   }
 
   async function runMoodMigration() {
     if (migrating || needsMoodMigration.length === 0) return
     setMigrating(true); setMigrateProgress(0)
     for (const item of needsMoodMigration) {
-      // 'classic' moved from verdict → genre tag (use 'classics' for books, 'classic' elsewhere).
       const next = (item.moods ?? []).map(m => m === 'gripping' ? 'intense' : m).filter(m => m !== 'project' && m !== 'easy' && m !== 'classic')
       const fields: Record<string, unknown> = { moods: [...new Set(next)] }
       if (item.moods?.includes('classic')) {
@@ -182,9 +214,6 @@ function LibraryTools({ items, editItem, open }: {
     setMigrating(false)
   }
 
-  // One-time warm of every item's Wikipedia link/cover/summary into the DB, so the
-  // library stops re-fetching them on each load. Resolved results are persisted; items
-  // with no Wikipedia page are left for next time (nothing to save).
   async function runWikiBackfill() {
     if (wikiBackfilling || needsWiki.length === 0) return
     wikiCancelRef.current = false
@@ -204,23 +233,50 @@ function LibraryTools({ items, editItem, open }: {
   }
 
   const btnStyle = { padding: '7px 16px', borderRadius: 20, border: '1.5px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' } as const
+  const ghostBtn = { background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: '0 4px' } as const
+  const warnBtn = { background: 'none', border: 'none', fontSize: 12, color: '#C00', cursor: 'pointer', padding: '0 4px', fontWeight: 600 } as const
+  const cost = (n: number) => `~${n} API calls (~$${(n * 0.001).toFixed(2)})`
 
   return (
     <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
       {untagged.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ fontSize: 13, color: '#888' }}>{untagged.length} item{untagged.length !== 1 ? 's' : ''} without genre tags</span>
           {backfilling
-            ? <span style={{ fontSize: 13, color: '#555' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)} of {backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
-            : <button onClick={runBackfill} style={btnStyle}>tag my library</button>}
+            ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)}/{backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={ghostBtn}>cancel</button></span>
+            : backfillResult
+              ? <span style={{ fontSize: 12, color: '#555', whiteSpace: 'nowrap' }}>
+                  tagged {backfillResult.ok}
+                  {backfillResult.fail > 0 && <> · <span style={{ color: '#C00' }}>{backfillResult.fail} failed</span> <button onClick={() => runBackfill(backfillFailed)} style={warnBtn}>retry {backfillResult.fail}</button></>}
+                  <button onClick={() => setBackfillResult(null)} style={ghostBtn}>done</button>
+                </span>
+              : backfillConfirm
+                ? <span style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
+                    {cost(untagged.length)} ·{' '}
+                    <button onClick={() => runBackfill()} style={{ ...ghostBtn, color: '#111', fontWeight: 600 }}>run</button>
+                    <button onClick={() => setBackfillConfirm(false)} style={ghostBtn}>cancel</button>
+                  </span>
+                : <button onClick={() => setBackfillConfirm(true)} style={btnStyle}>tag my library</button>}
         </div>
       )}
       {needsRuntime.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ fontSize: 13, color: '#888' }}>{needsRuntime.length} item{needsRuntime.length !== 1 ? 's' : ''} missing runtime or pages</span>
           {rtBackfilling
-            ? <span style={{ fontSize: 13, color: '#555' }}>filling {Math.min(rtProgress + 5, rtTotal)} of {rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
-            : <button onClick={runRtBackfill} style={btnStyle}>fill in</button>}
+            ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>filling {Math.min(rtProgress + 5, rtTotal)}/{rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
+            : rtResult
+              ? <span style={{ fontSize: 12, color: '#555', whiteSpace: 'nowrap' }}>
+                  filled {rtResult.ok}
+                  {rtResult.fail > 0 && <> · <span style={{ color: '#C00' }}>{rtResult.fail} failed</span> <button onClick={() => runRtBackfill(rtFailed)} style={warnBtn}>retry {rtResult.fail}</button></>}
+                  <button onClick={() => setRtResult(null)} style={ghostBtn}>done</button>
+                </span>
+              : rtConfirm
+                ? <span style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
+                    {cost(needsRuntime.length)} ·{' '}
+                    <button onClick={() => runRtBackfill()} style={{ ...ghostBtn, color: '#111', fontWeight: 600 }}>run</button>
+                    <button onClick={() => setRtConfirm(false)} style={ghostBtn}>cancel</button>
+                  </span>
+                : <button onClick={() => setRtConfirm(true)} style={btnStyle}>fill in</button>}
         </div>
       )}
       {needsMoodMigration.length > 0 && (
@@ -235,7 +291,7 @@ function LibraryTools({ items, editItem, open }: {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 13, color: '#888' }}>{needsWiki.length} item{needsWiki.length !== 1 ? 's' : ''} missing saved wiki links</span>
           {wikiBackfilling
-            ? <span style={{ fontSize: 13, color: '#555' }}>fetching {Math.min(wikiProgress + 6, wikiTotal)} of {wikiTotal}… <button onClick={() => { wikiCancelRef.current = true }} style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer' }}>cancel</button></span>
+            ? <span style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>fetching {Math.min(wikiProgress + 6, wikiTotal)}/{wikiTotal}… <button onClick={() => { wikiCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : <button onClick={runWikiBackfill} style={btnStyle}>fill in links</button>}
         </div>
       )}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useArtwork } from '../lib/artwork'
+import { authHeaders } from '../lib/supabase'
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'loved_it',   label: 'loved it'   },
@@ -59,7 +60,7 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
     try {
       const res = await fetch('/api/identify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ input: queryText.trim() }),
       })
       const r = (await res.json()) as AiResult

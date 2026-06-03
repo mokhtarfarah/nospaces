@@ -1,10 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
+  if (!await requireAuth(req)) return res.status(401).end()
 
   const { title, creator, type, year } = req.body as {
     title: string
