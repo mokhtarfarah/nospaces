@@ -70,18 +70,6 @@ function groupByMonth(items: Item[]): Map<string, Item[]> {
 
 // Sort key for creators: by last name (last word), so authors/directors order by
 // surname (e.g. "Donna Tartt" -> "tartt"). "Unknown" sinks to the bottom.
-function formatRuntime(item: Item): string | null {
-  if (item.type === 'book') {
-    const p = item.metadata?.pages
-    return typeof p === 'number' && p > 0 ? `${p} pp` : null
-  }
-  if (item.type === 'film' || item.type === 'tv') {
-    const r = item.metadata?.runtime
-    return typeof r === 'number' && r > 0 ? `${r} min` : null
-  }
-  return null
-}
-
 function lastNameKey(creator: string | null | undefined): string {
   const name = creator?.trim()
   if (!name) return '￿'
@@ -654,12 +642,11 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki }
   const tvSeasons = item.type === 'tv' ? getSeasons(item.metadata) : []
   const seasonsLabel = tvSeasons.length > 0 ? `${tvSeasons.filter(s => s.done).length}/${tvSeasons.length} seasons` : null
 
-  const firstMood = item.moods?.[0] ?? null
-  const runtimeOrPages = formatRuntime(item)
-
+  // Subtitle is kept lean: type · year · seasons · reaction. Vibe and runtime/pages
+  // were removed here — runtime/pages now live in the action card instead.
   const subtitle = item.status === 'done'
-    ? [showType ? item.type : null, item.year, seasonsLabel, firstMood, runtimeOrPages, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
-    : [showType ? item.type : null, item.year, seasonsLabel, firstMood, runtimeOrPages].filter(Boolean).join(' · ')
+    ? [showType ? item.type : null, item.year, seasonsLabel, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
+    : [showType ? item.type : null, item.year, seasonsLabel].filter(Boolean).join(' · ')
 
   return (
     <div

@@ -220,8 +220,10 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
           })}
         </div>
 
-        {/* Source */}
-        <p style={{ fontSize: 11, color: '#AAA', marginBottom: 4 }}>From: {source}</p>
+        {/* Source — hidden for the default "quick add" (it's noise); shown for real sources. */}
+        {source && source !== 'quick add' && (
+          <p style={{ fontSize: 11, color: '#AAA', marginBottom: 4 }}>From: {source}</p>
+        )}
 
         {/* Edit toggle */}
         <button onClick={() => setEditing(v => !v)} style={{

@@ -41,6 +41,19 @@ type View = 'main' | 'edit' | 'reaction'
 // A candidate match offered after re-identify (from the AI's alternatives or a catalog lookup).
 type Candidate = { title: string; creator: string | null; year: number | null; metadata?: Record<string, unknown>; tags?: string[] }
 
+// Runtime (film/tv) or page count (book) for display on the card. Null if unknown.
+function formatRuntime(item: Item): string | null {
+  if (item.type === 'book') {
+    const p = item.metadata?.pages
+    return typeof p === 'number' && p > 0 ? `${p} pp` : null
+  }
+  if (item.type === 'film' || item.type === 'tv') {
+    const r = item.metadata?.runtime
+    return typeof r === 'number' && r > 0 ? `${r} min` : null
+  }
+  return null
+}
+
 export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onToggleOwned, onDelete, onClose }: Props) {
   const [view, setView] = useState<View>('main')
   const [title, setTitle] = useState(item.title)
@@ -274,7 +287,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               <div style={{ minWidth: 0, paddingTop: 1 }}>
                 <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.25 }}>{item.title}</div>
                 <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
-                  {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year].filter(Boolean).join(' · ')}
+                  {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item)].filter(Boolean).join(' · ')}
                   {item.reaction && ` · ${REACTION_LABELS[item.reaction]}`}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
