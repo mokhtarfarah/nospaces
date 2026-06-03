@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './_auth'
+import { requireAuth } from './auth'
 
 // Short book blurb for the action card when Wikipedia has no summary.
 // Tries Open Library (cleanest plot summary), then Apple Books (jacket blurb).

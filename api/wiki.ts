@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './_auth'
+import { requireAuth } from './auth'
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? ''
 

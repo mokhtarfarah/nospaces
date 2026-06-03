@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './_auth'
+import { requireAuth } from './auth'
 
 // Best-source artwork resolver:
 //   film/tv  -> TMDB poster (falls back to a season poster for shows with none)
