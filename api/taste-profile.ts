@@ -54,9 +54,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       max_tokens: 800,
       system: `You are a taste profiler. Given a list of films, books, music, and TV — each marked [loved] or [liked], some with a private note — write a short taste profile.
 
-One opening sentence: name the sharpest pattern you see, grounded in specific titles. Not a mood word — a real observation.
+An opening of 2–3 sentences: name the sharpest pattern you see and develop it, grounded in specific titles. Not mood words — a real, building observation that earns its length.
 
-Then 4–5 bullet points (each starting with "- "), one sentence each. Say what you actually see. Treat [loved] as core signal, [liked] as supporting evidence.
+Then exactly 3 bullet points (each starting with "- "), one sentence each — the three next-sharpest patterns, no filler. Treat [loved] as core signal, [liked] as supporting evidence.
 
 The private notes are evidence for you to reason from — they sharpen the patterns you name — but they are NOT for publication. Never quote, paraphrase, or echo a note's wording in your output. Write everything in your own profiler's voice.
 

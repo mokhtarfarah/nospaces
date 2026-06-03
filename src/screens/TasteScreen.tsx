@@ -107,17 +107,19 @@ function CoverTile({ item, width, height }: { item: Item; width: number; height:
   )
 }
 
-interface EraBucket { decade: number; label: string; count: number; rep: Item }
+interface EraBucket { decade: number; label: string; rate: number; rep: Item }
+
+const ERA_MIN_RATED = 4 // n-floor: ignore decades too thin to read anything into
 
 // Era map — where your taste lives in time. One column per decade (chronological),
-// each fronted by the cover of your most-loved item from that era, with a count
-// + density bar so the clusters read at a glance. Covers carry meaning (the
-// emblem of each decade), not decoration.
+// fronted by the cover of your most-loved item from that era. The bar encodes
+// loved-rate (the share of what you saw in that decade that you actually loved),
+// not raw volume — so it measures taste, not how much you happened to log.
 function EraMap({ items }: { items: Item[] }) {
   const buckets = useMemo<EraBucket[]>(() => {
     const byDecade = new Map<number, Item[]>()
     for (const i of items) {
-      if (i.status !== 'done' || (i.reaction !== 'loved_it' && i.reaction !== 'liked_it')) continue
+      if (i.status !== 'done' || !i.reaction) continue
       if (!i.year || i.year < 1900) continue
       const decade = Math.floor(i.year / 10) * 10
       const arr = byDecade.get(decade) ?? []
@@ -125,25 +127,31 @@ function EraMap({ items }: { items: Item[] }) {
       byDecade.set(decade, arr)
     }
     const hasCover = (i: Item) => !!(i.metadata?.coverUrl || i.metadata?.wikiThumb)
-    // Representative per decade: loved over liked, then a stored cover, then most recent.
-    const pickRep = (arr: Item[]) => [...arr].sort((a, b) => {
-      const ra = a.reaction === 'loved_it' ? 1 : 0, rb = b.reaction === 'loved_it' ? 1 : 0
-      if (ra !== rb) return rb - ra
-      if (hasCover(a) !== hasCover(b)) return hasCover(a) ? -1 : 1
-      return (b.year ?? 0) - (a.year ?? 0)
-    })[0]
+    // Emblem per decade: a loved item, preferring one with a stored cover, then most recent.
+    const pickRep = (arr: Item[]) => [...arr]
+      .filter(i => i.reaction === 'loved_it')
+      .sort((a, b) => {
+        if (hasCover(a) !== hasCover(b)) return hasCover(a) ? -1 : 1
+        return (b.year ?? 0) - (a.year ?? 0)
+      })[0]
     return Array.from(byDecade.entries())
-      .map(([decade, arr]) => ({
-        decade,
-        label: `'${String(decade % 100).padStart(2, '0')}s`,
-        count: arr.length,
-        rep: pickRep(arr),
+      .map(([decade, arr]) => {
+        const loved = arr.filter(i => i.reaction === 'loved_it').length
+        return { decade, rated: arr.length, loved, rep: pickRep(arr) }
+      })
+      // Credible (enough rated) and meaningful (you loved something here).
+      .filter(b => b.rated >= ERA_MIN_RATED && b.loved >= 1 && b.rep)
+      .map(b => ({
+        decade: b.decade,
+        label: `${b.decade}s`,
+        rate: b.loved / b.rated,
+        rep: b.rep,
       }))
       .sort((a, b) => a.decade - b.decade)
   }, [items])
 
   if (buckets.length < 2) return null
-  const maxCount = Math.max(...buckets.map(b => b.count))
+  const maxRate = Math.max(...buckets.map(b => b.rate))
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -152,18 +160,15 @@ function EraMap({ items }: { items: Item[] }) {
       </div>
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
         {buckets.map(b => {
-          const isPeak = b.count === maxCount
+          const isPeak = b.rate === maxRate
           return (
-            <div key={b.decade} style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, width: 46 }}>
+            <div key={b.decade} style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 46 }}>
               <CoverTile item={b.rep} width={46} height={68} />
-              {/* density bar — taller where more of your taste sits */}
-              <div style={{ width: '100%', height: 3, background: HAIR, borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ width: `${Math.round((b.count / maxCount) * 100)}%`, height: '100%', background: isPeak ? INK : GRAPHITE }} />
+              {/* love-rate bar — taller where you loved a higher share of what you saw */}
+              <div style={{ width: '100%', height: 4, background: HAIR, borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: `${Math.round((b.rate / maxRate) * 100)}%`, height: '100%', background: isPeak ? INK : GRAPHITE }} />
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-                <span style={{ fontSize: 11, fontWeight: isPeak ? 700 : 500, color: isPeak ? INK : GRAPHITE }}>{b.label}</span>
-                <span style={{ fontSize: 9, color: MUTE }}>{b.count}</span>
-              </div>
+              <span style={{ fontSize: 10.5, fontWeight: isPeak ? 700 : 500, color: isPeak ? INK : GRAPHITE, letterSpacing: '-0.2px' }}>{b.label}</span>
             </div>
           )
         })}
@@ -172,7 +177,9 @@ function EraMap({ items }: { items: Item[] }) {
   )
 }
 
-// Compact bordered card per medium — title + stats on header line, no sublabels.
+const STAT_MIN_RATED = 5 // below this, a loved-% is just noise — show the count alone
+
+// Per-medium section — title + stats, dissolved into hairline-ruled rows (no boxes).
 function CategoryCard({ items, type }: { items: Item[]; type: string }) {
   const data = useMemo(() => {
     const genresScored = scoreTags(items, 'tags', type).filter(s => isGenreTag(s.label))
@@ -200,13 +207,13 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
   if (ratedCount === 0) return null
 
   return (
-    <div style={{ border: `1px solid ${HAIR}`, borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
+    <div style={{ borderTop: `1px solid ${HAIR}`, padding: '14px 0 16px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
         <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: INK }}>
           {TYPE_LABEL[type] ?? type}
         </span>
         <span style={{ fontSize: 11, color: MUTE }}>
-          {ratedCount} rated · {lovedPct}% loved
+          {ratedCount} rated{ratedCount >= STAT_MIN_RATED ? ` · ${lovedPct}% loved` : ''}
         </span>
       </div>
       {creators.length > 0 && (
@@ -325,8 +332,8 @@ export function TasteScreen() {
                   {bullets.map((line, i) => {
                     const isLast = i === bullets.length - 1
                     return (
-                      <div key={i} style={{ display: 'flex', gap: 8, marginBottom: isLast ? 0 : 5 }}>
-                        <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6 }}>—</span>
+                      <div key={i} style={{ display: 'flex', gap: 9, marginBottom: isLast ? 0 : 7 }}>
+                        <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6, fontWeight: 700 }}>·</span>
                         <span>
                           {inlineItalics(line.replace(/^[\s-]+/, ''))}
                           {isLast && <TextLink onClick={() => setProfileExpanded(false)}>see less</TextLink>}
