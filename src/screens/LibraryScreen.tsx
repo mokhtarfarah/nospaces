@@ -621,19 +621,22 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki }
 }) {
   const color = typeColor(item.type)
 
-  // Use cached wiki data from metadata when available — skips the API call entirely.
+  // Use cached wiki data from metadata when available — but only skip the fetch
+  // when summary is also cached. Without summary the blurb can't render, so we
+  // re-fetch to get it (one-time migration for items saved before summary caching).
   const metaWiki: WikiInfo | null = item.metadata?.wikiUrl
     ? { url: item.metadata.wikiUrl as string, thumbnail: (item.metadata.wikiThumb as string) ?? null, summary: (item.metadata.wikiSummary as string) ?? null }
     : null
+  const wikiSeed = metaWiki?.summary ? metaWiki : null
 
-  const { url: wikiUrl, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year, metaWiki)
+  const { url: wikiUrl, thumbnail: wikiThumb, summary: wikiSummary } = useWikipediaInfo(item.type, item.title, item.creator, item.year, wikiSeed)
 
-  // Persist newly-resolved wiki data so future loads skip the API call.
+  // Persist newly-resolved wiki data (including summary) so future loads skip the fetch.
   const wikiSaved = useRef(false)
   useEffect(() => {
-    if (wikiUrl && !metaWiki && !wikiSaved.current) {
+    if (wikiUrl && !wikiSeed && !wikiSaved.current) {
       wikiSaved.current = true
-      onSaveWiki?.(item.id, { url: wikiUrl, thumbnail: wikiThumb, summary: null })
+      onSaveWiki?.(item.id, { url: wikiUrl, thumbnail: wikiThumb, summary: wikiSummary })
     }
   }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)

@@ -5,16 +5,16 @@ export const GENRES: Record<string, string[]> = {
   film: [
     'action', 'animation', 'comedy', 'crime', 'documentary',
     'drama', 'fantasy', 'horror', 'musical', 'romance',
-    'sci-fi', 'thriller', 'western',
+    'satire', 'sci-fi', 'thriller', 'western',
   ],
   tv: [
     'animation', 'comedy', 'crime', 'documentary', 'drama',
-    'fantasy', 'horror', 'reality', 'sci-fi', 'thriller',
+    'fantasy', 'horror', 'reality', 'satire', 'sci-fi', 'thriller',
   ],
   book: [
     'biography', 'business', 'classics', 'crime', 'essay',
     'fantasy', 'history', 'horror', 'literary fiction', 'mystery',
-    'philosophy', 'poetry', 'romance', 'sci-fi', 'self-help',
+    'philosophy', 'poetry', 'romance', 'satire', 'sci-fi', 'self-help',
     'short stories', 'thriller', 'travel',
   ],
   music: [

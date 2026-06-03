@@ -107,7 +107,10 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
 
   // Wikipedia article link (null if no page exists / type not linked).
   // Music resolves a page (for the cover) but keeps Spotify as its button.
-  const { url, summary, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year)
+  const metaWiki = item.metadata?.wikiUrl
+    ? { url: item.metadata.wikiUrl as string, thumbnail: (item.metadata.wikiThumb as string) ?? null, summary: (item.metadata.wikiSummary as string) ?? null }
+    : null
+  const { url, summary, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year, metaWiki?.summary ? metaWiki : null)
   const wikiUrl = item.type === 'music' ? null : url
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, coverUrl || null)
   const cover = artwork ?? wikiThumb
