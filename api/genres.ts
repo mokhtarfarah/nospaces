@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAuth } from './auth'
+import { requireAuth } from '../lib/auth'
 
 // Genre vocab — keep in sync with src/lib/genres.ts
 const GENRE_VOCAB: Record<string, string[]> = {
