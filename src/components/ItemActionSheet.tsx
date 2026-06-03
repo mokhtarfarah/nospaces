@@ -76,6 +76,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [picks, setPicks] = useState<Candidate[] | null>(null)
   const [lookingUp, setLookingUp] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showBlurb, setShowBlurb] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
   const color = typeColor(item.type)
@@ -292,12 +293,29 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   {(() => {
-                    // Recommendations: show the list name as a tappable link.
+                    // Recommendations: tappable "from [source]" toggles the blurb.
                     if (item.source_detail === 'recommendation' && item.recommended_by) {
                       const url = item.metadata?.recommendationUrl as string | undefined
-                      return url
-                        ? <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#B0B0B0', textDecoration: 'underline', textUnderlineOffset: 2 }}>from {item.recommended_by}</a>
-                        : <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {item.recommended_by}</div>
+                      const blurb = item.metadata?.recommendationBlurb as string | undefined
+                      return (
+                        <div>
+                          <button
+                            onClick={() => blurb && setShowBlurb(v => !v)}
+                            style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: '#B0B0B0', cursor: blurb ? 'pointer' : 'default', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 3 }}
+                          >
+                            {url
+                              ? <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: '#B0B0B0', textDecoration: 'underline', textUnderlineOffset: 2 }}>from {item.recommended_by}</a>
+                              : <span>from {item.recommended_by}</span>
+                            }
+                            {blurb && <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>}
+                          </button>
+                          {showBlurb && blurb && (
+                            <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginTop: 5, fontStyle: 'italic' }}>
+                              {blurb}
+                            </div>
+                          )}
+                        </div>
+                      )
                     }
                     // "quick add" is the obvious default — it's noise, so hide it.
                     // Keep meaningful sources (letterboxd, spotify, email, photo, …) visible.
