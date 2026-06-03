@@ -353,6 +353,15 @@ export function LibraryScreen() {
             >
               {layout === 'list' ? <GridIcon /> : <ListIcon />}
             </button>
+            {layout === 'grid' && (
+              <button
+                onClick={() => setGridCols(c => (c === 3 ? 4 : 3))}
+                title="Toggle columns"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#888', padding: '4px 2px', lineHeight: 1 }}
+              >
+                {gridCols}
+              </button>
+            )}
             <button
               onClick={() => setSearchOpen(v => !v)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: 4 }}
