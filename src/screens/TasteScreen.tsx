@@ -19,10 +19,6 @@ const TYPE_LABEL: Record<string, string> = {
   film: 'films', book: 'books', music: 'music', tv: 'tv',
 }
 
-const REACTION_LABEL: Record<ItemReaction, string> = {
-  loved_it: 'loved it', liked_it: 'liked it', eh: 'eh', not_for_me: 'not for me',
-}
-
 const REACTION_ORDER: ItemReaction[] = ['loved_it', 'liked_it', 'eh', 'not_for_me']
 
 interface Scored { label: string; score: number; count: number }
@@ -119,32 +115,42 @@ function Section({ title, defaultOpen = false, count, children }: {
 }
 
 // How you rate, as a quiet typographic line: "88 loved · 41 liked · 9 eh".
+const REACTION_COLOR: Record<ItemReaction, string> = {
+  loved_it: INK,
+  liked_it: GRAPHITE,
+  eh: MUTE,
+  not_for_me: '#D4D0CA',
+}
+
 function ReactionBar({ items, type }: { items: Item[]; type: string }) {
   const done = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
   if (!done.length) return null
   const parts = REACTION_ORDER
     .map(r => ({ r, n: done.filter(i => i.reaction === r).length }))
     .filter(p => p.n > 0)
-  const lovedPct = Math.round((done.filter(i => i.reaction === 'loved_it').length / done.length) * 100)
+  const total = done.length
+  const lovedPct = Math.round((done.filter(i => i.reaction === 'loved_it').length / total) * 100)
   return (
-    <div style={{ fontSize: 13, color: GRAPHITE, letterSpacing: '0.2px' }}>
-      {parts.map((p, i) => (
-        <span key={p.r}>
-          {i > 0 && <span style={{ color: MUTE }}> · </span>}
-          <span style={{ color: INK, fontWeight: 500 }}>{p.n}</span> {REACTION_LABEL[p.r]}
-        </span>
-      ))}
-      {lovedPct > 0 && (
-        <span style={{ color: MUTE }}> · <span style={{ color: GRAPHITE, fontWeight: 500 }}>{lovedPct}%</span> loved</span>
-      )}
+    <div style={{ marginBottom: 18 }}>
+      {/* Proportional bar */}
+      <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
+        {parts.map(p => (
+          <div key={p.r} style={{ width: `${(p.n / total) * 100}%`, background: REACTION_COLOR[p.r] }} />
+        ))}
+      </div>
+      {/* Caption */}
+      <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.1px' }}>
+        {total} rated
+        {lovedPct > 0 && <span> · <span style={{ color: GRAPHITE }}>{lovedPct}%</span> loved</span>}
+      </div>
     </div>
   )
 }
 
-// Small uppercase sub-label inside a category card.
+// Small lowercase sub-label inside a category card.
 function SubLabel({ children }: { children: ReactNode }) {
   return (
-    <div style={{ fontSize: 14, fontWeight: 600, color: GRAPHITE, letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: 8 }}>
+    <div style={{ fontSize: 10, fontWeight: 500, color: MUTE, letterSpacing: '0.4px', marginBottom: 6 }}>
       {children}
     </div>
   )
@@ -201,11 +207,7 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
 
   return (
     <Section title={TYPE_LABEL[type] ?? type} count={ratedCount || undefined}>
-      {ratedCount > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <ReactionBar items={items} type={type} />
-        </div>
-      )}
+      {ratedCount > 0 && <ReactionBar items={items} type={type} />}
       {categoryVibes.length > 0 && (
         <div style={{ marginBottom: 18 }}>
           <SubLabel>vibes</SubLabel>
