@@ -11,6 +11,10 @@ export interface Blurb {
 const EMPTY: Blurb = { summary: null, source: null }
 const cache = new Map<string, Blurb>()
 
+export function clearBlurbCache(title: string, creator: string | null, year: number | null) {
+  cache.delete(`${title}|${creator ?? ''}|${year ?? ''}`)
+}
+
 export function useBookBlurb(title: string, creator: string | null, year: number | null, enabled: boolean): Blurb {
   const [blurb, setBlurb] = useState<Blurb>(EMPTY)
   useEffect(() => {

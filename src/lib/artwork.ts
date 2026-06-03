@@ -5,6 +5,10 @@ import { authHeaders } from './supabase'
 // Returns null until loaded or when nothing is found. Cached per item.
 const cache = new Map<string, string | null>()
 
+export function clearArtworkCache(type: string, title: string, creator: string | null, year: number | null) {
+  cache.delete(`${type}|${title}|${creator ?? ''}|${year ?? ''}`)
+}
+
 export function useArtwork(type: string, title: string, creator: string | null, year: number | null, overrideUrl?: string | null): string | null {
   const [url, setUrl] = useState<string | null>(overrideUrl ?? null)
   useEffect(() => {

@@ -15,10 +15,9 @@ const supabase = createClient(
   cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY),
 )
 
-const ALLOWED_EMAILS = [
-  'farahmokhtar94@gmail.com',
-  'tom.effland@gmail.com',
-]
+const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS
+  ? process.env.ALLOWED_EMAILS.split(',').map(e => e.trim()).filter(Boolean)
+  : ['farahmokhtar94@gmail.com', 'tom.effland@gmail.com'])
 
 // Talkback: reply to the sender with what happened (saved / nothing / error) so a silent
 // failure can never go unnoticed again. No-ops safely until POSTMARK_SERVER_TOKEN is set,
