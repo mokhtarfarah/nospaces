@@ -432,7 +432,7 @@ export function LibraryScreen() {
             <TabChip label="other" active={categories.includes('other') && !scratchOnly} onClick={() => selectCategory('other')} />
           )}
           {hasScratch && (
-            <TabChip label="? scratch" active={scratchOnly} onClick={() => { setScratchOnly(v => !v); setCategories([]) }} />
+            <TabChip label="for review" active={scratchOnly} onClick={() => { setScratchOnly(v => !v); setCategories([]) }} />
           )}
         </div>
 
