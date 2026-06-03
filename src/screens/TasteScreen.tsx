@@ -404,48 +404,48 @@ export function TasteScreen() {
             <RankedLine scored={lowVibes} limit={6} />
           </div>
         )}
-      </Section>
 
-      {/* Taste profile prose — AI-generated editorial summary, cached in user_prefs */}
-      <div style={{ borderBottom: `1px solid ${HAIR}`, padding: '18px 0 20px' }}>
-        {tasteProfile ? (
-          <>
-            <p style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, margin: '0 0 10px', letterSpacing: '-0.1px' }}>
-              {renderWithItalics(tasteProfile)}
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {tasteProfileGeneratedAt && (
-                <span style={{ fontSize: 11, color: MUTE }}>
-                  {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-              )}
+        {/* Taste profile prose — lives inside vibes, no separate border */}
+        <div style={{ marginTop: 18 }}>
+          {tasteProfile ? (
+            <>
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 10, letterSpacing: '-0.1px' }}>
+                {renderWithItalics(tasteProfile)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {tasteProfileGeneratedAt && (
+                  <span style={{ fontSize: 11, color: MUTE }}>
+                    {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
+                <button
+                  onClick={generateProfile}
+                  disabled={generatingProfile}
+                  style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
+                >
+                  {generatingProfile ? 'generating…' : 'regenerate'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, color: GRAPHITE }}>ai taste profile</span>
               <button
                 onClick={generateProfile}
                 disabled={generatingProfile}
-                style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
+                style={{
+                  padding: '7px 16px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
+                  border: '1.5px solid #111', background: '#111',
+                  color: '#fff', fontSize: 12, fontWeight: 600,
+                  opacity: generatingProfile ? 0.5 : 1,
+                }}
               >
-                {generatingProfile ? 'generating…' : 'regenerate'}
+                {generatingProfile ? 'generating…' : 'generate'}
               </button>
             </div>
-          </>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, color: GRAPHITE }}>ai taste profile</span>
-            <button
-              onClick={generateProfile}
-              disabled={generatingProfile}
-              style={{
-                padding: '7px 16px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
-                border: '1.5px solid #111', background: '#111',
-                color: '#fff', fontSize: 12, fontWeight: 600,
-                opacity: generatingProfile ? 0.5 : 1,
-              }}
-            >
-              {generatingProfile ? 'generating…' : 'generate'}
-            </button>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </Section>
 
       {/* Verdicts (how it landed) — ranked by how often you reach for each, not by reaction. */}
       {verdictTally.length > 0 && (
