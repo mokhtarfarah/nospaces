@@ -104,7 +104,28 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-03, updated session 12 end)
+## TODO / Roadmap (last edited 2026-06-03, updated session 16 end)
+
+### 📌 Session 16 summary (2026-06-03) — cosmetic queue cleared + input audit started
+
+**Shipped to `main` / live:**
+1. ✅ **Genre auto-fill bug fixed** — the *main* typed path (catalog-pick), bulk photo, iOS shortcut, and email all used to save with **empty genres** (only the Sonnet text-identify path filled them). `addItem` (`src/hooks/useItems.ts`) now fires `/api/genres` (Haiku, cheap) in the background for any tagless film/tv/book/music and patches the row; the email prompt (`api/email.ts`) now requests genres per-type too. This was the Snatch / Anatomy of a Fall / New Music Tuesday "no genre" bug.
+2. ✅ **Manual blurb** — action-card **edit** view has an "about this" textarea → `metadata.manualBlurb`, top priority over auto blurbs (manual > recommendation > photo-captured > wiki > book). Shows under the existing "about this ▾" toggle. Edit-view only (not the add sheet), uniform across all items.
+3. ✅ **Library filter row cohesion** — whole row is now one flat language: dropdowns (vibe/genre/series) + reaction + new-music chips all converted to `TabChip`. Active state = **ink + italics** (tried italic instead of underline; Farah keeping it for now). `FilterChip` deleted.
+4. ✅ **Series filter** only shows for a single film/book/tv category (`seriesRelevant`) — gone from "all" and music.
+5. ✅ **Action card** — header order now `edit · re-identify · own it? · +tags/edit tags`; the tags open/collapse toggle lives **only in the header** (`done ▴`), removed the duplicate body button. Genre chips match `MoodChips` exactly. Lead term in tag lines **no longer bold** (matches taste page).
+6. ✅ **Taste page** — `RankedLine` lead term no longer bold (order carries ranking).
+7. ✅ **Library tools** — "fill automatically" block is collapsible (`autoOpen`); tighter spacing; **fill-by-hand has a gap-type filter** ("missing wiki / genre / creator / …"); rows **deep-link straight into the action card's *edit* view** (`?item=…&edit=1` → `initialEdit` prop on `ItemActionSheet`).
+8. ✅ **Library grid** — **3 col / 4 col toggle** (persisted per-device; 4 for desktop where 3 was too big/low-res); grid cards now show the **same subtitle** as list rows (type · year · seasons · genre · reaction).
+9. ✅ **Clear-all-filters** — subtle "clear ×" in the library header, shown only when a filter is narrowing the list.
+10. ✅ **Font decided: Geist** (compared vs DM Sans / Plus Jakarta Sans via a mockup, now deleted).
+
+**Decisions / open from session 16 discussion (act on next):**
+- 🔜 **"Save & next" tidy queue (PRIORITIZED to unblock setup).** The fill-by-hand list should walk through gappy items: tap in → edit view → **"save & next ›"** advances to the next gappy item without bouncing back to the Add page (today's friction = round-trip Add→Library→Add per item). Skip button for unfixables. Reuses the existing edit view; ~⅓ the work of true inline editing and handles every gap type. (Lighter alt considered + rejected: inline text-only editing for creator/year/pages, link out for genre/wiki.)
+- 🔜 **Cover-art quality pass (biggest tastemaker payoff).** Low-res / inconsistent covers cheapen the grid wall. Need a higher-res art source or a consistent fallback treatment so the grid always looks intentional. Image quality = identity for the target user.
+- 🔜 **Default library view → want-to (once import is done).** Today defaults to recent/all (correct during setup). Long-term the recurring job is "what do I put on / read next" = the want-to backlog. Flip the default *status* to want-to once the library is populated. Tiny change (just the default value). Held until Farah finishes importing.
+- 🔜 **"Canon" / pinned favorites.** A lightweight pin for the ~10 items that define her taste, separate from the 4-point reaction scale (the parked "MySpace top 8" instinct, generalized across media). Medium.
+- **Tastemaker critique (design north star reminder):** the target user wants a **mirror + curator**, not a tracker. Mirror = the taste-page prose (the killer feature — keep expanding it). Curator = catalog-grounded recommendations (roadmap endgame). The library itself should feel like a **collection on display** (→ better art + more curated default), not an inbox. Guard the editorial restraint (lowercase, monochrome, no emoji, editorial type).
 
 ### 📌 Session 12 summary (2026-06-03) — action card overhaul + small fixes
 
@@ -123,7 +144,7 @@ All shipped to `main` / live:
   - **Film/TV recency NOT built** ("that new Villeneuve movie") — TMDB needs a person-search → credits path (different shape from search/multi, which returns the person and gets filtered out). Own session.
 - ✅ **Series tag** — SHIPPED (session 14). Free-text `metadata.series` field. Input in the action-card edit view (shown for film/book/tv only). `↳ series name` line on the action card under the subtitle. `series ▾` filter dropdown in the library header (same pattern as vibe/genre; only appears when items have a series). Manual entry only — no AI auto-detect (deferrable later).
 - **Visual element on taste page hero** — covers/collage
-- **Input workflow audit**
+- ✅ **Input workflow audit** — DONE session 16 (see "Input workflow streamlining" section below).
 
 ---
 
@@ -263,8 +284,40 @@ All shipped to `main` / live:
   - **Not yet eyeballed in-app by Farah** (key + migration both done) — needs a logged-in session + `vercel dev`/prod to exercise `/api/shows`. Spot-check in prod: load music → shows near you, set a city, confirm dates appear.
   - v2 ideas: badge on the music action card ("on tour near you"), notify on new dates, per-show "interested" save.
 
-### 📥 Input workflow streamlining (next audit after session 9)
-Full list of all input sources the app currently supports → friction analysis → streamlining ideas. To be generated by Claude as a dedicated pass after the session 9 fixes ship. Sources to cover: type-to-add (AI identify), photo add (single + bulk), email forward, iOS shortcut (screenshot), Letterboxd CSV import, Spotify sync, describe-to-add (pending), scratch/quick-capture. Output: a table of each source with pros + friction points, then a set of concrete improvement proposals ranked by effort.
+### 📥 Input workflow streamlining — AUDIT DONE (session 16)
+
+**Every input path (12):**
+1. **Type a title** → `describe` (Haiku intent) → `lookup` catalog (iTunes/TMDB/OpenLibrary) → PickerSheet → ConfirmSheet. (the primary path)
+2. **Describe it** ("rosalía's latest album") → same path; recency words float newest first.
+2b. **Catalog miss → Sonnet** → "identify with Sonnet" prompt → `identify` (text) → ConfirmSheet.
+3. **Single photo** → `prepareImage` (shrink/HEIC→JPEG) → `identify` (Sonnet vision) → ConfirmSheet.
+4. **Bulk photos** → parallel `identify` → BulkConfirmSheet. ⚠️ saves **want_to only** (no "already did").
+5. **iOS share-sheet image** (PWA share target) → cached blob → `identify` → ConfirmSheet.
+6. **Desktop paste** (Cmd/Ctrl+V image) → `identify` → ConfirmSheet.
+7. **iOS Shortcut (screenshot)** → in-app "From Shortcut" reads URL params → ConfirmSheet. 🔴 **likely broken** — HANDOFF says it POSTs to `/api/identify-upload` but **that endpoint does not exist** in `api/`. Matches the "flaky" note. **Decide: rebuild or retire.**
+8. **Save as note (scratch)** → `type:'other', metadata.scratch=true`, no AI.
+9. **Email forward** (`anything@nospaces.xyz`) → `api/email` (Sonnet) → bulk save **want_to**, no per-item reaction/selection.
+10. **Letterboxd CSV** (`/import`) — no AI, stars→reaction.
+11. **Spotify sync** (`/spotify`) — no AI.
+12. **Recommendations PDF** (`/recommend`) — Sonnet reads PDF → checklist → want_to.
+
+**Two engines:** typed text → catalog first (cheap Haiku + free catalog APIs), Sonnet only on catalog miss. Photos/email → always Sonnet (must see/read). Imports/sync → no AI.
+
+**Friction findings:**
+- 🟢 **Genre gap — FIXED session 16** (catalog/bulk/shortcut/email all saved tagless; now auto-filled).
+- 🔴 **iOS Shortcut likely 404s** (`/api/identify-upload` missing) — needs a decision.
+- 🟡 **Bulk photos = want_to only** — no "already did" toggle on bulk rows.
+- 🟡 **Email = bulk want_to dump** — no reaction/selection; big-photo 413 (by design).
+- 🟡 **Scratch vs un-ID'd entry** — parked open question; also no offline capture.
+
+**Improvement ideas (ranked):**
+| Effort | Idea |
+|---|---|
+| XS | Decide iOS Shortcut fate (confirm broken → rebuild or remove from UI/HANDOFF) |
+| S | "already did" toggle on **bulk** confirm rows |
+| S | scratch = "save now, identify later" keeping reaction/note (resolve the parked model) |
+| M | offline capture queue (IndexedDB) — save offline, sync on reconnect ("on the go" north star) |
+| M | film/TV **describe-by-recency** ("that new Villeneuve movie") via TMDB person→credits |
 
 ### 🌱 Bigger / later
 - Genre/mood tags + taste analysis → now the active "Taste arc" above
