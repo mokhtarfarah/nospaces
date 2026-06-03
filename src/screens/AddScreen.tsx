@@ -306,7 +306,14 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
       </form>
 
-      <div style={{ textAlign: 'center', marginTop: 20, display: 'flex', gap: 16, justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center', marginTop: 20, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => navigate('/recommend')}
+          style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+        >
+          find recommendations
+        </button>
         <button
           type="button"
           onClick={() => navigate('/import')}
