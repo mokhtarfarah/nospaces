@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, type ReactNode } from 'react'
 import { useItems } from '../hooks/useItems'
 import { usePrefs } from '../hooks/usePrefs'
 import type { Item, ItemReaction } from '../lib/database.types'
-import { VIBES, VERDICTS } from '../lib/moods'
+import { VIBES } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 
 // Editorial palette — monochrome, warm ink on white. Low-contrast, print-like.
@@ -361,15 +361,6 @@ export function TasteScreen() {
   // Vibes = taste fingerprint → ranked by reaction.
   const topVibes = moodScores.filter(s => VIBES.includes(s.label) && s.score >= 0)
   const lowVibes = moodScores.filter(s => VIBES.includes(s.label) && s.score < 0)
-  // Verdicts = how things land → ranked by how often you reach for them (count),
-  // NOT by reaction (that'd be circular: you only call something "overhyped" if you disliked it).
-  const verdictTally = useMemo(() =>
-    moodScores
-      .filter(s => VERDICTS.includes(s.label))
-      .map(s => ({ label: s.label, score: s.count, count: s.count }))
-      .sort((a, b) => b.score - a.score),
-    [moodScores],
-  )
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh' }}>
