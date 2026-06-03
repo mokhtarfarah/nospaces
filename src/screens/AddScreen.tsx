@@ -94,33 +94,41 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
 
 import type { Item } from '../lib/database.types'
 import { useArtwork } from '../lib/artwork'
-import { itemGaps } from '../lib/gaps'
+import { itemGaps, dismissGaps } from '../lib/gaps'
 import { isGenreTag } from '../lib/genres'
 
-// One row in the "fill by hand" list. Resolves art the same way the library does
-// so it can flag a genuinely missing cover (no stored image AND nothing the art
-// API can find). Tapping jumps to the library and opens the item to fill.
-function GapRow({ item, gaps, onOpen }: { item: Item; gaps: string[]; onOpen: () => void }) {
+// One row in the "fill by hand" list. Tapping opens the edit view; the ✓ button
+// dismisses all current gaps so the item stops appearing in the list.
+function GapRow({ item, gaps, onOpen, onDismiss }: { item: Item; gaps: string[]; onOpen: () => void; onDismiss: () => void }) {
   const art = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const storedThumb = (item.metadata?.wikiThumb as string | null) ?? null
   const allGaps = !art && !storedThumb ? [...gaps, 'cover'] : gaps
   return (
-    <button
-      onClick={onOpen}
-      style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid #F4F2EE', padding: '9px 10px', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
-    >
-      <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, flex: 1 }}>
-        <span style={{ fontSize: 13, color: '#1C1B19', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
-        <span style={{ fontSize: 11, color: '#ABA69C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {item.creator || item.type}
+    <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #F4F2EE' }}>
+      <button
+        onClick={onOpen}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', background: 'none', border: 'none', padding: '9px 10px', cursor: 'pointer', fontFamily: 'inherit', flex: 1, minWidth: 0 }}
+      >
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, flex: 1 }}>
+          <span style={{ fontSize: 13, color: '#1C1B19', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
+          <span style={{ fontSize: 11, color: '#ABA69C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {item.creator || item.type}
+          </span>
         </span>
-      </span>
-      <span style={{ display: 'flex', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '52%' }}>
-        {allGaps.map(g => (
-          <span key={g} style={{ fontSize: 10, color: '#6F6B64', background: '#F4F2EE', borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap' }}>{g}</span>
-        ))}
-      </span>
-    </button>
+        <span style={{ display: 'flex', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '45%' }}>
+          {allGaps.map(g => (
+            <span key={g} style={{ fontSize: 10, color: '#6F6B64', background: '#F4F2EE', borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap' }}>{g}</span>
+          ))}
+        </span>
+      </button>
+      <button
+        onClick={onDismiss}
+        title="mark as complete — won't appear again"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '9px 10px', color: '#DDD', fontSize: 14, flexShrink: 0, lineHeight: 1 }}
+      >
+        ✓︎
+      </button>
+    </div>
   )
 }
 
@@ -406,7 +414,13 @@ function LibraryTools({ items, editItem, open }: {
               )}
               <div style={{ marginTop: 8, maxHeight: 340, overflowY: 'auto', border: '1px solid #ECEAE6', borderRadius: 6 }}>
                 {shownIncomplete.map(({ item, gaps }) => (
-                  <GapRow key={item.id} item={item} gaps={gaps} onOpen={() => navigate(`/library?item=${item.id}&edit=1&tidy=1`)} />
+                  <GapRow
+                    key={item.id}
+                    item={item}
+                    gaps={gaps}
+                    onOpen={() => navigate(`/library?item=${item.id}&edit=1&tidy=1`)}
+                    onDismiss={() => editItem(item.id, { metadata: dismissGaps(item, gaps) })}
+                  />
                 ))}
               </div>
             </>
