@@ -45,6 +45,12 @@ function scoreTags(items: Item[], field: 'tags' | 'moods', type?: string): Score
     .sort((a, b) => b.score - a.score)
 }
 
+// Renders text with *word* → <em>word</em> for media titles.
+function renderWithItalics(text: string) {
+  const parts = text.split(/\*([^*]+)\*/)
+  return parts.map((part, i) => i % 2 === 1 ? <em key={i}>{part}</em> : part)
+}
+
 // Ranked tags as a flowing typographic line (editorial, no pills). The lead
 // term is emphasized in ink; the rest are graphite, middot-separated. Order
 // carries the ranking. `limit` drops the low-signal tail.
@@ -364,12 +370,26 @@ export function TasteScreen() {
     <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
       <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 10px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
 
+      {/* OVERALL — vibes + verdicts are cross-type (a vibe doesn't belong to a medium). */}
+      {/* Vibes (feel) — your taste fingerprint. Top of the page, open by default. */}
+      <Section title="vibes" defaultOpen>
+        {topVibes.length > 0
+          ? <RankedLine scored={topVibes} limit={8} />
+          : <p style={{ fontSize: 13, color: MUTE, margin: 0 }}>tag a vibe when you mark things done.</p>}
+        {lowVibes.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <SubLabel>rarely lands</SubLabel>
+            <RankedLine scored={lowVibes} limit={6} />
+          </div>
+        )}
+      </Section>
+
       {/* Taste profile prose — AI-generated editorial summary, cached in user_prefs */}
-      <div style={{ borderBottom: `1px solid ${HAIR}`, paddingBottom: 24, marginBottom: 4 }}>
+      <div style={{ borderBottom: `1px solid ${HAIR}`, padding: '18px 0 20px' }}>
         {tasteProfile ? (
           <>
-            <p style={{ fontSize: 14, lineHeight: 1.85, color: GRAPHITE, margin: '0 0 14px', letterSpacing: '-0.1px' }}>
-              {tasteProfile}
+            <p style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, margin: '0 0 10px', letterSpacing: '-0.1px' }}>
+              {renderWithItalics(tasteProfile)}
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {tasteProfileGeneratedAt && (
@@ -380,7 +400,7 @@ export function TasteScreen() {
               <button
                 onClick={generateProfile}
                 disabled={generatingProfile}
-                style={{ background: 'none', border: 'none', fontSize: 11, color: generatingProfile ? MUTE : MUTE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
+                style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: generatingProfile ? 'default' : 'pointer', padding: 0, textDecoration: 'underline' }}
               >
                 {generatingProfile ? 'generating…' : 'regenerate'}
               </button>
@@ -404,20 +424,6 @@ export function TasteScreen() {
           </div>
         )}
       </div>
-
-      {/* OVERALL — vibes + verdicts are cross-type (a vibe doesn't belong to a medium). */}
-      {/* Vibes (feel) — your taste fingerprint. Top of the page, open by default. */}
-      <Section title="vibes" defaultOpen>
-        {topVibes.length > 0
-          ? <RankedLine scored={topVibes} limit={8} />
-          : <p style={{ fontSize: 13, color: MUTE, margin: 0 }}>tag a vibe when you mark things done.</p>}
-        {lowVibes.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            <SubLabel>rarely lands</SubLabel>
-            <RankedLine scored={lowVibes} limit={6} />
-          </div>
-        )}
-      </Section>
 
       {/* Verdicts (how it landed) — ranked by how often you reach for each, not by reaction. */}
       {verdictTally.length > 0 && (
