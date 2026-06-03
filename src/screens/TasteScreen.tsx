@@ -125,6 +125,7 @@ function ReactionBar({ items, type }: { items: Item[]; type: string }) {
   const parts = REACTION_ORDER
     .map(r => ({ r, n: done.filter(i => i.reaction === r).length }))
     .filter(p => p.n > 0)
+  const lovedPct = Math.round((done.filter(i => i.reaction === 'loved_it').length / done.length) * 100)
   return (
     <div style={{ fontSize: 13, color: GRAPHITE, letterSpacing: '0.2px' }}>
       {parts.map((p, i) => (
@@ -133,6 +134,9 @@ function ReactionBar({ items, type }: { items: Item[]; type: string }) {
           <span style={{ color: INK, fontWeight: 500 }}>{p.n}</span> {REACTION_LABEL[p.r]}
         </span>
       ))}
+      {lovedPct > 0 && (
+        <span style={{ color: MUTE }}> · <span style={{ color: GRAPHITE, fontWeight: 500 }}>{lovedPct}%</span> loved</span>
+      )}
     </div>
   )
 }
@@ -188,21 +192,12 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
 
-    // Backlog — most-saved genres in want_to.
-    const bMap = new Map<string, number>()
-    items.filter(i => i.status === 'want_to' && i.type === type).forEach(i =>
-      i.tags?.forEach(t => { if (isGenreTag(t)) bMap.set(t, (bMap.get(t) ?? 0) + 1) }))
-    const backlog = Array.from(bMap.entries())
-      .map(([label, count]) => ({ label, score: count, count }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6)
-
     const ratedCount = items.filter(i => i.type === type && i.status === 'done' && i.reaction).length
-    return { genres, lowGenres, categoryVibes, creators, era, backlog, ratedCount }
+    return { genres, lowGenres, categoryVibes, creators, era, ratedCount }
   }, [items, type])
 
-  const { genres, lowGenres, categoryVibes, creators, era, backlog, ratedCount } = data
-  if (ratedCount === 0 && backlog.length === 0) return null
+  const { genres, lowGenres, categoryVibes, creators, era, ratedCount } = data
+  if (ratedCount === 0) return null
 
   return (
     <Section title={TYPE_LABEL[type] ?? type} count={ratedCount || undefined}>
@@ -233,12 +228,6 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
         <div style={{ marginBottom: 18 }}>
           <SubLabel>era</SubLabel>
           <RankedLine scored={era} limit={6} />
-        </div>
-      )}
-      {backlog.length > 0 && (
-        <div style={{ marginBottom: lowGenres.length > 0 ? 18 : 0 }}>
-          <SubLabel>most in backlog</SubLabel>
-          <RankedLine scored={backlog} limit={6} />
         </div>
       )}
       {lowGenres.length > 0 && (
