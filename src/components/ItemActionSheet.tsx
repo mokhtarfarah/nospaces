@@ -123,11 +123,11 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     : summary ? 'Wikipedia'
     : bookBlurb.source
 
-  // Spotify URL — only shown when we have a direct album ID (synced items).
-  // No fallback to search: a search link is worse UX than no link.
+  // Spotify URL for music items. Synced albums link directly; others fall back to search.
   const spotifyUrl = item.type === 'music'
     ? ((item.metadata?.spotifyUrl as string | undefined)
-        ?? (item.metadata?.spotifyId ? `https://open.spotify.com/album/${item.metadata.spotifyId}` : null))
+        ?? (item.metadata?.spotifyId ? `https://open.spotify.com/album/${item.metadata.spotifyId}` : null)
+        ?? `https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`)
     : null
 
   function handleSaveDetails() {
