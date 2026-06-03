@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { authHeaders } from '../lib/supabase'
 
 // Lighter v1 of "where to watch". Self-contained popup that lists US streaming options
 // for a film/TV item via /api/watch (TMDB). Safe to delete this file to remove the feature.
@@ -27,10 +28,13 @@ export function WhereToWatchSheet({ item, onClose }: {
     let cancelled = false
     const sp = new URLSearchParams({ title: item.title, type: item.type })
     if (item.year) sp.set('year', String(item.year))
-    fetch(`/api/watch?${sp}`)
-      .then(r => r.json())
-      .then(d => { if (!cancelled) setData(d) })
-      .catch(() => { if (!cancelled) setData({ configured: true, error: true }) })
+    ;(async () => {
+      try {
+        const h = await authHeaders()
+        const d = await (await fetch(`/api/watch?${sp}`, { headers: h })).json()
+        if (!cancelled) setData(d)
+      } catch { if (!cancelled) setData({ configured: true, error: true }) }
+    })()
     return () => { cancelled = true }
   }, [item.title, item.year, item.type])
 

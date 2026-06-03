@@ -132,6 +132,9 @@ export function LibraryScreen() {
   const handleSaveWiki = useCallback((id: string, wiki: WikiInfo) => {
     patchMetadata(id, { wikiUrl: wiki.url, wikiThumb: wiki.thumbnail, wikiSummary: wiki.summary })
   }, [patchMetadata])
+  const handleSaveArt = useCallback((id: string, url: string) => {
+    patchMetadata(id, { coverUrl: url })
+  }, [patchMetadata])
   const dupes = duplicateCount()
 
   // Empty array = all categories. Single-select: tapping a type switches to just that
@@ -501,6 +504,7 @@ export function LibraryScreen() {
                       item={item}
                       square={musicOnly}
                       onTap={() => (selectMode ? toggleSelect(item.id) : setActionItem(item))}
+                      onSaveArt={handleSaveArt}
                       selectMode={selectMode}
                       selected={selectedIds.has(item.id)}
                     />
@@ -516,6 +520,7 @@ export function LibraryScreen() {
                     onMarkDone={() => setDoneItem(item)}
                     onMarkWantTo={() => markWantTo(item.id)}
                     onSaveWiki={handleSaveWiki}
+                    onSaveArt={handleSaveArt}
                     selectMode={selectMode}
                     selected={selectedIds.has(item.id)}
                   />
@@ -735,13 +740,14 @@ function FilterChip({ label, active, onClick, disabled }: { label: string; activ
   )
 }
 
-function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, selectMode = false, selected = false }: {
+function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, onSaveArt, selectMode = false, selected = false }: {
   item: Item
   showType: boolean
   onTap: () => void
   onMarkDone: () => void
   onMarkWantTo: () => void
   onSaveWiki?: (id: string, wiki: WikiInfo) => void
+  onSaveArt?: (id: string, url: string) => void
   selectMode?: boolean
   selected?: boolean
 }) {
@@ -766,6 +772,13 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
     }
   }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
+  const artSaved = useRef(false)
+  useEffect(() => {
+    if (artwork && !item.metadata?.coverUrl && !artSaved.current) {
+      artSaved.current = true
+      onSaveArt?.(item.id, artwork)
+    }
+  }, [artwork]) // eslint-disable-line react-hooks/exhaustive-deps
   const thumbnail = artwork ?? wikiThumb
 
   // Season progress for TV shows that have a checklist.
@@ -889,9 +902,16 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
 }
 
 // Grid layout cover card. square=true for music (album covers are 1:1).
-function GridCard({ item, square, onTap, selectMode = false, selected = false }: { item: Item; square: boolean; onTap: () => void; selectMode?: boolean; selected?: boolean }) {
+function GridCard({ item, square, onTap, onSaveArt, selectMode = false, selected = false }: { item: Item; square: boolean; onTap: () => void; onSaveArt?: (id: string, url: string) => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
+  const artSaved = useRef(false)
+  useEffect(() => {
+    if (artwork && !item.metadata?.coverUrl && !artSaved.current) {
+      artSaved.current = true
+      onSaveArt?.(item.id, artwork)
+    }
+  }, [artwork]) // eslint-disable-line react-hooks/exhaustive-deps
   const aspect = square ? '1 / 1' : '2 / 3'
   const reactionDot = item.status === 'done' && item.reaction === 'loved_it'
     ? '#1A1A1A'

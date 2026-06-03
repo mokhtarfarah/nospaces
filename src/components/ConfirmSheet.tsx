@@ -95,7 +95,7 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
     setLoadingMore(true)
     try {
       // Search the real catalogs (iTunes / TMDB / Open Library) for actual matches.
-      const res = await fetch(`/api/lookup?q=${encodeURIComponent(origQuery)}`)
+      const res = await fetch(`/api/lookup?q=${encodeURIComponent(origQuery)}`, { headers: await authHeaders() })
       const data = await res.json()
       const more: AiResult[] = (data.results ?? []).map((r: Partial<AiResult>) => normalizeAlt(r as AiResult))
       setCandidates(prev => {

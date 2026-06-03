@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? ''
 
@@ -47,6 +48,7 @@ async function fetchInfo(query: string): Promise<{ title: string; url: string; t
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!await requireAuth(req)) return res.status(401).end()
   const type = one(req.query.type)
   const title = one(req.query.title)
   const creator = one(req.query.creator)

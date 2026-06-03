@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { authHeaders } from './supabase'
 
 // Look up a media item on Wikipedia and return its canonical article URL plus a
 // thumbnail image (poster / cover / album art). Uses full-text search (more forgiving
@@ -48,7 +49,7 @@ async function resolve(type: string, title: string, creator: string | null, year
     // Re-check cache in case a parallel request already resolved this key
     if (cache.has(key)) return cache.get(key)!
     try {
-      const data = await (await fetch(`/api/wiki?${sp}`)).json()
+      const data = await (await fetch(`/api/wiki?${sp}`, { headers: await authHeaders() })).json()
       const info: WikiInfo = { url: data.url ?? null, thumbnail: data.thumbnail ?? null, summary: data.summary ?? null }
       cache.set(key, info)
       return info

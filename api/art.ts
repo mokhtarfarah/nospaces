@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Best-source artwork resolver:
 //   film/tv  -> TMDB poster (falls back to a season poster for shows with none)
@@ -109,6 +110,7 @@ async function bookCover(title: string, creator: string, year?: number): Promise
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!await requireAuth(req)) return res.status(401).end()
   const type = one(req.query.type)
   const title = one(req.query.title)
   const creator = one(req.query.creator)

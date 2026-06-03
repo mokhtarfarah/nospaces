@@ -225,7 +225,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     setLookingUp(true)
     try {
       const q = year ? `${title.trim() || item.title} (${year})` : (title.trim() || item.title)
-      const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}`)
+      const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}`, { headers: await authHeaders() })
       const data = await res.json()
       const more: Candidate[] = (data.results ?? [])
         .filter((r: Candidate) => r?.title)

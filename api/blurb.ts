@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Short book blurb for the action card when Wikipedia has no summary.
 // Tries Open Library (cleanest plot summary), then Apple Books (jacket blurb).
@@ -59,6 +60,7 @@ async function appleBlurb(title: string, creator: string): Promise<string | null
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!await requireAuth(req)) return res.status(401).end()
   const title = one(req.query.title)
   const creator = one(req.query.creator)
   const yearStr = one(req.query.year)

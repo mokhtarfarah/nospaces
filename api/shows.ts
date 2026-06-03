@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { requireAuth } from './_auth'
 
 // Proxy for Ticketmaster's Discovery API. We go through Vercel so we can attach
 // the API key (kept server-side), normalise the response to just what the UI
@@ -47,6 +48,7 @@ async function resolveAttractionId(artist: string, key: string): Promise<string 
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!await requireAuth(req)) return res.status(401).end()
   const artist = one(req.query.artist).trim()
   if (!artist) return res.status(400).json({ shows: [] })
   if (!API_KEY) return res.json({ shows: [], error: 'missing TICKETMASTER_API_KEY' })
