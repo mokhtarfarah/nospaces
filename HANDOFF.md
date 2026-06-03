@@ -101,15 +101,30 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-02, updated session 9 end)
+## TODO / Roadmap (last edited 2026-06-02, updated session 10 end)
 
-### 📌 Session 9 summary (2026-06-02) — taste prose + small fixes
-In progress:
-- ⭐ **"Describe my taste" prose block** on the Taste page (Taste arc #5 v1)
-- **Blurb source duplication fix** (Action card #14)
-- **Manual genre edit** (Action card #13)
+### 📌 Session 10 summary (2026-06-02) — taste page overhaul + add page cleanup
 
-**Queued after current session:** Full audit of all input sources (add flows) — friction analysis + streamlining ideas. See 📥 Input workflow streamlining below.
+**Taste page — all shipped:**
+1. ✅ **"Describe my taste" AI prose block** — `api/taste-profile.ts`. Sends loved/liked items to Claude Sonnet → editorial paragraph + bullets. Cached in `user_prefs`. See more/see less inline. Regenerate button. Prompt is tuned: blunt, specific, second-person, *italics* for titles, cross-medium observations, loved > liked signal weighting.
+2. ✅ **Taste page layout overhaul** — non-collapsible hero header (vibes chips + prose, heavy INK divider below). Compact bordered category cards (FILMS/BOOKS/MUSIC/TV) with title + rated/loved% on header line, go-to creators, genres. "by medium" bridge label. Per-category vibes and era removed. Verdicts section removed.
+3. ✅ **Creator loyalty** — go-to creators (2+ items, reaction-scored) added to each category card.
+4. ✅ **Tidy up moved to Add page** — `LibraryTools` component in `AddScreen.tsx`, collapsed behind "library tools" link, only shows when there's work to do.
+5. ✅ **Add page quick fixes** — equal spacing around "or" divider, "find recommendations" moved inline with scratch link, "library tools" centered, Letterboxd/Spotify grouped separately.
+
+**Outstanding taste page feedback (do next session):**
+- h1 "Add" → "add" (lowercase, consistent with design language)
+- Shorten scratch label: "can't identify it? jot a description for later" → "save as note" (too wordy for an escape hatch)
+- Photo upload deserves more prominence — it's a first-class input, not a secondary action
+- Letterboxd + Spotify are one-time imports — should be visually quieter or behind a "more ways to add" disclosure, not same weight as regular-use links
+- Type chips feel mandatory but aren't — reconsider placement/visibility
+- Overall: too many decisions on first load, primary action (type + identify) needs to dominate more clearly
+- Visual element on taste page hero (covers/collage) — see Taste arc TODO
+
+**Still open from session 9 queue:**
+- **Blurb source duplication fix** (Action card #14) — cosmetic, small
+- **Manual genre edit** (Action card #13) — small, self-contained
+- **Input workflow audit** — full list of all input sources + friction analysis + streamlining (see 📥 Input workflow streamlining below)
 
 ---
 
