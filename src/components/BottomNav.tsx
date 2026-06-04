@@ -74,12 +74,8 @@ function LibraryIcon() {
 
 function DiscoverIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="7" cy="13" r="3" />
-      <circle cx="17" cy="13" r="3" />
-      <path d="M10 13h4" />
-      <path d="M4.5 13L3 8l4 1" />
-      <path d="M19.5 13L21 8l-4 1" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M12 3 L14.5 9.5 L21 12 L14.5 14.5 L12 21 L9.5 14.5 L3 12 L9.5 9.5 Z" />
     </svg>
   )
 }

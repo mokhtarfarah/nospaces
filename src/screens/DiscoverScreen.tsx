@@ -139,18 +139,19 @@ export function DiscoverScreen() {
     setCustomFeeds(customFeeds.filter(f => f.url !== url))
   }
 
-  // Filter + deduplicate results against library
+  // Filter + deduplicate. Items saved this session stay visible (show as "saved ✓︎").
+  // Only pre-existing library items are hidden upfront.
   const displayed = useMemo(() => {
     const seen = new Set<string>()
     return results.filter(r => {
       const key = r.title.toLowerCase()
-      if (libraryTitleSet.has(key)) return false
       if (seen.has(key)) return false
       seen.add(key)
+      if (!savedTitles.has(key) && libraryTitleSet.has(key)) return false
       if (typeFilter !== 'all' && r.type !== typeFilter) return false
       return true
     })
-  }, [results, typeFilter, libraryTitleSet])
+  }, [results, typeFilter, libraryTitleSet, savedTitles])
 
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = { all: 0, film: 0, book: 0, music: 0, tv: 0 }
@@ -168,7 +169,7 @@ export function DiscoverScreen() {
   const allFeeds = [...DEFAULT_FEEDS, ...customFeeds]
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 24px 100px', fontFamily: 'inherit' }}>
+    <div style={{ padding: '20px 20px 100px', fontFamily: 'inherit' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
