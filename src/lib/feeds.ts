@@ -14,7 +14,8 @@ export interface DiscoveryResult {
   type: 'film' | 'book' | 'music' | 'tv'
   year: number | null
   why: string
-  source: string
+  // All sources that mention this title — multiple = cross-source corroboration.
+  sources: string[]
 }
 
 export const DEFAULT_FEEDS: FeedEntry[] = [

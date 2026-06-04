@@ -40,6 +40,10 @@ export function BottomNav() {
         <LibraryIcon />
         library
       </NavLink>
+      <NavLink to="/discover" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
+        <DiscoverIcon />
+        discover
+      </NavLink>
       <NavLink to="/taste" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
         <TasteIcon />
         taste
@@ -64,6 +68,15 @@ function LibraryIcon() {
       <rect x="3" y="4" width="4" height="16" rx="1" />
       <rect x="10" y="4" width="4" height="16" rx="1" />
       <rect x="17" y="4" width="4" height="16" rx="1" />
+    </svg>
+  )
+}
+
+function DiscoverIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <polygon points="16,8 10,14 8,16 14,10" fill="currentColor" stroke="none" />
     </svg>
   )
 }

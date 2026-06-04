@@ -4,6 +4,8 @@ import { useItems } from '../hooks/useItems'
 import { usePrefs } from '../hooks/usePrefs'
 import { authHeaders } from '../lib/supabase'
 import { DEFAULT_FEEDS, normaliseFeedUrl, guessFeedKind, type DiscoveryResult, type FeedEntry } from '../lib/feeds'
+import { useArtwork } from '../lib/artwork'
+import { typeColor } from '../lib/colors'
 
 type Mode = 'intaste' | 'divert'
 type TypeFilter = 'all' | 'film' | 'book' | 'music' | 'tv'
@@ -107,7 +109,7 @@ export function DiscoverScreen() {
   }
 
   async function handleSave(r: DiscoveryResult) {
-    await addItem(r.title, r.type, r.creator, r.year, { discoverSource: r.source })
+    await addItem(r.title, r.type, r.creator, r.year, { discoverSource: r.sources[0] })
     setSavedTitles(prev => new Set([...prev, r.title.toLowerCase()]))
   }
 
@@ -252,28 +254,36 @@ export function DiscoverScreen() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginBottom: 24 }}>
             {displayed.map((r, i) => {
               const alreadySaved = savedTitles.has(r.title.toLowerCase())
+              const sourceLabel = r.sources.length === 1
+                ? r.sources[0]
+                : `${r.sources[0]} + ${r.sources.length - 1} more`
               return (
                 <div key={i} style={{ borderBottom: '1px solid #ECEAE6', paddingBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1B19' }}>{r.title}</span>
-                      {r.creator && <span style={{ fontSize: 12, color: '#6F6B64' }}> — {r.creator}</span>}
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <DiscoverCover title={r.title} creator={r.creator} type={r.type} year={r.year} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 3 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1B19' }}>{r.title}</span>
+                          {r.creator && <span style={{ fontSize: 12, color: '#6F6B64' }}> — {r.creator}</span>}
+                        </div>
+                        <button
+                          onClick={() => !alreadySaved && handleSave(r)}
+                          style={{
+                            flexShrink: 0, padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: alreadySaved ? 'default' : 'pointer',
+                            border: alreadySaved ? '1.5px solid #CCC' : '1.5px solid #1C1B19',
+                            background: '#fff', color: alreadySaved ? '#CCC' : '#1C1B19', fontWeight: 500,
+                          }}
+                        >
+                          {alreadySaved ? 'saved ✓︎' : '+ save'}
+                        </button>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#ABA69C', marginBottom: 6 }}>
+                        {r.type}{r.year ? ` · ${r.year}` : ''} · via {sourceLabel}
+                      </div>
+                      <p style={{ fontSize: 12, color: '#6F6B64', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>{r.why}</p>
                     </div>
-                    <button
-                      onClick={() => !alreadySaved && handleSave(r)}
-                      style={{
-                        flexShrink: 0, padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: alreadySaved ? 'default' : 'pointer',
-                        border: alreadySaved ? '1.5px solid #CCC' : '1.5px solid #1C1B19',
-                        background: '#fff', color: alreadySaved ? '#CCC' : '#1C1B19', fontWeight: 500,
-                      }}
-                    >
-                      {alreadySaved ? 'saved ✓︎' : '+ save'}
-                    </button>
                   </div>
-                  <div style={{ fontSize: 11, color: '#ABA69C', marginBottom: 6 }}>
-                    {r.type}{r.year ? ` · ${r.year}` : ''} · via {r.source}
-                  </div>
-                  <p style={{ fontSize: 12, color: '#6F6B64', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>{r.why}</p>
                 </div>
               )
             })}
@@ -366,6 +376,16 @@ export function DiscoverScreen() {
       </div>
     </div>
   )
+}
+
+function DiscoverCover({ title, creator, type, year }: { title: string; creator: string | null; type: string; year: number | null }) {
+  const artwork = useArtwork(type, title, creator, year, null)
+  const color = typeColor(type)
+  const w = type === 'music' ? 48 : 36
+  const h = type === 'music' ? 48 : 54
+  return artwork
+    ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0, borderRadius: 0 }} />
+    : <div style={{ width: w, height: h, background: color.bg, flexShrink: 0, border: '1px solid #EEE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: color.border, letterSpacing: '0.3px' }}>{type}</div>
 }
 
 const inputStyle: React.CSSProperties = {

@@ -194,13 +194,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .map(p => `[${p.source}] ${p.title}${p.content ? ' — ' + p.content : ''}`)
     .join('\n')
 
-  const modeInstruction = mode === 'divert'
-    ? `This is DIVERT mode. Push beyond the obvious patterns. Find things that are genuinely unexpected for this person — coherent with their sensibility but outside their usual territory. Surprise them without losing them. You may draw on your own knowledge of the cultural landscape beyond what's in the feeds.`
-    : `This is IN-TASTE mode. Find the best matches for this person's established taste. Prioritise things that would feel like an immediate yes.`
+  const prompt = mode === 'divert'
+    ? `You are a taste-matched media recommendation engine in DIVERT mode.
 
-  const prompt = `You are a taste-matched media recommendation engine.
-
-${modeInstruction}
+The feeds below show what's currently being discussed in this person's trusted sources — use them as cultural context only. Your job is NOT to recommend the obvious picks from these feeds. Instead, draw primarily from your own knowledge of the broader cultural landscape to find works that are genuinely unexpected: different eras, geographies, forms, or corners of culture they probably haven't encountered through their usual reading.
 
 TASTE PROFILE:
 ${tasteProfile}
@@ -208,13 +205,12 @@ ${tasteProfile}
 ALREADY IN THEIR LIBRARY — do not recommend these:
 ${libraryList}
 
-RECENT CONTENT FROM THEIR TRUSTED SOURCES:
+CULTURAL CONTEXT (for inspiration, not as the source of your picks):
 ${feedBlock}
 
-Task: identify 8–12 specific media works that are mentioned, reviewed, or recommended in the source content above. Any type is fine (film, book, music, tv) — a book newsletter recommending a film is great. For each pick:
-- It must be clearly referenced in the feeds (not invented)
-- Explain in 1–2 sentences why it fits THIS person's specific taste, grounded in the profile above
-- Note which source surfaced it
+Find 8–10 recommendations that are coherent with this person's deeper sensibility but outside their comfort zone. Any type is fine. For each:
+- Explain in 1–2 sentences WHY it expands rather than just confirms their taste
+- In "sources" put ["Claude's knowledge"] unless the feeds also happen to mention it
 
 Return ONLY valid JSON (no markdown, no preamble):
 {
@@ -225,7 +221,37 @@ Return ONLY valid JSON (no markdown, no preamble):
       "type": "film|book|music|tv",
       "year": 2024,
       "why": "...",
-      "source": "..."
+      "sources": ["..."]
+    }
+  ]
+}`
+    : `You are a taste-matched media recommendation engine in IN-TASTE mode.
+
+The feeds below show what this person's trusted sources are currently discussing — use them as cultural context to calibrate your recommendations. You may recommend works mentioned in the feeds AND works from your own knowledge that fit the taste profile. Feeds are signal, not a constraint.
+
+TASTE PROFILE:
+${tasteProfile}
+
+ALREADY IN THEIR LIBRARY — do not recommend these:
+${libraryList}
+
+RECENT CONTENT FROM THEIR TRUSTED SOURCES:
+${feedBlock}
+
+Find 8–12 recommendations that feel like an immediate yes for this person. Any type is fine. For each:
+- Explain in 1–2 sentences why it fits THIS person's specific taste, grounded in the profile
+- If the feeds mention it, list the relevant sources. If it comes from your knowledge alone, use ["Claude's knowledge"]. If multiple sources discuss it, list all of them — corroboration is meaningful signal.
+
+Return ONLY valid JSON (no markdown, no preamble):
+{
+  "recommendations": [
+    {
+      "title": "...",
+      "creator": "...",
+      "type": "film|book|music|tv",
+      "year": 2024,
+      "why": "...",
+      "sources": ["Pandora Sykes", "r/booksuggestions"]
     }
   ]
 }`
@@ -241,6 +267,11 @@ Return ONLY valid JSON (no markdown, no preamble):
     const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
     const recommendations: DiscoveryResult[] = (parsed.recommendations ?? [])
       .filter((r: DiscoveryResult) => r?.title && r?.type && ['film','book','music','tv'].includes(r.type))
+      .map((r: DiscoveryResult & { source?: string }) => ({
+        ...r,
+        // Normalise: model may return source (string) instead of sources (array)
+        sources: Array.isArray(r.sources) ? r.sources : r.source ? [r.source] : ['Claude\'s knowledge'],
+      }))
 
     return res.status(200).json({ recommendations })
   } catch (err) {
