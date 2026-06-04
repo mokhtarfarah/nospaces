@@ -147,6 +147,16 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 5. ✅ **`useItems.addItem`** extended with optional `source_detail` param (backward compatible).
 6. ✅ **`usePrefs`** extended with `discoveryCache` + `customFeeds` + setters.
 
+### 🔜 Next session priorities
+
+1. **Taste profile page — vibe/verdict refresh + richer insights.** The taste page was built before the vibe/verdict taxonomy overhaul (session 18). Now that vibes are tiered by medium and verdicts are separated, the page should reflect the new vocabulary. Explore deeper insights beyond ranked tag lists — e.g. effort axis (easy ↔ demanding), cross-type vibe patterns, verdict breakdown ("comfort" vs "overrated" tendencies), era/decade clustering if year data is rich enough. Think about what a tastemaker would find genuinely surprising or revealing, not just a sorted list of tags.
+2. **Action card rework** — Farah flagged the card needs a general pass. Ask for specifics before building (layout, order, what's cluttered/missing).
+3. **"own it" → "on my shelf" for books** — tiny, `type === 'book'` guard in action card header link.
+4. **Cover art quality pass** — low-res / inconsistent covers are the biggest visual drag on the library. Biggest tastemaker payoff. Needs a dedicated session.
+5. **"In progress" status** — SQL migration already written in HANDOFF (Farah runs in Supabase dashboard), then update `ItemStatus` type, add filter chip, add "mark as in progress" on action card.
+6. **Tom's login** — publish Google OAuth consent screen.
+7. **Wiki match correctness** — film/TV resolution is lenient, may have saved wrong links. Spot-check pass.
+
 ### 🧹 Small nits (parked, do whenever)
 - **"own it" label for books** — `own it` / `own it ✓︎` doesn't feel right for physical books. Find a better word (e.g. `on my shelf`, `have it`). Only needs to change for `type === 'book'` in the action card header link.
 - **Action card rework** — Farah flagged the card needs a general pass. Needs more detail before implementing — ask what specifically feels off (layout, order, missing info, clutter, etc.).
