@@ -114,7 +114,110 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-03, updated session 17 end)
+## TODO / Roadmap (last edited 2026-06-04, updated session 20)
+
+---
+
+## 🗺 MASTER ROADMAP
+
+This is the single source of truth for nospaces direction. Each session should pull from here. Update it when things ship or priorities shift.
+
+### Phase 1 — Stop the bleeding ✅ DONE (session 20, 2026-06-04)
+
+All shipped to `main`:
+- ✅ Mobile bottom cutoff fixed — `calc(80px + env(safe-area-inset-bottom))` on all pages
+- ✅ TV season button resize fixed — `minWidth: 44` keeps checked/unchecked same width
+- ✅ Header pattern unified — small `fontSize: 15` heading + `20px` top padding on Add, Taste, Shows, Library (all match Discover)
+- ✅ "library" heading added back — small, consistent with other pages; bottom nav stays (correct for mobile PWA ergonomics)
+- ✅ In progress status — `ItemStatus` now `want_to | in_progress | done`; filter chip in library; "mark as in progress" on action card; Supabase migration ✅ run
+- ✅ Music genres expanded — added: art pop, experimental, funk, glam rock, new wave, post-punk
+- ✅ Verdict removed — "they don't make 'em like this" dropped from vocab + MOOD_REMAP (cleanup tool will strip from existing items)
+- ✅ Genre 3-copy problem fixed — `api/genres.ts` + `api/wiki.ts` now import from `src/lib/genres.ts`; one place to edit genres forever
+
+### Phase 2 — Action card + editing flow (next session priority)
+
+**Audit findings (session 20):**
+- Type override is broken — `applyCandidate()` hardcodes `item.type`, so re-identify can never fix a wrong type
+- Fill-from-wiki only shows the button after you manually type a Wikipedia URL — if the URL is already stored, button should appear immediately
+- Edit view shows no item title — you lose context of what you're editing
+- Suggested vibes are disconnected from the tags editing flow — they appear separately, should be inside "edit tags"
+- Genre line on main view has no label — "thriller · crime" floating with no intro
+- "edit tags" misnaming — it edits genre + vibe + verdict, should just be "tags"
+- Verdict hidden unless you open "edit tags" — needs more surface area for done items
+- Four confusingly similar verbs: "edit", "edit tags", "mark reaction", "edit reaction"
+
+**To build (one pass, mock before building):**
+- Fix type override: edit view save + re-identify both respect the type dropdown
+- Fill-from-wiki: show button immediately if `wikiUrl` already stored
+- Edit view shows item title at top
+- Rename "edit tags" → "tags" everywhere
+- Suggested vibes move inside the "tags" expanded area
+- After tapping a suggested vibe, show similar ones inline (not dismiss all)
+- "Tags" links straight to suggestions, visible and actionable
+- Genre line gets a small label on main view
+- Genre · vibe · verdict on one scannable line (or better visual grouping)
+- Verdict prominent for done items with no verdict set — small prompt
+- Edit-reaction view shows which item you're on
+- Fiction/non-fiction clearer on items (especially books)
+
+**Parked for after Phase 2:**
+- Re-identify with full type override (allow fixing type without delete-and-re-add)
+- Fill-from-wiki reliability — investigate `parse=1` endpoint
+- "own it" → "on my shelf" for books
+
+### Phase 3 — Cohesion + tag system
+
+- Vibe and verdict as separate filters in library (currently mixed)
+- Decide vibe filtering on "all" page (risk of noise — needs UX decision first)
+- Page transitions feel like one product (shared design language, consistent spacing)
+- Canon status field — lightweight pin for ~10 defining items, separate from reaction scale
+
+### Phase 4 — Data management
+
+- Move data-gaps nav from Add page → Library as a dedicated linked page with easy in/out
+- Cover-art quality pass — biggest visual/tastemaker payoff; own dedicated session
+- Offline capture queue (IndexedDB) — save offline, sync on reconnect
+- Tom's login — publish Google OAuth consent screen
+- Wiki match correctness — film/TV resolution lenient (trusts top hit, no title guard). Spot-check items whose saved `wikiUrl` title doesn't match the item title
+
+### Phase 5 — Discovery + taste insights
+
+**Taste page refresh (whole pass):**
+- Rebuild now that vibe/verdict taxonomy is locked (was built before overhaul)
+- Go deeper than ranked tag lists:
+  - Effort axis (easy ↔ demanding) — pairs with runtime/pages data
+  - Cross-type vibe patterns ("you gravitate toward hazy + melancholic across all media")
+  - Verdict tendencies ("comfort" vs "overrated" — what you keep vs reject)
+  - Era/decade clustering if year data is rich enough
+  - **Regional split** — creator origin analysis: "70% of your favourite films are by European directors", "you lean toward British literary fiction". Pure client-side from creator names + optional Wikipedia nationality metadata. No API cost. Reveals geographic taste patterns that feel genuinely surprising.
+  - **Aspirational vs actual taste** — gap between what you save as want-to vs what you actually rate highly. Mirror insight: "you save a lot of X but rarely love it."
+- Think like a tastemaker's annual report, not a sorted list
+
+**Discovery improvements:**
+- "Not interested" / dismiss on Discover suggestions — richer signal for the recommender
+- Divert mode improvements as data accumulates
+
+### Long-term (directional, not scheduled)
+
+- Restaurants, museums, exhibitions, experiences — expand beyond media; same reaction/note/tag model
+- Calendar integration — surface relevant items + suggestions based on where Farah will be
+- Master "life index" — nospaces as curated self-portrait across all domains
+- Bandsintown API access (if/when approved) — broader show coverage beyond Ticketmaster
+- Describe-by-recency for film/TV (TMDB person→credits path — music/books already work)
+- Individual songs (currently albums-only for music)
+
+---
+
+### 📌 Session 20 (2026-06-04) — Phase 1 fixes + roadmap
+
+**Shipped to `main` / live:**
+See Phase 1 section above.
+
+**SQL run by Farah:** `items_status_check` constraint updated to include `in_progress`.
+
+**▶ NEXT SESSION STARTS HERE:** Phase 2 — action card + editing flow (see Phase 2 section above). Start by mocking the restructured card before building.
+
+---
 
 ### 📌 Session 17 summary (2026-06-03) — tidy queue, edit view overhaul, wiki auto-fill
 
@@ -149,13 +252,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ### 🔜 Next session priorities
 
-1. **Taste profile page — vibe/verdict refresh + richer insights.** The taste page was built before the vibe/verdict taxonomy overhaul (session 18). Now that vibes are tiered by medium and verdicts are separated, the page should reflect the new vocabulary. Explore deeper insights beyond ranked tag lists — e.g. effort axis (easy ↔ demanding), cross-type vibe patterns, verdict breakdown ("comfort" vs "overrated" tendencies), era/decade clustering if year data is rich enough. Think about what a tastemaker would find genuinely surprising or revealing, not just a sorted list of tags.
-2. **Action card rework** — Farah flagged the card needs a general pass. Ask for specifics before building (layout, order, what's cluttered/missing).
-3. **"own it" → "on my shelf" for books** — tiny, `type === 'book'` guard in action card header link.
-4. **Cover art quality pass** — low-res / inconsistent covers are the biggest visual drag on the library. Biggest tastemaker payoff. Needs a dedicated session.
-5. **"In progress" status** — SQL migration already written in HANDOFF (Farah runs in Supabase dashboard), then update `ItemStatus` type, add filter chip, add "mark as in progress" on action card.
-6. **Tom's login** — publish Google OAuth consent screen.
-7. **Wiki match correctness** — film/TV resolution is lenient, may have saved wrong links. Spot-check pass.
+→ **See Master Roadmap above** — Phase 2 is next. Action card + editing flow redesign. Start by mocking before building.
 
 ### 🧹 Small nits (parked, do whenever)
 - **"own it" label for books** — `own it` / `own it ✓︎` doesn't feel right for physical books. Find a better word (e.g. `on my shelf`, `have it`). Only needs to change for `type === 'book'` in the action card header link.

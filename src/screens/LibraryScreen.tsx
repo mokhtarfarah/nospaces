@@ -332,11 +332,12 @@ export function LibraryScreen() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
       {/* Header */}
       <header style={{
-        padding: '56px 16px 0',
+        padding: '20px 16px 0',
         background: '#fff',
         borderBottom: '1px solid #E8E8E8',
         position: 'sticky', top: 0, zIndex: 50,
       }}>
+        <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px', color: '#1C1B19' }}>library</h1>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <button
