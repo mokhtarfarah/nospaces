@@ -142,7 +142,10 @@ export async function fetchSavedAlbums(token: string): Promise<SpotifyAlbum[]> {
 
 /** Stable dedupe key for an album: lowercased title + artist. */
 export function albumKey(title: string, creator: string): string {
-  const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  // Fold accents to their base letters (é→e, í→i) before stripping, so
+  // "Rosalía" and "Rosalia" produce the same key.
+  const norm = (s: string) =>
+    (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, '')
   return `${norm(title)}|${norm(creator)}`
 }
 

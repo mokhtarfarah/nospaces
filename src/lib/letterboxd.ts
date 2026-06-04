@@ -127,9 +127,10 @@ export function ratingToReaction(rating: number): ItemReaction {
   return 'not_for_me'
 }
 
-/** Stable dedupe key for a film: lowercased title + year. */
+/** Stable dedupe key for a film: accent-folded, lowercased title + year. */
 export function filmKey(title: string, year: number | null): string {
-  return `${title.trim().toLowerCase()}|${year ?? ''}`
+  const norm = title.normalize('NFD').replace(/\p{Diacritic}/gu, '').trim().toLowerCase()
+  return `${norm}|${year ?? ''}`
 }
 
 export interface BuildResult {

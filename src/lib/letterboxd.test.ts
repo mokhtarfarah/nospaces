@@ -90,6 +90,10 @@ describe('filmKey', () => {
   it('treats null year as empty', () => {
     expect(filmKey('Dune', null)).toBe('dune|')
   })
+
+  it('folds accents so accented spellings dedupe', () => {
+    expect(filmKey('Amélie', 2001)).toBe(filmKey('Amelie', 2001))
+  })
 })
 
 describe('buildInserts', () => {

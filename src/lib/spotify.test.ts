@@ -11,11 +11,10 @@ describe('albumKey', () => {
     expect(albumKey('MOTOMAMI', 'Tyler')).toBe(albumKey('motomami!!', '  tyler  '))
   })
 
-  it('strips accented characters (known limitation — diacritics are dropped, not folded)', () => {
-    // í is not in [a-z], so it's removed rather than folded to "i". Documents
-    // current behavior: accented and unaccented spellings do NOT dedupe.
-    expect(albumKey('LUX', 'Rosalía')).toBe('lux|rosala')
-    expect(albumKey('LUX', 'Rosalía')).not.toBe(albumKey('LUX', 'Rosalia'))
+  it('folds accents so accented and unaccented spellings dedupe', () => {
+    expect(albumKey('LUX', 'Rosalía')).toBe('lux|rosalia')
+    expect(albumKey('LUX', 'Rosalía')).toBe(albumKey('LUX', 'Rosalia'))
+    expect(albumKey('Björk', 'Björk')).toBe('bjork|bjork')
   })
 })
 

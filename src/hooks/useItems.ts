@@ -139,7 +139,7 @@ export function useItems() {
 
   // Count duplicate items (same type + title + creator, ignoring case/punctuation).
   function duplicateCount(): number {
-    const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const norm = (s: string) => (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, '')
     const seen = new Set<string>()
     let dupes = 0
     for (const it of items) {
@@ -154,7 +154,7 @@ export function useItems() {
   // case/punctuation), each with 2+ members. Sorted "best first" so the review
   // sheet can pre-select a sensible item to keep (done > note > reaction > earliest).
   function duplicateGroups(): Item[][] {
-    const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const norm = (s: string) => (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, '')
     const groups = new Map<string, Item[]>()
     for (const it of items) {
       const k = `${it.type}|${norm(it.title)}|${norm(it.creator ?? '')}`
