@@ -334,7 +334,7 @@ function ResultRow({ result: r, savedSource, onSave }: {
         </div>
         <p style={{ fontSize: 12, color: GRAPHITE, lineHeight: 1.65, margin: '0 0 10px', fontStyle: 'italic' }}>{r.why}</p>
         {isSaved ? (
-          <span style={{ fontSize: 11, color: MUTE }}>saved · {savedSource}</span>
+          <span style={{ fontSize: 11, color: MUTE }}>saved ✓︎</span>
         ) : (
           <button onClick={onSave} className="tlink" style={{ fontSize: 11 }}>+ save</button>
         )}

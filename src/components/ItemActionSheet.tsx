@@ -187,10 +187,13 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const recBlurb = item.metadata?.recommendationBlurb as string | undefined
   const capturedBlurb = item.metadata?.capturedBlurb as string | undefined
   const blurb = manualBlurb ?? recBlurb ?? capturedBlurb ?? summary ?? bookBlurb.summary
+  // For discover items, use discoverSource (e.g. "George Saunders") as the blurb
+  // attribution rather than falling back to the generic "recommendation" label.
+  const discoverSource = item.metadata?.discoverSource as string | undefined
   const blurbSource = manualBlurb
     ? null
     : recBlurb
-    ? (item.recommended_by ?? 'recommendation')
+    ? (discoverSource ?? item.recommended_by ?? 'recommendation')
     : capturedBlurb ? null
     : summary ? 'Wikipedia'
     : bookBlurb.source
