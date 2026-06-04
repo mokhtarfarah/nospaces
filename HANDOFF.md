@@ -130,6 +130,27 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 **▶ NEXT SESSION STARTS HERE:**
 
+### 📌 Session 19 (2026-06-04) — AI vibe suggester + Discover feature
+
+**Shipped to `main` / live:**
+
+1. ✅ **Mood cleanup migration run** — old tags remapped (atmospheric→hazy, artsy→arthouse, upbeat→fun, relaxed→easy; tearjerker/feel-good/dreamy/life-changing dropped). `MOOD_REMAP` in `src/lib/moods.ts`.
+2. ✅ **"For review" inbox verified** — working in prod (auth-gated, couldn't test in preview earlier).
+3. ✅ **AI vibe suggester** — `api/vibes.ts` (Haiku, ~$0.001/call). On card open, suggests 1–3 vibes from the type-specific vocab as faded dashed chips below the tag area. Tap to apply, "ignore" to dismiss. Never auto-applied. `ItemActionSheet.tsx` — `suggestedVibes` + `dismissedSuggestions` state, `useEffect` on `item.id`.
+4. ✅ **Discover feature** — full feed-grounded recommendation engine. New route `/discover`, 4th bottom nav tab (4-pointed star icon, last after taste).
+   - **Sources:** 30 curated feeds — Substacks (Pandora Sykes, George Saunders, Jess White, Record Store, Honest Broker, The Reveal, Molly Young, Patti Smith), editorial RSS (Bandcamp Daily, Aquarium Drunkard, Pitchfork, Vulture, Film Comment, Roger Ebert, Literary Hub, The Millions, The Marginalian, The Guardian, The Atlantic, The New Yorker, NME), Reddit (r/booksuggestions, r/literature, r/52books, r/ifyoulikeblank, r/indieheads, r/vinyl, r/TrueFilm, r/Letterboxd, r/MovieSuggestions, r/televisionsuggestions). Config in `src/lib/feeds.ts`.
+   - **Architecture:** `api/recommend-feeds.ts` — fetches feeds in parallel (5s timeout each), parses RSS/Atom XML, passes content + taste profile + library to Sonnet. ~$0.03–0.05/run. `maxDuration: 60`.
+   - **Two modes:** In-taste (feeds as context + Claude knowledge, best matches) and Divert (Claude draws from own knowledge, leads with what's different before explaining the thread back). Separate prompts, genuinely different results.
+   - **UI:** Type tabs as primary nav (film/book/music/tv/all). In-taste auto-loads, divert lazy-loads on demand. Editorial aesthetic matching taste/library (INK/GRAPHITE/MUTE/HAIR palette, hairlines, no card borders). Cover art + Wikipedia links per result. Multi-source corroboration: `sources: string[]` — shows "via Pandora Sykes + 1 more" when multiple sources mention a title.
+   - **48h cache** per mode in `user_prefs.discoveryCache`. Add/remove custom feeds stored in `user_prefs.customFeeds`.
+   - **Save flow:** `+ save` → `saved ✓︎`. Stores `source_detail: "discover · George Saunders"` (shows on action card as "from discover · George Saunders") + `metadata.recommendationBlurb` (the "why" text, shows under "about this ▾" toggle). Blurb toggle reads "via George Saunders" not "via recommendation" — fixed via `metadata.discoverSource`.
+5. ✅ **`useItems.addItem`** extended with optional `source_detail` param (backward compatible).
+6. ✅ **`usePrefs`** extended with `discoveryCache` + `customFeeds` + setters.
+
+### 🧹 Small nits (parked, do whenever)
+- **"own it" label for books** — `own it` / `own it ✓︎` doesn't feel right for physical books. Find a better word (e.g. `on my shelf`, `have it`). Only needs to change for `type === 'book'` in the action card header link.
+- **Action card rework** — Farah flagged the card needs a general pass. Needs more detail before implementing — ask what specifically feels off (layout, order, missing info, clutter, etc.).
+
 ### 📌 Session 18 (continued) — polish + vibe/verdict taxonomy overhaul
 
 **Shipped after the main session 18 summary:**
@@ -146,7 +167,11 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 11. ✅ ***noted* in subtitle** — note indicator replaced pencil glyph with italic `noted` in the middot subtitle line (list + grid).
 12. ✅ **Vibe/verdict taxonomy overhauled** — full redesign after extended design session. See moods section below.
 
-**⚠️ ACTION NEEDED: run "clean up" in library tools** (Add page → library tools → clean up →) to remap old vibe tags on existing items: atmospheric→hazy, artsy→arthouse, upbeat→fun, relaxed→easy; drops tearjerker, feel-good, dreamy, life-changing, just-really-really-good, overhyped.
+**⚠️ ACTION NEEDED: run "clean up" in library tools** (Add page → library tools → clean up →) to remap old vibe tags on existing items: atmospheric→hazy, artsy→arthouse, upbeat→fun, relaxed→easy; drops tearjerker, feel-good, dreamy, life-changing, just-really-really-good, overhyped. ✅ Done session 19.
+
+### 🧹 Small nits (parked, do whenever)
+- **"own it" label for books** — `own it` / `own it ✓︎` doesn't feel right for physical books. Find a better word (e.g. `on my shelf`, `have it`). Only needs to change for `type === 'book'` in the action card header link.
+- **Action card rework** — Farah flagged the card needs a general pass. Needs more detail before implementing — ask what specifically feels off (layout, order, missing info, clutter, etc.).
 
 ### Vibe/verdict taxonomy (locked session 18, implement AI suggester next)
 
