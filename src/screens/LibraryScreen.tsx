@@ -184,14 +184,19 @@ export function LibraryScreen() {
       setActionItem(target)
       setActionEdit(searchParams.get('edit') === '1')
       // tidy=1 → start a walk-through queue beginning at the tapped item.
+      // gap=<type> scopes the queue to items missing that one field, matching
+      // the gap-type filter the list was showing on the Add page.
       if (searchParams.get('tidy') === '1') {
-        const q = gapQueue(items).map(x => x.item.id)
+        const gapType = searchParams.get('gap')
+        const queue = gapQueue(items)
+        const scoped = gapType ? queue.filter(x => x.gaps.includes(gapType)) : queue
+        const q = scoped.map(x => x.item.id)
         const start = q.indexOf(id)
         setTidyQueue(q)
         setTidyIndex(start < 0 ? 0 : start)
       }
     }
-    setSearchParams(prev => { prev.delete('item'); prev.delete('edit'); prev.delete('tidy'); return prev }, { replace: true })
+    setSearchParams(prev => { prev.delete('item'); prev.delete('edit'); prev.delete('tidy'); prev.delete('gap'); return prev }, { replace: true })
   }, [searchParams, loading, items, setSearchParams])
 
   // Advance the tidy queue to the next still-present item (skips deleted ones).

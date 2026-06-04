@@ -418,7 +418,7 @@ function LibraryTools({ items, editItem, open }: {
                     key={item.id}
                     item={item}
                     gaps={gaps}
-                    onOpen={() => navigate(`/library?item=${item.id}&edit=1&tidy=1`)}
+                    onOpen={() => navigate(`/library?item=${item.id}&edit=1&tidy=1${gapFilter ? `&gap=${encodeURIComponent(gapFilter)}` : ''}`)}
                     onDismiss={() => editItem(item.id, { metadata: dismissGaps(item, gaps) })}
                   />
                 ))}
