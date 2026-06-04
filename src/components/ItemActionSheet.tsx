@@ -126,6 +126,8 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [reactionTagsOpen, setReactionTagsOpen] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
+  const [suggestedVibes, setSuggestedVibes] = useState<string[]>([])
+  const [dismissedSuggestions, setDismissedSuggestions] = useState(false)
   const color = typeColor(item.type)
 
   // Persist the season checklist (kept in local state for instant feedback).
@@ -138,6 +140,25 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const addSeason = () =>
     updateSeasons([...seasons, { n: (seasons[seasons.length - 1]?.n ?? 0) + 1, done: false }])
   const removeLastSeason = () => updateSeasons(seasons.slice(0, -1))
+
+  // Fetch AI-suggested vibes on card open. Haiku call, ~$0.001. Suggestions are
+  // shown as faded chips; applying one is always manual — never auto-set.
+  useEffect(() => {
+    if (item.metadata?.scratch || !item.title) return
+    let cancelled = false
+    authHeaders()
+      .then(h => fetch('/api/vibes', {
+        method: 'POST', headers: h,
+        body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }),
+      }))
+      .then(r => r.json())
+      .then((data: { suggestions?: string[] }) => {
+        if (!cancelled && Array.isArray(data.suggestions)) setSuggestedVibes(data.suggestions)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id])
 
   // Auto-fill the season count from TVmaze when a TV show has none yet (display only;
   // it persists once a season is ticked).
@@ -685,6 +706,35 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     isActive={m => (item.moods ?? []).includes(m)}
                     onToggle={toggleMood}
                   />
+                </div>
+              )
+            })()}
+
+            {/* Suggested vibes — faded chips the user can confirm one by one or ignore */}
+            {!item.metadata?.scratch && !dismissedSuggestions && (() => {
+              const pending = suggestedVibes.filter(v => !(item.moods ?? []).includes(v))
+              if (!pending.length) return null
+              return (
+                <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', flexShrink: 0 }}>suggested</span>
+                  {pending.map(v => (
+                    <button
+                      key={v}
+                      onClick={() => {
+                        const next = [...(item.moods ?? []), v]
+                        setSelectedMoods(next)
+                        onSetMoods(next)
+                      }}
+                      style={{
+                        padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
+                        border: '1.5px dashed #D0CEC9', background: '#fff', color: '#ABA69C', fontWeight: 400,
+                      }}
+                    >+ {v}</button>
+                  ))}
+                  <button
+                    onClick={() => setDismissedSuggestions(true)}
+                    style={{ background: 'none', border: 'none', color: '#D0CEC9', fontSize: 11, cursor: 'pointer', padding: '0 2px', marginLeft: 2 }}
+                  >ignore</button>
                 </div>
               )
             })()}
