@@ -1,25 +1,25 @@
 import { useState } from 'react'
-import { VIBES, VERDICTS } from '../lib/moods'
+import { VERDICTS, vibesForType } from '../lib/moods'
 
-// The two vibe axes, rendered as labelled chip groups.
-// "feel" = what it's like (VIBES) · "how it landed" = your relationship (VERDICTS).
-const GROUPS = [
-  { label: 'feel', list: VIBES },
-  { label: 'how it landed', list: VERDICTS },
-] as const
-
-export function MoodChips({ isActive, onToggle, size = 'md', layout = 'wrap', groups = 'all', collapsible = false }: {
+export function MoodChips({ type = 'other', isActive, onToggle, size = 'md', layout = 'wrap', groups = 'all', collapsible = false }: {
+  // Item type — determines which vibes to show (core + type-appropriate tier).
+  type?: string
   isActive: (mood: string) => boolean
   onToggle: (mood: string) => void
   size?: 'sm' | 'md'
   layout?: 'wrap' | 'scroll'
   groups?: 'all' | 'vibes-only'
-  // collapsible: show only the selected chips inline + a "+ add" expander (matches the
-  // genre pattern on the action card). Off = full vocabulary shown (the tagging moment).
   collapsible?: boolean
 }) {
   const sm = size === 'sm'
   const [open, setOpen] = useState<Record<string, boolean>>({})
+
+  const VIBES = vibesForType(type)
+  const GROUPS = [
+    { label: 'feel', list: VIBES },
+    { label: 'how it landed', list: VERDICTS },
+  ] as const
+
   const rowStyle: React.CSSProperties = layout === 'scroll' && !collapsible
     ? { display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, paddingBottom: 4, WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }
     : { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }

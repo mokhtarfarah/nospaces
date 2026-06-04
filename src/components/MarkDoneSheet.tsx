@@ -98,7 +98,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         </div>
         <p style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }}>vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span></p>
         <div style={{ marginBottom: 16 }}>
-          <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
+          <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
         </div>
 
         <button

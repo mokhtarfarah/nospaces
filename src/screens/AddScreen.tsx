@@ -96,6 +96,7 @@ import type { Item } from '../lib/database.types'
 import { useArtwork } from '../lib/artwork'
 import { itemGaps, dismissGaps } from '../lib/gaps'
 import { isGenreTag } from '../lib/genres'
+import { MOOD_REMAP } from '../lib/moods'
 
 // One row in the "fill by hand" list. Tapping opens the edit view; the ✓ button
 // dismisses all current gaps so the item stops appearing in the list.
@@ -178,7 +179,7 @@ function LibraryTools({ items, editItem, open }: {
       return false
     }), [items])
   const needsMoodMigration = useMemo(() =>
-    items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy' || m === 'classic')), [items])
+    items.filter(i => i.moods?.some(m => m in MOOD_REMAP || m === 'gripping' || m === 'project' || m === 'classic')), [items])
   const needsWiki = useMemo(() =>
     items.filter(i => !i.metadata?.wikiUrl && ['film','tv','book','music'].includes(i.type)), [items])
 
@@ -270,12 +271,28 @@ function LibraryTools({ items, editItem, open }: {
     if (migrating || needsMoodMigration.length === 0) return
     setMigrating(true); setMigrateProgress(0)
     for (const item of needsMoodMigration) {
-      const next = (item.moods ?? []).map(m => m === 'gripping' ? 'intense' : m).filter(m => m !== 'project' && m !== 'easy' && m !== 'classic')
-      const fields: Record<string, unknown> = { moods: [...new Set(next)] }
-      if (item.moods?.includes('classic')) {
-        const tag = item.type === 'book' ? 'classics' : 'classic'
-        fields.tags = [...new Set([...(item.tags ?? []), tag])]
+      const remapped: string[] = []
+      const fields: Record<string, unknown> = {}
+      for (const m of (item.moods ?? [])) {
+        // Legacy pre-MOOD_REMAP mappings
+        if (m === 'gripping') { remapped.push('intense'); continue }
+        if (m === 'project' || m === 'easy') continue
+        if (m === 'classic') {
+          // classic mood → classic/classics genre tag (pre-existing migration)
+          const tag = item.type === 'book' ? 'classics' : 'classic'
+          fields.tags = [...new Set([...(item.tags ?? []), tag])]
+          continue
+        }
+        // New MOOD_REMAP remappings
+        if (m in MOOD_REMAP) {
+          const replacement = MOOD_REMAP[m]
+          if (replacement) remapped.push(replacement)
+          // null = drop the tag
+          continue
+        }
+        remapped.push(m)
       }
+      fields.moods = [...new Set(remapped)]
       try { await editItem(item.id, fields) } catch { /* skip */ }
       setMigrateProgress(p => p + 1)
     }
@@ -663,7 +680,7 @@ export function AddScreen() {
       if (i.type === 'book') return !i.metadata?.pages
       return false
     })
-    const needsMoodMigration = items.filter(i => i.moods?.some(m => m === 'gripping' || m === 'project' || m === 'easy'))
+    const needsMoodMigration = items.filter(i => i.moods?.some(m => m in MOOD_REMAP || m === 'gripping' || m === 'project' || m === 'classic'))
     return (untagged.length + needsRuntime.length + needsMoodMigration.length) > 0
   }, [items])
 

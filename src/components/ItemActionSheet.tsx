@@ -679,6 +679,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                     </div>
                   )}
                   <MoodChips
+                    type={item.type}
                     size="sm"
                     groups={item.status === 'want_to' ? 'vibes-only' : 'all'}
                     isActive={m => (item.moods ?? []).includes(m)}
@@ -912,7 +913,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               <>
                 <p style={fieldLabel}>vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span></p>
                 <div style={{ marginBottom: 16 }}>
-                  <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
+                  <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
                 </div>
               </>
             ) : (
@@ -920,7 +921,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 <button onClick={() => setReactionTagsOpen(v => !v)} className="tlink">{reactionTagsOpen ? 'done ▴' : 'edit tags ▾'}</button>
                 {reactionTagsOpen && (
                   <div style={{ marginTop: 10 }}>
-                    <MoodChips isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
+                    <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
                   </div>
                 )}
               </div>
