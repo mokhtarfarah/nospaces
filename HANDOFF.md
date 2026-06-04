@@ -104,7 +104,21 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-03, updated session 16 end)
+## TODO / Roadmap (last edited 2026-06-03, updated session 17 end)
+
+### 📌 Session 17 summary (2026-06-03) — tidy queue, edit view overhaul, wiki auto-fill
+
+**Shipped to `main` / live:**
+1. ✅ **"Save & next" tidy queue** — fill-by-hand list walks through gappy items in place: tap → edit view → "save & next ›" saves + advances; "skip ›" skips temporarily; "nothing to fill — dismiss" permanently dismisses all gaps. Header shows "tidying · N of total". `itemGaps`/`gapQueue`/`dismissGaps` in shared `src/lib/gaps.ts`.
+2. ✅ **"for review" chip rename** — "? scratch" → "for review" (prototype inbox label). Internal `metadata.scratch` flag unchanged.
+3. ✅ **Edit view overhaul** — type chips moved to top; genre chip editor (active chips + collapsible picker); runtime/pages input; Wikipedia URL field; tighter layout (`smInput`, gap 6, grouped rows). Re-identify removed from main card header (kept in edit view top-right).
+4. ✅ **Wiki auto-fill** — paste a Wikipedia URL in the edit view → "fill from wiki →" button appears → Haiku parses year, creator, runtime/pages, genres from the article extract + categories (categories added to fix genre — Wikipedia stores genre in infobox, not prose). Pre-fills only empty fields. ~$0.002/call.
+5. ✅ **Genre count discrepancy fixed** — "fill automatically" untagged count now uses `isGenreTag()` (same as fill-by-hand), so items with descriptor tags but no genre tag are counted consistently in both.
+6. ✅ **Dismiss gaps** — ✓ button on each gap row permanently dismisses all current gaps for that item (`metadata.dismissedGaps[]`); `itemGaps()` skips dismissed gaps. Also reachable from tidy edit view ("nothing to fill — dismiss").
+7. ✅ **Library header slim** — removed "Library" h1 (redundant with nav tab); "N col" toggle moved to compact bare number next to grid icon; controls tightened to 11–13px.
+8. ✅ **"historical fiction" added** to book genre vocab. `GENRE_VOCAB` in `api/wiki.ts` also updated (kept in sync manually — update both when adding genres).
+
+**▶ NEXT SESSION STARTS HERE:**
 
 ### 📌 Session 16 summary (2026-06-03) — cosmetic queue cleared + input audit started
 
@@ -122,21 +136,22 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 11. ✅ **Bulk photo "already did" toggle** — whole-batch want-to/done toggle on `BulkConfirmSheet` (reactions added per item later, like Spotify sync). `handleBulkConfirm` threads status → `addItem` done flag.
 12. ✅ **Un-identified captures are no longer a dead-end** — the action card now offers "mark as done / edit reaction" alongside "identify now" for scratch items, so you can log a reaction + note now and identify whenever. Resolves the parked scratch model toward "save now, identify later" (kept the triage filter — didn't rip the concept out). *Capture-time reaction (react in the same tap as save-as-note) intentionally not built — you react right after, by opening the item.*
 
-**▶ OPEN / ONGOING TO-DOS (session 17: Farah chose "save & next"; these stay queued):**
-- **(A) Shared review checklist + email "pending inbox"** — extract the recommendations-PDF select/deselect checklist into a reusable component; reuse it for (1) recommendations (already), (2) **email → a "needs review" pending inbox** (forwarded items land pending, you review/pick next time you open the app — turns email from a firehose dump into curated capture), (3) bulk photo (replace the bespoke `BulkConfirmSheet`). New infra: a "pending review" state + an in-app inbox surface. **M/L. Highest leverage for how Farah actually uses the app (email + curation).** — still open.
-- **(B) Offline capture queue** — IndexedDB queue holds new captures while offline, syncs on reconnect. Serves the "on the go" north star. **M/L.** — still open.
-- **(C) "in progress" status (NEW, session 17 request).** A third status alongside `want_to` / `done` for things Farah has *started but is stalling on* ("anything I've begun but parked"). Treated as a peer status bucket. Scope: (1) **DB migration** — widen the `status` check constraint to `('want_to','in_progress','done')` in `supabase/schema.sql` + run it in Supabase (Farah must run); (2) `ItemStatus` type; (3) library status filter row gets an "in progress" chip + ViewMode handling; (4) a way to **set** it on the action card (e.g. "mark as in progress" for want_to items / move between states); (5) display in subtitles. **Design fork RESOLVED (session 17): reaction stays done-only — in_progress behaves like want_to (no reaction until marked done).** **S/M.**
-- **(D) Email "pending inbox" reuses the "for review" bucket (NEW, session 17 decision).** The `save as note` → "for review" chip (renamed from "? scratch" this session, `metadata.scratch=true`) is the *prototype inbox*. When (A)'s review checklist is built, forwarded-email items should land in this same "for review" bucket so there's **one** in-app inbox to triage (not a separate surface). Ties (A) + the scratch model together.
+**▶ OPEN TO-DOS (carry forward, session 17):**
+- **(A) Shared review checklist + email "pending inbox"** M/L. Extract the recommendations-PDF checklist into a reusable component; reuse for (1) recs (already), (2) **email → "for review" pending inbox** (forwarded items land in the "for review" bucket — renamed from scratch this session — so you triage them next time you open the app), (3) bulk photo. New infra: "pending review" state + in-app inbox surface. **Highest leverage for how Farah actually uses the app.**
+- **(B) Offline capture queue** M/L. IndexedDB queue holds captures while offline, syncs on reconnect. "On the go" north star.
+- **(C) "In progress" status** S/M. Third status (`want_to` / `in_progress` / `done`) for things started but stalled. Needs one SQL migration (Farah runs in Supabase dashboard): `alter table public.items drop constraint items_status_check; alter table public.items add constraint items_status_check check (status in ('want_to','in_progress','done'));`. Then: update `ItemStatus` type, add filter chip in library, add "mark as in progress" on action card. **Design resolved: no reaction until marked done (behaves like want_to).**
+- **(D) "for review" = the one inbox** — forwarded email items should land here (ties A + D). `metadata.scratch=true` is the current flag; "for review" chip is the prototype surface.
 
 **iOS Shortcut — DECIDED: skip / leave retired.** The Web Share **Target** API (PWA receiving a shared *image file*) is **not supported by iOS WebKit** — that's why nospaces never appeared in the Photos share sheet (platform limitation, not a config bug; don't chase the manifest). Workaround Farah will use instead: **screenshot → share to Mail → forward to the nospaces address** (Mail *is* a share target on iOS), which captures without keeping the screenshot. Rebuilding the Shortcut+`/api/identify-upload` is possible later but not worth it now. (A `GET` text/URL share target *could* work on iOS for sharing links — minor, not scheduled.)
 
 **The pitch / mental model (use on onboarding / empty state): "add things 4 ways — Type it · Snap it · Forward it · Sync it."** Type = title or description (+ save-as-note). Snap = photo/screenshot, single or bulk (+ paste). Forward = email anything (text or photo) to the nospaces address. Sync = Letterboxd / Spotify / recommendations PDF.
 
-**Other decisions / open from session 16 discussion (act on next):**
-- ✅ **"Save & next" tidy queue — SHIPPED (session 17).** The fill-by-hand list now walks through gappy items: tap in → edit view → **"save & next ›"** saves + advances to the next gappy item without bouncing back to Add; **"skip ›"** moves on without saving; header shows **"tidying · N of total"**; reaching the end closes the sheet and returns to Add. `itemGaps`/`gapQueue` extracted to shared `src/lib/gaps.ts`; gap rows deep-link `&tidy=1`; `LibraryScreen` snapshots an ordered queue + cursor; `ItemActionSheet` got optional `tidyPosition`/`onSaveNext`/`onSkipNext` props (plain "save" unchanged when not tidying). In tidy mode the edit footer's "cancel" becomes "skip"; ✕ exits the queue. Reused the existing edit view (no inline editing).
-- 🔜 **Cover-art quality pass (biggest tastemaker payoff).** Low-res / inconsistent covers cheapen the grid wall. Need a higher-res art source or a consistent fallback treatment so the grid always looks intentional. Image quality = identity for the target user.
-- 🔜 **Default library view → want-to (once import is done).** Today defaults to recent/all (correct during setup). Long-term the recurring job is "what do I put on / read next" = the want-to backlog. Flip the default *status* to want-to once the library is populated. Tiny change (just the default value). Held until Farah finishes importing.
-- 🔜 **"Canon" / pinned favorites.** A lightweight pin for the ~10 items that define her taste, separate from the 4-point reaction scale (the parked "MySpace top 8" instinct, generalized across media). Medium.
+**Other decisions / open from session 16–17:**
+- ✅ **"Save & next" tidy queue — SHIPPED session 17.** See session 17 summary above.
+- ✅ **Edit view overhaul — SHIPPED session 17.** Genre chips, runtime/pages, wiki URL, type chips at top, dismiss. See session 17 summary.
+- 🔜 **Cover-art quality pass (biggest tastemaker payoff).** Low-res / inconsistent covers cheapen the grid. Need higher-res art source or consistent fallback. Image quality = identity.
+- 🔜 **Default library view → want-to** — tiny one-line change; held until Farah finishes importing.
+- 🔜 **"Canon" / pinned favorites** — lightweight pin for ~10 defining items, separate from the reaction scale. Medium.
 - **Tastemaker critique (design north star reminder):** the target user wants a **mirror + curator**, not a tracker. Mirror = the taste-page prose (the killer feature — keep expanding it). Curator = catalog-grounded recommendations (roadmap endgame). The library itself should feel like a **collection on display** (→ better art + more curated default), not an inbox. Guard the editorial restraint (lowercase, monochrome, no emoji, editorial type).
 
 ### 📌 Session 12 summary (2026-06-03) — action card overhaul + small fixes
