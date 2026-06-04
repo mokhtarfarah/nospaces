@@ -141,7 +141,12 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
    - **Manual one-at-a-time adds and bulk photos intentionally stay OUT** of the inbox (already reviewed at capture).
    - ⚠️ **Recommendations PDF was included per Farah's choice** — but recs already go through their own select-checklist at save time, so this adds a *second* triage pass. If that feels redundant, removing it is a one-liner (delete `review: true` from `RecommendScreen.tsx` metadata).
 
-**🔎 VERIFY NEXT SESSION (auth-gated, couldn't test in preview):** log in → forward an email (or save a rec) → confirm the **`for review · N`** chip appears → tap an item → confirm the **"file it"** banner shows and `keep`/reaction buttons move it into the library + drop the count.
+**Follow-up fixes (same session, after first push):**
+- ✅ **CI was red on first run** — `@supabase/supabase-js` throws a "Node.js 20 without native WebCrypto" error at client construction, and the pure-logic tests import it transitively (`shows.ts` → `supabase.ts`). Fixed by pinning CI to **Node 24** (matches local). *Minor future cleanup: decouple pure functions in `shows.ts` from the supabase client import so tests don't pull in a network client at all.*
+- ✅ **Diacritics now folded in dedupe keys** (`albumKey`, `filmKey`, `useItems` dup keys) — "Rosalía" ↔ "Rosalia" now dedupe. (Was the day-one bug the tests caught.)
+- ✅ **Email forwards now dedupe against the library** — `api/email.ts` previously inserted every parsed item with no dedup, so re-forwarding to recover an AI-missed item duplicated the ones already saved. Now deduped by type + folded title + creator; reply reports skipped count. **Root cause of "3 books → only 2 saved" was AI extraction variance** (the model occasionally misses one item — inherent, not truncation); the dedup makes **resending safe** (only the missing one gets added).
+
+**🔎 VERIFY NEXT SESSION (auth-gated, couldn't test in preview):** log in → forward an email (or save a rec) → confirm the **`for review · N`** chip appears → tap an item → confirm the **"file it"** banner shows and `keep`/reaction buttons move it into the library + drop the count. Also: re-forward the same email and confirm **no duplicates** appear (dedup working).
 
 ### 📌 Session 16 summary (2026-06-03) — cosmetic queue cleared + input audit started
 
