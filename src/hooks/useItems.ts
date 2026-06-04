@@ -51,6 +51,8 @@ export function useItems() {
     // Optional: log as already-done with a reaction/note in one step (skips the
     // separate mark-as-done flow for things you've already watched/read/heard).
     done?: { reaction: ItemReaction | null; note: string },
+    // Optional: override the default 'quick_add' source label shown on the action card.
+    source_detail?: string,
   ) {
     if (!user) return
     const { data: inserted } = await db().from('items').insert({
@@ -66,6 +68,7 @@ export function useItems() {
       note: done?.note?.trim() || null,
       date_done: done ? new Date().toISOString() : null,
       source: 'quick_add',
+      source_detail: source_detail ?? null,
     }).select('id').single()
     await fetch()
     // Auto-fill genres in the background when the add path didn't supply any
