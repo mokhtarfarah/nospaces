@@ -90,7 +90,7 @@ interface ParsedFields { year: number | null; creator: string | null; runtime: n
 const GENRE_VOCAB: Record<string, string[]> = {
   film: ['action','animation','classic','comedy','crime','documentary','drama','fantasy','horror','musical','period piece','romance','satire','sci-fi','thriller','western'],
   tv:   ['animation','classic','comedy','crime','documentary','drama','fantasy','horror','period piece','reality','satire','sci-fi','thriller'],
-  book: ['biography','business','classics','crime','essay','fantasy','historical fiction','history','horror','literary fiction','mystery','period piece','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
+  book: ['biography','business','classics','crime','essay','fantasy','historical fiction','history','horror','literary fiction','memoir','mystery','period piece','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
   music:['afrobeats','ambient','classical','country','electronic','folk','hip-hop','indie','jazz','latin','metal','pop','punk','r&b','rock','soul'],
 }
 
@@ -117,7 +117,7 @@ JSON keys (use null if not found):
 - "creator": ${role} — single name as string (e.g. "Justine Triet", "Ursula K. Le Guin")
 - "runtime": running time in minutes as integer (${type === 'film' || type === 'tv' ? 'extract it' : 'always null'})
 - "pages": page count as integer (${type === 'book' ? 'extract it' : 'always null'})
-- "genres": 1–3 genres from this list ONLY — use the categories above to identify genre: [${vocab}]`
+- "genres": 1–3 genres, lowercase. Prefer terms from this list: [${vocab}]. Use the Wikipedia categories above to identify the genre. If the article clearly states a primary genre that is NOT in the list (e.g. "memoir", "graphic novel", "true crime", "young adult"), include that exact lowercase term rather than forcing a wrong match.`
 
   const msg = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',

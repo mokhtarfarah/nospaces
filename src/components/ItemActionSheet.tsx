@@ -87,7 +87,14 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
   const [coverUrl, setCoverUrl] = useState((item.metadata?.coverUrl as string | null) ?? '')
   const [series, setSeries] = useState((item.metadata?.series as string | null) ?? '')
   const [sourceDetail, setSourceDetail] = useState(item.source_detail ?? '')
-  const [blurbText, setBlurbText] = useState((item.metadata?.manualBlurb as string | null) ?? '')
+  // The blurb shown on the card that ISN'T the user's own — used to pre-fill the
+  // edit box so an existing description is visible (and not accidentally lost),
+  // while letting us tell an untouched echo from a real edit on save.
+  const nonManualBlurb = ((item.metadata?.recommendationBlurb as string | undefined)
+    ?? (item.metadata?.capturedBlurb as string | undefined)
+    ?? (item.metadata?.wikiSummary as string | undefined)
+    ?? '')
+  const [blurbText, setBlurbText] = useState(((item.metadata?.manualBlurb as string | undefined) ?? nonManualBlurb) ?? '')
   // Edit-view draft state for new gap fields — separate from item to support cancel.
   const [editTags, setEditTags] = useState<string[]>(item.tags ?? [])
   const [runtimeEdit, setRuntimeEdit] = useState(String((item.metadata?.runtime as number | null) ?? ''))
@@ -174,7 +181,14 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
     delete metadata.scratch  // clear scratch flag when user confirms the identity
     if (series.trim()) metadata.series = series.trim()
     else delete metadata.series
-    if (blurbText.trim()) metadata.manualBlurb = blurbText.trim()
+    // Only store as a manual blurb if she actually wrote/edited it (or it was
+    // already manual). If the box still holds the echoed recommendation/captured/
+    // wiki blurb untouched, leave it alone so the original "via [source]"
+    // attribution is preserved.
+    const bt = blurbText.trim()
+    const hadManual = typeof item.metadata?.manualBlurb === 'string'
+    if (!bt) delete metadata.manualBlurb
+    else if (hadManual || bt !== nonManualBlurb.trim()) metadata.manualBlurb = bt
     else delete metadata.manualBlurb
     // Wiki URL — save directly; display hook re-fetches thumb/summary on next render.
     if (wikiUrlEdit.trim()) metadata.wikiUrl = wikiUrlEdit.trim()
@@ -405,23 +419,14 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   {!item.metadata?.scratch && (
                     <button onClick={() => setView('edit')} className="tlink" style={{ flexShrink: 0 }}>edit</button>
                   )}
-                  <button
-                    onClick={() => onToggleOwned(!item.metadata?.owned)}
-                    style={{
-                      padding: '2px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 11,
-                      border: item.metadata?.owned ? '1px solid #ECEAE6' : '1.5px solid #DDD',
-                      background: '#fff',
-                      color: item.metadata?.owned ? '#ABA69C' : '#AAA',
-                      fontWeight: 400, flexShrink: 0,
-                    }}
-                  >
-                    {item.metadata?.owned ? '⌂ owned' : '⌂ own it?'}
-                  </button>
                   {!item.metadata?.scratch && (
                     <button onClick={() => setTagsEditing(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
                       {tagsEditing ? 'done ▴' : (((item.tags ?? []).some(isGenreTag) || (item.moods ?? []).length > 0) ? 'edit tags ▾' : '+ tags')}
                     </button>
                   )}
+                  <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
+                    {item.metadata?.owned ? 'own it ✓︎' : 'own it'}
+                  </button>
                 </div>
               </div>
             </div>
