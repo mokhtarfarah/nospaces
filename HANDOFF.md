@@ -33,7 +33,7 @@ npm run typecheck    # tsc --noEmit (also runs inside `npm run build`)
 - `src/screens/TasteScreen.tsx` — taste snapshot (3rd nav tab)
 - `src/screens/ImportScreen.tsx` — Letterboxd CSV import
 - `src/lib/letterboxd.ts` — Letterboxd parsing + mapping logic (pure, unit-tested)
-- `src/lib/genres.ts` — **editable** genre vocab per type (film/tv/book/music). Edit here to add/remove genres. ⚠️ **Also update `GENRE_VOCAB` in `api/wiki.ts`** (manual copy used for wiki auto-fill — kept in sync by hand).
+- `src/lib/genres.ts` — **editable** genre vocab per type (film/tv/book/music). Edit here to add/remove genres. ⚠️ **THREE manual copies — update all when changing genres:** `src/lib/genres.ts` (source of truth), `GENRE_VOCAB` in `api/wiki.ts` (wiki auto-fill), and `GENRE_VOCAB` in `api/genres.ts` (genre auto-fill on add + wiki-fill). Drift here silently drops genres (e.g. a book genre missing from `api/genres.ts` gets filtered out). Synced as of session 18 (incl. `historical fiction`, `memoir`).
 - `src/lib/moods.ts` — **editable** mood/vibe list. Edit here to add/remove moods.
 - `src/components/{MarkDoneSheet,ItemActionSheet,ConfirmSheet,ViewSheet,NoteInput}.tsx`
 - `src/hooks/{useItems,useAuth}.tsx`

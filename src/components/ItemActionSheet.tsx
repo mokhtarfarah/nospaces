@@ -259,10 +259,24 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
       if (p.creator && !creator.trim()) setCreator(p.creator)
       if (p.runtime && !runtimeEdit) setRuntimeEdit(String(p.runtime))
       if (p.pages && !pagesEdit) setPagesEdit(String(p.pages))
-      // Pre-fill genres only if no genre tags currently set.
-      if (p.genres?.length && !editTags.some(isGenreTag)) {
-        const descriptors = editTags.filter(t => !isGenreTag(t))
-        setEditTags([...p.genres, ...descriptors])
+      // Genre: only if none set yet. The wiki parse is unreliable for genre
+      // (Wikipedia categories rarely carry a clean book genre), so ask the
+      // dedicated /api/genres endpoint, which infers from the model's knowledge
+      // of the title. Fall back to the wiki parse's genres if that returns none.
+      if (!editTags.some(isGenreTag)) {
+        let genres = p.genres ?? []
+        try {
+          const gr = await fetch('/api/genres', {
+            method: 'POST', headers,
+            body: JSON.stringify({ title: title.trim() || item.title, creator: creator.trim() || item.creator, type }),
+          })
+          const gd = await gr.json() as { tags?: string[] }
+          if (Array.isArray(gd.tags) && gd.tags.length) genres = gd.tags
+        } catch { /* keep wiki-parse genres */ }
+        if (genres.length) {
+          const descriptors = editTags.filter(t => !isGenreTag(t))
+          setEditTags([...genres, ...descriptors])
+        }
       }
       setWikiFilled(true)
     } finally {
