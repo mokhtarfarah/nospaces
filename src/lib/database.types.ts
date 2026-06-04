@@ -1,4 +1,4 @@
-export type ItemStatus = 'want_to' | 'done'
+export type ItemStatus = 'want_to' | 'in_progress' | 'done'
 export type ItemReaction = 'loved_it' | 'liked_it' | 'eh' | 'not_for_me'
 export type ItemSource = 'share_sheet' | 'quick_add' | 'photo' | 'email' | 'manual'
 

@@ -97,7 +97,6 @@ export const VERDICTS: string[] = [
   'guilty pleasure',
   'would revisit',
   'delivers',
-  'they don\'t make \'em like this',
   'respect, not love',
   'overrated',
   'so bad it\'s good',
@@ -124,6 +123,7 @@ export const MOOD_REMAP: Record<string, string | null> = {
   'dreamy':                null,
   'life-changing':         null,
   'just really, really good': null,
-  'overhyped':             'overrated',
-  'just really really good': null,
+  'overhyped':                    'overrated',
+  'just really really good':      null,
+  'they don\'t make \'em like this': null,
 }

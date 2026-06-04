@@ -19,9 +19,9 @@ export const GENRES: Record<string, string[]> = {
     'sci-fi', 'self-help', 'short stories', 'thriller', 'travel',
   ],
   music: [
-    'afrobeats', 'ambient', 'classical', 'country', 'electronic',
-    'folk', 'hip-hop', 'indie', 'jazz', 'latin',
-    'metal', 'pop', 'punk', 'r&b', 'rock', 'soul',
+    'afrobeats', 'ambient', 'art pop', 'classical', 'country', 'electronic',
+    'experimental', 'folk', 'funk', 'glam rock', 'hip-hop', 'indie', 'jazz',
+    'latin', 'metal', 'new wave', 'pop', 'post-punk', 'punk', 'r&b', 'rock', 'soul',
   ],
   other: [],
 }

@@ -86,13 +86,7 @@ async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: st
 
 interface ParsedFields { year: number | null; creator: string | null; runtime: number | null; pages: number | null; genres: string[] }
 
-// Genre vocab per type — must stay in sync with src/lib/genres.ts.
-const GENRE_VOCAB: Record<string, string[]> = {
-  film: ['action','animation','classic','comedy','crime','documentary','drama','fantasy','horror','musical','period piece','romance','satire','sci-fi','thriller','western'],
-  tv:   ['animation','classic','comedy','crime','documentary','drama','fantasy','horror','period piece','reality','satire','sci-fi','thriller'],
-  book: ['biography','business','classics','crime','essay','fantasy','historical fiction','history','horror','literary fiction','memoir','mystery','period piece','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
-  music:['afrobeats','ambient','classical','country','electronic','folk','hip-hop','indie','jazz','latin','metal','pop','punk','r&b','rock','soul'],
-}
+import { GENRES as GENRE_VOCAB } from '../src/lib/genres'
 
 const CREATOR_ROLE: Record<string, string> = {
   film: 'primary director (ignore writers, producers, actors)',

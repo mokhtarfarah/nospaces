@@ -51,8 +51,10 @@ function compareItems(a: Item, b: Item, sort: SortOption): number {
       return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
     case 'alpha':
       return a.title.localeCompare(b.title)
-    case 'status':
-      return a.status === b.status ? 0 : a.status === 'want_to' ? -1 : 1
+    case 'status': {
+      const order = { want_to: 0, in_progress: 1, done: 2 }
+      return (order[a.status] ?? 0) - (order[b.status] ?? 0)
+    }
     case 'reaction': {
       const ai = a.reaction ? REACTION_ORDER.indexOf(a.reaction) : 99
       const bi = b.reaction ? REACTION_ORDER.indexOf(b.reaction) : 99
@@ -109,11 +111,13 @@ function groupNone(items: Item[]): Map<string, Item[]> {
 }
 
 function groupByStatus(items: Item[]): Map<string, Item[]> {
-  const wantTo = items.filter(i => i.status === 'want_to')
-  const done   = items.filter(i => i.status === 'done')
+  const wantTo     = items.filter(i => i.status === 'want_to')
+  const inProgress = items.filter(i => i.status === 'in_progress')
+  const done       = items.filter(i => i.status === 'done')
   const map = new Map<string, Item[]>()
-  if (wantTo.length > 0) map.set('Want to', wantTo)
-  if (done.length > 0)   map.set('Done', done)
+  if (wantTo.length > 0)     map.set('Want to', wantTo)
+  if (inProgress.length > 0) map.set('In progress', inProgress)
+  if (done.length > 0)       map.set('Done', done)
   return map
 }
 
@@ -122,7 +126,7 @@ function itemSource(item: Item): string {
 }
 
 export function LibraryScreen() {
-  const { items, loading, markDone, markWantTo, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
+  const { items, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   // Anchors for the vibe/genre dropdown menus — the filter row scrolls
@@ -444,12 +448,12 @@ export function LibraryScreen() {
 
         {/* Filter row 2 — status + vibe/genre dropdowns (+ reaction chips when on "done") */}
         <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', marginTop: 2 }}>
-          {(['all', 'want_to', 'done'] as StatusFilter[]).map(s => (
+          {(['all', 'want_to', 'in_progress', 'done'] as StatusFilter[]).map(s => (
             <TabChip
               key={s}
-              label={s === 'all' ? 'all' : s === 'want_to' ? 'want to' : 'done'}
+              label={s === 'all' ? 'all' : s === 'want_to' ? 'want to' : s === 'in_progress' ? 'in progress' : 'done'}
               active={statusFilter === s}
-              onClick={() => { setStatusFilter(s); if (s === 'want_to') setReactionFilter('all') }}
+              onClick={() => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
             />
           ))}
           {(availableTags.moods.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0)) && (
@@ -548,7 +552,7 @@ export function LibraryScreen() {
       </header>
 
       {/* List */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 150 : 80 }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(150px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))' }}>
         {dupes > 0 && !loading && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', border: '1px solid #E8E8E8', borderRadius: 4 }}>
             <span style={{ fontSize: 12, color: '#666' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>
@@ -681,6 +685,7 @@ export function LibraryScreen() {
             onSetMoods={moods => editItem(fresh.id, { moods })}
             onSetTags={tags => editItem(fresh.id, { tags })}
             onToggleOwned={owned => toggleOwned(fresh.id, owned)}
+            onMarkInProgress={() => { markInProgress(fresh.id); setActionItem(null) }}
             onMarkDone={(reaction, note, moods) => { markDone(fresh.id, reaction, note, moods); setActionItem(null) }}
             onEditReaction={(reaction, note, moods) => { editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }}
             onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
@@ -957,8 +962,8 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
       {/* Action button */}
       {!selectMode && (
       <button
-        onClick={e => { e.stopPropagation(); item.status === 'want_to' ? onMarkDone() : onMarkWantTo() }}
-        title={item.status === 'want_to' ? 'Mark as done' : 'Move back to want to'}
+        onClick={e => { e.stopPropagation(); item.status === 'done' ? onMarkWantTo() : onMarkDone() }}
+        title={item.status === 'done' ? 'Move back to want to' : 'Mark as done'}
         style={{
           flexShrink: 0,
           marginLeft: 8,

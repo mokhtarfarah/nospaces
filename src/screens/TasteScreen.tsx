@@ -324,8 +324,8 @@ export function TasteScreen() {
   )
 
   if (!doneWithReaction.length) return (
-    <div style={{ padding: '56px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 28px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
+    <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
+      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 20px', color: INK }}>taste</h1>
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 6 }}>nothing to show yet</div>
         <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.6 }}>mark items as done and add reactions — your taste profile builds up here.</div>
@@ -335,8 +335,8 @@ export function TasteScreen() {
 
 
   return (
-    <div style={{ padding: '44px 20px 100px', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 14px', letterSpacing: '-0.2px', color: INK }}>taste</h1>
+    <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
+      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 14px', color: INK }}>taste</h1>
 
       {/* Hero header — vibes chips + prose */}
       <div style={{ borderBottom: `1.5px solid ${INK}`, paddingBottom: 18, marginBottom: 16 }}>

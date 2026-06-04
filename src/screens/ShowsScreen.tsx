@@ -155,7 +155,7 @@ export function ShowsScreen() {
   }, [upcoming, place, lovedOnly, lovedKeys])
 
   return (
-    <div style={{ padding: '56px 16px 96px', background: '#fff', minHeight: '100dvh' }}>
+    <div style={{ padding: '20px 16px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh' }}>
       <button
         onClick={() => navigate('/library')}
         style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, padding: 0, marginBottom: 16, cursor: 'pointer' }}
@@ -163,7 +163,7 @@ export function ShowsScreen() {
         ← back
       </button>
 
-      <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 6px', letterSpacing: '-0.2px' }}>
+      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>
         shows
       </h1>
       <p style={{ fontSize: 14, color: '#777', lineHeight: 1.5, margin: '0 0 16px' }}>

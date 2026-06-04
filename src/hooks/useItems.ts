@@ -121,6 +121,14 @@ export function useItems() {
     await fetch({ silent: true })
   }
 
+  async function markInProgress(id: string) {
+    await db().from('items').update({
+      status: 'in_progress',
+      date_done: null,
+    }).eq('id', id)
+    await fetch({ silent: true })
+  }
+
   async function deleteItem(id: string) {
     await db().from('items').delete().eq('id', id)
     await fetch({ silent: true })
@@ -215,5 +223,5 @@ export function useItems() {
     await fetch({ silent: true })
   }
 
-  return { items, loading, addItem, importItems, markDone, markWantTo, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
+  return { items, loading, addItem, importItems, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
 }

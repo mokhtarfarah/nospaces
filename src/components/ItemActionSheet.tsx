@@ -16,6 +16,7 @@ import { inReview } from '../lib/review'
 interface Props {
   item: Item
   onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; source_detail?: string | null; metadata?: Record<string, unknown> }) => void
+  onMarkInProgress?: () => void
   onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
   onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
@@ -81,7 +82,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -403,10 +404,10 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
 
   function handleSaveReaction() {
     if (!reaction) return
-    if (item.status === 'want_to') {
-      onMarkDone(reaction, note, selectedMoods)
-    } else {
+    if (item.status === 'done') {
       onEditReaction(reaction, note, selectedMoods)
+    } else {
+      onMarkDone(reaction, note, selectedMoods)
     }
   }
 
@@ -597,6 +598,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                       onClick={() => toggleSeason(s.n)}
                       style={{
                         padding: '6px 10px', borderRadius: 8, fontSize: 12, cursor: 'pointer',
+                        minWidth: 44, textAlign: 'center',
                         border: s.done ? `1.5px solid ${color.border}` : '1.5px solid #E0E0E0',
                         background: s.done ? color.bg : '#fff',
                         color: s.done ? color.border : '#555',
@@ -640,7 +642,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
               const descriptors = (item.tags ?? []).filter(t => !isGenreTag(t))
               const activeGenres = [...new Set((item.tags ?? []).filter(t => isGenreTag(t)))]
               const feel = (item.moods ?? []).filter(m => VIBES.includes(m))
-              const landed = item.status === 'want_to' ? [] : (item.moods ?? []).filter(m => VERDICTS.includes(m))
+              const landed = item.status === 'done' ? (item.moods ?? []).filter(m => VERDICTS.includes(m)) : []
               const hasAny = activeGenres.length > 0 || feel.length > 0 || landed.length > 0
               const inactiveGenres = vocab.filter(g => !activeGenres.includes(g))
 
@@ -705,7 +707,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   <MoodChips
                     type={item.type}
                     size="sm"
-                    groups={item.status === 'want_to' ? 'vibes-only' : 'all'}
+                    groups={item.status === 'done' ? 'all' : 'vibes-only'}
                     isActive={m => (item.moods ?? []).includes(m)}
                     onToggle={toggleMood}
                   />
@@ -780,11 +782,21 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </div>
               </div>
             ) : (
-              <div style={{ ...footer, display: 'flex', gap: 8 }}>
-                <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
-                  {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
-                </button>
-                <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
+              <div style={{ ...footer }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: item.status === 'want_to' && onMarkInProgress ? 6 : 0 }}>
+                  <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
+                    {item.status === 'done' ? 'edit reaction' : 'mark as done'}
+                  </button>
+                  <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
+                </div>
+                {item.status === 'want_to' && onMarkInProgress && (
+                  <button
+                    onClick={onMarkInProgress}
+                    style={{ background: 'none', border: 'none', fontSize: 11, color: '#ABA69C', cursor: 'pointer', padding: '0 0 2px', width: '100%', textAlign: 'center' }}
+                  >
+                    mark as in progress
+                  </button>
+                )}
               </div>
             )}
           </>
@@ -948,7 +960,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
         {view === 'reaction' && (
           <>
             <p style={sectionHeading}>
-              {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
+              {item.status === 'done' ? 'edit reaction' : 'mark as done'}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
               {REACTIONS.map(r => (
@@ -960,9 +972,9 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
             <div style={{ marginBottom: 16 }}>
               <NoteInput value={note} onChange={setNote} />
             </div>
-            {/* Hybrid: first "mark as done" shows the full vibe picker. "edit reaction" on a
-                done item keeps it minimal — a quiet "edit tags" link reveals it on demand. */}
-            {item.status === 'want_to' ? (
+            {/* Hybrid: first "mark as done" (want_to or in_progress) shows the full vibe picker.
+                "edit reaction" on a done item keeps it minimal — tags link reveals on demand. */}
+            {item.status !== 'done' ? (
               <>
                 <p style={fieldLabel}>vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span></p>
                 <div style={{ marginBottom: 16 }}>
