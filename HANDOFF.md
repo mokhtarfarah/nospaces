@@ -130,6 +130,44 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 **▶ NEXT SESSION STARTS HERE:**
 
+### 📌 Session 18 (continued) — polish + vibe/verdict taxonomy overhaul
+
+**Shipped after the main session 18 summary:**
+1. ✅ **CI fixed** — pinned GitHub Actions to Node 24 (Supabase client throws on Node 20).
+2. ✅ **Diacritics folded in dedupe keys** — "Rosalía" ↔ "Rosalia" now match in `albumKey`, `filmKey`, `useItems` dup detection.
+3. ✅ **Email dedup against library** — forwarded emails now skip items already in your library; re-forwarding is safe (only the missing one gets added). Reply reports skipped count.
+4. ✅ **Reference link works for any site** (option 2) — paste Goodreads/StoryGraph/any URL; card link labeled by site (`goodreads ↗`). Auto-fill stays Wikipedia-only.
+5. ✅ **Own-it restyled** — plain text link matching edit/edit-tags, moved third in header, shows `own it ✓︎` when active.
+6. ✅ **Blurb pre-fills in edit view** — existing rec/captured/wiki blurb is visible in the box so it's not accidentally overwritten. Untouched echoes don't promote to manualBlurb.
+7. ✅ **Tidy queue respects gap-type filter** — "missing genre" filter now scopes the save & next walk to genre-less items only.
+8. ✅ **Clear-filters is just ×** — moved next to sort dropdown (left header), no word.
+9. ✅ **Wiki auto-fill genre fixed** — genre now comes from `/api/genres` (title-knowledge inference) instead of Wikipedia categories (which rarely carry a clean genre label). `api/genres.ts` book vocab was stale (missing `historical fiction`, `memoir`) — synced. ⚠️ THREE vocab copies must stay in sync: `src/lib/genres.ts`, `api/wiki.ts` GENRE_VOCAB, `api/genres.ts` GENRE_VOCAB.
+10. ✅ **"memoir" added** to book genre vocab (all three copies).
+11. ✅ ***noted* in subtitle** — note indicator replaced pencil glyph with italic `noted` in the middot subtitle line (list + grid).
+12. ✅ **Vibe/verdict taxonomy overhauled** — full redesign after extended design session. See moods section below.
+
+**⚠️ ACTION NEEDED: run "clean up" in library tools** (Add page → library tools → clean up →) to remap old vibe tags on existing items: atmospheric→hazy, artsy→arthouse, upbeat→fun, relaxed→easy; drops tearjerker, feel-good, dreamy, life-changing, just-really-really-good, overhyped.
+
+### Vibe/verdict taxonomy (locked session 18, implement AI suggester next)
+
+**Design principles:**
+- Verdicts = your relationship to the work → **always manual, AI never suggests**
+- Vibes = properties of the work itself → **AI suggests, you confirm**
+- Vibes are tiered by medium (not one flat list) so each type shows only relevant words
+- Axis metadata (in moods.ts, not user-visible) groups cross-medium synonyms so recommender can reason "hype/intense/propulsive = high energy" across media
+- Effort axis is the one explicit bipolar pair (easy ↔ demanding/dense) — powers the "what do I watch tonight" filter
+
+**Verdicts (all media):** comfort · guilty pleasure · would revisit · delivers · they don't make 'em like this · respect, not love · overrated · so bad it's good
+
+**Vibes:**
+- Core (all 4 media): hazy · dark · melancholic · nostalgic · romantic · off-kilter · epic · playful · sexy · sharp · lush
+- Narrative (film/tv/book): intense · heavy · easy · demanding · funny · cozy · earnest
+- Film/TV only: arthouse · fun
+- Music only: hype · raw · danceable · groovy · mellow · hypnotic
+- Book only: propulsive · dense · lyrical · immersive · literary · spare
+
+**🔜 NEXT: AI vibe suggester** — cheap Haiku call (~$0.001) at identify time or card open, proposes 1–3 vibes from the type-appropriate vocab based on model's knowledge of the title. Shown as faded "suggested" chips; user confirms or ignores. Never auto-applied. Vocab is now locked and stable — good to build.
+
 ### 📌 Session 18 summary (2026-06-03) — testing foundation + the "for review" inbox
 
 **Shipped to `main` / live (NOT yet eyeballed logged-in by Farah — see verify note):**
