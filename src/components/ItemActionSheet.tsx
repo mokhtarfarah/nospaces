@@ -51,6 +51,18 @@ const REACTION_LABELS: Record<ItemReaction, string> = {
   loved_it: 'loved it', liked_it: 'liked it', eh: 'eh', not_for_me: 'not for me',
 }
 
+// Label the reference link by its site (wikipedia ↗, goodreads ↗, …) so the
+// card link makes sense whatever source you pasted, not just Wikipedia.
+function refLinkLabel(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '')
+    if (host.includes('wikipedia.org')) return 'wikipedia'
+    return host.split('.')[0]
+  } catch {
+    return 'link'
+  }
+}
+
 type View = 'main' | 'edit' | 'reaction'
 
 // A candidate match offered after re-identify (from the AI's alternatives or a catalog lookup).
@@ -502,7 +514,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   )}
                   {wikiUrl && (
                     <a href={wikiUrl} target="_blank" rel="noopener noreferrer" className="tlink">
-                      {'wikipedia ↗︎'}
+                      {`${refLinkLabel(wikiUrl)} ↗︎`}
                     </a>
                   )}
                   {(item.type === 'film' || item.type === 'tv') && (
@@ -805,7 +817,7 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                   <input
                     value={wikiUrlEdit}
                     onChange={e => { setWikiUrlEdit(e.target.value); setWikiFilled(false) }}
-                    placeholder="wikipedia url (paste to override)"
+                    placeholder="reference url (wikipedia, goodreads…)"
                     style={{ ...smInput, flex: 1 }}
                   />
                   {wikiUrlEdit.includes('wikipedia.org') && (
