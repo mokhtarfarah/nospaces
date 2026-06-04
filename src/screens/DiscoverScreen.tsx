@@ -24,6 +24,16 @@ function isStale(cachedAt: string): boolean {
   return Date.now() - new Date(cachedAt).getTime() > CACHE_TTL_MS
 }
 
+// Old cached results may have source:string instead of sources:string[].
+function normaliseSources(results: DiscoveryResult[]): DiscoveryResult[] {
+  return results.map(r => ({
+    ...r,
+    sources: Array.isArray(r.sources) ? r.sources
+      : (r as unknown as { source?: string }).source ? [(r as unknown as { source: string }).source]
+      : ["Claude's knowledge"],
+  }))
+}
+
 export function DiscoverScreen() {
   const navigate = useNavigate()
   const { items, addItem } = useItems()
@@ -59,7 +69,7 @@ export function DiscoverScreen() {
     if (!prefsLoaded) return
     const cached = discoveryCache?.[mode]
     if (cached && !isStale(cached.cachedAt)) {
-      setResults(cached.results)
+      setResults(normaliseSources(cached.results))
       setCachedAt(cached.cachedAt)
     } else {
       setResults([])
@@ -98,9 +108,10 @@ export function DiscoverScreen() {
         return
       }
       const data = await res.json() as { recommendations: DiscoveryResult[]; warning?: string }
-      setResults(data.recommendations ?? [])
+      const recs = normaliseSources(data.recommendations ?? [])
+      setResults(recs)
       setCachedAt(new Date().toISOString())
-      setDiscoveryCache(mode, data.recommendations ?? [])
+      setDiscoveryCache(mode, recs)
     } catch {
       setError('network error — try again')
     } finally {
