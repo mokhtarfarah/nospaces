@@ -886,8 +886,8 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
   // were removed here — runtime/pages now live in the action card instead.
   const topGenre = (item.tags ?? []).find(isGenreTag) ?? null
   const subtitle = item.status === 'done'
-    ? [showType ? item.type : null, item.year, seasonsLabel, topGenre, item.reaction ? REACTION_LABELS[item.reaction] : null, item.note ? 'noted' : null].filter(Boolean).join(' · ')
-    : [showType ? item.type : null, item.year, seasonsLabel, topGenre, item.note ? 'noted' : null].filter(Boolean).join(' · ')
+    ? [showType ? item.type : null, item.year, seasonsLabel, topGenre, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
+    : [showType ? item.type : null, item.year, seasonsLabel, topGenre].filter(Boolean).join(' · ')
 
   return (
     <div
@@ -910,9 +910,10 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
           {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: '#999', fontSize: 11 }}>{'  '}⌂</span>}
           {!!item.metadata?.scratch && <span title="Needs identifying" style={{ fontWeight: 500, color: '#BBBBBB', fontSize: 11 }}>{'  '}?</span>}
         </div>
-        {subtitle && (
+        {(subtitle || item.note) && (
           <div style={{ fontSize: 11, color: '#999', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {subtitle}
+            {item.note && <span style={{ fontStyle: 'italic' }}>{subtitle ? ' · ' : ''}noted</span>}
           </div>
         )}
       </div>
@@ -1017,7 +1018,6 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
   const subtitle = [
     showType ? item.type : null, item.year, seasonsLabel, topGenre,
     item.status === 'done' && item.reaction ? REACTION_LABELS[item.reaction] : null,
-    item.note ? 'noted' : null,
   ].filter(Boolean).join(' · ')
   const reactionDot = item.status === 'done' && item.reaction === 'loved_it'
     ? '#1A1A1A'
@@ -1051,8 +1051,8 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
         {item.creator && (
           <div style={{ fontSize: 10, color: '#AAA', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>
         )}
-        {subtitle && (
-          <div style={{ fontSize: 10, color: '#B0B0B0', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle}</div>
+        {(subtitle || item.note) && (
+          <div style={{ fontSize: 10, color: '#B0B0B0', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle}{item.note && <span style={{ fontStyle: 'italic' }}>{subtitle ? ' · ' : ''}noted</span>}</div>
         )}
       </div>
     </div>
