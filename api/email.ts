@@ -333,6 +333,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     recommended_by: parsed.newsletter_name ?? null,
     metadata: {
       ...(item.metadata ?? {}),
+      // Forwarded items land in the "for review" inbox to triage in-app, rather
+      // than dropping silently into the library.
+      review: true,
       ...(item.summary?.trim() ? { recommendationBlurb: item.summary.trim() } : {}),
       // Visible blurb text read off an emailed screenshot/photo — stored like the
       // in-app photo path so the action card shows it (beats the Wikipedia fallback).

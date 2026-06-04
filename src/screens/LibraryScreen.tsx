@@ -13,6 +13,7 @@ import { getSeasons } from '../lib/seasons'
 import { MOODS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
+import { inReview, reviewCount } from '../lib/review'
 
 type StatusFilter = 'all' | ItemStatus
 
@@ -142,9 +143,9 @@ export function LibraryScreen() {
   // Empty array = all categories. Single-select: tapping a type switches to just that
   // one (tap it again to clear back to All). Array kept so multi-select can return later.
   const [categories, setCategories] = useState<string[]>(() => loadPrefs().categories ?? [])
-  const [scratchOnly, setScratchOnly] = useState(false)
+  const [reviewOnly, setReviewOnly] = useState(false)
   const selectCategory = (t: string) => {
-    setScratchOnly(false)
+    setReviewOnly(false)
     setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   }
@@ -222,11 +223,11 @@ export function LibraryScreen() {
 
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
-    || !!vibeFilter || !!genreFilter || !!seriesFilter || scratchOnly || newMusicOnly || !!query.trim()
+    || !!vibeFilter || !!genreFilter || !!seriesFilter || reviewOnly || newMusicOnly || !!query.trim()
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null)
-    setScratchOnly(false); setNewMusicOnly(false); setQuery(''); setOpenDropdown(null)
+    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setOpenDropdown(null)
   }
 
   const sort: SortOption = VIEW_CONFIG[view].sort
@@ -255,8 +256,8 @@ export function LibraryScreen() {
   // vibe/genre chips should be shown so they don't vanish when one is selected.
   const baseFiltered = useMemo(() => {
     return items.filter(item => {
-      if (scratchOnly) return !!item.metadata?.scratch
-      if (item.metadata?.scratch) return false
+      if (reviewOnly) return inReview(item)
+      if (inReview(item)) return false
       if (categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
@@ -270,7 +271,7 @@ export function LibraryScreen() {
       }
       return true
     })
-  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, scratchOnly])
+  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, reviewOnly])
 
   const filtered = useMemo(() => {
     let result = baseFiltered
@@ -299,7 +300,7 @@ export function LibraryScreen() {
   }, [baseFiltered])
 
   // Reset vibe/genre filters when base filters change so they don't silently hide results.
-  useEffect(() => { setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null) }, [categories, statusFilter, reactionFilter, scratchOnly])
+  useEffect(() => { setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null) }, [categories, statusFilter, reactionFilter, reviewOnly])
 
   const grouped = useMemo(() => {
     if (group === 'creator') return groupByCreator(filtered)
@@ -308,14 +309,15 @@ export function LibraryScreen() {
     return groupByMonth(filtered)
   }, [filtered, group])
 
-  // Unique types from real data for filter row (excluding scratch items)
+  // Unique types from real data for filter row (excluding in-review items)
   const types = useMemo(() => {
     const seen = new Set<string>()
-    items.filter(i => !i.metadata?.scratch).forEach(i => seen.add(i.type))
+    items.filter(i => !inReview(i)).forEach(i => seen.add(i.type))
     return Array.from(seen).sort()
   }, [items])
 
-  const hasScratch = useMemo(() => items.some(i => !!i.metadata?.scratch), [items])
+  const reviewN = useMemo(() => reviewCount(items), [items])
+  const hasReview = reviewN > 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
@@ -418,20 +420,20 @@ export function LibraryScreen() {
 
         {/* Filter row 1 — category (tab style: navigation, not selection) */}
         <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 0 }}>
-          <TabChip label="all" active={categories.length === 0 && !scratchOnly} onClick={() => { setCategories([]); setScratchOnly(false) }} />
+          <TabChip label="all" active={categories.length === 0 && !reviewOnly} onClick={() => { setCategories([]); setReviewOnly(false) }} />
           {['film', 'book', 'music', 'tv', ...types.filter(t => !['film','book','music','tv'].includes(t))].map(t => (
             <TabChip
               key={t}
               label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
-              active={categories.includes(t) && !scratchOnly}
+              active={categories.includes(t) && !reviewOnly}
               onClick={() => selectCategory(t)}
             />
           ))}
           {!types.includes('other') && (
-            <TabChip label="other" active={categories.includes('other') && !scratchOnly} onClick={() => selectCategory('other')} />
+            <TabChip label="other" active={categories.includes('other') && !reviewOnly} onClick={() => selectCategory('other')} />
           )}
-          {hasScratch && (
-            <TabChip label="for review" active={scratchOnly} onClick={() => { setScratchOnly(v => !v); setCategories([]) }} />
+          {hasReview && (
+            <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
           )}
         </div>
 
@@ -678,6 +680,13 @@ export function LibraryScreen() {
             onEditReaction={(reaction, note, moods) => { editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }}
             onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
             onDelete={() => { deleteItem(fresh.id); setActionItem(null) }}
+            onKeep={reaction => {
+              // Triage out of the review inbox: a reaction logs it as done
+              // (preserving any note/moods); no reaction keeps it as want_to.
+              if (reaction) markDone(fresh.id, reaction, fresh.note ?? '', fresh.moods ?? [])
+              patchMetadata(fresh.id, { review: false })
+              setActionItem(null)
+            }}
             onClose={() => { setActionItem(null); setActionEdit(false); setTidyQueue(null) }}
           />
         )

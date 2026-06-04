@@ -649,7 +649,7 @@ export function AddScreen() {
   async function handleSaveAsScratch() {
     // Empty box → just guide them into typing the description (the scratch text IS the title).
     if (!title.trim()) { inputRef.current?.focus(); return }
-    await addItem(title.trim(), 'other', null, null, { scratch: true }, [])
+    await addItem(title.trim(), 'other', null, null, { scratch: true, review: true }, [])
     setTitle('')
     navigate('/library')
   }

@@ -11,6 +11,7 @@ import { useBookBlurb, clearBlurbCache } from '../lib/blurb'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
 import { WhereToWatchSheet } from './WhereToWatchSheet'
 import { genresForType, isGenreTag } from '../lib/genres'
+import { inReview } from '../lib/review'
 
 interface Props {
   item: Item
@@ -23,6 +24,9 @@ interface Props {
   onToggleOwned: (owned: boolean) => void
   onDelete: () => void
   onClose: () => void
+  // Triage an item out of the "for review" inbox. No reaction = keep as want_to;
+  // a reaction logs it as done. Either way the review flag is cleared.
+  onKeep?: (reaction?: ItemReaction) => void
   // Open straight into the edit view (e.g. deep-linked from the data-gaps list).
   initialEdit?: boolean
   // Tidy-queue walk-through: when present, the edit view shows "save & next" /
@@ -65,7 +69,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -421,6 +425,29 @@ export function ItemActionSheet({ item, onEdit, onMarkDone, onEditReaction, onSe
                 </div>
               </div>
             </div>
+
+            {onKeep && inReview(item) && (
+              <div style={{ marginBottom: 16, border: '1px solid #ECEAE6', borderRadius: 10, padding: '10px 12px', background: '#FAFAFA' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#777', marginBottom: 8 }}>in your review inbox — file it</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <button
+                    onClick={() => onKeep()}
+                    style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid #DDD', background: '#fff', color: '#1C1B19', fontSize: 12, cursor: 'pointer' }}
+                  >
+                    keep · want to
+                  </button>
+                  {REACTIONS.map(r => (
+                    <button
+                      key={r.value}
+                      onClick={() => onKeep(r.value)}
+                      style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid #DDD', background: '#fff', color: '#1C1B19', fontSize: 12, cursor: 'pointer' }}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {picks !== null && (
               <div style={{ marginBottom: 16, border: '1px solid #EEE', borderRadius: 10, padding: '10px 12px', background: '#FAFAFA' }}>

@@ -17,6 +17,16 @@ export NVM_DIR="$HOME/.nvm" && source "$NVM_DIR/nvm.sh"
 cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 ```
 
+## Testing (added session 18)
+```bash
+npm test        # run all unit tests once (Vitest)
+npm run test:watch   # re-run on change while developing
+npm run typecheck    # tsc --noEmit (also runs inside `npm run build`)
+```
+- **What's covered:** pure logic that breaks silently — `letterboxd` (CSV parse, star→reaction, dedup, insert build), `gaps`, `spotify` (dedup/insert), `shows` (distance, liked/loved artists), `genres` (`isGenreTag`), `review` (inbox membership). Tests live next to the code as `*.test.ts` under `src/lib/`.
+- **NOT covered:** React components/screens, API endpoints (no live API calls in tests — keeps it free + fast). Add component tests later only if a screen keeps regressing.
+- **CI gate:** `.github/workflows/ci.yml` runs typecheck + tests on every push/PR to GitHub (free GitHub Actions, **zero Anthropic/token cost**). A red check = broken build before it reaches Vercel. **When adding pure logic, add a test for it.**
+
 ## Key files
 - `src/screens/LibraryScreen.tsx` — library UI
 - `src/screens/AddScreen.tsx` — add screen (AI, photo, shortcut)
@@ -120,6 +130,19 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 **▶ NEXT SESSION STARTS HERE:**
 
+### 📌 Session 18 summary (2026-06-03) — testing foundation + the "for review" inbox
+
+**Shipped to `main` / live (NOT yet eyeballed logged-in by Farah — see verify note):**
+1. ✅ **Testing foundation (Vitest + CI gate).** First automated tests in the repo (the old "unit-tested" claim was aspirational). 53 tests across `letterboxd`, `gaps`, `spotify`, `shows`, `genres`, `review`. `npm test` / `npm run typecheck` / GitHub Actions `ci.yml`. See **Testing** section above. The tests already caught a real edge case → spun off as a task (diacritics in dedupe keys: "Rosalía" normalizes to `rosala`, won't dedupe vs "Rosalia"; low impact).
+2. ✅ **The "for review" inbox (roadmap items A + D).** Forwarded emails, recommendation PDFs, and un-identified "save & identify later" notes now land in a **review inbox** instead of dropping silently into the library. New pure module `src/lib/review.ts` (`inReview`, `reviewCount`, `clearReviewMeta` — unit-tested). Membership is a `metadata.review` flag — **no DB migration**, fully reversible, and **only affects newly-captured items** (existing library untouched; legacy `scratch` items are treated as in-review until triaged).
+   - **Surface:** the existing "for review" chip in the library header now shows a **count** (`for review · N`) and only appears when items are waiting. Review items are **hidden from the main grid** until triaged.
+   - **Wired at 3 save paths:** scratch save (`AddScreen.handleSaveAsScratch`), email (`api/email.ts` rows), recs (`RecommendScreen` inserts).
+   - **Keep flow:** opening a review item shows an **"in your review inbox — file it"** banner on the action card with buttons: `keep · want to` (clears review, stays want_to) + the 4 reactions (logs as done, preserving note/moods, clears review). New optional `onKeep` prop on `ItemActionSheet`.
+   - **Manual one-at-a-time adds and bulk photos intentionally stay OUT** of the inbox (already reviewed at capture).
+   - ⚠️ **Recommendations PDF was included per Farah's choice** — but recs already go through their own select-checklist at save time, so this adds a *second* triage pass. If that feels redundant, removing it is a one-liner (delete `review: true` from `RecommendScreen.tsx` metadata).
+
+**🔎 VERIFY NEXT SESSION (auth-gated, couldn't test in preview):** log in → forward an email (or save a rec) → confirm the **`for review · N`** chip appears → tap an item → confirm the **"file it"** banner shows and `keep`/reaction buttons move it into the library + drop the count.
+
 ### 📌 Session 16 summary (2026-06-03) — cosmetic queue cleared + input audit started
 
 **Shipped to `main` / live:**
@@ -137,10 +160,10 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 12. ✅ **Un-identified captures are no longer a dead-end** — the action card now offers "mark as done / edit reaction" alongside "identify now" for scratch items, so you can log a reaction + note now and identify whenever. Resolves the parked scratch model toward "save now, identify later" (kept the triage filter — didn't rip the concept out). *Capture-time reaction (react in the same tap as save-as-note) intentionally not built — you react right after, by opening the item.*
 
 **▶ OPEN TO-DOS (carry forward, session 17):**
-- **(A) Shared review checklist + email "pending inbox"** M/L. Extract the recommendations-PDF checklist into a reusable component; reuse for (1) recs (already), (2) **email → "for review" pending inbox** (forwarded items land in the "for review" bucket — renamed from scratch this session — so you triage them next time you open the app), (3) bulk photo. New infra: "pending review" state + in-app inbox surface. **Highest leverage for how Farah actually uses the app.**
+- ✅ **(A) email "pending inbox" — SHIPPED session 18** (see session 18 summary). `metadata.review` flag + `src/lib/review.ts` + "file it" keep flow on the action card. Email + recs + scratch land in the inbox; bulk photo intentionally left out. **Remaining bit of original (A):** the recommendations-PDF checklist UI was NOT extracted into a shared component (the inbox uses a per-item "file it" banner instead of a multi-select checklist). If a batch select/deselect-all triage surface is wanted, that's a follow-up.
 - **(B) Offline capture queue** M/L. IndexedDB queue holds captures while offline, syncs on reconnect. "On the go" north star.
 - **(C) "In progress" status** S/M. Third status (`want_to` / `in_progress` / `done`) for things started but stalled. Needs one SQL migration (Farah runs in Supabase dashboard): `alter table public.items drop constraint items_status_check; alter table public.items add constraint items_status_check check (status in ('want_to','in_progress','done'));`. Then: update `ItemStatus` type, add filter chip in library, add "mark as in progress" on action card. **Design resolved: no reaction until marked done (behaves like want_to).**
-- **(D) "for review" = the one inbox** — forwarded email items should land here (ties A + D). `metadata.scratch=true` is the current flag; "for review" chip is the prototype surface.
+- ✅ **(D) "for review" = the one inbox — SHIPPED session 18.** Forwarded email items now land here. Flag moved from `metadata.scratch` to a dedicated `metadata.review` (legacy scratch still treated as in-review). Chip shows a live count.
 
 **iOS Shortcut — DECIDED: skip / leave retired.** The Web Share **Target** API (PWA receiving a shared *image file*) is **not supported by iOS WebKit** — that's why nospaces never appeared in the Photos share sheet (platform limitation, not a config bug; don't chase the manifest). Workaround Farah will use instead: **screenshot → share to Mail → forward to the nospaces address** (Mail *is* a share target on iOS), which captures without keeping the screenshot. Rebuilding the Shortcut+`/api/identify-upload` is possible later but not worth it now. (A `GET` text/URL share target *could* work on iOS for sharing links — minor, not scheduled.)
 

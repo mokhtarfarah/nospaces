@@ -114,6 +114,8 @@ export function RecommendScreen() {
         source_detail: 'recommendation',
         recommended_by: source,
         metadata: {
+          // Saved recs land in the "for review" inbox for a final triage pass.
+          review: true,
           ...(sourceUrl ? { recommendationUrl: sourceUrl } : {}),
           ...(r.blurb ? { recommendationBlurb: r.blurb } : {}),
         },
