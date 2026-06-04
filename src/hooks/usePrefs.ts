@@ -2,14 +2,22 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { HOME_CITIES, type City } from '../lib/shows'
+import type { DiscoveryResult, FeedEntry } from '../lib/feeds'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = () => (supabase as any)
+
+interface DiscoveryCache {
+  results: DiscoveryResult[]
+  cachedAt: string
+}
 
 interface Prefs {
   cities?: City[]
   tasteProfile?: string
   tasteProfileGeneratedAt?: string
+  discoveryCache?: { intaste?: DiscoveryCache; divert?: DiscoveryCache }
+  customFeeds?: FeedEntry[]
 }
 
 // Per-user preferences, synced across devices via the public.user_prefs table.
@@ -55,11 +63,20 @@ export function usePrefs() {
   const setTasteProfile = (profile: string) =>
     patch({ tasteProfile: profile, tasteProfileGeneratedAt: new Date().toISOString() })
 
+  const setDiscoveryCache = (mode: 'intaste' | 'divert', results: DiscoveryResult[]) =>
+    patch({ discoveryCache: { ...prefs.discoveryCache, [mode]: { results, cachedAt: new Date().toISOString() } } })
+
+  const setCustomFeeds = (feeds: FeedEntry[]) => patch({ customFeeds: feeds })
+
   return {
     cities, setCities,
     tasteProfile: prefs.tasteProfile,
     tasteProfileGeneratedAt: prefs.tasteProfileGeneratedAt,
     setTasteProfile,
+    discoveryCache: prefs.discoveryCache,
+    setDiscoveryCache,
+    customFeeds: prefs.customFeeds ?? [],
+    setCustomFeeds,
     prefsLoaded: loaded,
   }
 }

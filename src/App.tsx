@@ -9,6 +9,7 @@ import { SpotifyScreen } from './screens/SpotifyScreen'
 import { TasteScreen } from './screens/TasteScreen'
 import { ShowsScreen } from './screens/ShowsScreen'
 import { RecommendScreen } from './screens/RecommendScreen'
+import { DiscoverScreen } from './screens/DiscoverScreen'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/taste" element={<TasteScreen />} />
         <Route path="/shows" element={<ShowsScreen />} />
         <Route path="/recommend" element={<RecommendScreen />} />
+        <Route path="/discover" element={<DiscoverScreen />} />
       </Routes>
       <BottomNav />
     </>

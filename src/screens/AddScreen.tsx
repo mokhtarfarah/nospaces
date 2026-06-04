@@ -792,6 +792,7 @@ export function AddScreen() {
         </div>
         {moreWaysOpen && (
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            <button type="button" onClick={() => navigate('/discover')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>discover</button>
             <button type="button" onClick={() => navigate('/recommend')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>find recommendations</button>
             <button type="button" onClick={() => navigate('/import')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>import from Letterboxd</button>
             <button type="button" onClick={() => navigate('/spotify')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>sync from Spotify</button>
