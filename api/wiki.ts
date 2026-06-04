@@ -102,7 +102,7 @@ const CREATOR_ROLE: Record<string, string> = {
 }
 
 // Use Haiku to pull structured fields out of a Wikipedia extract + categories.
-async function parseFields(extract: string, categories: string[], type: string): Promise<ParsedFields> {
+async function parseFields(extract: string, categories: string[], type: string, workTitle: string): Promise<ParsedFields> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const vocab = (GENRE_VOCAB[type] ?? []).join(', ')
   const role = CREATOR_ROLE[type] ?? 'primary creator'
@@ -110,6 +110,7 @@ async function parseFields(extract: string, categories: string[], type: string):
   const prompt = `Extract structured data from this Wikipedia article. Return ONLY a JSON object, no markdown.
 
 Media type: ${type}
+Work: ${workTitle}
 Article extract: """${extract}"""${catLine}
 
 JSON keys (use null if not found):
@@ -117,7 +118,7 @@ JSON keys (use null if not found):
 - "creator": ${role} — single name as string (e.g. "Justine Triet", "Ursula K. Le Guin")
 - "runtime": running time in minutes as integer (${type === 'film' || type === 'tv' ? 'extract it' : 'always null'})
 - "pages": page count as integer (${type === 'book' ? 'extract it' : 'always null'})
-- "genres": 1–3 genres, lowercase. Prefer terms from this list: [${vocab}]. Use the Wikipedia categories above to identify the genre. If the article clearly states a primary genre that is NOT in the list (e.g. "memoir", "graphic novel", "true crime", "young adult"), include that exact lowercase term rather than forcing a wrong match.`
+- "genres": the work's 1–3 genres, lowercase. Determine them from the extract, the categories above, AND your own knowledge of "${workTitle}" — Wikipedia often omits a clean genre label (e.g. it rarely says "literary fiction"), so infer it. Use the EXACT spelling from this list whenever it fits: [${vocab}]. Only if the primary genre genuinely isn't in the list (e.g. "memoir", "graphic novel", "true crime") use that lowercase term. Always return at least one genre.`
 
   const msg = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -152,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!info) return res.json({ url: null, thumbnail: null, summary: null, parsed: null })
       const type = one(req.query.type)
       const parsed = (req.query.parse === '1' && type && info.extract)
-        ? await parseFields(info.extract, info.categories, type)
+        ? await parseFields(info.extract, info.categories, type, info.title)
         : null
       return res.json({ url: info.url, thumbnail: info.thumbnail, summary: info.extract, parsed })
     } catch {
