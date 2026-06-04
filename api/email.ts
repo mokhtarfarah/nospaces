@@ -344,19 +344,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     tags: item.tags ?? [],
   }))
 
+  // Dedup against the existing library (and within this batch) so re-forwarding
+  // an email to recover a missed item doesn't create duplicates of the ones that
+  // already came through. Key = type + accent-folded title + creator.
+  const norm = (s: string) =>
+    (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const keyOf = (title: string, creator: string | null, type: string) =>
+    `${type}|${norm(title)}|${norm(creator ?? '')}`
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: insertError } = await (supabase as any).from('items').insert(rows)
-  console.log('[email] insert error:', insertError, 'rows:', rows.length)
+  const { data: existing } = await (supabase as any)
+    .from('items').select('title, creator, type').eq('user_id', matchedUser.id)
+  const existingKeys = new Set<string>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((existing ?? []) as any[]).map(e => keyOf(e.title, e.creator, e.type)),
+  )
+  const seen = new Set<string>()
+  const dedupedRows = rows.filter(r => {
+    const k = keyOf(r.title, r.creator, r.type)
+    if (existingKeys.has(k) || seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+  const skipped = rows.length - dedupedRows.length
+  console.log('[email] dedup: saving', dedupedRows.length, 'skipped (already in library):', skipped)
+
+  if (dedupedRows.length === 0) {
+    await sendReply(fromEmail, replyFrom, 'Nospaces: nothing new to save',
+      `I found ${rows.length} item${rows.length > 1 ? 's' : ''} in "${subject}", but ${rows.length > 1 ? "they're" : "it's"} already in your library — nothing new to add.`)
+    return res.status(200).json({ saved: 0, skipped })
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: insertError } = await (supabase as any).from('items').insert(dedupedRows)
+  console.log('[email] insert error:', insertError, 'rows:', dedupedRows.length)
 
   // Talk back with the result so failures are never silent.
   if (insertError) {
     await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
       `I found ${rows.length} item${rows.length > 1 ? 's' : ''} but hit an error saving them — nothing was added. (Tech note: ${insertError.message})`)
   } else {
-    const list = rows.map(r => `• ${r.title}${r.year ? ` (${r.year})` : ''}`).join('\n')
-    await sendReply(fromEmail, replyFrom, `Nospaces: saved ${rows.length} to your library`,
-      `Added to your library:\n\n${list}`)
+    const list = dedupedRows.map(r => `• ${r.title}${r.year ? ` (${r.year})` : ''}`).join('\n')
+    const skippedNote = skipped > 0 ? `\n\n(${skipped} already in your library, skipped.)` : ''
+    await sendReply(fromEmail, replyFrom, `Nospaces: saved ${dedupedRows.length} for review`,
+      `Added to your review inbox:\n\n${list}${skippedNote}`)
   }
 
-  return res.status(200).json({ saved: insertError ? 0 : rows.length, error: insertError?.message })
+  return res.status(200).json({ saved: insertError ? 0 : dedupedRows.length, skipped, error: insertError?.message })
 }
