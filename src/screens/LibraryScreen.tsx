@@ -886,8 +886,8 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
   // were removed here — runtime/pages now live in the action card instead.
   const topGenre = (item.tags ?? []).find(isGenreTag) ?? null
   const subtitle = item.status === 'done'
-    ? [showType ? item.type : null, item.year, seasonsLabel, topGenre, item.reaction ? REACTION_LABELS[item.reaction] : null].filter(Boolean).join(' · ')
-    : [showType ? item.type : null, item.year, seasonsLabel, topGenre].filter(Boolean).join(' · ')
+    ? [showType ? item.type : null, item.year, seasonsLabel, topGenre, item.reaction ? REACTION_LABELS[item.reaction] : null, item.note ? 'noted' : null].filter(Boolean).join(' · ')
+    : [showType ? item.type : null, item.year, seasonsLabel, topGenre, item.note ? 'noted' : null].filter(Boolean).join(' · ')
 
   return (
     <div
@@ -907,7 +907,6 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
         <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
           <span style={{ fontWeight: 500 }}>{item.title}</span>
           {item.creator && <span style={{ fontWeight: 400, color: '#A0A0A0' }}>{'  ·  '}{item.creator}</span>}
-          {item.note && <span title="Has a note" style={{ fontWeight: 400, color: '#C0C0C0', fontSize: 11 }}>{'  '}✎</span>}
           {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: '#999', fontSize: 11 }}>{'  '}⌂</span>}
           {!!item.metadata?.scratch && <span title="Needs identifying" style={{ fontWeight: 500, color: '#BBBBBB', fontSize: 11 }}>{'  '}?</span>}
         </div>
@@ -1018,6 +1017,7 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
   const subtitle = [
     showType ? item.type : null, item.year, seasonsLabel, topGenre,
     item.status === 'done' && item.reaction ? REACTION_LABELS[item.reaction] : null,
+    item.note ? 'noted' : null,
   ].filter(Boolean).join(' · ')
   const reactionDot = item.status === 'done' && item.reaction === 'loved_it'
     ? '#1A1A1A'
