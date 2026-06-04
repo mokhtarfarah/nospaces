@@ -208,9 +208,13 @@ ${libraryList}
 CULTURAL CONTEXT (for inspiration, not as the source of your picks):
 ${feedBlock}
 
-Find 8–10 recommendations that are coherent with this person's deeper sensibility but outside their comfort zone. Any type is fine. For each:
-- Explain in 1–2 sentences WHY it expands rather than just confirms their taste
-- In "sources" put ["Claude's knowledge"] unless the feeds also happen to mention it
+Find 8–10 recommendations that push beyond this person's established patterns. Any type is fine. For each, write a "why" that does TWO things in 2–3 sentences:
+1. Lead with what's DIFFERENT or unexpected — name the departure explicitly ("this is further from your usual territory because...", "unlike what you typically go for...", "this will feel stranger than your usual picks because...")
+2. Then explain why they'd still connect with it despite the departure — the thread back to their sensibility
+
+The "why" should make someone feel productively unsettled, not just confirmed. Don't write it like an in-taste pick with the departure mentioned as an afterthought.
+
+In "sources" put ["Claude's knowledge"] unless the feeds also happen to mention it.
 
 Return ONLY valid JSON (no markdown, no preamble):
 {

@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 import { usePrefs } from '../hooks/usePrefs'
 import { authHeaders } from '../lib/supabase'
 import { DEFAULT_FEEDS, normaliseFeedUrl, guessFeedKind, type DiscoveryResult, type FeedEntry } from '../lib/feeds'
 import { useArtwork } from '../lib/artwork'
+import { useWikipediaInfo } from '../lib/wikipedia'
 import { typeColor } from '../lib/colors'
 
 type Mode = 'intaste' | 'divert'
@@ -35,7 +35,6 @@ function normaliseSources(results: DiscoveryResult[]): DiscoveryResult[] {
 }
 
 export function DiscoverScreen() {
-  const navigate = useNavigate()
   const { items, addItem } = useItems()
   const {
     tasteProfile,
@@ -169,11 +168,10 @@ export function DiscoverScreen() {
   const allFeeds = [...DEFAULT_FEEDS, ...customFeeds]
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', padding: '20px 20px 100px', fontFamily: 'inherit' }}>
+    <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 24px 100px', fontFamily: 'inherit' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <button onClick={() => navigate('/add')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ABA69C', fontSize: 18, padding: 0, lineHeight: 1 }}>←</button>
+      <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 16, fontWeight: 600, margin: 0, color: '#1C1B19' }}>discover</h1>
       </div>
 
@@ -269,33 +267,13 @@ export function DiscoverScreen() {
                 ? r.sources[0]
                 : `${r.sources[0]} + ${r.sources.length - 1} more`
               return (
-                <div key={i} style={{ borderBottom: '1px solid #ECEAE6', paddingBottom: 20 }}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <DiscoverCover title={r.title} creator={r.creator} type={r.type} year={r.year} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 3 }}>
-                        <div style={{ minWidth: 0 }}>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1B19' }}>{r.title}</span>
-                          {r.creator && <span style={{ fontSize: 12, color: '#6F6B64' }}> — {r.creator}</span>}
-                        </div>
-                        <button
-                          onClick={() => !alreadySaved && handleSave(r)}
-                          style={{
-                            flexShrink: 0, padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: alreadySaved ? 'default' : 'pointer',
-                            border: alreadySaved ? '1.5px solid #CCC' : '1.5px solid #1C1B19',
-                            background: '#fff', color: alreadySaved ? '#CCC' : '#1C1B19', fontWeight: 500,
-                          }}
-                        >
-                          {alreadySaved ? 'saved ✓︎' : '+ save'}
-                        </button>
-                      </div>
-                      <div style={{ fontSize: 11, color: '#ABA69C', marginBottom: 6 }}>
-                        {r.type}{r.year ? ` · ${r.year}` : ''} · via {sourceLabel}
-                      </div>
-                      <p style={{ fontSize: 12, color: '#6F6B64', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>{r.why}</p>
-                    </div>
-                  </div>
-                </div>
+                <ResultRow
+                  key={i}
+                  result={r}
+                  sourceLabel={sourceLabel}
+                  alreadySaved={alreadySaved}
+                  onSave={() => handleSave(r)}
+                />
               )
             })}
             {displayed.length === 0 && typeFilter !== 'all' && (
@@ -392,11 +370,62 @@ export function DiscoverScreen() {
 function DiscoverCover({ title, creator, type, year }: { title: string; creator: string | null; type: string; year: number | null }) {
   const artwork = useArtwork(type, title, creator, year, null)
   const color = typeColor(type)
-  const w = type === 'music' ? 48 : 36
-  const h = type === 'music' ? 48 : 54
+  const w = type === 'music' ? 64 : 48
+  const h = type === 'music' ? 64 : 72
   return artwork
-    ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0, borderRadius: 0 }} />
-    : <div style={{ width: w, height: h, background: color.bg, flexShrink: 0, border: '1px solid #EEE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: color.border, letterSpacing: '0.3px' }}>{type}</div>
+    ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
+    : <div style={{ width: w, height: h, background: color.bg, flexShrink: 0, border: '1px solid #EEE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: color.border, letterSpacing: '0.3px' }}>{type}</div>
+}
+
+function DiscoverWikiLink({ title, creator, type, year }: { title: string; creator: string | null; type: string; year: number | null }) {
+  const { url } = useWikipediaInfo(type, title, creator, year, null)
+  if (!url) return null
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="tlink" style={{ fontSize: 11 }}>
+      wikipedia ↗︎
+    </a>
+  )
+}
+
+function ResultRow({ result: r, sourceLabel, alreadySaved, onSave }: {
+  result: DiscoveryResult
+  sourceLabel: string
+  alreadySaved: boolean
+  onSave: () => void
+}) {
+  return (
+    <div style={{ borderBottom: '1px solid #ECEAE6', paddingBottom: 22 }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+        <DiscoverCover title={r.title} creator={r.creator} type={r.type} year={r.year} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 3 }}>
+            <div style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1B19' }}>{r.title}</span>
+              {r.creator && <span style={{ fontSize: 12, color: '#6F6B64' }}> — {r.creator}</span>}
+            </div>
+            <button
+              onClick={() => !alreadySaved && onSave()}
+              style={{
+                flexShrink: 0, padding: '3px 10px', borderRadius: 4, fontSize: 11,
+                cursor: alreadySaved ? 'default' : 'pointer',
+                border: alreadySaved ? '1.5px solid #CCC' : '1.5px solid #1C1B19',
+                background: '#fff', color: alreadySaved ? '#CCC' : '#1C1B19', fontWeight: 500,
+              }}
+            >
+              {alreadySaved ? 'saved ✓︎' : '+ save'}
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: '#ABA69C' }}>
+              {r.type}{r.year ? ` · ${r.year}` : ''} · via {sourceLabel}
+            </span>
+            <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
+          </div>
+          <p style={{ fontSize: 12, color: '#6F6B64', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>{r.why}</p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const inputStyle: React.CSSProperties = {
