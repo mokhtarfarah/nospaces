@@ -351,6 +351,15 @@ export function LibraryScreen() {
                 {dir === 'asc' ? '↑' : '↓'}
               </button>
             )}
+            {filtersActive && (
+              <button
+                onClick={clearFilters}
+                title="Clear all filters"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#999', padding: '4px 4px', marginLeft: 4 }}
+              >
+                clear×
+              </button>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <button
@@ -375,15 +384,6 @@ export function LibraryScreen() {
             >
               <SearchIcon />
             </button>
-            {filtersActive && (
-              <button
-                onClick={clearFilters}
-                title="Clear all filters"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#999', padding: '4px 4px' }}
-              >
-                clear×
-              </button>
-            )}
             <button
               onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: selectMode ? '#111' : '#888', fontWeight: selectMode ? 600 : 400, padding: '4px 4px' }}
