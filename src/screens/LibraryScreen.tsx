@@ -355,9 +355,9 @@ export function LibraryScreen() {
               <button
                 onClick={clearFilters}
                 title="Clear all filters"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#999', padding: '4px 4px', marginLeft: 4 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#999', padding: '4px 6px', marginLeft: 2, lineHeight: 1 }}
               >
-                clear×
+                ×
               </button>
             )}
           </div>
