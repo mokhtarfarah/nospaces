@@ -49,7 +49,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         bottom: 0, left: 0, right: 0,
         background: '#fff',
         borderRadius: '16px 16px 0 0',
-        padding: '14px 20px calc(28px + env(safe-area-inset-bottom))',
+        padding: '6px 20px calc(28px + env(safe-area-inset-bottom))',
         zIndex: 201,
         maxWidth: 480,
         margin: '0 auto',
@@ -93,10 +93,13 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         <div style={{ marginBottom: 16 }}>
           <NoteInput value={note} onChange={setNote} />
         </div>
+        <p style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: unconfirmed.length > 0 ? 4 : 8 }}>
+          vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span>
+        </p>
         {unconfirmed.length > 0 && (
-          <div style={{ fontSize: 10, color: '#C9C6C0', marginBottom: 10 }}>
+          <p style={{ fontSize: 10, color: '#C9C6C0', marginBottom: 8 }}>
             vibes below are ai guesses — keep the ones that fit, saving confirms them.
-          </div>
+          </p>
         )}
         <div style={{ marginBottom: 16 }}>
           <MoodChips
