@@ -16,8 +16,7 @@
 
 Priority order:
 
-1. **Stats section refinement** — the stats (reaction breakdown, verdict tendencies, effort axis) are structurally right but not insightful enough yet. Next session: audit what the data actually says for Farah's library and figure out what would be genuinely surprising or useful to surface. Think about: are the right things being counted? Is the framing too generic? What's missing that would make you go "oh, interesting"?
-2. **Move "shows near you" to discover** — currently surfaced in the music filter row; conceptually belongs on the discover tab. UI move only, no data change.
+1. **Move "shows near you" to discover** — currently surfaced in the music filter row; conceptually belongs on the discover tab. UI move only, no data change.
 3. **Decade filter** — derived from `item.year`, pure client-side. Lives inside the `filter ↓` sheet (already exists) once built.
 4. **Regions map** — creator origin/nationality breakdown on the taste page. Data dependency: `item.creator` is a name string with no country stored. Options: add a country field, or batch-pull from Wikidata. Parked until data strategy is decided.
 
@@ -233,6 +232,12 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 31 (2026-06-05) — Stats section refinement
+
+1. **Genre love rate** — replaced "what you reach for" (frequency-based tag lists per reaction bucket) with "where your taste is clearest": genres ranked by % loved (min 3 rated items). Shows actual affinity, not just what you watch a lot of. Bolded when ≥60% loved. Respects medium filter.
+2. **Verdict counts** — added `(N)` after each verdict label. Now shows "comfort (8) · hyperfixation (3)" instead of a flat unweighted list.
+3. **Effort axis removed** — signal was too sparse (almost no items tagged "easy"/"demanding") and misled more than it informed.
 
 ### Session 30 (2026-06-05) — Taste page rebuild + new verdict
 

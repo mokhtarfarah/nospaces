@@ -20,12 +20,6 @@ const TYPE_LABEL: Record<string, string> = {
   film: 'films', book: 'books', music: 'music', tv: 'tv',
 }
 
-const REACTION_LABEL: Record<string, string> = {
-  loved_it: 'loved it',
-  liked_it: 'liked it',
-  eh: 'eh',
-  not_for_me: 'not for me',
-}
 
 interface Scored { label: string; score: number; count: number }
 
@@ -100,34 +94,24 @@ function CoverTile({ item, width, height }: { item: Item; width: number; height:
   )
 }
 
-// Top genre+vibe tags by frequency within a single reaction bucket.
-function topTagsByFreq(items: Item[], limit: number): string[] {
-  const map = new Map<string, number>()
+interface GenreLoveRate { label: string; loveRate: number; total: number }
+
+// Genres ranked by love rate (% loved_it), min 3 rated items.
+function genreLoveRates(items: Item[], type?: string): GenreLoveRate[] {
+  const map = new Map<string, { loved: number; total: number }>()
   for (const item of items) {
+    if (!item.reaction) continue
+    if (type && item.type !== type) continue
     for (const tag of item.tags ?? []) {
-      if (isGenreTag(tag)) map.set(tag, (map.get(tag) ?? 0) + 1)
-    }
-    for (const mood of item.moods ?? []) {
-      if (VIBES.includes(mood)) map.set(mood, (map.get(mood) ?? 0) + 1)
+      if (!isGenreTag(tag)) continue
+      const e = map.get(tag) ?? { loved: 0, total: 0 }
+      map.set(tag, { loved: e.loved + (item.reaction === 'loved_it' ? 1 : 0), total: e.total + 1 })
     }
   }
   return Array.from(map.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([label]) => label)
-}
-
-// 0 = all easy, 1 = all demanding. null if < 3 tagged items.
-function computeEffort(items: Item[]): number | null {
-  let easy = 0, demanding = 0
-  for (const item of items) {
-    for (const mood of item.moods ?? []) {
-      if (mood === 'easy') easy++
-      if (mood === 'demanding' || mood === 'dense') demanding++
-    }
-  }
-  if (easy + demanding < 3) return null
-  return demanding / (easy + demanding)
+    .filter(([, v]) => v.total >= 3)
+    .map(([label, v]) => ({ label, loveRate: v.loved / v.total, total: v.total }))
+    .sort((a, b) => b.loveRate - a.loveRate)
 }
 
 type MediumFilter = 'all' | 'film' | 'book' | 'music' | 'tv'
@@ -146,15 +130,9 @@ function StatsSection({ items }: { items: Item[] }) {
     ? Math.round(filtered.filter(i => i.reaction === 'loved_it').length / filtered.length * 100)
     : 0
 
-  const reactionBreakdown = useMemo(() =>
-    (['loved_it', 'liked_it', 'eh', 'not_for_me'] as const)
-      .map(reaction => ({
-        reaction,
-        count: filtered.filter(i => i.reaction === reaction).length,
-        tags: topTagsByFreq(filtered.filter(i => i.reaction === reaction), 6),
-      }))
-      .filter(r => r.count >= 2 && r.tags.length > 0),
-    [filtered]
+  const genreRates = useMemo(
+    () => genreLoveRates(filtered, selected === 'all' ? undefined : selected).slice(0, 8),
+    [filtered, selected]
   )
 
   const verdicts = useMemo(() => {
@@ -165,14 +143,9 @@ function StatsSection({ items }: { items: Item[] }) {
       }
     }
     return Array.from(map.entries())
-      .map(([label, count]) => ({ label, score: count, count }))
+      .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 6)
-  }, [filtered])
-
-  const effortScore = useMemo(() => {
-    const signal = filtered.filter(i => i.reaction === 'loved_it' || i.reaction === 'liked_it')
-    return computeEffort(signal)
   }, [filtered])
 
   const availableTypes = useMemo(() => {
@@ -210,26 +183,20 @@ function StatsSection({ items }: { items: Item[] }) {
         </div>
       )}
 
-      {/* Reaction breakdown */}
-      {reactionBreakdown.length > 0 && (
+      {/* Genre love rate */}
+      {genreRates.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
-            what you reach for
+            where your taste is clearest
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {reactionBreakdown.map(({ reaction, tags }) => (
-              <div key={reaction} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 11, color: MUTE, minWidth: 72, flexShrink: 0, lineHeight: 1.6 }}>
-                  {REACTION_LABEL[reaction]}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {genreRates.map(({ label, loveRate, total }) => (
+              <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                <span style={{ fontSize: 13, color: INK, minWidth: 100, flexShrink: 0, letterSpacing: '-0.1px' }}>{label}</span>
+                <span style={{ fontSize: 11, color: loveRate >= 0.6 ? INK : GRAPHITE, fontWeight: loveRate >= 0.6 ? 600 : 400 }}>
+                  {Math.round(loveRate * 100)}% loved
                 </span>
-                <span style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.6, letterSpacing: '-0.1px' }}>
-                  {tags.map((tag, i) => (
-                    <span key={tag}>
-                      {i > 0 && <span style={{ color: MUTE }}> · </span>}
-                      {tag}
-                    </span>
-                  ))}
-                </span>
+                <span style={{ fontSize: 11, color: MUTE }}>of {total}</span>
               </div>
             ))}
           </div>
@@ -238,7 +205,7 @@ function StatsSection({ items }: { items: Item[] }) {
 
       {/* Verdict tendencies */}
       {verdicts.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 8 }}>
             verdicts
           </div>
@@ -247,31 +214,9 @@ function StatsSection({ items }: { items: Item[] }) {
               <span key={v.label}>
                 {i > 0 && <span style={{ color: MUTE }}> · </span>}
                 {v.label}
+                <span style={{ color: MUTE }}> ({v.count})</span>
               </span>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Effort axis */}
-      {effortScore !== null && (
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
-            effort
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 11, color: effortScore < 0.4 ? INK : MUTE, fontWeight: effortScore < 0.4 ? 600 : 400, flexShrink: 0 }}>easy</span>
-            <div style={{ flex: 1, height: 3, background: HAIR, borderRadius: 2, position: 'relative' }}>
-              <div style={{
-                position: 'absolute',
-                left: `${Math.round(effortScore * 100)}%`,
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 8, height: 8, borderRadius: '50%',
-                background: INK,
-              }} />
-            </div>
-            <span style={{ fontSize: 11, color: effortScore > 0.6 ? INK : MUTE, fontWeight: effortScore > 0.6 ? 600 : 400, flexShrink: 0 }}>demanding</span>
           </div>
         </div>
       )}
