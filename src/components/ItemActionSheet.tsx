@@ -22,6 +22,7 @@ interface Props {
   onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
   onToggleOwned: (owned: boolean) => void
+  onToggleCanon: (canon: boolean) => void
   onPatchMetadata: (patch: Record<string, unknown>) => void
   onPatchTags: (tags: string[]) => void
   onDelete: () => void
@@ -96,7 +97,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -506,6 +507,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     <button onClick={() => { setEditOpenGroups({}); setView('edit') }} className="tlink" style={{ flexShrink: 0 }}>edit</button>
                     <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
                       {item.metadata?.owned ? 'own it ✓︎' : 'own it'}
+                    </button>
+                    <button onClick={() => onToggleCanon(!item.metadata?.canon)} className="tlink" style={{ flexShrink: 0 }}>
+                      {item.metadata?.canon ? '◆ canon' : '◇ canon'}
                     </button>
                     {blurb && (
                       <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>

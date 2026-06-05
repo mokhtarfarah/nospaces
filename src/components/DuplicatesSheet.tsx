@@ -35,24 +35,28 @@ export function DuplicatesSheet({ groups, onConfirm, onClose }: {
         maxHeight: '90dvh', display: 'flex', flexDirection: 'column',
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 16px', flexShrink: 0 }} />
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#444', margin: '0 0 4px' }}>review duplicates</p>
-        <p style={{ fontSize: 12, color: '#999', margin: '0 0 14px' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', margin: '0 0 4px' }}>review duplicates</p>
+        <p style={{ fontSize: 12, color: '#ABA69C', margin: '0 0 14px' }}>
           {groups.length} group{groups.length > 1 ? 's' : ''} — tap the one to keep in each
         </p>
 
         <div style={{ flex: 1, overflowY: 'auto', marginRight: -20, paddingRight: 20 }}>
-          {groups.map((g, i) => (
-            <div key={i} style={{ marginBottom: 18 }}>
-              {g.map(item => (
-                <DupRow
-                  key={item.id}
-                  item={item}
-                  kept={keep[i] === item.id}
-                  onPick={() => setKeep(prev => ({ ...prev, [i]: item.id }))}
-                />
-              ))}
-            </div>
-          ))}
+          {groups.map((g, i) => {
+            const earliestId = [...g].sort((a, b) => new Date(a.date_added).getTime() - new Date(b.date_added).getTime())[0].id
+            return (
+              <div key={i} style={{ marginBottom: 18 }}>
+                {g.map(item => (
+                  <DupRow
+                    key={item.id}
+                    item={item}
+                    kept={keep[i] === item.id}
+                    isOriginal={item.id === earliestId}
+                    onPick={() => setKeep(prev => ({ ...prev, [i]: item.id }))}
+                  />
+                ))}
+              </div>
+            )
+          })}
         </div>
 
         <button
@@ -71,14 +75,19 @@ export function DuplicatesSheet({ groups, onConfirm, onClose }: {
   )
 }
 
-function DupRow({ item, kept, onPick }: { item: Item; kept: boolean; onPick: () => void }) {
+function formatAdded(dateStr: string): string {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
+
+function DupRow({ item, kept, isOriginal, onPick }: { item: Item; kept: boolean; isOriginal: boolean; onPick: () => void }) {
   const color = typeColor(item.type)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
 
   const meta = [
     item.year,
     item.status === 'done' ? (item.reaction ? REACTION_LABELS[item.reaction] : 'done') : 'want to',
-    item.source_detail?.trim() || null,
+    isOriginal ? `added first (${formatAdded(item.date_added)})` : `added ${formatAdded(item.date_added)}`,
   ].filter(Boolean).join(' · ')
 
   return (
@@ -86,20 +95,20 @@ function DupRow({ item, kept, onPick }: { item: Item; kept: boolean; onPick: () 
       onClick={onPick}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', cursor: 'pointer',
-        borderRadius: 10, border: kept ? '1.5px solid #111' : '1.5px solid #EEE',
-        background: kept ? '#FAFAFA' : '#fff', marginBottom: 6,
+        borderRadius: 10, border: kept ? '1.5px solid #1C1B19' : '1.5px solid #ECEAE6',
+        background: kept ? '#FAFAF8' : '#fff', marginBottom: 6,
       }}
     >
       {artwork
         ? <img src={artwork} alt="" loading="lazy" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0, opacity: kept ? 1 : 0.6 }} />
         : <div style={{ width: 36, height: 36, borderRadius: 4, flexShrink: 0, background: color.bg, opacity: kept ? 1 : 0.6 }} />}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: kept ? '#111' : '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: kept ? 'none' : 'line-through' }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: kept ? '#1C1B19' : '#ABA69C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: kept ? 'none' : 'line-through' }}>
           {item.title}
         </div>
-        {meta && <div style={{ fontSize: 11, color: '#AAA', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta}</div>}
+        {meta && <div style={{ fontSize: 11, color: '#ABA69C', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta}</div>}
       </div>
-      <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, color: kept ? '#111' : '#C00' }}>
+      <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, color: kept ? '#1C1B19' : '#C00' }}>
         {kept ? 'keep' : 'delete'}
       </span>
     </div>

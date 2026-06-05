@@ -93,45 +93,8 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
 }
 
 import type { Item } from '../lib/database.types'
-import { useArtwork } from '../lib/artwork'
-import { itemGaps, dismissGaps } from '../lib/gaps'
 import { isGenreTag } from '../lib/genres'
 import { MOOD_REMAP } from '../lib/moods'
-
-// One row in the "fill by hand" list. Tapping opens the edit view; the ✓ button
-// dismisses all current gaps so the item stops appearing in the list.
-function GapRow({ item, gaps, onOpen, onDismiss }: { item: Item; gaps: string[]; onOpen: () => void; onDismiss: () => void }) {
-  const art = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
-  const storedThumb = (item.metadata?.wikiThumb as string | null) ?? null
-  const allGaps = !art && !storedThumb ? [...gaps, 'cover'] : gaps
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #F4F2EE' }}>
-      <button
-        onClick={onOpen}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', background: 'none', border: 'none', padding: '9px 10px', cursor: 'pointer', fontFamily: 'inherit', flex: 1, minWidth: 0 }}
-      >
-        <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, flex: 1 }}>
-          <span style={{ fontSize: 13, color: '#1C1B19', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
-          <span style={{ fontSize: 11, color: '#ABA69C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {item.creator || item.type}
-          </span>
-        </span>
-        <span style={{ display: 'flex', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '45%' }}>
-          {allGaps.map(g => (
-            <span key={g} style={{ fontSize: 10, color: '#6F6B64', background: '#F4F2EE', borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap' }}>{g}</span>
-          ))}
-        </span>
-      </button>
-      <button
-        onClick={onDismiss}
-        title="mark as complete — won't appear again"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '9px 10px', color: '#DDD', fontSize: 14, flexShrink: 0, lineHeight: 1 }}
-      >
-        ✓︎
-      </button>
-    </div>
-  )
-}
 
 function LibraryTools({ items, editItem, open }: {
   items: Item[]
@@ -166,14 +129,9 @@ function LibraryTools({ items, editItem, open }: {
   const artCancelRef = useRef(false)
   const [artResult, setArtResult] = useState<number | null>(null)
 
-  const navigate = useNavigate()
-  const [openList, setOpenList] = useState<string | null>(null)
-  // Collapse the whole "fill automatically" block — once you've decided to fill by
-  // hand, the auto buttons are just taking up space.
+  // Collapse the whole "fill automatically" block — once you've decided to use the
+  // fill-by-hand list in Library, the auto buttons are just taking up space.
   const [autoOpen, setAutoOpen] = useState(true)
-  // Optional gap-type filter on the fill-by-hand list ("show me only what's missing
-  // a wiki link", etc.). null = show every gap.
-  const [gapFilter, setGapFilter] = useState<string | null>(null)
 
   const untagged = useMemo(() =>
     items.filter(i => !(i.tags ?? []).some(isGenreTag) && ['film','tv','book','music'].includes(i.type)), [items])
@@ -194,24 +152,8 @@ function LibraryTools({ items, editItem, open }: {
       return url && AUTO_ART_DOMAINS.some(d => url.includes(d))
     }), [items])
 
-  // Holistic, item-first view for manual filling — any item missing any data field.
-  const incomplete = useMemo(() =>
-    items
-      .map(i => ({ item: i, gaps: itemGaps(i) }))
-      .filter(x => x.gaps.length > 0)
-      .sort((a, b) => b.gaps.length - a.gaps.length), [items])
-
-  // Which gap types actually exist, ordered for the filter row.
-  const gapTypes = useMemo(() => {
-    const order = ['wiki', 'genre', 'creator', 'year', 'runtime', 'pages']
-    const present = new Set<string>()
-    incomplete.forEach(x => x.gaps.forEach(g => present.add(g)))
-    return order.filter(g => present.has(g))
-  }, [incomplete])
-  const shownIncomplete = gapFilter ? incomplete.filter(x => x.gaps.includes(gapFilter)) : incomplete
-
   const autoTotal = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length + needsArtRefresh.length
-  if ((autoTotal === 0 && incomplete.length === 0) || !open) return null
+  if (autoTotal === 0 || !open) return null
 
   async function runBackfill(targetItems: Item[] = untagged) {
     if (backfilling || targetItems.length === 0) return
@@ -359,11 +301,6 @@ function LibraryTools({ items, editItem, open }: {
   const cost = (n: number) => `~${n} API calls (~$${(n * 0.001).toFixed(2)})`
   const listLinkBtn = { background: 'none', border: 'none', fontSize: 12, color: '#6F6B64', cursor: 'pointer', padding: 0, textDecoration: 'underline' } as const
 
-  const toggleLink = (key: string) => (
-    <button onClick={() => setOpenList(openList === key ? null : key)} style={listLinkBtn}>
-      {openList === key ? 'hide' : 'see full list'}
-    </button>
-  )
   const sectionLabel = { fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C' } as const
 
   return (
@@ -445,51 +382,6 @@ function LibraryTools({ items, editItem, open }: {
       </div>
       )}
 
-      {incomplete.length > 0 && (
-        <div style={{ borderTop: autoTotal > 0 ? '1px solid #ECEAE6' : 'none', paddingTop: autoTotal > 0 ? 14 : 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={sectionLabel}>fill by hand</span>
-            {toggleLink('incomplete')}
-          </div>
-          <div style={{ fontSize: 13, color: '#888', marginTop: 6 }}>
-            {incomplete.length} item{incomplete.length !== 1 ? 's' : ''} with data gaps
-          </div>
-          {openList === 'incomplete' && (
-            <>
-              {gapTypes.length > 1 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                  {(() => {
-                    const chip = (label: string, on: boolean, onClick: () => void) => (
-                      <button key={label} onClick={onClick} style={{
-                        padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
-                        border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-                        background: on ? '#111' : '#fff', color: on ? '#fff' : '#AAA', fontWeight: on ? 600 : 400,
-                      }}>{label}</button>
-                    )
-                    return (
-                      <>
-                        {chip('all', gapFilter === null, () => setGapFilter(null))}
-                        {gapTypes.map(g => chip(`missing ${g}`, gapFilter === g, () => setGapFilter(g)))}
-                      </>
-                    )
-                  })()}
-                </div>
-              )}
-              <div style={{ marginTop: 8, maxHeight: 340, overflowY: 'auto', border: '1px solid #ECEAE6', borderRadius: 6 }}>
-                {shownIncomplete.map(({ item, gaps }) => (
-                  <GapRow
-                    key={item.id}
-                    item={item}
-                    gaps={gaps}
-                    onOpen={() => navigate(`/library?item=${item.id}&edit=1&tidy=1${gapFilter ? `&gap=${encodeURIComponent(gapFilter)}` : ''}`)}
-                    onDismiss={() => editItem(item.id, { metadata: dismissGaps(item, gaps) })}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
     </div>
   )
 }

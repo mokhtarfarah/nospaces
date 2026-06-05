@@ -7,6 +7,7 @@ import { MarkDoneSheet } from '../components/MarkDoneSheet'
 import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption, type SortDir, type ReactionFilter } from '../components/ViewSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { DuplicatesSheet } from '../components/DuplicatesSheet'
+import { GapsSheet } from '../components/GapsSheet'
 import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
@@ -126,7 +127,7 @@ function itemSource(item: Item): string {
 }
 
 export function LibraryScreen() {
-  const { items, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
+  const { items, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   // Anchors for the vibe/genre dropdown menus — the filter row scrolls
@@ -172,6 +173,8 @@ export function LibraryScreen() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [viewSheetOpen, setViewSheetOpen] = useState(false)
   const [dupesOpen, setDupesOpen] = useState(false)
+  const [gapsOpen, setGapsOpen] = useState(false)
+  const [canonFilter, setCanonFilter] = useState(false)
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
   // When deep-linked from the data-gaps list with &edit=1, open straight into edit.
@@ -234,11 +237,11 @@ export function LibraryScreen() {
 
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
-    || !!vibeFilter || !!verdictFilter || !!genreFilter || !!seriesFilter || reviewOnly || newMusicOnly || !!query.trim()
+    || !!vibeFilter || !!verdictFilter || !!genreFilter || !!seriesFilter || reviewOnly || newMusicOnly || !!query.trim() || canonFilter
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null)
-    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setOpenDropdown(null)
+    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setOpenDropdown(null); setCanonFilter(false)
   }
 
   const sort: SortOption = VIEW_CONFIG[view].sort
@@ -269,6 +272,7 @@ export function LibraryScreen() {
     return items.filter(item => {
       if (reviewOnly) return inReview(item)
       if (inReview(item)) return false
+      if (canonFilter && !item.metadata?.canon) return false
       if (categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
@@ -282,7 +286,7 @@ export function LibraryScreen() {
       }
       return true
     })
-  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, reviewOnly])
+  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, reviewOnly, canonFilter])
 
   const filtered = useMemo(() => {
     let result = baseFiltered
@@ -583,22 +587,43 @@ export function LibraryScreen() {
               </button>
             </>
           )}
+          {/* Canon filter — always available */}
+          {items.some(i => i.metadata?.canon) && (
+            <>
+              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+              <TabChip label="◆ canon" active={canonFilter} onClick={() => setCanonFilter(v => !v)} />
+            </>
+          )}
         </div>
       </header>
 
       {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(150px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))' }}>
         {dupes > 0 && !loading && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', border: '1px solid #E8E8E8', borderRadius: 4 }}>
-            <span style={{ fontSize: 12, color: '#666' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', border: '1px solid #ECEAE6', borderRadius: 4 }}>
+            <span style={{ fontSize: 12, color: '#6F6B64' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>
             <button
               onClick={() => setDupesOpen(true)}
-              style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 4, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+              style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 4, border: '1px solid #1C1B19', background: '#1C1B19', color: '#fff', fontSize: 12, cursor: 'pointer' }}
             >
               review
             </button>
           </div>
         )}
+        {(() => {
+          const gapCount = items.filter(i => itemGaps(i).length > 0).length
+          return gapCount > 0 && !loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '8px 16px 0', padding: '8px 12px', border: '1px solid #ECEAE6', borderRadius: 4 }}>
+              <span style={{ fontSize: 12, color: '#6F6B64' }}>{gapCount} item{gapCount !== 1 ? 's' : ''} with data gaps</span>
+              <button
+                onClick={() => setGapsOpen(true)}
+                style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 4, border: '1px solid #6F6B64', background: 'none', color: '#6F6B64', fontSize: 12, cursor: 'pointer' }}
+              >
+                tidy up
+              </button>
+            </div>
+          ) : null
+        })()}
         {loading ? (
           <div style={{ padding: '48px 24px', textAlign: 'center', color: '#999', fontSize: 14 }}>
             Loading...
@@ -718,6 +743,7 @@ export function LibraryScreen() {
             onDismissNext={tidyQueue ? () => { editItem(fresh.id, { metadata: dismissGaps(fresh, itemGaps(fresh)) }); goToTidy(tidyIndex + 1) } : undefined}
             onEdit={fields => { editItem(fresh.id, fields) }}
             onToggleOwned={owned => toggleOwned(fresh.id, owned)}
+            onToggleCanon={canon => toggleCanon(fresh.id, canon)}
             onPatchMetadata={patch => patchMetadata(fresh.id, patch)}
             onPatchTags={tags => editItem(fresh.id, { tags })}
             onMarkInProgress={() => { markInProgress(fresh.id); setActionItem(null) }}
@@ -761,6 +787,15 @@ export function LibraryScreen() {
             if (n) alert(`Removed ${n} duplicate${n > 1 ? 's' : ''}`)
           }}
           onClose={() => setDupesOpen(false)}
+        />
+      )}
+
+      {/* Data gaps sheet */}
+      {gapsOpen && (
+        <GapsSheet
+          items={items}
+          editItem={(id, fields) => editItem(id, fields)}
+          onClose={() => setGapsOpen(false)}
         />
       )}
     </div>
@@ -954,6 +989,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
         <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
           <span style={{ fontWeight: 500 }}>{item.title}</span>
           {item.creator && <span style={{ fontWeight: 400, color: '#A0A0A0' }}>{'  ·  '}{item.creator}</span>}
+          {!!item.metadata?.canon && <span title="Canon" style={{ fontWeight: 400, color: '#1C1B19', fontSize: 10 }}>{'  '}◆</span>}
           {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: '#999', fontSize: 11 }}>{'  '}⌂</span>}
           {!!item.metadata?.scratch && <span title="Needs identifying" style={{ fontWeight: 500, color: '#BBBBBB', fontSize: 11 }}>{'  '}?</span>}
         </div>
@@ -1094,7 +1130,10 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
         )}
       </div>
       <div style={{ marginTop: 5 }}>
-        <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>{item.title}</div>
+        <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>
+          {!!item.metadata?.canon && <span style={{ fontSize: 9, marginRight: 3, color: '#1C1B19' }}>◆</span>}
+          {item.title}
+        </div>
         {item.creator && (
           <div style={{ fontSize: 10, color: '#AAA', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>
         )}

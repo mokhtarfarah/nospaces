@@ -242,6 +242,16 @@ export function useItems() {
     await fetch({ silent: true })
   }
 
+  async function toggleCanon(id: string, canon: boolean) {
+    const item = items.find(i => i.id === id)
+    if (!item) return
+    const metadata = { ...item.metadata }
+    if (canon) metadata.canon = true
+    else delete metadata.canon
+    await db().from('items').update({ metadata }).eq('id', id)
+    await fetch({ silent: true })
+  }
+
   async function editItem(id: string, fields: {
     title?: string
     creator?: string | null
@@ -258,5 +268,5 @@ export function useItems() {
     await fetch({ silent: true })
   }
 
-  return { items, loading, addItem, importItems, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, patchMetadata, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
+  return { items, loading, addItem, importItems, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
 }
