@@ -1,4 +1,16 @@
 {
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{ git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached 2>/dev/null; git show --name-only --format=\"\" HEAD 2>/dev/null; } | grep -qE 'src/screens/|src/components/(ItemActionSheet|MarkDoneSheet)' && printf '{\"systemMessage\": \"guide reminder: screens or key components changed this session — does /guide need updating?\"}\\n' || true"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(npm --version)",
@@ -155,7 +167,15 @@
       "Bash(sed -i '' 's/borderRadius: 20, border: '\\\\''none'\\\\'', background: '\\\\''#111'\\\\''/borderRadius: 4, border: '\\\\''none'\\\\'', background: '\\\\''#111'\\\\''/g' /Users/farahmokhtar/nospaces/src/screens/AddScreen.tsx)",
       "Bash(sed -i '' 's/borderRadius: 20, border: '\\\\''1px solid #DDD'\\\\''/borderRadius: 4, border: '\\\\''1px solid #DDD'\\\\''/g' /Users/farahmokhtar/nospaces/src/screens/AddScreen.tsx)",
       "Bash(sed -i '' 's/borderRadius: 20, cursor: '\\\\''pointer'\\\\''/borderRadius: 4, cursor: '\\\\''pointer'\\\\''/g' /Users/farahmokhtar/nospaces/src/components/NoteInput.tsx)",
-      "Bash(sed -i '' 's/borderRadius: 16, border/borderRadius: 4, border/g; s/borderRadius: 16, fontSize/borderRadius: 4, fontSize/g' /Users/farahmokhtar/nospaces/src/screens/ShowsScreen.tsx)"
+      "Bash(sed -i '' 's/borderRadius: 16, border/borderRadius: 4, border/g; s/borderRadius: 16, fontSize/borderRadius: 4, fontSize/g' /Users/farahmokhtar/nospaces/src/screens/ShowsScreen.tsx)",
+      "Bash(git remote *)",
+      "Bash(vercel --version)",
+      "Bash(xargs ls -la)",
+      "Bash(npm test *)",
+      "Bash(curl -s -A 'Nospaces/1.0 \\(https://nospaces.vercel.app; farahmokhtar94@gmail.com\\)' 'https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=claims&ids=Q112761982')",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(bash -c '{ git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached 2>/dev/null; git show --name-only --format=\"\" HEAD 2>/dev/null; } | grep -qE \"src/screens/|src/components/\\(ItemActionSheet|MarkDoneSheet\\)\" && printf \"{\\\\\"systemMessage\\\\\": \\\\\"guide reminder: screens or key components changed this session — does /guide need updating?\\\\\"}\\\\n\" || true')"
     ]
   }
 }

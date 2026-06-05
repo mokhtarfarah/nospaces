@@ -16,11 +16,11 @@
 
 Priority order:
 
-1. **Filter bar declutter** — status chips stay, vibe/verdict/genre/series collapse into one "filter ↓" button with active-count badge. Decade filter slots in here too. Pure UI refactor, no data changes.
-2. **"How to use" page** — Tom is a live user with no onboarding. Short screen covering key flows: add, react, tidy, discover. No API cost.
-3. **"About this" when no blurb** — link currently only appears if a blurb exists. Decide: should a stub always show, or does the wikipedia link already cover it?
-4. **New verdict** — finalise "left me thinking" vs "wrecked me" (or both), then add to `moods.ts` + `MOOD_REMAP`. Small code change once vocab is decided.
-5. **Taste page rebuild** — data is rich enough now. Start with the reaction-breakdown stat (e.g. "50% of your loved films are drama · dark") — pure client-side, natural first piece.
+1. **"About this" when no blurb** — link currently only appears if a blurb exists. Decide: should a stub always show, or does the wikipedia link already cover it?
+2. **New verdict** — finalise "left me thinking" vs "wrecked me" (or both), then add to `moods.ts` + `MOOD_REMAP`. Small code change once vocab is decided.
+3. **Taste page rebuild** — data is rich enough now. Start with the reaction-breakdown stat (e.g. "50% of your loved films are drama · dark") — pure client-side, natural first piece.
+4. **Move "shows near you" to discover** — currently surfaced in the music filter row; conceptually belongs on the discover tab. UI move only, no data change.
+5. **Decade filter** — derived from `item.year`, pure client-side. Lives inside the `filter ↓` sheet (already exists) once built.
 
 ---
 
@@ -176,8 +176,8 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ### Near-term
 
 **Library UX**
-- **Filter bar declutter** — status chips stay; collapse vibe/verdict/genre/series into one "filter ↓" button. Decade filter slots in here too when built.
-- **Decade filter** — derived from `item.year`, pure client-side, zero API cost. Lives inside the collapsed filter panel once that exists.
+- **Filter bar declutter** — ✅ shipped. Single "filter ▾" button with active-count badge; opens bottom sheet with pill chips for vibe/verdict/genre/series.
+- **Decade filter** — derived from `item.year`, pure client-side, zero API cost. Lives inside the `filter ↓` sheet once built.
 - **"Help me decide" decision tree** — ✅ shipped. Guided 3-step flow (seen before? → type → vibe) from `/decide`. Entry: inline link in library header.
 
 **Action card / edit view**
@@ -191,7 +191,10 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 - **Data-gaps tidy mode: highlight missing fields** — in tidy-queue flow (`?tidy=1`), show missing fields in red and auto-expand them in edit view. Only in tidy mode.
 
 **Onboarding**
-- **"How to use" tutorial page** — feature guide for new users (Tom).
+- **"How to use" tutorial page** — ✅ shipped. `/guide` — 5 sections, inline CSS illustrations, accurate to current UI. Entry: `?` in library header + empty-state link. Auto-reminder hook fires when screens change.
+
+**Discovery**
+- **Move "shows near you" to discover tab** — currently in music filter row; belongs on discover. UI move only.
 
 ### Medium-term
 
@@ -225,6 +228,18 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 28 (2026-06-05) — Filter bar, how-to guide, guide hook
+
+1. **Filter bar declutter** — 4 dropdown buttons (vibe / verdict / genre / series) replaced with a single "filter ▾" button. Active-count badge ("filter · N"). Tapping opens a `FilterSheet` bottom sheet with pill chips per group; "clear all" when any active. `DropdownButton` + `DropdownMenu` components removed.
+2. **"How to use" page** (`/guide`) — 5-section guide at `/guide` with inline CSS illustrations matching current UI. Entry points: `?` in library header (always) + "how to use →" in empty-library state.
+   - Section 01: saving things — 3 numbered paths (type / photo / email), each with full description text inside the illustration. "nospaces finds it and fills in the details" as a bold footer. Letterboxd + Spotify as extras.
+   - Section 02: logging a reaction — illustration matches current `MarkDoneSheet` layout (loved/liked → full-width canon → eh/not for me → vibe chips). Canon tip here. In progress + note as extras.
+   - Section 03: your library — illustration shows current filter bar + thumbnail rows. Data gaps + series as extras (series: no TV seasons).
+   - Section 04: discover — shows actual `ResultRow` layout (cover + "via [source]" + italic why blurb + save). No vibe chips (not a real feature — noted for roadmap).
+   - Section 05: taste — shows real taste page (vibe chip hero + `CategoryCard` with canon tiles + ranked genres).
+   - "A few more things" block removed — redistributed as per-section extras.
+3. **Guide auto-reminder hook** — `Stop` hook in `.claude/settings.local.json`. Fires when any `src/screens/` or `ItemActionSheet`/`MarkDoneSheet` file was touched; displays: *"guide reminder: screens or key components changed this session — does /guide need updating?"*
 
 ### Session 27 (2026-06-05) — Help me decide, data gaps fixes, action card polish
 
