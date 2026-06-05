@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 const _ce = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
@@ -86,51 +85,93 @@ async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: st
 
 interface ParsedFields { year: number | null; creator: string | null; runtime: number | null; pages: number | null; genres: string[] }
 
-import { GENRES as GENRE_VOCAB } from '../src/lib/genres'
+const WIKI_UA = 'Nospaces/1.0 (https://nospaces.vercel.app; farahmokhtar94@gmail.com) node-fetch'
+const wbFetch = async (url: string) =>
+  (await fetch(url, { headers: { 'User-Agent': WIKI_UA } })).json()
 
-const CREATOR_ROLE: Record<string, string> = {
-  film: 'primary director (ignore writers, producers, actors)',
-  tv:   'primary director or showrunner (ignore writers, actors)',
-  book: 'author (ignore editors, translators)',
-  music:'primary recording artist or band (ignore producers, featured artists)',
+// Wikidata property ids for the "creator" claim, by media type. Wikidata stores
+// these as entity ids (Q-numbers) that need a second label lookup.
+const WD_CREATOR_PROPS: Record<string, string[]> = {
+  film: ['P57'],          // director
+  tv:   ['P57', 'P170'],  // director, then "creator"
+  book: ['P50'],          // author
+  music:['P175', 'P86'],  // performer, then composer
 }
 
-// Use Haiku to pull structured fields out of a Wikipedia extract + categories.
-async function parseFields(extract: string, categories: string[], type: string, workTitle: string): Promise<ParsedFields> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const vocab = (GENRE_VOCAB[type] ?? []).join(', ')
-  const role = CREATOR_ROLE[type] ?? 'primary creator'
-  const catLine = categories.length ? `\nWikipedia categories: ${categories.slice(0, 20).join(' · ')}` : ''
-  const prompt = `Extract structured data from this Wikipedia article. Return ONLY a JSON object, no markdown.
-
-Media type: ${type}
-Work: ${workTitle}
-Article extract: """${extract}"""${catLine}
-
-JSON keys (use null if not found):
-- "year": release/publication year as integer
-- "creator": ${role} — single name as string (e.g. "Justine Triet", "Ursula K. Le Guin")
-- "runtime": running time in minutes as integer (${type === 'film' || type === 'tv' ? 'extract it' : 'always null'})
-- "pages": page count as integer (${type === 'book' ? 'extract it' : 'always null'})
-- "genres": the work's 1–3 genres, lowercase. Determine them from the extract, the categories above, AND your own knowledge of "${workTitle}" — Wikipedia often omits a clean genre label (e.g. it rarely says "literary fiction"), so infer it. Use the EXACT spelling from this list whenever it fits: [${vocab}]. Only if the primary genre genuinely isn't in the list (e.g. "memoir", "graphic novel", "true crime") use that lowercase term. Always return at least one genre.`
-
-  const msg = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 200,
-    messages: [{ role: 'user', content: prompt }],
-  })
-  const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '{}'
+// Pull structured fields straight from Wikidata instead of parsing prose. Wikipedia
+// keeps runtime/director/author/pages in the infobox (Wikidata claims), NOT in the
+// article text — so the old Haiku-on-extract approach reliably missed them. This reads
+// the actual data: free (no Anthropic), no guessing. Genre is intentionally left to the
+// client's /api/genres call (title-knowledge), which handles our vocab better than
+// Wikidata's genre entities.
+async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFields> {
+  const empty: ParsedFields = { year: null, creator: null, runtime: null, pages: null, genres: [] }
   try {
-    const parsed = JSON.parse(text)
-    return {
-      year: parsed.year ?? null,
-      creator: parsed.creator ?? null,
-      runtime: parsed.runtime ?? null,
-      pages: parsed.pages ?? null,
-      genres: Array.isArray(parsed.genres) ? parsed.genres : [],
+    // 1. page title → Wikidata Q-id (follow redirects)
+    const d1 = await wbFetch(
+      'https://en.wikipedia.org/w/api.php?action=query&format=json&redirects=1&prop=pageprops&ppprop=wikibase_item' +
+      `&titles=${encodeURIComponent(pageTitle)}`
+    )
+    const pages = d1?.query?.pages
+    if (!pages) return empty
+    const page = Object.values(pages)[0] as { pageprops?: { wikibase_item?: string } } | undefined
+    const qid = page?.pageprops?.wikibase_item
+    if (!qid) return empty
+
+    // 2. structured claims for the work
+    const d2 = await wbFetch(
+      `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=claims&ids=${qid}`
+    )
+    type Snak = { mainsnak?: { datavalue?: { value?: unknown } } }
+    const claims: Record<string, Snak[]> = d2?.entities?.[qid]?.claims ?? {}
+
+    const amounts = (pid: string): number[] =>
+      (claims[pid] ?? [])
+        .map(c => parseFloat(String((c.mainsnak?.datavalue?.value as { amount?: string })?.amount ?? '')))
+        .filter(n => !isNaN(n) && n > 0)
+    const entityIds = (pids: string[]): string[] => {
+      for (const pid of pids) {
+        const ids = (claims[pid] ?? [])
+          .map(c => (c.mainsnak?.datavalue?.value as { id?: string })?.id)
+          .filter((id): id is string => !!id)
+        if (ids.length) return ids
+      }
+      return []
     }
+
+    // year: earliest date across publication (P577), inception (P571), or start time
+    // (P580 — how TV series store their first-aired date). Original release, not re-releases.
+    const years = ['P577', 'P571', 'P580']
+      .flatMap(pid => claims[pid] ?? [])
+      .map(c => String((c.mainsnak?.datavalue?.value as { time?: string })?.time ?? ''))
+      .map(t => parseInt(t.slice(1, 5)))
+      .filter(y => !isNaN(y) && y > 0)
+    const year = years.length ? Math.min(...years) : null
+
+    // runtime: shortest duration (P2047) — usually the theatrical cut. film/tv only.
+    const runtimes = type === 'film' || type === 'tv' ? amounts('P2047') : []
+    const runtime = runtimes.length ? Math.round(Math.min(...runtimes)) : null
+
+    // pages: P1104. book only.
+    const pageCounts = type === 'book' ? amounts('P1104') : []
+    const numPages = pageCounts.length ? Math.round(pageCounts[0]) : null
+
+    // creator: up to two entity ids (e.g. co-directors) → resolve to names.
+    let creator: string | null = null
+    const creatorIds = entityIds(WD_CREATOR_PROPS[type] ?? []).slice(0, 2)
+    if (creatorIds.length) {
+      const d3 = await wbFetch(
+        `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=labels&languages=en&ids=${creatorIds.join('|')}`
+      )
+      const names = creatorIds
+        .map(id => (d3?.entities?.[id]?.labels?.en?.value as string | undefined))
+        .filter((n): n is string => !!n)
+      if (names.length) creator = names.join(' & ')
+    }
+
+    return { year, creator, runtime, pages: numPages, genres: [] }
   } catch {
-    return { year: null, creator: null, runtime: null, pages: null, genres: [] }
+    return empty
   }
 }
 
@@ -146,8 +187,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const info = await fetchInfoByUrl(rawUrl)
       if (!info) return res.json({ url: null, thumbnail: null, summary: null, parsed: null })
       const type = one(req.query.type)
-      const parsed = (req.query.parse === '1' && type && info.extract)
-        ? await parseFields(info.extract, info.categories, type, info.title)
+      const parsed = (req.query.parse === '1' && type)
+        ? await wikidataFields(info.title, type)
         : null
       return res.json({ url: info.url, thumbnail: info.thumbnail, summary: info.extract, parsed })
     } catch {
