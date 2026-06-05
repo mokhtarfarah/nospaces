@@ -16,11 +16,10 @@
 
 Priority order:
 
-1. **"About this" when no blurb** — link currently only appears if a blurb exists. Decide: should a stub always show, or does the wikipedia link already cover it?
-2. **New verdict** — finalise "left me thinking" vs "wrecked me" (or both), then add to `moods.ts` + `MOOD_REMAP`. Small code change once vocab is decided.
-3. **Taste page rebuild** — data is rich enough now. Start with the reaction-breakdown stat (e.g. "50% of your loved films are drama · dark") — pure client-side, natural first piece.
-4. **Move "shows near you" to discover** — currently surfaced in the music filter row; conceptually belongs on the discover tab. UI move only, no data change.
-5. **Decade filter** — derived from `item.year`, pure client-side. Lives inside the `filter ↓` sheet (already exists) once built.
+1. **Move "shows near you" to discover** — currently surfaced in the music filter row; conceptually belongs on the discover tab. UI move only, no data change.
+2. **Decade filter** — derived from `item.year`, pure client-side. Lives inside the `filter ↓` sheet (already exists) once built.
+3. **Regions map** — creator origin/nationality breakdown on the taste page. Data dependency: `item.creator` is a name string with no country stored. Options: add a country field, or batch-pull from Wikidata. Parked until data strategy is decided.
+4. **"About this" when no blurb** — clarified: the separate Wikipedia ↗︎ link already covers the no-blurb case. No change needed — closing this item.
 
 ---
 
@@ -196,14 +195,20 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 **Discovery**
 - **Move "shows near you" to discover tab** — currently in music filter row; belongs on discover. UI move only.
 
+**Dev automation (next 3 to build)**
+- **Typecheck on Stop hook** — ✅ done. Stop hook runs `tsc --noEmit` and injects a system message if any `error TS` lines are found.
+- **HANDOFF.md staleness warning** — ✅ done. `scripts/check-handoff-staleness.sh` fires on Stop; warns if screens/key components changed but HANDOFF.md wasn't updated.
+- **moods.ts → guide reminder** — ✅ done. Stop hook regex now includes `src/lib/moods.ts`.
+
 ### Medium-term
 
 **Taste & stats**
-- **Taste page rebuild** — tastemaker's annual report, not a sorted list. Needs richer data first. Key additions: effort axis (easy ↔ demanding), cross-type vibe patterns, verdict tendencies, era/decade clustering, regional split (creator origin — pure client-side), aspirational vs actual gap, visual hero element (covers/collage).
-- **Taste stats: reaction breakdown** — e.g. "50% of your loved films are drama · dark · intense". Reaction × genre/vibe/verdict analysis per type. Pure client-side.
+- **Taste page rebuild** — ✅ shipped. Three sections: identity (vibe ranked line + AI prose) → stats (lede, reaction breakdown, verdict tendencies, effort axis; filterable by medium) → by medium (collapsible cards per type).
+- **Regions map** — creator origin breakdown. Parked: needs nationality data (not stored). Next step: decide between manual country field vs Wikidata batch-pull.
+- **Taste stats: reaction breakdown** — ✅ shipped as part of taste page rebuild.
 
 **Taxonomy / vocabulary**
-- **New verdict: "left me thinking"** — between "delivers" and "respect, not love". For things that weren't immediately enjoyable but lingered. Also consider "wrecked me" for emotional gut-punch. Finalise vocab before building.
+- **New verdict: "stuck with me"** — ✅ shipped. Between "delivers" and "respect, not love". For things that weren't immediately enjoyable but lingered.
 - **Want-to priority** — pin or tier system for backlog items, especially books and music. Affects sort order and help-me-decide weighting.
 
 **Discovery & search**
@@ -228,6 +233,23 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 30 (2026-06-05) — Taste page rebuild + new verdict
+
+1. **New verdict: "stuck with me"** — added to `VERDICTS` in `src/lib/moods.ts` between "delivers" and "respect, not love". For things that weren't immediately enjoyable but lingered.
+2. **Taste page rebuild** — `TasteScreen.tsx` restructured into three sections:
+   - **① Identity** (unchanged) — vibe ranked line + "rarely lands" + AI prose.
+   - **② Stats** (new) — medium filter pills (`all · films · books · music · tv`) controlling: lede ("X things · Y% loved"), "what you reach for" reaction breakdown grid (per reaction tier: top genre+vibe tags by frequency), "verdicts" (frequency-ranked verdict tendencies), "effort" (easy ←→ demanding dot bar derived from vibe tags on loved+liked items; hidden if < 3 signal items).
+   - **③ By medium** (collapsible) — film/book/music/tv each as a collapsed row; header shows rated count + loved % + canon count; expands to show canon tiles + top creators + top genres.
+   - **Era map removed.** Replaced by regions (parked — needs creator nationality data).
+
+### Session 29 (2026-06-05) — Genre sync guard + dev automation plan
+
+1. **Genre sync guard** — `scripts/check-genres.mjs` diffs the three copies of the genre vocab (`src/lib/genres.ts`, `api/genres.ts`, `api/identify.ts`) and exits 1 if any are out of sync. Wired as `.git/hooks/pre-commit` — blocks commits when copies diverge. Run manually: `node scripts/check-genres.mjs`.
+2. **Session-length Stop hook** — `scripts/check-session-length.sh` counts numbered items in the current session block in HANDOFF.md; injects a "good stopping point" system message when ≥ 4 items shipped. Fires after every Claude turn.
+3. **moods.ts → guide reminder** — Stop hook regex extended to also fire when `src/lib/moods.ts` is touched (new verdicts/vibes require updating the guide's reaction section).
+4. **Typecheck on Stop** — `tsc --noEmit` added to Stop hook; injects system message on any `error TS` output.
+5. **HANDOFF.md staleness warning** — `scripts/check-handoff-staleness.sh` added to Stop hook; fires when screens/key components change but HANDOFF.md is not updated this session.
 
 ### Session 28 (2026-06-05) — Filter bar, how-to guide, guide hook
 

@@ -99,6 +99,7 @@ export const VERDICTS: string[] = [
   'in rotation',
   'unfinished business',
   'delivers',
+  'stuck with me',
   'respect, not love',
   'overrated',
   'so bad it\'s good',
