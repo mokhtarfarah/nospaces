@@ -16,10 +16,10 @@
 
 Priority order:
 
-1. **Move "shows near you" to discover** — currently surfaced in the music filter row; conceptually belongs on the discover tab. UI move only, no data change.
-2. **Decade filter** — derived from `item.year`, pure client-side. Lives inside the `filter ↓` sheet (already exists) once built.
-3. **Regions map** — creator origin/nationality breakdown on the taste page. Data dependency: `item.creator` is a name string with no country stored. Options: add a country field, or batch-pull from Wikidata. Parked until data strategy is decided.
-4. **"About this" when no blurb** — clarified: the separate Wikipedia ↗︎ link already covers the no-blurb case. No change needed — closing this item.
+1. **Stats section refinement** — the stats (reaction breakdown, verdict tendencies, effort axis) are structurally right but not insightful enough yet. Next session: audit what the data actually says for Farah's library and figure out what would be genuinely surprising or useful to surface. Think about: are the right things being counted? Is the framing too generic? What's missing that would make you go "oh, interesting"?
+2. **Move "shows near you" to discover** — currently surfaced in the music filter row; conceptually belongs on the discover tab. UI move only, no data change.
+3. **Decade filter** — derived from `item.year`, pure client-side. Lives inside the `filter ↓` sheet (already exists) once built.
+4. **Regions map** — creator origin/nationality breakdown on the taste page. Data dependency: `item.creator` is a name string with no country stored. Options: add a country field, or batch-pull from Wikidata. Parked until data strategy is decided.
 
 ---
 
