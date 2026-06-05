@@ -165,29 +165,45 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 
 ### Near-term
 
+**Library UX**
+- **Filter bar declutter** — status chips stay; collapse vibe/verdict/genre/series into one "filter ↓" button. Decade filter slots in here too when built.
+- **Decade filter** — derived from `item.year`, pure client-side, zero API cost. Lives inside the collapsed filter panel once that exists.
 - **"Help me decide" decision tree** — ✅ shipped. Guided 3-step flow (seen before? → type → vibe) from `/decide`. Entry: inline link in library header.
-- **"How to use" tutorial page** — onboarding / feature guide for new users (Tom).
-- **Wiki gap false positives** — GapsSheet flags wiki as missing even when it's visible on the action card. Likely a lag / stale field check. Investigate `itemGaps()` wiki condition vs when `wikiUrl` is actually set in metadata.
-- **Action card link order** — reorder the flat link row: `about this` first, `own it / on my shelf` last. Current order has "own it" too prominent.
-- **Filter bar declutter** — filter row is getting crowded again. Consider collapsing vibe/verdict/genre into a single "filter ↓" dropdown or moving less-used ones behind a toggle.
-- **Data-gaps tidy mode: highlight missing fields** — when in tidy-queue flow (`?tidy=1`), show missing fields in red and auto-expand them in edit view so users don't have to hunt. Only in tidy mode, not normal editing.
-- **"Add to series" dropdown** — replace the manual series text input in edit view with a dropdown populated from series already in the user's library. Makes series linking faster and consistent.
-- **Wiki match correctness** — code fix shipped (title guard now applies to film/TV). Existing bad matches: spot-check and re-identify case-by-case.
+
+**Action card / edit view**
+- **Action card link order** — reorder the flat link row: `about this` first, `own it / on my shelf` last.
+- **"Add to series" dropdown** — replace the manual series text input with a dropdown of series already in the library. Faster and keeps names consistent.
+
+**Data quality / tidy**
+- **Wiki gap false positives** — GapsSheet flags wiki as missing even when the action card shows it. Likely a stale check in `itemGaps()`. Investigate vs when `wikiUrl` is actually written to metadata.
+- **Wiki match correctness** — title guard shipped. Existing bad matches: re-identify case-by-case.
+- **Data-gaps tidy mode: highlight missing fields** — in tidy-queue flow (`?tidy=1`), show missing fields in red and auto-expand them in edit view. Only in tidy mode.
+
+**Onboarding**
+- **"How to use" tutorial page** — feature guide for new users (Tom).
 
 ### Medium-term
 
-- **Taste page rebuild** — think tastemaker's annual report, not a sorted list. Needs richer data first. Key additions: effort axis (easy ↔ demanding, pairs with runtime/pages), cross-type vibe patterns, verdict tendencies, era/decade clustering, regional split (creator origin — pure client-side, no API cost), aspirational vs actual (gap between want-to saves and what you actually rate highly), visual element on hero (covers/collage — currently all text).
-- **Taste stats: breakdown of loved/liked** — e.g. "50% of your loved films are drama · dark · intense". Analysis of reaction × genre/vibe/verdict patterns per type. Pure client-side, no API cost.
-- **Decade filter** — hidden behind the genre/vibe filter area (or as a collapsed option). Derived from `item.year`, pure client-side. Useful for era browsing.
-- **Want-to priority** — ability to mark some want-to items as higher priority. Especially useful for books and music backlogs. Could be a simple pin/star or an ordered tier. Affects sort order and help-me-decide weighting.
-- **New verdict: "left me thinking"** — something between "delivers" and "respect, not love". Captures films/books that weren't immediately enjoyable but lingered. Could also explore "wrecked me" for things that hit hard emotionally. Needs a session to finalise vocab before adding.
-- **Discovery improvements** — "not interested" / dismiss on Discover suggestions; divert mode improvements as data accumulates.
-- **Offline capture queue** — IndexedDB, save offline, sync on reconnect. PWA service worker already in place.
+**Taste & stats**
+- **Taste page rebuild** — tastemaker's annual report, not a sorted list. Needs richer data first. Key additions: effort axis (easy ↔ demanding), cross-type vibe patterns, verdict tendencies, era/decade clustering, regional split (creator origin — pure client-side), aspirational vs actual gap, visual hero element (covers/collage).
+- **Taste stats: reaction breakdown** — e.g. "50% of your loved films are drama · dark · intense". Reaction × genre/vibe/verdict analysis per type. Pure client-side.
+
+**Taxonomy / vocabulary**
+- **New verdict: "left me thinking"** — between "delivers" and "respect, not love". For things that weren't immediately enjoyable but lingered. Also consider "wrecked me" for emotional gut-punch. Finalise vocab before building.
+- **Want-to priority** — pin or tier system for backlog items, especially books and music. Affects sort order and help-me-decide weighting.
+
+**Discovery & search**
+- **Discovery improvements** — "not interested" / dismiss on Discover suggestions; divert mode as data accumulates.
+- **Descriptive library search** — "cozy films I haven't watched" → light AI step maps sentence to existing filters.
+
+**Data & input**
 - **Individual songs** — currently albums-only for music.
 - **Describe-by-recency for film/TV** — "that new Villeneuve movie" via TMDB person→credits. Music/books already work.
 - **Letterboxd diary.csv** — per-watch dates and repeat viewings. Not imported yet.
-- **Bandsintown API** — broader show coverage. Applied, not approved. Proxy + Show shape already ready to merge sources.
-- **Descriptive library search** — "cozy films I haven't watched" → light AI step turns sentence into filters you already support.
+- **Bandsintown API** — broader show coverage. Applied, not approved. Proxy + Show shape ready to merge.
+
+**Infrastructure**
+- **Offline capture queue** — IndexedDB, save offline, sync on reconnect. PWA service worker already in place.
 
 ### Long-term
 
