@@ -15,14 +15,16 @@ const REACTIONS: { value: ItemReaction; label: string }[] = [
 interface Props {
   item: Item
   onConfirm: (reaction: ItemReaction, note: string, moods: string[]) => void
+  onToggleCanon?: (canon: boolean) => void
   onClose: () => void
 }
 
-export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
+export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props) {
   const [reaction, setReaction] = useState<ItemReaction | null>(null)
   const [note, setNote] = useState('')
   const unconfirmed = Array.isArray(item.metadata?.unconfirmedVibes) ? (item.metadata.unconfirmedVibes as string[]) : []
   const [selectedMoods, setSelectedMoods] = useState<string[]>(unconfirmed)
+  const [canon, setCanon] = useState(!!item.metadata?.canon)
   const color = typeColor(item.type)
 
   function toggleMood(mood: string) {
@@ -112,9 +114,27 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
           />
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+          <button
+            onClick={() => setCanon(v => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'none', border: `1.5px solid ${canon ? '#1C1B19' : '#E0E0E0'}`,
+              borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 13, color: canon ? '#1C1B19' : '#ABA69C', fontWeight: canon ? 600 : 400,
+            }}
+          >
+            <span style={{ fontSize: 11 }}>{canon ? '◆' : '◇'}</span>
+            canon
+          </button>
+        </div>
         <button
           disabled={!reaction}
-          onClick={() => reaction && onConfirm(reaction, note, selectedMoods)}
+          onClick={() => {
+            if (!reaction) return
+            onConfirm(reaction, note, selectedMoods)
+            if (onToggleCanon && canon !== !!item.metadata?.canon) onToggleCanon(canon)
+          }}
           style={{
             width: '100%',
             padding: 14,

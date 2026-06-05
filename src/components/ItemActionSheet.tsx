@@ -508,9 +508,6 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
                       {item.metadata?.owned ? 'own it ✓︎' : 'own it'}
                     </button>
-                    <button onClick={() => onToggleCanon(!item.metadata?.canon)} className="tlink" style={{ flexShrink: 0 }}>
-                      {item.metadata?.canon ? '◆ canon' : '◇ canon'}
-                    </button>
                     {blurb && (
                       <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
                         <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource.length > 20 ? blurbSource.slice(0, 19) + '…' : blurbSource}` : 'about this'}</span>
@@ -1049,6 +1046,20 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 )}
               </div>
             )}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <button
+                onClick={() => onToggleCanon(!item.metadata?.canon)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'none', border: `1.5px solid ${item.metadata?.canon ? '#1C1B19' : '#E0E0E0'}`,
+                  borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 13, color: item.metadata?.canon ? '#1C1B19' : '#ABA69C', fontWeight: item.metadata?.canon ? 600 : 400,
+                }}
+              >
+                <span style={{ fontSize: 11 }}>{item.metadata?.canon ? '◆' : '◇'}</span>
+                canon
+              </button>
+            </div>
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
               <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#111111' : '#ccc', border: 'none' }}>save</button>

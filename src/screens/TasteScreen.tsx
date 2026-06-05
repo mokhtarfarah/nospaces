@@ -218,6 +218,8 @@ function EraMap({ items }: { items: Item[] }) {
 
 const STAT_MIN_RATED = 5 // below this, a loved-% is just noise — show the count alone
 
+const CANON_MAX = 5
+
 // Per-medium section — title + stats, dissolved into hairline-ruled rows (no boxes).
 function CategoryCard({ items, type }: { items: Item[]; type: string }) {
   const data = useMemo(() => {
@@ -239,11 +241,16 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
 
     const rated = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
     const lovedPct = rated.length ? Math.round(rated.filter(i => i.reaction === 'loved_it').length / rated.length * 100) : 0
-    return { genres, creators, ratedCount: rated.length, lovedPct }
+
+    const canon = items
+      .filter(i => i.type === type && !!i.metadata?.canon)
+      .slice(0, CANON_MAX)
+
+    return { genres, creators, ratedCount: rated.length, lovedPct, canon }
   }, [items, type])
 
-  const { genres, creators, ratedCount, lovedPct } = data
-  if (ratedCount === 0) return null
+  const { genres, creators, ratedCount, lovedPct, canon } = data
+  if (ratedCount === 0 && canon.length === 0) return null
 
   return (
     <div style={{ borderTop: `1px solid ${HAIR}`, padding: '14px 0 16px' }}>
@@ -255,6 +262,23 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
           {ratedCount} rated{ratedCount >= STAT_MIN_RATED ? ` · ${lovedPct}% loved` : ''}
         </span>
       </div>
+      {canon.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase', color: MUTE, marginBottom: 8 }}>
+            ◆ canon
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {canon.map(item => (
+              <div key={item.id} style={{ flex: '0 0 auto', width: TILE_SIZE, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <CoverTile item={item} width={TILE_SIZE} height={TILE_SIZE} />
+                <div style={{ fontSize: 9, color: GRAPHITE, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.title}>
+                  {item.title}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {creators.length > 0 && (
         <div style={{ marginBottom: 8 }}>
           <RankedLine scored={creators} limit={5} />

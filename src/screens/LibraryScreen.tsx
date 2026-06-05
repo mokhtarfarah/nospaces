@@ -724,6 +724,7 @@ export function LibraryScreen() {
             markDone(doneItem.id, reaction, note, moods)
             setDoneItem(null)
           }}
+          onToggleCanon={canon => toggleCanon(doneItem.id, canon)}
           onClose={() => setDoneItem(null)}
         />
       )}
