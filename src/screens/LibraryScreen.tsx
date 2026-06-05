@@ -10,7 +10,7 @@ import { DuplicatesSheet } from '../components/DuplicatesSheet'
 import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
-import { MOODS } from '../lib/moods'
+import { VIBES, VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 import { inReview, reviewCount } from '../lib/review'
@@ -133,6 +133,7 @@ export function LibraryScreen() {
   // horizontally (overflow clips absolutely-positioned children), so the menus
   // position themselves `fixed` relative to these.
   const vibeBtnRef = useRef<HTMLDivElement>(null)
+  const verdictBtnRef = useRef<HTMLDivElement>(null)
   const genreBtnRef = useRef<HTMLDivElement>(null)
   const seriesBtnRef = useRef<HTMLDivElement>(null)
 
@@ -157,9 +158,10 @@ export function LibraryScreen() {
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>(() => loadPrefs().reactionFilter ?? 'all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
   const [vibeFilter, setVibeFilter] = useState<string | null>(null)
+  const [verdictFilter, setVerdictFilter] = useState<string | null>(null)
   const [genreFilter, setGenreFilter] = useState<string | null>(null)
   const [seriesFilter, setSeriesFilter] = useState<string | null>(null)
-  const [openDropdown, setOpenDropdown] = useState<'vibe' | 'genre' | 'series' | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<'vibe' | 'verdict' | 'genre' | 'series' | null>(null)
   const [view, setView] = useState<ViewMode>(() => loadPrefs().view ?? 'recent')
   const [dir, setDir] = useState<SortDir>(() => loadPrefs().dir ?? VIEW_CONFIG.recent.defaultDir)
   const [layout, setLayout] = useState<'list' | 'grid'>(() => loadPrefs().layout ?? 'list')
@@ -232,10 +234,10 @@ export function LibraryScreen() {
 
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
-    || !!vibeFilter || !!genreFilter || !!seriesFilter || reviewOnly || newMusicOnly || !!query.trim()
+    || !!vibeFilter || !!verdictFilter || !!genreFilter || !!seriesFilter || reviewOnly || newMusicOnly || !!query.trim()
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
-    setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null)
+    setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null)
     setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setOpenDropdown(null)
   }
 
@@ -284,32 +286,45 @@ export function LibraryScreen() {
 
   const filtered = useMemo(() => {
     let result = baseFiltered
-    if (vibeFilter)  result = result.filter(item => item.moods?.includes(vibeFilter))
+    if (vibeFilter) result = result.filter(item =>
+      item.moods?.includes(vibeFilter) ||
+      (Array.isArray(item.metadata?.unconfirmedVibes) && (item.metadata.unconfirmedVibes as string[]).includes(vibeFilter))
+    )
+    if (verdictFilter) result = result.filter(item => item.moods?.includes(verdictFilter))
     if (genreFilter) result = result.filter(item => item.tags?.includes(genreFilter))
     if (seriesFilter) result = result.filter(item => item.metadata?.series === seriesFilter)
     return sortItems(result, sort, dir)
-  }, [baseFiltered, vibeFilter, genreFilter, seriesFilter, sort, dir])
+  }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, sort, dir])
 
   // Vibes and genres present in the current base-filtered set, for filter chips.
   const availableTags = useMemo(() => {
-    const moodSet = new Set<string>()
+    const vibeSet = new Set<string>()
+    const verdictSet = new Set<string>()
     const genreSet = new Set<string>()
     const seriesSet = new Set<string>()
     baseFiltered.forEach(i => {
-      i.moods?.forEach(m => moodSet.add(m))
+      i.moods?.forEach(m => {
+        if (VIBES.includes(m)) vibeSet.add(m)
+        else if (VERDICTS.includes(m)) verdictSet.add(m)
+      })
+      // unconfirmed vibes also show up in the vibe filter
+      if (Array.isArray(i.metadata?.unconfirmedVibes)) {
+        (i.metadata.unconfirmedVibes as string[]).forEach(v => { if (VIBES.includes(v)) vibeSet.add(v) })
+      }
       i.tags?.forEach(t => genreSet.add(t))
       const s = i.metadata?.series
       if (typeof s === 'string' && s.trim()) seriesSet.add(s)
     })
     return {
-      moods:  MOODS.filter(m => moodSet.has(m)),  // canonical MOODS order
-      genres: [...genreSet].filter(isGenreTag).sort(),  // real genres only; descriptors stay searchable
-      series: [...seriesSet].sort(),
+      vibes:    VIBES.filter(v => vibeSet.has(v)),        // canonical order, vibes only
+      verdicts: VERDICTS.filter(v => verdictSet.has(v)),  // canonical order, verdicts only
+      genres:   [...genreSet].filter(isGenreTag).sort(),
+      series:   [...seriesSet].sort(),
     }
   }, [baseFiltered])
 
-  // Reset vibe/genre filters when base filters change so they don't silently hide results.
-  useEffect(() => { setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null) }, [categories, statusFilter, reactionFilter, reviewOnly])
+  // Reset vibe/verdict/genre filters when base filters change so they don't silently hide results.
+  useEffect(() => { setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null) }, [categories, statusFilter, reactionFilter, reviewOnly])
 
   const grouped = useMemo(() => {
     if (group === 'creator') return groupByCreator(filtered)
@@ -457,10 +472,10 @@ export function LibraryScreen() {
               onClick={() => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
             />
           ))}
-          {(availableTags.moods.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0)) && (
+          {(availableTags.vibes.length > 0 || availableTags.verdicts.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0)) && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-              {availableTags.moods.length > 0 && (
+              {availableTags.vibes.length > 0 && (
                 <div ref={vibeBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
                   <DropdownButton
                     label="vibe"
@@ -472,9 +487,28 @@ export function LibraryScreen() {
                   {openDropdown === 'vibe' && (
                     <DropdownMenu
                       anchorRef={vibeBtnRef}
-                      options={availableTags.moods}
+                      options={availableTags.vibes}
                       selected={vibeFilter}
                       onSelect={v => { setVibeFilter(f => f === v ? null : v); setOpenDropdown(null) }}
+                    />
+                  )}
+                </div>
+              )}
+              {availableTags.verdicts.length > 0 && (
+                <div ref={verdictBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
+                  <DropdownButton
+                    label="verdict"
+                    value={verdictFilter}
+                    active={openDropdown === 'verdict'}
+                    onToggle={() => setOpenDropdown(d => d === 'verdict' ? null : 'verdict')}
+                    onClear={() => { setVerdictFilter(null); setOpenDropdown(null) }}
+                  />
+                  {openDropdown === 'verdict' && (
+                    <DropdownMenu
+                      anchorRef={verdictBtnRef}
+                      options={availableTags.verdicts}
+                      selected={verdictFilter}
+                      onSelect={v => { setVerdictFilter(f => f === v ? null : v); setOpenDropdown(null) }}
                     />
                   )}
                 </div>

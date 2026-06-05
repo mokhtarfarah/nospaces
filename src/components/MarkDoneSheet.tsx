@@ -20,7 +20,8 @@ interface Props {
 export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
   const [reaction, setReaction] = useState<ItemReaction | null>(null)
   const [note, setNote] = useState('')
-  const [selectedMoods, setSelectedMoods] = useState<string[]>([])
+  const unconfirmed = Array.isArray(item.metadata?.unconfirmedVibes) ? (item.metadata.unconfirmedVibes as string[]) : []
+  const [selectedMoods, setSelectedMoods] = useState<string[]>(unconfirmed)
   const color = typeColor(item.type)
 
   function toggleMood(mood: string) {
@@ -54,18 +55,14 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         maxHeight: '85dvh',
         overflowY: 'auto',
       }}>
-        {/* Handle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 2 }}>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4 }}>✕</button>
-        </div>
-
-        {/* Item preview */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        {/* Item preview + close — × aligned with the title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, marginBottom: 20 }}>
           <div style={{ width: 4, height: 36, borderRadius: 2, background: color.border, flexShrink: 0 }} />
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 600 }}>{item.title}</div>
             {item.creator && <div style={{ fontSize: 12, color: '#888' }}>{item.creator}</div>}
           </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
         </div>
 
         <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }}>what did you think?</p>

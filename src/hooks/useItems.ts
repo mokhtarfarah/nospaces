@@ -132,12 +132,16 @@ export function useItems() {
   }
 
   async function markDone(id: string, reaction: ItemReaction, note: string, moods: string[] = []) {
+    const item = items.find(i => i.id === id)
+    const metadata = item ? { ...item.metadata } : {}
+    delete metadata.unconfirmedVibes
     await db().from('items').update({
       status: 'done',
       reaction,
       note: note || null,
       moods,
       date_done: new Date().toISOString(),
+      metadata,
     }).eq('id', id)
     await fetch({ silent: true })
   }

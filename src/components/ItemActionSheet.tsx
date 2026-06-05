@@ -146,6 +146,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showBlurb, setShowBlurb] = useState(false)
   const [reactionTagsOpen, setReactionTagsOpen] = useState(false)
+  const [editOpenGroups, setEditOpenGroups] = useState<Record<string, boolean>>({})
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
@@ -499,13 +500,13 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     No hierarchy between actions and links — they all sit equal. */}
                 {!item.metadata?.scratch && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
-                    <button onClick={() => setView('edit')} className="tlink" style={{ flexShrink: 0 }}>edit</button>
+                    <button onClick={() => { setEditOpenGroups({}); setView('edit') }} className="tlink" style={{ flexShrink: 0 }}>edit</button>
                     <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
                       {item.metadata?.owned ? 'own it ✓︎' : 'own it'}
                     </button>
                     {blurb && (
                       <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
-                        <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource}` : 'about this'}</span>
+                        <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource.length > 20 ? blurbSource.slice(0, 19) + '…' : blurbSource}` : 'about this'}</span>
                         <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
                       </button>
                     )}
@@ -659,7 +660,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   {(feel.length > 0 || unconfirmedVibes.length > 0) && row('vibe', tagLine(feel, unconfirmedVibes))}
                   {verdicts.length > 0 && row('verdict', tagLine(verdicts))}
                   {needsVerdict && row('verdict', (
-                    <button onClick={() => setView('edit')} className="tlink" style={{ color: '#ABA69C', fontStyle: 'italic' }}>
+                    <button onClick={() => { setEditOpenGroups({ 'how it landed': true }); setView('edit') }} className="tlink" style={{ color: '#ABA69C', fontStyle: 'italic' }}>
                       how did it land? add a verdict →
                     </button>
                   ))}
@@ -691,7 +692,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               // now and identify it whenever. "identify now" is the primary nudge.
               <div style={{ ...footer, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button
-                  onClick={async () => { setView('edit'); await identifyIntoEdit() }}
+                  onClick={async () => { setEditOpenGroups({}); setView('edit'); await identifyIntoEdit() }}
                   disabled={autoFilling}
                   style={{ ...actionBtn('#fff'), width: '100%', background: autoFilling ? '#CCC' : '#111', border: 'none' }}
                 >
@@ -766,7 +767,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     </span>
                   )}
                 </p>
-                <button onClick={() => setView('main')} className="tlink" style={{ flexShrink: 0 }}>cancel</button>
+                <button onClick={() => { setEditOpenGroups({}); setView('main') }} className="tlink" style={{ flexShrink: 0 }}>cancel</button>
               </div>
 
               {/* The one merged action: auto-fill from wikipedia, or AI identify. */}
@@ -895,7 +896,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                           </button>
                       }
                       {genrePickerOpen && (
-                        <button onClick={() => setGenrePickerOpen(false)} style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: 'none', background: 'none', color: '#BBB' }}>done</button>
+                        <button onClick={() => setGenrePickerOpen(false)} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #CCC', background: 'none', color: '#AAA', flexShrink: 0 }}>done</button>
                       )}
                     </div>
                   </div>
@@ -907,10 +908,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   </div>
                 )}
                 <MoodChips
+                  key={Object.keys(editOpenGroups).join(',')}
                   type={type}
                   size="sm"
                   groups={item.status === 'done' ? 'all' : 'vibes-only'}
                   collapsible
+                  initialOpen={editOpenGroups}
                   isActive={m => editMoods.includes(m)}
                   onToggle={toggleEditMood}
                 />
@@ -967,7 +970,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   </>
                 ) : (
                   <>
-                    <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
+                    <button onClick={() => { setEditOpenGroups({}); setView('main') }} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
                     <button onClick={handleSaveDetails} style={{ ...actionBtn('#fff'), flex: 1, background: '#111111', border: 'none' }}>save</button>
                   </>
                 )}

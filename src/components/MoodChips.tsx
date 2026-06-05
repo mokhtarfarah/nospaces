@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { VERDICTS, vibesForType } from '../lib/moods'
 
-export function MoodChips({ type = 'other', isActive, onToggle, size = 'md', layout = 'wrap', groups = 'all', collapsible = false }: {
+export function MoodChips({ type = 'other', isActive, onToggle, size = 'md', layout = 'wrap', groups = 'all', collapsible = false, initialOpen = {} }: {
   // Item type — determines which vibes to show (core + type-appropriate tier).
   type?: string
   isActive: (mood: string) => boolean
@@ -10,9 +10,10 @@ export function MoodChips({ type = 'other', isActive, onToggle, size = 'md', lay
   layout?: 'wrap' | 'scroll'
   groups?: 'all' | 'vibes-only'
   collapsible?: boolean
+  initialOpen?: Record<string, boolean>
 }) {
   const sm = size === 'sm'
-  const [open, setOpen] = useState<Record<string, boolean>>({})
+  const [open, setOpen] = useState<Record<string, boolean>>(initialOpen)
 
   const VIBES = vibesForType(type)
   const GROUPS = [

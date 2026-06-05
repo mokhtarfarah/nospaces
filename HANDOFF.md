@@ -114,7 +114,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-04, updated session 21)
+## TODO / Roadmap (last edited 2026-06-04, updated session 22)
 
 ---
 
@@ -190,13 +190,26 @@ All shipped to `main`. Eyeballed in prod. Working.
 
 ### Phase 3 — Cohesion + tag system
 
-- Vibe and verdict as separate filters in library (currently mixed)
+**Filters:**
+- Vibe and verdict as separate filters in library (currently mixed in one `vibe ▾` dropdown)
 - Decide vibe filtering on "all" page (risk of noise — needs UX decision first)
-- Page transitions feel like one product (shared design language, consistent spacing)
+- Suggested/unconfirmed vibes (`metadata.unconfirmedVibes`) should also be matchable as a library filter — so you can filter by a vibe the AI suggested even before you've confirmed it. Taste page + Discover still only count confirmed (`moods`) vibes — no change there.
+
+**Bugs + polish (from session 22 feedback):**
+- "add a verdict →" nudge taps into edit view but the HOW IT LANDED section starts collapsed → auto-expand it when navigating via that nudge
+- Flat link row wraps on mobile when source name is long and a spotify or watch link is also present → needs a wrapping/truncation fix (e.g. allow two lines, or truncate the source label)
+- × close button on MarkDoneSheet is too high — should align vertically with the item title, same as ItemActionSheet
+- "done" collapse chip is inconsistent across genre vs vibe pickers in edit view, and edit view feels crowded — needs a tightening pass (layout audit: spacing, chip sizing, section separation)
+- Verdicts feel film/tv/book-specific; many (comfort, guilty pleasure, would revisit, so bad it's good) don't map naturally to music — rethink: either hide inapplicable verdicts per type, or add a few music-specific ones (e.g. "on rotation", "era-defining", "grew on me"). Design call before building.
+- Suggested vibes should show pre-populated (pre-selected but not yet confirmed) on the mark-as-done sheet — so you can confirm them in the same step as marking done, instead of needing a second edit pass
+
+**Features:**
 - Canon status field — lightweight pin for ~10 defining items, separate from reaction scale
+- Page transitions feel like one product (shared design language, consistent spacing)
 
 ### Phase 4 — Data management
 
+- **"last watched / read / listened" date** — log when you last engaged with an item (separate from the original add date). Shows on the action card. Useful for rewatches, rereads, re-listens. No schema migration needed if stored in `metadata.lastEngaged: ISO string`. Display as "last watched 3 months ago" on the card; optionally surface as a sort option.
 - Move data-gaps nav from Add page → Library as a dedicated linked page with easy in/out
 - Cover-art quality pass — biggest visual/tastemaker payoff; own dedicated session
 - Offline capture queue (IndexedDB) — save offline, sync on reconnect
@@ -204,6 +217,14 @@ All shipped to `main`. Eyeballed in prod. Working.
 - Wiki match correctness — film/TV resolution lenient (trusts top hit, no title guard). Spot-check items whose saved `wikiUrl` title doesn't match the item title
 
 ### Phase 5 — Discovery + taste insights
+
+**"What should I watch/read/listen to?" decision tree:**
+- Guided tool for when you can't decide what to pick from your want-to list
+- Question tree narrows your library in real time: e.g. "something you've saved before, or a fresh suggestion?" → "want something familiar or new to you?" → "how much time do you have?" → "mood: easy or demanding?" → surfaces 2–3 matching want-to items at the end
+- Questions are type-aware (film asks about runtime; book asks about length; music asks about energy)
+- Pure client-side filtering against existing want-to items — no AI call needed, just a decision tree that maps answers to filters (status, vibe, runtime, type, etc.)
+- Entry point: a "help me decide" button on the want-to view of the library, or its own tab/screen
+- UX feel: one question at a time, full-screen, minimal — feels like a conversation not a filter panel
 
 **Taste page refresh (whole pass):**
 - Rebuild now that vibe/verdict taxonomy is locked (was built before overhaul)
@@ -249,12 +270,28 @@ All shipped to `main`. Eyeballed in prod. Working.
 - `api/identify.ts` — AI identify endpoint (inline copy)
 - `api/wiki.ts` — Wikidata parse genres list (inline in the `wikidataFields` function)
 
-**▶ NEXT SESSION STARTS HERE:** Phase 3. See roadmap below. Suggested priorities in order:
+**▶ NEXT SESSION STARTS HERE (session 23):** Vibe confirmation flow — see session 22 notes below.
 
-1. **Vibe + verdict as separate filters** (Phase 3, S) — currently mixed in the mood filter. Split into two filter chips. Needs a UX decision first: show vibes filter on "all" tab or only per-type?
-2. **Taste page rebuild** (Phase 5, L) — now that vibe/verdict taxonomy is locked and vibes are actually filling, the taste page reflects real data. Good time to rebuild it: cross-type vibe patterns, effort axis, verdict tendencies. This is the "tastemaker mirror" — the killer feature.
-3. **Cover-art quality pass** (Phase 4, M) — biggest visual impact. Low-res / inconsistent art cheapens the grid. Own session.
-4. **Canon / pinned favorites** (Phase 3, S) — lightweight pin for ~10 defining items, separate from the reaction scale.
+---
+
+### 📌 Session 22 (2026-06-04) — Phase 3 bug sweep + roadmap additions
+
+**Shipped to `main` / live (typecheck + build green; auth-gated so not eyeballed logged-in):**
+
+1. ✅ **"add a verdict →" nudge now auto-opens HOW IT LANDED** — tapping the verdict prompt on the read view now passes `{ 'how it landed': true }` as `initialOpen` into `MoodChips` via a new prop. `MoodChips` initialises its internal `open` state from `initialOpen` instead of `{}`. A `key` on the edit-view `MoodChips` forces remount when `editOpenGroups` changes. Resets to closed on all other paths into edit (regular edit button, identify-now, cancel). Files: `src/components/MoodChips.tsx`, `src/components/ItemActionSheet.tsx`.
+2. ✅ **× on MarkDoneSheet aligned with title** — removed the separate close-button row; merged `✕` into the item preview row on the right side, same baseline as the title. File: `src/components/MarkDoneSheet.tsx`.
+3. ✅ **Long source names truncated in link row** — `via KEXP New Music Tuesday` → `via KEXP New Music Tu…` (caps source at 20 chars). Stops the spotify/watch links from wrapping to a second line on mobile. File: `src/components/ItemActionSheet.tsx`.
+4. ✅ **Genre "done" chip matches vibe "done" chip** — genre picker close button now uses `border: '1.5px dashed #CCC'`, same padding + colour as `MoodChips` collapsible toggle. Both pickers look identical. File: `src/components/ItemActionSheet.tsx`.
+
+**Roadmap additions (session 22):**
+- Added "what should I watch/read/listen to?" decision tree to Phase 5 (guided client-side tool, no API cost).
+- Added Phase 3 bug list from Farah's feedback (verdicts on music, suggested vibes on mark-as-done, link row wrapping, × alignment, edit view tightening question, unconfirmed vibes as library filter).
+- Added "last watched/read/listened date" (`metadata.lastEngaged`) to Phase 4.
+
+**▶ NEXT SESSION STARTS HERE:** Vibe confirmation flow (Phase 3, #2 from the recommended sequence). Three things that belong together:
+1. Split vibe and verdict into **separate library filters** (currently one mixed `vibe ▾` dropdown)
+2. **Unconfirmed vibes** (`metadata.unconfirmedVibes`) matchable as a library filter — taste/discover still only count confirmed `moods`
+3. **Suggested vibes pre-populated on mark-as-done sheet** — unconfirmed vibes seeded as pre-selected chips so the user can confirm them in the same step as marking done
 
 ---
 
