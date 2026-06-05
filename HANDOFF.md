@@ -1,5 +1,19 @@
 # Nospaces — Handoff
 
+## 🚦 Where we are — read this first
+
+| Phase | Status | What it was |
+|---|---|---|
+| Phase 1 — Stop the bleeding | ✅ Done | Mobile cutoff, header unification, in-progress status, genre fixes |
+| Phase 2 — Action card + editing | ✅ Done | Two-verb read view, auto-fill, type fixable, unconfirmed vibes, labelled tags |
+| Phase 3 — Cohesion + tag system | 🔄 In progress | Vibe/verdict split, reaction view UX polish (session 23) |
+| Phase 4 — Data management | ⏳ Next | Cover art, last-engaged date, data-gaps nav |
+| Phase 5 — Discovery + taste | ⏳ Later | Help-me-decide tree, taste page rebuild |
+
+**▶ START SESSION HERE:** Phase 3 has one design decision left (music verdicts), then move to Phase 4 cover-art pass. See "Next session priorities" in the session 23 notes below.
+
+---
+
 ## App
 Personal PWA taste library for Farah + Tom. Films, books, music, TV. https://nospaces.vercel.app. Two users: farahmokhtar94@gmail.com, tom.effland@gmail.com.
 
@@ -114,7 +128,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-04, updated session 22)
+## TODO / Roadmap (last edited 2026-06-05, updated session 23)
 
 ---
 
@@ -206,6 +220,7 @@ All shipped to `main`. Eyeballed in prod. Working.
 **Features:**
 - Canon status field — lightweight pin for ~10 defining items, separate from reaction scale
 - Page transitions feel like one product (shared design language, consistent spacing)
+- **Duplicates tool UX** — in the "review duplicates" sheet, make it clearer which entry is the original vs the newer one (e.g. label with date added, or "added earlier" / "added later" tag so it's obvious which to keep)
 
 ### Phase 4 — Data management
 
@@ -270,7 +285,43 @@ All shipped to `main`. Eyeballed in prod. Working.
 - `api/identify.ts` — AI identify endpoint (inline copy)
 - `api/wiki.ts` — Wikidata parse genres list (inline in the `wikidataFields` function)
 
-**▶ NEXT SESSION STARTS HERE (session 23):** Vibe confirmation flow — see session 22 notes below.
+---
+
+### 📌 Session 23 (2026-06-05) — Vibe/verdict UX overhaul + reaction view polish
+
+**Shipped to `main` / live:**
+
+1. ✅ **Vibe/verdict library filter split** — `vibe ▾` and `verdict ▾` are now separate dropdowns (was one mixed `vibe ▾`). Vibe filter also matches `metadata.unconfirmedVibes` so AI-suggested vibes are filterable before confirmed.
+2. ✅ **Unconfirmed vibes pre-populated on mark-done** — MarkDoneSheet and ItemActionSheet reaction view both seed `selectedMoods` from `metadata.unconfirmedVibes` at open time. `markDone` clears `unconfirmedVibes` from metadata on save.
+3. ✅ **Verdict starts open by default** — on first mark-done and edit-reaction, verdict group opens automatically when no verdict is active (`initialOpen={{ verdict: true }}`). Collapses once a verdict is saved.
+4. ✅ **"add a verdict →" routes to reaction view** — was incorrectly going to edit view; now goes to reaction view where verdict is already open.
+5. ✅ **Collapsible MoodChips in reaction flow** — reaction view and MarkDoneSheet now use `collapsible` MoodChips; active vibes show compact, inactive hide behind `+ add`. Verdict stays open per #3.
+6. ✅ **MoodChips labels** — `'feel'` → `'vibe'`, `'how it landed'` → `'verdict'` everywhere.
+7. ✅ **"done" chip moved to end** — in collapsible expanded state, "done" appears after all inactive chips, not before.
+8. ✅ **Toggle button size matches chips** — `+ add` / `done` now scales with `sm` vs `md` chip size.
+9. ✅ **Genre picker consistency** — `…` / `+ genre` replaced with `+ add` (dashed chip, matches MoodChips style).
+10. ✅ **AI disclaimer in MarkDoneSheet** — always shows "VIBE · optional" label; AI disclaimer shown below it when unconfirmed vibes are pre-seeded.
+11. ✅ **× alignment fixed** — main view: × in standalone row above title; edit view: × next to cancel in header; reaction view: × inline with heading.
+12. ✅ **Sheet top padding** — settled at `10px` top padding on both sheets after iteration.
+13. ✅ **`reactionTagsOpen` defaults to `true`** — tags section always open when entering reaction view on a done item.
+14. ✅ **Session 22 fixes committed** (were built but not pushed): verdict nudge auto-opens HOW IT LANDED, × on MarkDoneSheet aligned with title, long source names truncated at 20 chars, genre "done" chip matches vibe chip styling.
+
+**▶ NEXT SESSION STARTS HERE:** See next session priorities below.
+
+### 🔜 Next session priorities (session 24)
+
+**1. Music verdicts design decision (15 min, design call):**
+Verdicts (comfort, guilty pleasure, would revisit, delivers, respect not love, overrated, so bad it's good) feel film/tv/book-specific. Options:
+- Hide verdicts entirely for music type
+- Replace with music-specific ones: "on rotation", "era-defining", "grew on me"
+- Keep as-is (music can still use comfort, overrated, etc.)
+Decide, then it's a small code change in `src/lib/moods.ts` + `MoodChips` type-filtering.
+
+**2. Cover-art quality pass (Phase 4, own session):**
+HANDOFF's "biggest visual/tastemaker payoff." The grid is the face of the app — low-res / missing covers cheapen it. Audit current art sources (Deezer/iTunes/TMDB), identify what's bad, improve resolution + fallback chain. `src/lib/artwork.ts`, `api/art.ts`.
+
+**3. "Help me decide" decision tree (Phase 5, own session):**
+Pure client-side, zero API cost. A few questions → surfaces 2-3 matching want-to items from your library. Vibe/verdict taxonomy now locked — good to build. See Phase 5 in roadmap for spec.
 
 ---
 
