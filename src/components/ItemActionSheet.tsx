@@ -4,8 +4,8 @@ import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { authHeaders } from '../lib/supabase'
 import { NoteInput } from './NoteInput'
 import { MoodChips } from './MoodChips'
-import { VIBES, VERDICTS } from '../lib/moods'
-import { useWikipediaInfo, clearWikiCache } from '../lib/wikipedia'
+import { VIBES, VERDICTS, vibesForType } from '../lib/moods'
+import { useWikipediaInfo } from '../lib/wikipedia'
 import { useArtwork, clearArtworkCache } from '../lib/artwork'
 import { useBookBlurb, clearBlurbCache } from '../lib/blurb'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
@@ -15,13 +15,11 @@ import { inReview } from '../lib/review'
 
 interface Props {
   item: Item
-  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; source_detail?: string | null; metadata?: Record<string, unknown> }) => void
+  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; moods?: string[]; source_detail?: string | null; metadata?: Record<string, unknown> }) => void
   onMarkInProgress?: () => void
   onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
   onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
-  onSetMoods: (moods: string[]) => void
-  onSetTags: (tags: string[]) => void
   onToggleOwned: (owned: boolean) => void
   onDelete: () => void
   onClose: () => void
@@ -64,10 +62,23 @@ function refLinkLabel(url: string): string {
   }
 }
 
+// Human-readable article name from a Wikipedia URL (last path segment, decoded).
+function wikiArticleName(url: string): string {
+  try {
+    const seg = new URL(url).pathname.split('/').pop() ?? ''
+    return decodeURIComponent(seg).replace(/_/g, ' ') || 'wikipedia'
+  } catch {
+    return 'wikipedia'
+  }
+}
+
 type View = 'main' | 'edit' | 'reaction'
 
-// A candidate match offered after re-identify (from the AI's alternatives or a catalog lookup).
+// A candidate match offered after identify (from the AI's alternatives or a catalog lookup).
 type Candidate = { title: string; creator: string | null; year: number | null; metadata?: Record<string, unknown>; tags?: string[] }
+
+// Summary shown after auto-fill runs: what it pulled + which article it came from.
+type AutoFillInfo = { article: string; filled: string[]; viaWiki: boolean }
 
 // Runtime (film/tv) or page count (book) for display on the card. Null if unknown.
 function formatRuntime(item: Item): string | null {
@@ -82,7 +93,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, onEditReaction, onSetSeasons, onSetMoods, onSetTags, onToggleOwned, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -108,28 +119,35 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
     ?? (item.metadata?.wikiSummary as string | undefined)
     ?? '')
   const [blurbText, setBlurbText] = useState(((item.metadata?.manualBlurb as string | undefined) ?? nonManualBlurb) ?? '')
-  // Edit-view draft state for new gap fields — separate from item to support cancel.
+
+  // Provisional AI vibe guesses (set at add-time). Kept OUT of moods until the
+  // user confirms by saving the edit view; shown muted on the read view.
+  const unconfirmedVibes = ((item.metadata?.unconfirmedVibes as string[] | undefined) ?? [])
+    .filter(v => VIBES.includes(v) && !(item.moods ?? []).includes(v))
+
+  // Edit-view draft state — separate from the item so cancel discards cleanly.
   const [editTags, setEditTags] = useState<string[]>(item.tags ?? [])
+  // Vibes + verdicts edited together in the edit view. Unconfirmed AI vibes seed
+  // it as active chips; saving the edit confirms whatever's selected into moods.
+  const [editMoods, setEditMoods] = useState<string[]>(() => [...new Set([...(item.moods ?? []), ...unconfirmedVibes])])
   const [runtimeEdit, setRuntimeEdit] = useState(String((item.metadata?.runtime as number | null) ?? ''))
   const [pagesEdit, setPagesEdit] = useState(String((item.metadata?.pages as number | null) ?? ''))
   const [wikiUrlEdit, setWikiUrlEdit] = useState(String((item.metadata?.wikiUrl as string | null) ?? ''))
   const [genrePickerOpen, setGenrePickerOpen] = useState(false)
-  const [wikiParsing, setWikiParsing] = useState(false)
-  const [wikiFilled, setWikiFilled] = useState(false)
-  const [reidentifying, setReidentifying] = useState(false)
-  // After a re-identify, hold the other candidates so the user can pick the right
-  // one if the AI grabbed the wrong match. null = picker hidden.
+  const [autoFilling, setAutoFilling] = useState(false)
+  const [autoFillInfo, setAutoFillInfo] = useState<AutoFillInfo | null>(null)
+  // After identify, the AI's other candidates so the user can correct a wrong
+  // match by populating the edit fields. null = panel hidden.
   const [picks, setPicks] = useState<Candidate[] | null>(null)
   const [lookingUp, setLookingUp] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showBlurb, setShowBlurb] = useState(false)
-  const [tagsEditing, setTagsEditing] = useState(false)
   const [reactionTagsOpen, setReactionTagsOpen] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
-  const [suggestedVibes, setSuggestedVibes] = useState<string[]>([])
-  const [dismissedSuggestions, setDismissedSuggestions] = useState(false)
   const color = typeColor(item.type)
+
+  const hasWikiLink = wikiUrlEdit.includes('wikipedia.org')
 
   // Persist the season checklist (kept in local state for instant feedback).
   function updateSeasons(next: Season[]) {
@@ -141,25 +159,6 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
   const addSeason = () =>
     updateSeasons([...seasons, { n: (seasons[seasons.length - 1]?.n ?? 0) + 1, done: false }])
   const removeLastSeason = () => updateSeasons(seasons.slice(0, -1))
-
-  // Fetch AI-suggested vibes on card open. Haiku call, ~$0.001. Suggestions are
-  // shown as faded chips; applying one is always manual — never auto-set.
-  useEffect(() => {
-    if (item.metadata?.scratch || !item.title) return
-    let cancelled = false
-    authHeaders()
-      .then(h => fetch('/api/vibes', {
-        method: 'POST', headers: h,
-        body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }),
-      }))
-      .then(r => r.json())
-      .then((data: { suggestions?: string[] }) => {
-        if (!cancelled && Array.isArray(data.suggestions)) setSuggestedVibes(data.suggestions)
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id])
 
   // Auto-fill the season count from TVmaze when a TV show has none yet (display only;
   // it persists once a season is ticked).
@@ -242,12 +241,22 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
     const pg = parseInt(pagesEdit)
     if (!isNaN(pg) && pg > 0) metadata.pages = pg
     else if (!pagesEdit.trim()) delete metadata.pages
+    // Saving the edit view CONFIRMS any provisional AI vibes — they move into
+    // moods (below), so drop the unconfirmed list.
+    delete metadata.unconfirmedVibes
+    // Type can change here (type chips are authoritative). Drop genres + vibes
+    // that don't belong to the chosen type's vocab so a film→book switch doesn't
+    // carry over film-only tags.
+    const validVibes = vibesForType(type)
+    const tags  = editTags.filter(t => !isGenreTag(t) || genresForType(type).includes(t))
+    const moods = editMoods.filter(m => VERDICTS.includes(m) || validVibes.includes(m))
     onEdit({
       title: newTitle,
       creator: newCreator,
       type,
       year: newYear,
-      tags: editTags,
+      tags,
+      moods,
       source_detail: sourceDetail.trim() || null,
       metadata,
     })
@@ -264,12 +273,20 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
     onSaveNext?.()
   }
 
-  // Fetch + parse fields from a user-supplied Wikipedia URL.
+  // One merged "auto-fill" action. With a Wikipedia link → pull structured facts
+  // from Wikidata (fills empty fields only). Without one → AI identify (replaces
+  // fields). forceIdentify routes around a wrong stored article.
+  async function handleAutoFill(forceIdentify = false) {
+    if (autoFilling) return
+    if (hasWikiLink && !forceIdentify) await fillFromWiki()
+    else await identifyIntoEdit()
+  }
+
+  // Fetch + parse fields from the stored Wikipedia URL via Wikidata claims.
   // Only pre-fills fields that are currently empty (never overwrites).
-  async function handleWikiFill() {
-    if (wikiParsing || !wikiUrlEdit.trim()) return
-    setWikiParsing(true)
-    setWikiFilled(false)
+  async function fillFromWiki() {
+    if (!wikiUrlEdit.trim()) return
+    setAutoFilling(true)
     try {
       const headers = await authHeaders()
       const res = await fetch(
@@ -279,15 +296,15 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
       if (!res.ok) return
       const data = await res.json() as { parsed?: { year?: number | null; creator?: string | null; runtime?: number | null; pages?: number | null; genres?: string[] } | null }
       const p = data.parsed
-      if (!p) return
-      if (p.year && !year) setYear(String(p.year))
-      if (p.creator && !creator.trim()) setCreator(p.creator)
-      if (p.runtime && !runtimeEdit) setRuntimeEdit(String(p.runtime))
-      if (p.pages && !pagesEdit) setPagesEdit(String(p.pages))
-      // Genre: only if none set yet. The wiki parse is unreliable for genre
-      // (Wikipedia categories rarely carry a clean book genre), so ask the
-      // dedicated /api/genres endpoint, which infers from the model's knowledge
-      // of the title. Fall back to the wiki parse's genres if that returns none.
+      if (!p) { setAutoFillInfo({ article: wikiArticleName(wikiUrlEdit), filled: [], viaWiki: true }); return }
+      const filled: string[] = []
+      if (p.year && !year) { setYear(String(p.year)); filled.push('year') }
+      if (p.creator && !creator.trim()) { setCreator(p.creator); filled.push('creator') }
+      if (p.runtime && !runtimeEdit) { setRuntimeEdit(String(p.runtime)); filled.push('runtime') }
+      if (p.pages && !pagesEdit) { setPagesEdit(String(p.pages)); filled.push('pages') }
+      // Genre: only if none set yet. The wiki parse is unreliable for genre, so
+      // ask /api/genres (infers from the model's knowledge); fall back to the
+      // wiki-parse genres if that returns none.
       if (!editTags.some(isGenreTag)) {
         let genres = p.genres ?? []
         try {
@@ -301,82 +318,62 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
         if (genres.length) {
           const descriptors = editTags.filter(t => !isGenreTag(t))
           setEditTags([...genres, ...descriptors])
+          filled.push('genre')
         }
       }
-      setWikiFilled(true)
+      setAutoFillInfo({ article: wikiArticleName(wikiUrlEdit), filled, viaWiki: true })
     } finally {
-      setWikiParsing(false)
+      setAutoFilling(false)
     }
   }
 
-  // autoSave=true (main card): save result immediately, no edit view.
-  // autoSave=false (edit view header): populate edit fields for review.
-  // Scratch items always drop into edit regardless.
-  async function handleReidentify(autoSave = false) {
-    if (reidentifying) return
-    setReidentifying(true)
+  // AI identify into the edit fields (replaces title/creator/type/year/runtime/
+  // genre). Used when there's no wiki link, or to override a wrong article.
+  async function identifyIntoEdit() {
+    setAutoFilling(true)
     try {
-      // Include year in the input string to help anchor disambiguation (e.g. a 2005
-      // film adaptation vs the 1813 novel it was based on). Also pass typeHint so the
-      // identify API strongly prefers the existing type.
-      const currentTitle = autoSave ? item.title : (title.trim() || item.title)
-      const currentYear  = autoSave ? item.year  : (year ? parseInt(year) : item.year)
-      const currentType  = autoSave ? item.type  : type
+      const currentTitle = title.trim() || item.title
+      const currentYear  = year ? parseInt(year) : item.year
       const inputStr = currentYear ? `${currentTitle} (${currentYear})` : currentTitle
-
       const res = await fetch('/api/identify', {
         method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify({ input: inputStr, typeHint: currentType }),
+        body: JSON.stringify({ input: inputStr, typeHint: type }),
       })
       const r = await res.json()
-      if (item.metadata?.scratch || !autoSave) {
-        // Edit-view path: populate fields and let user review before saving.
-        if (r.title) setTitle(r.title)
-        if (r.creator) setCreator(r.creator)
-        if (r.type) setType(r.type)
-        if (r.year) setYear(String(r.year))
-        if (item.metadata?.scratch) { setCoverUrl(''); setView('edit') }
-      } else {
-        // Auto-save path: apply the top result, then surface the AI's other
-        // candidates so the user can correct it if it grabbed the wrong match.
-        applyCandidate({ title: r.title, creator: r.creator, year: r.year, metadata: r.metadata, tags: r.tags })
-        const alts: Candidate[] = (Array.isArray(r.alternatives) ? r.alternatives : [])
-          .filter((a: Candidate) => a?.title && a.title.toLowerCase() !== (r.title || item.title).toLowerCase())
-          .map((a: Candidate) => ({ title: a.title, creator: a.creator ?? null, year: a.year ?? null, metadata: a.metadata, tags: a.tags }))
-        setPicks(alts) // [] still opens the panel so "look it up online" is reachable
+      const filled: string[] = []
+      if (r.title) setTitle(r.title)
+      if (r.creator) { setCreator(r.creator); filled.push('creator') }
+      if (r.type) setType(r.type)
+      if (r.year) { setYear(String(r.year)); filled.push('year') }
+      if (r.metadata?.runtime) { setRuntimeEdit(String(r.metadata.runtime)); filled.push('runtime') }
+      if (r.metadata?.pages) { setPagesEdit(String(r.metadata.pages)); filled.push('pages') }
+      if (Array.isArray(r.tags) && r.tags.length && !editTags.some(isGenreTag)) {
+        const descriptors = editTags.filter(t => !isGenreTag(t))
+        setEditTags([...r.tags, ...descriptors])
+        filled.push('genre')
       }
+      setAutoFillInfo({ article: r.title || currentTitle, filled, viaWiki: false })
+      const alts: Candidate[] = (Array.isArray(r.alternatives) ? r.alternatives : [])
+        .filter((a: Candidate) => a?.title && a.title.toLowerCase() !== (r.title || '').toLowerCase())
+        .map((a: Candidate) => ({ title: a.title, creator: a.creator ?? null, year: a.year ?? null, metadata: a.metadata, tags: a.tags }))
+      setPicks(alts) // [] still opens the panel so "look it up online" is reachable
     } catch {
-      // ignore — item stays as-is
+      // ignore — fields stay as-is
     } finally {
-      setReidentifying(false)
+      setAutoFilling(false)
     }
   }
 
-  // Apply one chosen match onto the item. Never override the existing type — if the
-  // AI returned a different form (e.g. book instead of film), keep what the user had.
-  function applyCandidate(c: Candidate) {
-    const metadata: Record<string, unknown> = { ...item.metadata }
-    if (c.metadata?.runtime) metadata.runtime = c.metadata.runtime
-    if (c.metadata?.pages) metadata.pages = c.metadata.pages
-    const newTitle   = c.title   || item.title
-    const newCreator = c.creator || item.creator
-    const newYear    = c.year    ?? item.year
-    // Clear cache for both old and new keys so the Wikipedia hook re-fetches.
-    clearWikiCache(item.type, item.title, item.creator, item.year)
-    clearWikiCache(item.type, newTitle,   newCreator,   newYear)
-    clearArtworkCache(item.type, item.title, item.creator, item.year)
-    clearArtworkCache(item.type, newTitle,   newCreator,   newYear)
-    clearBlurbCache(item.title, item.creator, item.year)
-    clearBlurbCache(newTitle,   newCreator,   newYear)
-    onEdit({
-      title:   newTitle,
-      creator: newCreator,
-      type:    item.type, // always keep existing type
-      year:    newYear,
-      tags:    c.tags?.length ? c.tags : item.tags,
-      metadata,
-    })
+  // Populate the edit fields from a chosen alternative (no auto-save — the user
+  // still reviews + saves). Type stays under the type chips' control.
+  function populateFromCandidate(c: Candidate) {
+    if (c.title) setTitle(c.title)
+    if (c.creator) setCreator(c.creator)
+    if (c.year != null) setYear(String(c.year))
+    if (c.metadata?.runtime) setRuntimeEdit(String(c.metadata.runtime))
+    if (c.metadata?.pages) setPagesEdit(String(c.metadata.pages))
+    setPicks(null)
   }
 
   // Search real catalogs (iTunes / TMDB / Open Library) for more matches to choose from.
@@ -446,39 +443,16 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
                 {typeof item.metadata?.series === 'string' && item.metadata.series.trim() && (
                   <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>↳ {item.metadata.series}</div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                  {(() => {
-                    // Recommendation: show URL link if available; skip plain-text label
-                    // when a blurb toggle already shows the same source name.
-                    if (item.source_detail === 'recommendation' && item.recommended_by) {
-                      const url = item.metadata?.recommendationUrl as string | undefined
-                      if (url) return null  // "see source" link appears inline at the end of the blurb text instead
-                      if (blurb) return null  // blurb toggle already says "via [list]"
-                      return <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {item.recommended_by}</div>
-                    }
-                    // "quick add" is the obvious default — it's noise, so hide it.
-                    // Keep meaningful sources (letterboxd, spotify, email, photo, …) visible.
-                    const label = item.source_detail?.trim()
-                      || (item.source === 'quick_add' ? '' : item.source.replace(/_/g, ' '))
-                    // Don't say it twice: if the blurb toggle already shows "via [source]"
-                    // (e.g. a newsletter item with its blurb), skip the header label.
-                    if (label && blurb && blurbSource && label.toLowerCase() === blurbSource.toLowerCase()) return null
-                    return label
-                      ? <div style={{ fontSize: 11, color: '#B0B0B0' }}>from {label}</div>
-                      : null
-                  })()}
-                  {!item.metadata?.scratch && (
+                {/* Two verbs only: edit (the whole item) + own it. Everything else
+                    — tags, source, identity — lives behind edit. */}
+                {!item.metadata?.scratch && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
                     <button onClick={() => setView('edit')} className="tlink" style={{ flexShrink: 0 }}>edit</button>
-                  )}
-                  {!item.metadata?.scratch && (
-                    <button onClick={() => setTagsEditing(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
-                      {tagsEditing ? 'done ▴' : (((item.tags ?? []).some(isGenreTag) || (item.moods ?? []).length > 0) ? 'edit tags ▾' : '+ tags')}
+                    <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
+                      {item.metadata?.owned ? 'own it ✓︎' : 'own it'}
                     </button>
-                  )}
-                  <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
-                    {item.metadata?.owned ? 'own it ✓︎' : 'own it'}
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -502,34 +476,6 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {picks !== null && (
-              <div style={{ marginBottom: 16, border: '1px solid #EEE', borderRadius: 10, padding: '10px 12px', background: '#FAFAFA' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#777' }}>got the wrong one? pick the right match</span>
-                  <button onClick={() => setPicks(null)} style={{ background: 'none', border: 'none', color: '#AAA', fontSize: 11, cursor: 'pointer', padding: 0 }}>dismiss</button>
-                </div>
-                {picks.map((c, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { applyCandidate(c); setPicks(null) }}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 11px', border: '1px solid #EEE', borderRadius: 8, background: '#fff', marginBottom: 6, cursor: 'pointer', fontSize: 13 }}
-                  >
-                    <strong>{c.title}</strong>
-                    {[c.creator, c.year].filter(Boolean).length > 0 && (
-                      <span style={{ color: '#888', fontSize: 11 }}> · {[c.creator, c.year].filter(Boolean).join(' · ')}</span>
-                    )}
-                  </button>
-                ))}
-                <button
-                  onClick={lookUpOnline}
-                  disabled={lookingUp}
-                  style={{ background: 'none', border: 'none', color: '#111', fontSize: 12, cursor: lookingUp ? 'default' : 'pointer', padding: 0, marginTop: 2 }}
-                >
-                  {lookingUp ? 'searching…' : picks.length > 0 ? 'look up more online' : 'look it up online'}
-                </button>
               </div>
             )}
 
@@ -635,33 +581,16 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
               </div>
             )}
 
-            {/* Tags — editorial typographic lines at rest; "edit tags" reveals the chip
-                editors. Genre + feel (vibes) + how-it-landed (verdicts, done items only). */}
+            {/* Labelled tag lines — genre / vibe / verdict, each with a small intro
+                label. Read-only here; editing all lives in the edit view. */}
             {!item.metadata?.scratch && (() => {
-              const vocab = genresForType(item.type)
-              const descriptors = (item.tags ?? []).filter(t => !isGenreTag(t))
-              const activeGenres = [...new Set((item.tags ?? []).filter(t => isGenreTag(t)))]
+              const activeGenres = [...new Set((item.tags ?? []).filter(isGenreTag))]
               const feel = (item.moods ?? []).filter(m => VIBES.includes(m))
-              const landed = item.status === 'done' ? (item.moods ?? []).filter(m => VERDICTS.includes(m)) : []
-              const hasAny = activeGenres.length > 0 || feel.length > 0 || landed.length > 0
-              const inactiveGenres = vocab.filter(g => !activeGenres.includes(g))
+              const verdicts = item.status === 'done' ? (item.moods ?? []).filter(m => VERDICTS.includes(m)) : []
+              const needsVerdict = item.status === 'done' && verdicts.length === 0
+              if (!activeGenres.length && !feel.length && !verdicts.length && !unconfirmedVibes.length && !needsVerdict) return null
 
-              function toggleGenre(genre: string) {
-                const next = new Set(activeGenres)
-                next.has(genre) ? next.delete(genre) : next.add(genre)
-                onSetTags([...next, ...descriptors])
-              }
-              function toggleMood(mood: string) {
-                const next = (item.moods ?? []).includes(mood)
-                  ? (item.moods ?? []).filter(m => m !== mood)
-                  : [...(item.moods ?? []), mood]
-                setSelectedMoods(next)
-                onSetMoods(next)
-              }
-
-              // One editorial line — middot-separated. Order carries the ranking
-              // (no bold lead term — matches the taste page).
-              const line = (terms: string[]) => terms.length === 0 ? null : (
+              const tagLine = (terms: string[], muted: string[] = []) => (
                 <div style={{ fontSize: 13, lineHeight: 1.7, color: '#1C1B19' }}>
                   {terms.map((t, i) => (
                     <span key={t}>
@@ -669,77 +598,30 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
                       <span>{t}</span>
                     </span>
                   ))}
+                  {muted.map((t, i) => (
+                    <span key={`m${t}`} style={{ color: '#ABA69C' }}>
+                      {(terms.length > 0 || i > 0) && <span style={{ margin: '0 7px' }}>·</span>}
+                      {t}
+                    </span>
+                  ))}
                 </div>
               )
-              // Matches the MoodChips 'sm' chip exactly (border weight/colour, fill,
-              // text colour) so genre + vibe chips read as one family.
-              const editChip = (label: string, on: boolean, onClick: () => void) => (
-                <button key={label} onClick={onClick} style={{
-                  padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
-                  border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-                  background: on ? '#111' : '#fff', color: on ? '#fff' : '#AAA', fontWeight: on ? 600 : 400,
-                }}>{label}</button>
+              const row = (label: string, content: React.ReactNode) => (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4 }}>
+                  <span style={tagLabelStyle}>{label}</span>
+                  <div style={{ minWidth: 0 }}>{content}</div>
+                </div>
               )
-
-              // The open/collapse toggle lives in the header ("edit tags ▾ / done ▴" /
-              // "+ tags"). The body just shows the tag lines at rest, or the chip
-              // editors when editing — no buttons of its own.
-              if (!tagsEditing) {
-                return hasAny ? (
-                  <div style={{ marginBottom: 14 }}>
-                    {line(activeGenres)}
-                    {line(feel)}
-                    {line(landed)}
-                  </div>
-                ) : null
-              }
               return (
                 <div style={{ marginBottom: 14 }}>
-                  {vocab.length > 0 && (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>genre</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {activeGenres.map(g => editChip(g, true, () => toggleGenre(g)))}
-                        {inactiveGenres.map(g => editChip(g, false, () => toggleGenre(g)))}
-                      </div>
-                    </div>
-                  )}
-                  <MoodChips
-                    type={item.type}
-                    size="sm"
-                    groups={item.status === 'done' ? 'all' : 'vibes-only'}
-                    isActive={m => (item.moods ?? []).includes(m)}
-                    onToggle={toggleMood}
-                  />
-                </div>
-              )
-            })()}
-
-            {/* Suggested vibes — faded chips the user can confirm one by one or ignore */}
-            {!item.metadata?.scratch && !dismissedSuggestions && (() => {
-              const pending = suggestedVibes.filter(v => !(item.moods ?? []).includes(v))
-              if (!pending.length) return null
-              return (
-                <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', flexShrink: 0 }}>suggested</span>
-                  {pending.map(v => (
-                    <button
-                      key={v}
-                      onClick={() => {
-                        const next = [...(item.moods ?? []), v]
-                        setSelectedMoods(next)
-                        onSetMoods(next)
-                      }}
-                      style={{
-                        padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
-                        border: '1.5px dashed #D0CEC9', background: '#fff', color: '#ABA69C', fontWeight: 400,
-                      }}
-                    >+ {v}</button>
+                  {activeGenres.length > 0 && row('genre', tagLine(activeGenres))}
+                  {(feel.length > 0 || unconfirmedVibes.length > 0) && row('vibe', tagLine(feel, unconfirmedVibes))}
+                  {verdicts.length > 0 && row('verdict', tagLine(verdicts))}
+                  {needsVerdict && row('verdict', (
+                    <button onClick={() => setView('edit')} className="tlink" style={{ color: '#ABA69C', fontStyle: 'italic' }}>
+                      how did it land? add a verdict →
+                    </button>
                   ))}
-                  <button
-                    onClick={() => setDismissedSuggestions(true)}
-                    style={{ background: 'none', border: 'none', color: '#D0CEC9', fontSize: 11, cursor: 'pointer', padding: '0 2px', marginLeft: 2 }}
-                  >ignore</button>
                 </div>
               )
             })()}
@@ -768,11 +650,11 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
               // now and identify it whenever. "identify now" is the primary nudge.
               <div style={{ ...footer, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button
-                  onClick={() => handleReidentify(false)}
-                  disabled={reidentifying}
-                  style={{ ...actionBtn('#fff'), width: '100%', background: reidentifying ? '#CCC' : '#111', border: 'none' }}
+                  onClick={async () => { setView('edit'); await identifyIntoEdit() }}
+                  disabled={autoFilling}
+                  style={{ ...actionBtn('#fff'), width: '100%', background: autoFilling ? '#CCC' : '#111', border: 'none' }}
                 >
-                  {reidentifying ? 'identifying…' : 'identify now'}
+                  {autoFilling ? 'identifying…' : 'identify now'}
                 </button>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
@@ -785,7 +667,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
               <div style={{ ...footer }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: item.status === 'want_to' && onMarkInProgress ? 6 : 0 }}>
                   <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
-                    {item.status === 'done' ? 'edit reaction' : 'mark as done'}
+                    {item.status === 'done' ? `your reaction · ${item.reaction ? REACTION_LABELS[item.reaction] : 'set'}` : 'mark as done'}
                   </button>
                   <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
                 </div>
@@ -812,6 +694,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
             next.has(g) ? next.delete(g) : next.add(g)
             setEditTags([...next, ...descriptors])
           }
+          function toggleEditMood(m: string) {
+            setEditMoods(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])
+          }
           const chip = (label: string, on: boolean, fn: () => void) => (
             <button key={label} onClick={fn} style={{
               padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
@@ -822,115 +707,185 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
           return (
             <>
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <p style={{ ...sectionHeading, margin: 0 }}>
-                  edit details
+                  edit
+                  <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#888', textTransform: 'none', letterSpacing: 0 }}>{item.title}</span>
                   {tidyPosition && (
                     <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: '#ABA69C', textTransform: 'none', letterSpacing: 0 }}>
                       tidying · {tidyPosition.index + 1} of {tidyPosition.total}
                     </span>
                   )}
                 </p>
-                <button
-                  onClick={() => handleReidentify(false)}
-                  disabled={reidentifying}
-                  style={{ background: 'none', border: 'none', fontSize: 12, color: reidentifying ? '#BBB' : '#111', cursor: reidentifying ? 'default' : 'pointer', padding: 0 }}
-                >
-                  {reidentifying ? 'identifying…' : 're-identify'}
-                </button>
+                <button onClick={() => setView('main')} className="tlink" style={{ flexShrink: 0 }}>cancel</button>
               </div>
 
-              {/* Type chips — top so you confirm type before editing fields */}
-              <div style={{ display: 'flex', gap: 5, marginBottom: 12, flexWrap: 'wrap' }}>
-                {TYPES.map(t => {
-                  const c = typeColor(t)
-                  const active = type === t
-                  return (
-                    <button key={t} onClick={() => setType(t)} style={{
-                      padding: '4px 10px', border: active ? `1.5px solid ${c.border}` : '1.5px solid #E0E0E0',
-                      borderRadius: 4, background: active ? c.bg : '#fff', color: active ? c.border : '#888',
-                      fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer',
-                    }}>
-                      {TYPE_COLORS[t]?.label ?? t}
-                    </button>
-                  )
-                })}
-              </div>
+              {/* The one merged action: auto-fill from wikipedia, or AI identify. */}
+              <button
+                onClick={() => handleAutoFill()}
+                disabled={autoFilling}
+                style={{
+                  width: '100%', display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start',
+                  border: '1.5px solid #1C1B19', borderRadius: 10, background: '#fff',
+                  padding: '10px 12px', cursor: autoFilling ? 'default' : 'pointer', marginBottom: 14, fontFamily: 'inherit',
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>
+                  {autoFilling ? '⟳ working…' : hasWikiLink ? '⟳ auto-fill from wikipedia' : '⟳ identify with ai'}
+                </span>
+                <span style={{ fontSize: 11, color: '#6F6B64', lineHeight: 1.4, textAlign: 'left' }}>
+                  {hasWikiLink
+                    ? 'pulls creator, year & runtime straight from wikipedia’s fact-data — fills only what’s blank.'
+                    : 'the ai looks it up and fills in the details. add a wikipedia link under “more details” to pull exact facts instead.'}
+                </span>
+              </button>
 
-              {/* Core identity */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={smInput} />
-                <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={smInput} />
-                {/* Year + runtime/pages on one row */}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={{ ...smInput, flex: 1 }} />
-                  {(type === 'film' || type === 'tv') && (
-                    <input value={runtimeEdit} onChange={e => setRuntimeEdit(e.target.value)} placeholder="runtime (min)" type="number" style={{ ...smInput, flex: 1 }} />
+              {/* What auto-fill pulled + escape hatch for a wrong article */}
+              {autoFillInfo && (
+                <div style={{ fontSize: 11, color: '#6F6B64', background: '#F4F2EE', borderRadius: 8, padding: '9px 11px', lineHeight: 1.5, marginBottom: 14 }}>
+                  {autoFillInfo.filled.length
+                    ? <>filled <b>{autoFillInfo.filled.join(' · ')}</b> {autoFillInfo.viaWiki ? <>from “{autoFillInfo.article}”</> : 'with ai'}.</>
+                    : <>nothing new to fill{autoFillInfo.viaWiki ? <> from “{autoFillInfo.article}”</> : ''}.</>}
+                  {autoFillInfo.viaWiki && (
+                    <>
+                      {' '}
+                      <button onClick={() => handleAutoFill(true)} className="tlink" style={{ fontSize: 11 }}>wrong article? identify instead →</button>
+                    </>
                   )}
-                  {type === 'book' && (
-                    <input value={pagesEdit} onChange={e => setPagesEdit(e.target.value)} placeholder="pages" type="number" style={{ ...smInput, flex: 1 }} />
-                  )}
-                </div>
-              </div>
-
-              {/* Genre */}
-              {vocab.length > 0 && (
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
-                    {activeGenres.map(g => chip(g, true, () => toggleGenreEdit(g)))}
-                    {genrePickerOpen
-                      ? inactiveGenres.map(g => chip(g, false, () => toggleGenreEdit(g)))
-                      : <button onClick={() => setGenrePickerOpen(true)} style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #DDD', background: '#fff', color: '#BBB' }}>
-                          {activeGenres.length === 0 ? '+ genre' : '…'}
-                        </button>
-                    }
-                    {genrePickerOpen && (
-                      <button onClick={() => setGenrePickerOpen(false)} style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: 'none', background: 'none', color: '#BBB' }}>done</button>
-                    )}
-                  </div>
                 </div>
               )}
 
-              {/* Wikipedia URL + auto-fill trigger */}
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <input
-                    value={wikiUrlEdit}
-                    onChange={e => { setWikiUrlEdit(e.target.value); setWikiFilled(false) }}
-                    placeholder="reference url (wikipedia, goodreads…)"
-                    style={{ ...smInput, flex: 1 }}
-                  />
-                  {wikiUrlEdit.includes('wikipedia.org') && (
+              {/* Alternatives after identify — populate fields, don't auto-save */}
+              {picks !== null && (
+                <div style={{ marginBottom: 14, border: '1px solid #EEE', borderRadius: 10, padding: '10px 12px', background: '#FAFAFA' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#777' }}>not the right one? pick a match</span>
+                    <button onClick={() => setPicks(null)} style={{ background: 'none', border: 'none', color: '#AAA', fontSize: 11, cursor: 'pointer', padding: 0 }}>dismiss</button>
+                  </div>
+                  {picks.map((c, i) => (
                     <button
-                      onClick={handleWikiFill}
-                      disabled={wikiParsing}
-                      style={{ background: 'none', border: 'none', fontSize: 11, color: wikiFilled ? '#ABA69C' : '#1C1B19', cursor: wikiParsing ? 'default' : 'pointer', padding: 0, flexShrink: 0, fontWeight: 600, whiteSpace: 'nowrap' }}
+                      key={i}
+                      onClick={() => populateFromCandidate(c)}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 11px', border: '1px solid #EEE', borderRadius: 8, background: '#fff', marginBottom: 6, cursor: 'pointer', fontSize: 13 }}
                     >
-                      {wikiParsing ? 'filling…' : wikiFilled ? 'filled ✓︎' : 'fill from wiki →'}
+                      <strong>{c.title}</strong>
+                      {[c.creator, c.year].filter(Boolean).length > 0 && (
+                        <span style={{ color: '#888', fontSize: 11 }}> · {[c.creator, c.year].filter(Boolean).join(' · ')}</span>
+                      )}
                     </button>
-                  )}
+                  ))}
+                  <button
+                    onClick={lookUpOnline}
+                    disabled={lookingUp}
+                    style={{ background: 'none', border: 'none', color: '#111', fontSize: 12, cursor: lookingUp ? 'default' : 'pointer', padding: 0, marginTop: 2 }}
+                  >
+                    {lookingUp ? 'searching…' : picks.length > 0 ? 'look up more online' : 'look it up online'}
+                  </button>
+                </div>
+              )}
+
+              {/* WHAT IT IS — type chips authoritative, then identity fields */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={subSectionHeading}>what it is</div>
+                <div style={{ display: 'flex', gap: 5, marginBottom: 10, flexWrap: 'wrap' }}>
+                  {TYPES.map(t => {
+                    const c = typeColor(t)
+                    const active = type === t
+                    return (
+                      <button key={t} onClick={() => setType(t)} style={{
+                        padding: '4px 10px', border: active ? `1.5px solid ${c.border}` : '1.5px solid #E0E0E0',
+                        borderRadius: 4, background: active ? c.bg : '#fff', color: active ? c.border : '#888',
+                        fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer',
+                      }}>
+                        {TYPE_COLORS[t]?.label ?? t}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={smInput} />
+                  <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={smInput} />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={{ ...smInput, flex: 1 }} />
+                    {(type === 'film' || type === 'tv') && (
+                      <input value={runtimeEdit} onChange={e => setRuntimeEdit(e.target.value)} placeholder="runtime (min)" type="number" style={{ ...smInput, flex: 1 }} />
+                    )}
+                    {type === 'book' && (
+                      <input value={pagesEdit} onChange={e => setPagesEdit(e.target.value)} placeholder="pages" type="number" style={{ ...smInput, flex: 1 }} />
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Series + cover URL */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
-                {(type === 'film' || type === 'book' || type === 'tv') && (
-                  <input value={series} onChange={e => setSeries(e.target.value)} placeholder="series" style={{ ...smInput, flex: 1 }} />
+              {/* TAGS — genre + vibe + verdict together */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={subSectionHeading}>tags</div>
+                {vocab.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={fieldLabel}>genre</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+                      {activeGenres.map(g => chip(g, true, () => toggleGenreEdit(g)))}
+                      {genrePickerOpen
+                        ? inactiveGenres.map(g => chip(g, false, () => toggleGenreEdit(g)))
+                        : <button onClick={() => setGenrePickerOpen(true)} style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #DDD', background: '#fff', color: '#BBB' }}>
+                            {activeGenres.length === 0 ? '+ genre' : '…'}
+                          </button>
+                      }
+                      {genrePickerOpen && (
+                        <button onClick={() => setGenrePickerOpen(false)} style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: 'none', background: 'none', color: '#BBB' }}>done</button>
+                      )}
+                    </div>
+                  </div>
                 )}
-                <input value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="cover url" style={{ ...smInput, flex: 1 }} />
-                {coverUrl.trim() && (
-                  <img src={coverUrl.trim()} alt="" onError={e => (e.currentTarget.style.display = 'none')}
-                    style={{ width: 30, height: 30, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
+                {/* vibe + verdict (how it landed). MoodChips renders both groups. */}
+                {unconfirmedVibes.length > 0 && (
+                  <div style={{ fontSize: 10, color: '#C9C6C0', marginBottom: 8, textTransform: 'none', letterSpacing: 0 }}>
+                    vibes below are ai guesses — keep the ones that fit, saving confirms them.
+                  </div>
                 )}
+                <MoodChips
+                  type={type}
+                  size="sm"
+                  groups={item.status === 'done' ? 'all' : 'vibes-only'}
+                  collapsible
+                  isActive={m => editMoods.includes(m)}
+                  onToggle={toggleEditMood}
+                />
               </div>
 
-              {/* Source + blurb */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                <input value={sourceDetail} onChange={e => setSourceDetail(e.target.value)} placeholder="source (e.g. a friend, NYT)" style={smInput} />
-                <textarea value={blurbText} onChange={e => setBlurbText(e.target.value)}
-                  placeholder="about this — your own description" rows={2}
-                  style={{ ...smInput, resize: 'none', lineHeight: 1.5 }} />
-              </div>
+              {/* MORE DETAILS — reference link, series, cover, source, your blurb */}
+              <details style={{ marginBottom: 14 }}>
+                <summary style={{ fontSize: 12, color: '#6F6B64', cursor: 'pointer', listStyle: 'none', marginBottom: 4 }}>more details ▾</summary>
+                <div style={{ marginTop: 8 }}>
+                  <div style={fieldLabel}>reference link</div>
+                  <input
+                    value={wikiUrlEdit}
+                    onChange={e => { setWikiUrlEdit(e.target.value); setAutoFillInfo(null) }}
+                    placeholder="reference url (wikipedia, goodreads…)"
+                    style={{ ...smInput, marginBottom: 10 }}
+                  />
+                  {(type === 'film' || type === 'book' || type === 'tv') && (
+                    <>
+                      <div style={fieldLabel}>series</div>
+                      <input value={series} onChange={e => setSeries(e.target.value)} placeholder="series" style={{ ...smInput, marginBottom: 10 }} />
+                    </>
+                  )}
+                  <div style={fieldLabel}>cover image url</div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10 }}>
+                    <input value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="cover url" style={{ ...smInput, flex: 1 }} />
+                    {coverUrl.trim() && (
+                      <img src={coverUrl.trim()} alt="" onError={e => (e.currentTarget.style.display = 'none')}
+                        style={{ width: 30, height: 30, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
+                    )}
+                  </div>
+                  <div style={fieldLabel}>where it came from</div>
+                  <input value={sourceDetail} onChange={e => setSourceDetail(e.target.value)} placeholder="source (e.g. a friend, NYT)" style={{ ...smInput, marginBottom: 10 }} />
+                  <div style={fieldLabel}>your description</div>
+                  <textarea value={blurbText} onChange={e => setBlurbText(e.target.value)}
+                    placeholder="about this — your own words" rows={2}
+                    style={{ ...smInput, resize: 'none', lineHeight: 1.5 }} />
+                </div>
+              </details>
 
               {/* Footer */}
               <div style={{ ...footer, display: 'flex', gap: 8 }}>
@@ -1068,7 +1023,10 @@ const smInput: React.CSSProperties = {
 
 // Editorial heading + field-label styles, shared so the sub-views match the main card.
 const sectionHeading: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }
+const subSectionHeading: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: 8 }
 const fieldLabel: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }
+// Small intro label for the read-view tag lines (genre / vibe / verdict).
+const tagLabelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', width: 50, flexShrink: 0 }
 
 // Monochrome reaction button — matches the editorial ink-on-white palette (no type colour).
 function reactionBtnStyle(active: boolean): React.CSSProperties {

@@ -78,6 +78,35 @@ export function useItems() {
     if (inserted?.id && tags.length === 0 && GENRE_TYPES.includes(type) && title) {
       void fillGenres(inserted.id, title, creator, type)
     }
+    // Auto-fill vibes too, but as PROVISIONAL guesses — stored in
+    // metadata.unconfirmedVibes, never in moods, so the taste page + recommender
+    // (which read moods) only ever count vibes Farah has actually confirmed. The
+    // action card surfaces them for one-tap confirm. Bulk imports (Letterboxd /
+    // Spotify) go through importItems, not here, so they're skipped for cost.
+    if (inserted?.id && GENRE_TYPES.includes(type) && title) {
+      void fillVibes(inserted.id, title, creator, type, year)
+    }
+  }
+
+  // Ask /api/vibes (Haiku, ~$0.001) for 1–3 provisional vibes and stash them on
+  // metadata.unconfirmedVibes (NOT moods — they're unconfirmed guesses).
+  async function fillVibes(id: string, title: string, creator: string | null, type: string, year: number | null) {
+    try {
+      const r = await window.fetch('/api/vibes', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ title, creator, type, year }),
+      })
+      const data = await r.json()
+      const vibes: string[] = Array.isArray(data.suggestions) ? data.suggestions : []
+      if (!vibes.length) return
+      // Merge onto whatever metadata the row now has (don't clobber a concurrent
+      // genre patch — re-read current state).
+      const current = items.find(i => i.id === id)
+      const meta = { ...(current?.metadata ?? {}), unconfirmedVibes: vibes }
+      await db().from('items').update({ metadata: meta }).eq('id', id)
+      await fetch({ silent: true })
+    } catch { /* no vibes is fine — they stay unfilled */ }
   }
 
   // Ask /api/genres (Haiku, cheap) for 1–3 genres and patch them onto the row.

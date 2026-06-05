@@ -134,7 +134,30 @@ All shipped to `main`:
 - ✅ Verdict removed — "they don't make 'em like this" dropped from vocab + MOOD_REMAP (cleanup tool will strip from existing items)
 - ✅ Genre 3-copy problem fixed — `api/genres.ts` + `api/wiki.ts` now import from `src/lib/genres.ts`; one place to edit genres forever
 
-### Phase 2 — Action card + editing flow (next session priority)
+### Phase 2 — Action card + editing flow (✅ BUILT session 21, not pushed)
+
+**▶ FRESH CHAT STARTS HERE.** Wiki fix + full card restructure both DONE on branch `phase2-wiki-autofill-fix` (committed, NOT pushed). Next: eyeball logged-in (auth-gated — see verify checklist below), then push/merge to `main`, then Phase 3.
+
+**✅ DONE session 21 — the wiki auto-fill fix** (branch `phase2-wiki-autofill-fix`, committed, NOT pushed):
+- Root cause found: fill-from-wiki missed runtime/director/author/pages because `api/wiki.ts` parsed the article *prose* (`explaintext`), which strips the infobox where those facts live. See memory `wiki-autofill-rootcause`.
+- Fixed: `wikidataFields()` in `api/wiki.ts` now reads structured **Wikidata** claims (P577/P571/P580 year, P2047 runtime, P57/P170 director/creator, P50 author, P175/P86 artist, P1104 pages). No Anthropic call for these fields. Verified across film/tv/book/music incl. co-directors. Genre still via `/api/genres`.
+- Gaps (expected, not bugs): Wikidata often lacks book page counts; a wrong stored wiki link (e.g. "The Goldfinch" → the painting) fills wrong facts → that's what the escape hatch below is for.
+
+**✅ DONE session 21 — card restructure (all 6 steps).** Branch `phase2-wiki-autofill-fix`, committed, NOT pushed. Mockup deleted. Built in `src/components/ItemActionSheet.tsx` + `src/hooks/useItems.ts`. typecheck + 54 tests + build all green. ⚠️ **Auth-gated — NOT eyeballed logged-in.** Verify next session in prod: open an item → read view shows labelled genre/vibe/verdict lines + just `edit`/`own it`; open edit → one `auto-fill from wikipedia` (or `identify with ai`) button at top, type chips fixable, tags grouped, details collapsed; change type → film-only tags drop on save. Add a new film/book → AI vibes appear muted on the vibe line, confirm on edit-save. What each step became:
+1. ✅ Two verbs: read view = `edit` + `own it` only. Dropped the inline `edit tags`/`+ tags` toggle + the `from: quick add` source label (source moved into edit → more details).
+2. ✅ Merged `auto-fill` button at top of edit. Wiki link stored → Wikidata fetch (fills blanks only); no link → AI `identify` (replaces fields). After running, a callout shows what it filled + which article + a `wrong article? identify instead →` escape hatch. Alternatives populate the edit fields (no auto-save).
+3. ✅ Type fixable. `persistEditFields()` saves the chosen `type` AND drops genres/vibes outside the new type's vocab. Removed the old `applyCandidate()` hardcoded-type auto-save path.
+4. ✅ Vibes auto-applied UNCONFIRMED. `useItems.addItem` fires `/api/vibes` alongside `/api/genres`, stores results in `metadata.unconfirmedVibes` (NEVER moods). Bulk imports skipped (`importItems`). Taste page + recommender read `moods`, so they already only count confirmed vibes — no change needed there. Confirm = open edit + save. Removed the old on-open `/api/vibes` fetch + `suggestedVibes`/`dismissedSuggestions`.
+5. ✅ Labelled tag lines on read view. Unconfirmed vibes muted on the vibe line. Done items with no verdict get a small `how did it land? add a verdict →` nudge → opens edit.
+6. ✅ `more details` collapsed `<details>`: reference link, series, cover url, source, your description.
+
+**Old plan (locked decisions, kept for reference):**
+1. **Two verbs only.** Read view shows `edit` (whole item) + the reaction control. Drop the "edit tags" link + the "from: quick add" source label from the read view (fold into edit).
+2. **Merge re-identify + fill-from-wiki → one `auto-fill` button** at top of edit view. Wiki link present → Wikidata fetch (`/api/wiki?url=…&type=…&parse=1`, already returns the structured fields). No link → AI identify (label flips to `identify`). **After it runs, show what it pulled + which article, with a one-tap "wrong article? re-identify" escape hatch** (handles wrong stored links).
+3. **Type fixable.** Type chips in edit are authoritative; whatever's picked wins on save. Fixes `applyCandidate()` hardcoding `item.type`. When type changes, decide tag handling (drop genres/vibes not in the new type's vocab).
+4. **Vibes auto-applied but UNCONFIRMED.** AI fills vibes at add-time (like genre) — call `/api/vibes` in `useItems.addItem` background patch alongside the `/api/genres` call; skip on bulk imports (Letterboxd/Spotify) for cost. Mark them provisional in metadata (e.g. `metadata.unconfirmedVibes: string[]`). **Taste page + recommender must only count vibes the user has actually touched/confirmed** — else the taste mirror reflects AI guesses. Remove the old "suggested" dashed-chip + "ignore" mechanism (`suggestedVibes`/`dismissedSuggestions` in ItemActionSheet, the on-open `/api/vibes` fetch).
+5. **Labelled tag lines** on read view (genre / vibe / verdict each get a small label). Tags grouped together in edit (genre + vibe + verdict in one section). Verdict: for *done* items with no verdict set, add a small prompt nudge (Phase 2 audit item, not yet solved).
+6. **Other tucked into "more details"** (collapsed): reference link, series, cover url, source, your blurb.
 
 **Audit findings (session 20):**
 - Type override is broken — `applyCandidate()` hardcodes `item.type`, so re-identify can never fix a wrong type
