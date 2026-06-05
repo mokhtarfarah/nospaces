@@ -35,7 +35,7 @@ function normaliseSources(results: DiscoveryResult[]): DiscoveryResult[] {
 
 export function DiscoverScreen() {
   const { items, addItem } = useItems()
-  const { tasteProfile, discoveryCache, setDiscoveryCache, customFeeds, setCustomFeeds, prefsLoaded } = usePrefs()
+  const { tasteProfile, discoveryCache, setDiscoveryCache, customFeeds, setCustomFeeds, dismissedDiscoverTitles, dismissDiscoverTitle, prefsLoaded } = usePrefs()
   const navigate = useNavigate()
 
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
@@ -121,20 +121,23 @@ export function DiscoverScreen() {
     setSavedItems(prev => new Map(prev).set(key, sourceLabel))
   }
 
+  const dismissedSet = useMemo(() => new Set(dismissedDiscoverTitles), [dismissedDiscoverTitles])
+
   function filterResults(results: DiscoveryResult[]): DiscoveryResult[] {
     const seen = new Set<string>()
     return results.filter(r => {
       const key = r.title.toLowerCase()
       if (seen.has(key)) return false
       seen.add(key)
+      if (dismissedSet.has(key)) return false
       if (!savedItems.has(key) && libraryTitleSet.has(key)) return false
       if (typeFilter !== 'all' && r.type !== typeFilter) return false
       return true
     })
   }
 
-  const displayedIntaste = useMemo(() => filterResults(intasteResults), [intasteResults, typeFilter, libraryTitleSet, savedItems]) // eslint-disable-line react-hooks/exhaustive-deps
-  const displayedDivert = useMemo(() => filterResults(divertResults), [divertResults, typeFilter, libraryTitleSet, savedItems]) // eslint-disable-line react-hooks/exhaustive-deps
+  const displayedIntaste = useMemo(() => filterResults(intasteResults), [intasteResults, typeFilter, libraryTitleSet, savedItems, dismissedSet]) // eslint-disable-line react-hooks/exhaustive-deps
+  const displayedDivert = useMemo(() => filterResults(divertResults), [divertResults, typeFilter, libraryTitleSet, savedItems, dismissedSet]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleAddFeed() {
     const url = normaliseFeedUrl(newFeedUrl)
@@ -153,7 +156,7 @@ export function DiscoverScreen() {
     <div style={{ padding: '20px 20px 100px', fontFamily: 'inherit' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>discover</h1>
         {hasIntaste && (
           <button
@@ -165,6 +168,21 @@ export function DiscoverScreen() {
           </button>
         )}
       </div>
+
+      {/* Shows near you — prominent entry */}
+      <button
+        onClick={() => navigate('/shows')}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', boxSizing: 'border-box',
+          padding: '13px 16px', marginBottom: 20,
+          background: INK, border: 'none', borderRadius: 10,
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>shows near you</span>
+        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>browse →</span>
+      </button>
 
       {/* Type tabs */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 28, borderBottom: `1px solid ${HAIR}`, paddingBottom: 14 }}>
@@ -214,7 +232,7 @@ export function DiscoverScreen() {
             <p style={{ fontSize: 12, color: MUTE }}>no {typeFilter} picks this round</p>
           )}
           {displayedIntaste.map((r, i) => (
-            <ResultRow key={i} result={r} savedSource={savedItems.get(r.title.toLowerCase()) ?? null} onSave={() => handleSave(r)} />
+            <ResultRow key={i} result={r} savedSource={savedItems.get(r.title.toLowerCase()) ?? null} onSave={() => handleSave(r)} onDismiss={() => dismissDiscoverTitle(r.title)} />
           ))}
         </div>
       )}
@@ -242,21 +260,10 @@ export function DiscoverScreen() {
             <p style={{ fontSize: 12, color: MUTE }}>no {typeFilter} picks this round</p>
           )}
           {displayedDivert.map((r, i) => (
-            <ResultRow key={i} result={r} savedSource={savedItems.get(r.title.toLowerCase()) ?? null} onSave={() => handleSave(r)} />
+            <ResultRow key={i} result={r} savedSource={savedItems.get(r.title.toLowerCase()) ?? null} onSave={() => handleSave(r)} onDismiss={() => dismissDiscoverTitle(r.title)} />
           ))}
         </div>
       )}
-
-      {/* Shows near you */}
-      <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 12, color: GRAPHITE }}>shows near you</span>
-        <button
-          onClick={() => navigate('/shows')}
-          style={{ background: 'none', border: 'none', color: INK, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
-        >
-          browse →
-        </button>
-      </div>
 
       {/* Sources */}
       <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14 }}>
@@ -323,10 +330,11 @@ function SectionHeader({ label, cachedAt }: { label: string; cachedAt: string | 
   )
 }
 
-function ResultRow({ result: r, savedSource, onSave }: {
+function ResultRow({ result: r, savedSource, onSave, onDismiss }: {
   result: DiscoveryResult
   savedSource: string | null
   onSave: () => void
+  onDismiss: () => void
 }) {
   const sourceLabel = r.sources.length === 1 ? r.sources[0] : `${r.sources[0]} + ${r.sources.length - 1} more`
   const isSaved = savedSource !== null
@@ -346,11 +354,18 @@ function ResultRow({ result: r, savedSource, onSave }: {
           <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
         </div>
         <p style={{ fontSize: 12, color: GRAPHITE, lineHeight: 1.65, margin: '0 0 10px', fontStyle: 'italic' }}>{r.why}</p>
-        {isSaved ? (
-          <span style={{ fontSize: 11, color: MUTE }}>saved ✓︎</span>
-        ) : (
-          <button onClick={onSave} className="tlink" style={{ fontSize: 11 }}>+ save</button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {isSaved ? (
+            <span style={{ fontSize: 11, color: MUTE }}>saved ✓︎</span>
+          ) : (
+            <button onClick={onSave} className="tlink" style={{ fontSize: 11 }}>+ save</button>
+          )}
+          {!isSaved && (
+            <button onClick={onDismiss} style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0 }}>
+              not interested
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

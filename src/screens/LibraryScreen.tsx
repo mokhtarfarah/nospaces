@@ -184,7 +184,7 @@ export function LibraryScreen() {
   const [viewSheetOpen, setViewSheetOpen] = useState(false)
   const [dupesOpen, setDupesOpen] = useState(false)
   const [gapsOpen, setGapsOpen] = useState(false)
-  const [canonFilter, setCanonFilter] = useState(false)
+
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
   // When deep-linked from the data-gaps list with &edit=1, open straight into edit.
@@ -246,12 +246,12 @@ export function LibraryScreen() {
 
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
-    || !!vibeFilter || !!verdictFilter || !!genreFilter || !!seriesFilter || reviewOnly || newMusicOnly || !!query.trim() || canonFilter
+    || !!vibeFilter || !!verdictFilter || !!genreFilter || !!seriesFilter || reviewOnly || newMusicOnly || !!query.trim()
   const filterCount = [vibeFilter, verdictFilter, genreFilter, seriesFilter].filter(Boolean).length
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null)
-    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setFilterSheetOpen(false); setCanonFilter(false)
+    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setFilterSheetOpen(false)
   }
 
   const sort: SortOption = VIEW_CONFIG[view].sort
@@ -282,7 +282,6 @@ export function LibraryScreen() {
     return items.filter(item => {
       if (reviewOnly) return inReview(item)
       if (inReview(item)) return false
-      if (canonFilter && !item.metadata?.canon) return false
       if (categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
@@ -296,7 +295,7 @@ export function LibraryScreen() {
       }
       return true
     })
-  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, reviewOnly, canonFilter])
+  }, [items, categories, statusFilter, reactionFilter, newMusicOnly, musicOnly, query, reviewOnly])
 
   const filtered = useMemo(() => {
     let result = baseFiltered
@@ -569,13 +568,6 @@ export function LibraryScreen() {
               />
             </>
           )}
-          {/* Canon filter — always available */}
-          {items.some(i => i.metadata?.canon) && (
-            <>
-              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-              <TabChip label="◆ canon" active={canonFilter} onClick={() => setCanonFilter(v => !v)} />
-            </>
-          )}
         </div>
       </header>
 
@@ -692,7 +684,6 @@ export function LibraryScreen() {
             markDone(doneItem.id, reaction, note, moods)
             setDoneItem(null)
           }}
-          onToggleCanon={canon => toggleCanon(doneItem.id, canon)}
           onClose={() => setDoneItem(null)}
         />
       )}

@@ -15,16 +15,14 @@ const REACTIONS: { value: ItemReaction; label: string }[] = [
 interface Props {
   item: Item
   onConfirm: (reaction: ItemReaction, note: string, moods: string[]) => void
-  onToggleCanon?: (canon: boolean) => void
   onClose: () => void
 }
 
-export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props) {
+export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
   const [reaction, setReaction] = useState<ItemReaction | null>(null)
   const [note, setNote] = useState('')
   const unconfirmed = Array.isArray(item.metadata?.unconfirmedVibes) ? (item.metadata.unconfirmedVibes as string[]) : []
   const [selectedMoods, setSelectedMoods] = useState<string[]>(unconfirmed)
-  const [canon, setCanon] = useState(!!item.metadata?.canon)
   const color = typeColor(item.type)
 
   function toggleMood(mood: string) {
@@ -85,21 +83,6 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
             )
           })}
         </div>
-        <button
-          onClick={() => setCanon(v => !v)}
-          style={{
-            width: '100%', marginBottom: 6, padding: '12px 8px', borderRadius: 10,
-            cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
-            border: canon ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
-            background: canon ? '#F4F2EE' : '#fff',
-            color: canon ? '#1C1B19' : '#6F6B64',
-            fontWeight: canon ? 600 : 400,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}
-        >
-          <span style={{ fontSize: 10 }}>{canon ? '◆' : '◇'}</span>
-          canon
-        </button>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
           {REACTIONS.slice(2).map(r => {
             const active = reaction === r.value
@@ -142,7 +125,6 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
           onClick={() => {
             if (!reaction) return
             onConfirm(reaction, note, selectedMoods)
-            if (onToggleCanon && canon !== !!item.metadata?.canon) onToggleCanon(canon)
           }}
           style={{
             width: '100%',
