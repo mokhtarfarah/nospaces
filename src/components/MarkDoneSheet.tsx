@@ -104,6 +104,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         <div style={{ marginBottom: 16 }}>
           <MoodChips
             type={item.type}
+            size="sm"
             isActive={m => selectedMoods.includes(m)}
             onToggle={toggleMood}
             collapsible

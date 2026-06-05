@@ -791,8 +791,8 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 </span>
                 <span style={{ fontSize: 11, color: '#6F6B64', lineHeight: 1.4, textAlign: 'left' }}>
                   {hasWikiLink
-                    ? 'pulls creator, year & runtime straight from wikipedia’s fact-data — fills only what’s blank.'
-                    : 'the ai looks it up and fills in the details. add a wikipedia link under “more details” to pull exact facts instead.'}
+                    ? "fills blanks from wikipedia's structured data."
+                    : "ai identifies it and fills in the details. add a wikipedia link under 'more details' for exact facts."}
                 </span>
               </button>
 
@@ -800,8 +800,8 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               {autoFillInfo && (
                 <div style={{ fontSize: 11, color: '#6F6B64', background: '#F4F2EE', borderRadius: 8, padding: '9px 11px', lineHeight: 1.5, marginBottom: 14 }}>
                   {autoFillInfo.filled.length
-                    ? <>filled <b>{autoFillInfo.filled.join(' · ')}</b> {autoFillInfo.viaWiki ? <>from “{autoFillInfo.article}”</> : 'with ai'}.</>
-                    : <>nothing new to fill{autoFillInfo.viaWiki ? <> from “{autoFillInfo.article}”</> : ''}.</>}
+                    ? <>filled <b>{autoFillInfo.filled.join(' · ')}</b> {autoFillInfo.viaWiki ? <>from "{autoFillInfo.article}"</> : 'with ai'}.</>
+                    : <>nothing new to fill{autoFillInfo.viaWiki ? <> from "{autoFillInfo.article}"</> : ''}.</>}
                   {autoFillInfo.viaWiki && (
                     <div style={{ marginTop: 6 }}>
                       wrong article?{' '}
@@ -854,9 +854,8 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 </div>
               )}
 
-              {/* WHAT IT IS — type chips authoritative, then identity fields */}
+              {/* type chips + identity fields */}
               <div style={{ marginBottom: 18 }}>
-                <div style={subSectionHeading}>what it is</div>
                 <div style={{ display: 'flex', gap: 5, marginBottom: 10, flexWrap: 'wrap' }}>
                   {TYPES.map(t => {
                     const c = typeColor(t)
@@ -875,21 +874,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={smInput} />
                   <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={smInput} />
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={{ ...smInput, flex: 1 }} />
-                    {(type === 'film' || type === 'tv') && (
-                      <input value={runtimeEdit} onChange={e => setRuntimeEdit(e.target.value)} placeholder="runtime (min)" type="number" style={{ ...smInput, flex: 1 }} />
-                    )}
-                    {type === 'book' && (
-                      <input value={pagesEdit} onChange={e => setPagesEdit(e.target.value)} placeholder="pages" type="number" style={{ ...smInput, flex: 1 }} />
-                    )}
-                  </div>
+                  <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={smInput} />
                 </div>
               </div>
 
-              {/* TAGS — genre + vibe + verdict together */}
+              {/* tags — genre + vibe + verdict */}
               <div style={{ marginBottom: 18 }}>
-                <div style={subSectionHeading}>tags</div>
                 {vocab.length > 0 && (
                   <div style={{ marginBottom: 12 }}>
                     <div style={fieldLabel}>genre</div>
@@ -933,6 +923,18 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 </button>
                 {moreOpen && (
                   <div style={{ marginTop: 4 }}>
+                    {(type === 'film' || type === 'tv') && (
+                      <>
+                        <div style={fieldLabel}>runtime (min)</div>
+                        <input value={runtimeEdit} onChange={e => setRuntimeEdit(e.target.value)} placeholder="runtime (min)" type="number" style={{ ...smInput, marginBottom: 10 }} />
+                      </>
+                    )}
+                    {type === 'book' && (
+                      <>
+                        <div style={fieldLabel}>pages</div>
+                        <input value={pagesEdit} onChange={e => setPagesEdit(e.target.value)} placeholder="pages" type="number" style={{ ...smInput, marginBottom: 10 }} />
+                      </>
+                    )}
                     <div style={fieldLabel}>reference link</div>
                     <input
                       ref={refLinkInputRef}
@@ -1019,6 +1021,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 )}
                 <MoodChips
                   type={item.type}
+                  size="sm"
                   isActive={m => selectedMoods.includes(m)}
                   onToggle={toggleMood}
                   collapsible
@@ -1032,6 +1035,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   <div style={{ marginTop: 10 }}>
                     <MoodChips
                       type={item.type}
+                      size="sm"
                       isActive={m => selectedMoods.includes(m)}
                       onToggle={toggleMood}
                       collapsible
@@ -1118,7 +1122,6 @@ const smInput: React.CSSProperties = {
 
 // Editorial heading + field-label styles, shared so the sub-views match the main card.
 const sectionHeading: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }
-const subSectionHeading: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: 8 }
 const fieldLabel: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }
 // Small intro label for the read-view tag lines (genre / vibe / verdict).
 const tagLabelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', width: 50, flexShrink: 0 }
