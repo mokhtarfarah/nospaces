@@ -91,6 +91,7 @@ export function useItems() {
   // Ask /api/vibes (Haiku, ~$0.001) for 1–3 provisional vibes and stash them on
   // metadata.unconfirmedVibes (NOT moods — they're unconfirmed guesses).
   async function fillVibes(id: string, title: string, creator: string | null, type: string, year: number | null) {
+    console.log('[fillVibes] start', title, type)
     try {
       const r = await window.fetch('/api/vibes', {
         method: 'POST',
@@ -100,6 +101,7 @@ export function useItems() {
       if (!r.ok) { console.error('[fillVibes] HTTP', r.status, 'for', title); return }
       const data = await r.json()
       const vibes: string[] = Array.isArray(data.suggestions) ? data.suggestions : []
+      console.log('[fillVibes] result', vibes, 'for', title)
       if (!vibes.length) return
       // Re-fetch the row's current metadata before writing to avoid clobbering a
       // concurrent genres patch (both run in parallel; they write different columns
@@ -114,8 +116,10 @@ export function useItems() {
 
   // Ask /api/genres (Haiku, cheap) for 1–3 genres and patch them onto the row.
   async function fillGenres(id: string, title: string, creator: string | null, type: string) {
+    console.log('[fillGenres] start', title, type)
     try {
       const res = await fetch_genres(title, creator, type)
+      console.log('[fillGenres] result', res, 'for', title)
       if (res.length) {
         const { error } = await db().from('items').update({ tags: res }).eq('id', id)
         if (error) { console.error('[fillGenres] update error', error); return }
