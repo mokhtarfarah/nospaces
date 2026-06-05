@@ -12,6 +12,16 @@
 
 **▶ START HERE:** See "Next session" at the bottom.
 
+## Next session
+
+Priority order:
+
+1. **Filter bar declutter** — status chips stay, vibe/verdict/genre/series collapse into one "filter ↓" button with active-count badge. Decade filter slots in here too. Pure UI refactor, no data changes.
+2. **"How to use" page** — Tom is a live user with no onboarding. Short screen covering key flows: add, react, tidy, discover. No API cost.
+3. **"About this" when no blurb** — link currently only appears if a blurb exists. Decide: should a stub always show, or does the wikipedia link already cover it?
+4. **New verdict** — finalise "left me thinking" vs "wrecked me" (or both), then add to `moods.ts` + `MOOD_REMAP`. Small code change once vocab is decided.
+5. **Taste page rebuild** — data is rich enough now. Start with the reaction-breakdown stat (e.g. "50% of your loved films are drama · dark") — pure client-side, natural first piece.
+
 ---
 
 ## App
