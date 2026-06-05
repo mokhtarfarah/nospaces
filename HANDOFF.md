@@ -14,11 +14,14 @@
 
 ## Next session
 
-No queued priorities — pick from roadmap or raise new signal.
+Priority order:
+
+1. **Offline capture queue** — IndexedDB queue; save items while offline, sync on reconnect. PWA service worker already in place. No AI involved — pure infrastructure.
+2. **Describe-by-recency for film/TV** — "that new Villeneuve movie" → TMDB person→credits lookup. Music/books already handle recency; film/TV is the gap.
 
 **Parked (do not re-raise without new signal):**
-- **Want-to priority** — pin/tier system for backlog. Decision: adds clutter to every want-to row for a problem that help-me-decide + search already cover. Revisit only if backlog grows genuinely unwieldy.
-- **Regions map** — creator origin/nationality breakdown on taste page. Needs nationality data (not stored). Decide: manual country field vs Wikidata batch-pull.
+- **Want-to priority** — pin/tier system for backlog. Adds clutter to every want-to row; help-me-decide + search already cover the acute case.
+- **Regions map** — creator origin/nationality on taste page. Needs nationality data (not stored). Decide: manual country field vs Wikidata batch-pull.
 
 ---
 
@@ -212,17 +215,21 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 - **Want-to priority** — ⏸ parked. Pin/tier system for backlog adds clutter to every want-to row; help-me-decide + search already cover the acute case. Revisit if backlog grows genuinely unwieldy.
 
 **Discovery & search**
-- **Discovery improvements** — "not interested" / dismiss on Discover suggestions; divert mode as data accumulates.
-- **Descriptive library search** — "cozy films I haven't watched" → light AI step maps sentence to existing filters.
+- **Discovery improvements** — ✅ "not interested" shipped. Divert mode as data accumulates.
+- **Descriptive library search** — ⛔ shelved. AI applies too many filters simultaneously → tiny intersections. Filter sheet covers the use case better.
 
 **Data & input**
-- **Individual songs** — currently albums-only for music.
-- **Describe-by-recency for film/TV** — "that new Villeneuve movie" via TMDB person→credits. Music/books already work.
-- **Letterboxd diary.csv** — per-watch dates and repeat viewings. Not imported yet.
-- **Bandsintown API** — broader show coverage. Applied, not approved. Proxy + Show shape ready to merge.
+- **Describe-by-recency for film/TV** — "that new Villeneuve movie" via TMDB person→credits. Music/books already work. **Next session priority 2.**
 
 **Infrastructure**
-- **Offline capture queue** — IndexedDB, save offline, sync on reconnect. PWA service worker already in place.
+- **Offline capture queue** — IndexedDB, save offline, sync on reconnect. PWA service worker already in place. **Next session priority 1.**
+
+### Shelved (decided against — keep for reference)
+
+- **Individual songs** — albums-only is correct. Songs would bloat the library immediately (hundreds of items vs ~50 albums). Taste model (vibe/verdict/genre) is more meaningful at album level. "Standout tracks" belongs as a note on the album, not a separate item.
+- **Letterboxd diary.csv** — adds per-watch dates + repeat viewing counts. Per-watch dates are cosmetic. Repeat viewings are interesting signal but require a schema change (currently one reaction per item) and a rewatch UI — disproportionate scope. Revisit only if rewatch tracking becomes a native feature.
+- **Bandsintown API** — not yet applied. Approval odds low for a personal app; they gate access for commercial partners. TM covers major shows; indie venue coverage would be nice but not worth planning around. Apply passively and revisit if approved.
+- **Descriptive library search** — tried and removed. AI maps natural language to filters but applies all matched dimensions simultaneously, producing tiny intersections. Filter sheet does the job better.
 
 ### Long-term
 
@@ -234,14 +241,16 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 
 ## Recent session log
 
-### Session 33 (2026-06-05) — Discover polish, mark-done redesign, descriptive search
+### Session 33 (2026-06-05) — Discover polish, mark-done redesign, bug fixes, roadmap
 
 1. **"Not interested" dismiss on discover** — dismiss button per result row; dismissed titles persisted to `user_prefs.dismissedDiscoverTitles`. Filtered client-side in `filterResults`.
 2. **Discover UX polish** — "shows near you" moved to top as prominent full-width dark button; `MEDIA` section label above type tabs; refresh button moved inline on both `IN TASTE` and `DIVERT` section headers (date + refresh on same line); removed top-level refresh from page header.
 3. **Shows back nav** — back button on `/shows` now returns to `/discover` instead of `/library`.
-4. **Mark-done sheet redesign** — replaced awkward full-width canon row between 2×2 grids with a single row of 5 equal chips: loved it · liked it · ◇ canon · eh · not for me. Canon restored with better placement.
-5. **Canon filter removed** — `◆ canon` filter chip removed from library header. Canon still visible as `◆` marker on items and on the taste page.
-6. **Descriptive library search** — `api/search.ts` (Haiku). Type a sentence in the library search bar (3+ words), tap "interpret →" or press Enter. Maps to existing filters (type, status, vibe, verdict, genre), applies them, clears the query, shows a summary label. ~$0.001/call.
+4. **Mark-done redesign (both sheets)** — `MarkDoneSheet` and `ItemActionSheet` reaction view both updated: single row of 5 equal chips (loved it · liked it · ◇ canon · eh · not for me). The bug was that the main mark-done path goes through `ItemActionSheet`, not `MarkDoneSheet` directly.
+5. **Canon filter removed** — `◆ canon` filter chip removed from library header. Canon visible as `◆` marker on items and on the taste page.
+6. **Type downgrade fix** — `identifyIntoEdit()` in `ItemActionSheet` no longer sets type to `"other"` from AI identify results. "other" means Sonnet couldn't identify the item — not that the type changed. Prevents obscure items being silently downgraded.
+7. **Descriptive library search** — built then shelved. AI applied too many filters simultaneously; intersections too narrow. Filter sheet covers the use case.
+8. **Roadmap decisions** — individual songs: shelved (album model correct, songs would bloat library). Letterboxd diary: shelved (cosmetic dates + schema complexity for repeat views). Bandsintown: not yet applied, approval odds low, apply passively. Offline capture queue + describe-by-recency → next session priorities.
 
 ### Session 32 (2026-06-05) — Discover UX, tidy fix, decade headers
 
