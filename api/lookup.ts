@@ -68,6 +68,61 @@ async function tmdb(q: string): Promise<Candidate[]> {
     }))
 }
 
+// Recency film/TV queries ("that new Villeneuve movie", "latest A24 film") — resolve
+// the person by name, pull their combined credits, sort newest-first. Crew credits
+// (Director role) come first and carry the person's name as creator; cast credits fill
+// in if the person isn't a director. Falls back to plain tmdb() if no person found.
+async function tmdbByPerson(q: string): Promise<Candidate[]> {
+  if (!TMDB) return []
+
+  // Step 1: find the person
+  const personData = await (await fetch(`https://api.themoviedb.org/3/search/person?api_key=${TMDB}&query=${encodeURIComponent(q)}`)).json()
+  const person = personData?.results?.[0]
+  if (!person?.id) return tmdb(q)
+
+  // Step 2: combined credits (crew + cast in one call)
+  const creditsData = await (await fetch(`https://api.themoviedb.org/3/person/${person.id}/combined_credits?api_key=${TMDB}`)).json()
+
+  type CrewCredit  = { job?: string; media_type?: string; title?: string; name?: string; release_date?: string; first_air_date?: string }
+  type CastCredit  = { media_type?: string; title?: string; name?: string; release_date?: string; first_air_date?: string }
+
+  // Director/Writer crew credits — person IS the creator
+  const crewItems: Candidate[] = ((creditsData?.crew ?? []) as CrewCredit[])
+    .filter(c => (c.job === 'Director' || c.job === 'Writer') && (c.title || c.name))
+    .map(c => ({
+      title: c.title || c.name || '',
+      creator: person.name as string,
+      type: c.media_type === 'tv' ? 'tv' : 'film',
+      year: yearOf(c.release_date || c.first_air_date),
+    }))
+
+  // Cast credits — person appears in the work but isn't necessarily creator
+  const castItems: Candidate[] = ((creditsData?.cast ?? []) as CastCredit[])
+    .filter(c => (c.title || c.name))
+    .map(c => ({
+      title: c.title || c.name || '',
+      creator: '',
+      type: c.media_type === 'tv' ? 'tv' : 'film',
+      year: yearOf(c.release_date || c.first_air_date),
+    }))
+
+  // Merge: crew first (with creator filled), then cast as fallback. Dedup by title+type.
+  const seen = new Set<string>()
+  const merged: Candidate[] = []
+  for (const item of [...crewItems, ...castItems]) {
+    if (!item.title) continue
+    const key = `${item.type}|${item.title.toLowerCase()}`
+    if (!seen.has(key)) { seen.add(key); merged.push(item) }
+  }
+
+  const sorted = merged
+    .filter(c => c.year != null)
+    .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
+    .slice(0, 8)
+
+  return sorted.length > 0 ? sorted : tmdb(q)
+}
+
 async function googleBooks(q: string): Promise<Candidate[]> {
   const ac = new AbortController()
   const t = setTimeout(() => ac.abort(), 5000)
@@ -145,7 +200,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const recency = req.query.recency === '1'
   const [music, screen, books] = await Promise.all([
     (recency ? itunesByArtist(q) : itunes(q)).catch((e) => { console.error('[lookup] itunes error:', e?.message); return [] }),
-    tmdb(q).catch((e) => { console.error('[lookup] tmdb error:', e?.message); return [] }),
+    (recency ? tmdbByPerson(q) : tmdb(q)).catch((e) => { console.error('[lookup] tmdb error:', e?.message); return [] }),
     (recency ? openLibraryByAuthor(q) : bookSearch(q)).catch((e) => { console.error('[lookup] books error:', e?.message); return [] }),
   ])
   let results = [...music, ...screen, ...books].filter(r => r.title)
