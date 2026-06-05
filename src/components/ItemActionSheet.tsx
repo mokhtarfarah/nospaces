@@ -421,7 +421,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       const filled: string[] = []
       if (r.title) setTitle(r.title)
       if (r.creator) { setCreator(r.creator); filled.push('creator') }
-      if (r.type) setType(r.type)
+      // Never downgrade a known type to "other" — "other" means Sonnet couldn't identify it,
+      // not that the type actually changed. Only update if the new type is a real known type.
+      if (r.type && r.type !== 'other') setType(r.type)
       if (r.year) { setYear(String(r.year)); filled.push('year') }
       if (r.metadata?.runtime) { setRuntimeEdit(String(r.metadata.runtime)); filled.push('runtime') }
       if (r.metadata?.pages) { setPagesEdit(String(r.metadata.pages)); filled.push('pages') }
@@ -1053,28 +1055,27 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               </p>
               <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }}>
-              {REACTIONS.slice(0, 2).map(r => (
-                <button key={r.value} onClick={() => setReaction(r.value)} style={reactionBtnStyle(reaction === r.value)}>
-                  {r.label}
+            {/* 5-chip row: loved it · liked it · canon · eh · not for me */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
+              {(['loved_it', 'liked_it'] as ItemReaction[]).map(r => (
+                <button key={r} onClick={() => setReaction(r)} style={{ ...reactionBtnStyle(reaction === r), flex: 1, padding: '10px 4px', fontSize: 12 }}>
+                  {REACTIONS.find(x => x.value === r)!.label}
                 </button>
               ))}
-            </div>
-            <button
-              onClick={() => onToggleCanon(!item.metadata?.canon)}
-              style={{
-                ...reactionBtnStyle(!!item.metadata?.canon),
-                width: '100%', marginBottom: 6, fontSize: 13,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              <span style={{ fontSize: 10 }}>{item.metadata?.canon ? '◆' : '◇'}</span>
-              canon
-            </button>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
-              {REACTIONS.slice(2).map(r => (
-                <button key={r.value} onClick={() => setReaction(r.value)} style={reactionBtnStyle(reaction === r.value)}>
-                  {r.label}
+              <button
+                onClick={() => onToggleCanon(!item.metadata?.canon)}
+                style={{
+                  ...reactionBtnStyle(!!item.metadata?.canon),
+                  flex: 1, padding: '10px 4px', fontSize: 12,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                }}
+              >
+                <span style={{ fontSize: 9 }}>{item.metadata?.canon ? '◆' : '◇'}</span>
+                canon
+              </button>
+              {(['eh', 'not_for_me'] as ItemReaction[]).map(r => (
+                <button key={r} onClick={() => setReaction(r)} style={{ ...reactionBtnStyle(reaction === r), flex: 1, padding: '10px 4px', fontSize: 12 }}>
+                  {REACTIONS.find(x => x.value === r)!.label}
                 </button>
               ))}
             </div>
