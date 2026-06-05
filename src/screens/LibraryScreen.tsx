@@ -145,6 +145,7 @@ export function LibraryScreen() {
     patchMetadata(id, { coverUrl: url })
   }, [patchMetadata])
   const dupes = duplicateCount()
+  const gapCount = useMemo(() => items.filter(i => itemGaps(i).length > 0).length, [items])
 
   // Empty array = all categories. Single-select: tapping a type switches to just that
   // one (tap it again to clear back to All). Array kept so multi-select can return later.
@@ -409,6 +410,12 @@ export function LibraryScreen() {
               <SearchIcon />
             </button>
             <button
+              onClick={() => setGapsOpen(true)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: gapCount > 0 ? '#6F6B64' : '#C9C6C0', padding: '4px 4px' }}
+            >
+              tidy{gapCount > 0 ? ` · ${gapCount}` : ''}
+            </button>
+            <button
               onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: selectMode ? '#111' : '#888', fontWeight: selectMode ? 600 : 400, padding: '4px 4px' }}
             >
@@ -610,20 +617,6 @@ export function LibraryScreen() {
             </button>
           </div>
         )}
-        {(() => {
-          const gapCount = items.filter(i => itemGaps(i).length > 0).length
-          return gapCount > 0 && !loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '8px 16px 0', padding: '8px 12px', border: '1px solid #ECEAE6', borderRadius: 4 }}>
-              <span style={{ fontSize: 12, color: '#6F6B64' }}>{gapCount} item{gapCount !== 1 ? 's' : ''} with data gaps</span>
-              <button
-                onClick={() => setGapsOpen(true)}
-                style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 4, border: '1px solid #6F6B64', background: 'none', color: '#6F6B64', fontSize: 12, cursor: 'pointer' }}
-              >
-                tidy up
-              </button>
-            </div>
-          ) : null
-        })()}
         {loading ? (
           <div style={{ padding: '48px 24px', textAlign: 'center', color: '#999', fontSize: 14 }}>
             Loading...
