@@ -207,7 +207,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const queries = wikiQueries(type, title, creator, year)
   if (!queries.length) return res.json({ url: null, thumbnail: null, summary: null })
 
-  const guarded = type === 'book' || type === 'music'
+  const guarded = true
   const a = normalize(title)
 
   for (const query of queries) {

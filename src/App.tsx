@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { LoginScreen } from './components/LoginScreen'
 import { BottomNav } from './components/BottomNav'
@@ -13,6 +13,7 @@ import { DiscoverScreen } from './screens/DiscoverScreen'
 
 export default function App() {
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -29,17 +30,19 @@ export default function App() {
 
   return (
     <>
-      <Routes>
-        <Route path="/" element={<Navigate to="/library" replace />} />
-        <Route path="/library" element={<LibraryScreen />} />
-        <Route path="/add" element={<AddScreen />} />
-        <Route path="/import" element={<ImportScreen />} />
-        <Route path="/spotify" element={<SpotifyScreen />} />
-        <Route path="/taste" element={<TasteScreen />} />
-        <Route path="/shows" element={<ShowsScreen />} />
-        <Route path="/recommend" element={<RecommendScreen />} />
-        <Route path="/discover" element={<DiscoverScreen />} />
-      </Routes>
+      <div key={location.pathname} className="page-transition">
+        <Routes>
+          <Route path="/" element={<Navigate to="/library" replace />} />
+          <Route path="/library" element={<LibraryScreen />} />
+          <Route path="/add" element={<AddScreen />} />
+          <Route path="/import" element={<ImportScreen />} />
+          <Route path="/spotify" element={<SpotifyScreen />} />
+          <Route path="/taste" element={<TasteScreen />} />
+          <Route path="/shows" element={<ShowsScreen />} />
+          <Route path="/recommend" element={<RecommendScreen />} />
+          <Route path="/discover" element={<DiscoverScreen />} />
+        </Routes>
+      </div>
       <BottomNav />
     </>
   )

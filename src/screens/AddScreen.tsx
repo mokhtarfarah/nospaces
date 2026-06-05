@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
 import { BulkConfirmSheet, type BulkItem } from '../components/BulkConfirmSheet'
 import type { ItemReaction } from '../lib/database.types'
-import { fetchWikiInfo } from '../lib/wikipedia'
 import { authHeaders } from '../lib/supabase'
 
 interface Candidate {
@@ -92,302 +91,8 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
   return res.json()
 }
 
-import type { Item } from '../lib/database.types'
-import { isGenreTag } from '../lib/genres'
-import { MOOD_REMAP } from '../lib/moods'
-
-function LibraryTools({ items, editItem, open }: {
-  items: Item[]
-  editItem: (id: string, fields: Record<string, unknown>) => Promise<void>
-  open: boolean
-}) {
-  const [backfilling, setBackfilling] = useState(false)
-  const [backfillProgress, setBackfillProgress] = useState(0)
-  const [backfillTotal, setBackfillTotal] = useState(0)
-  const cancelRef = useRef(false)
-  const [backfillConfirm, setBackfillConfirm] = useState(false)
-  const [backfillFailed, setBackfillFailed] = useState<Item[]>([])
-  const [backfillResult, setBackfillResult] = useState<{ ok: number; fail: number } | null>(null)
-
-  const [rtBackfilling, setRtBackfilling] = useState(false)
-  const [rtProgress, setRtProgress] = useState(0)
-  const [rtTotal, setRtTotal] = useState(0)
-  const rtCancelRef = useRef(false)
-  const [rtConfirm, setRtConfirm] = useState(false)
-  const [rtFailed, setRtFailed] = useState<Item[]>([])
-  const [rtResult, setRtResult] = useState<{ ok: number; fail: number } | null>(null)
-
-  const [migrating, setMigrating] = useState(false)
-  const [migrateProgress, setMigrateProgress] = useState(0)
-  const [wikiBackfilling, setWikiBackfilling] = useState(false)
-  const [wikiProgress, setWikiProgress] = useState(0)
-  const [wikiTotal, setWikiTotal] = useState(0)
-  const wikiCancelRef = useRef(false)
-  const [artRefreshing, setArtRefreshing] = useState(false)
-  const [artProgress, setArtProgress] = useState(0)
-  const [artTotal, setArtTotal] = useState(0)
-  const artCancelRef = useRef(false)
-  const [artResult, setArtResult] = useState<number | null>(null)
-
-  // Collapse the whole "fill automatically" block — once you've decided to use the
-  // fill-by-hand list in Library, the auto buttons are just taking up space.
-  const [autoOpen, setAutoOpen] = useState(true)
-
-  const untagged = useMemo(() =>
-    items.filter(i => !(i.tags ?? []).some(isGenreTag) && ['film','tv','book','music'].includes(i.type)), [items])
-  const needsRuntime = useMemo(() =>
-    items.filter(i => {
-      if (i.type === 'film' || i.type === 'tv') return !i.metadata?.runtime
-      if (i.type === 'book') return !i.metadata?.pages
-      return false
-    }), [items])
-  const needsMoodMigration = useMemo(() =>
-    items.filter(i => i.moods?.some(m => m in MOOD_REMAP || m === 'gripping' || m === 'project' || m === 'classic')), [items])
-  const needsWiki = useMemo(() =>
-    items.filter(i => !i.metadata?.wikiUrl && ['film','tv','book','music'].includes(i.type)), [items])
-  const AUTO_ART_DOMAINS = ['image.tmdb.org', 'dzcdn.net', 'mzstatic.com', 'covers.openlibrary.org']
-  const needsArtRefresh = useMemo(() =>
-    items.filter(i => {
-      const url = i.metadata?.coverUrl as string | undefined
-      return url && AUTO_ART_DOMAINS.some(d => url.includes(d))
-    }), [items])
-
-  const autoTotal = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length + needsArtRefresh.length
-  if (autoTotal === 0 || !open) return null
-
-  async function runBackfill(targetItems: Item[] = untagged) {
-    if (backfilling || targetItems.length === 0) return
-    cancelRef.current = false
-    setBackfillConfirm(false)
-    setBackfillResult(null)
-    setBackfilling(true)
-    setBackfillProgress(0)
-    setBackfillTotal(targetItems.length)
-    const BATCH = 5
-    const failed: Item[] = []
-    let ok = 0
-    for (let i = 0; i < targetItems.length; i += BATCH) {
-      if (cancelRef.current) break
-      await Promise.all(targetItems.slice(i, i + BATCH).map(async item => {
-        try {
-          const res = await fetch('/api/genres', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type }) })
-          if (!res.ok) { failed.push(item); return }
-          const { tags } = await res.json()
-          if (tags?.length > 0) { await editItem(item.id, { tags }); ok++ }
-          else failed.push(item)
-        } catch { failed.push(item) }
-      }))
-      setBackfillProgress(Math.min(i + BATCH, targetItems.length))
-      if (i + BATCH < targetItems.length) await new Promise(r => setTimeout(r, 300))
-    }
-    setBackfilling(false)
-    cancelRef.current = false
-    setBackfillFailed(failed)
-    setBackfillResult({ ok, fail: failed.length })
-  }
-
-  async function runRtBackfill(targetItems: Item[] = needsRuntime) {
-    if (rtBackfilling || targetItems.length === 0) return
-    rtCancelRef.current = false
-    setRtConfirm(false)
-    setRtResult(null)
-    setRtBackfilling(true)
-    setRtProgress(0)
-    setRtTotal(targetItems.length)
-    const BATCH = 5
-    const failed: Item[] = []
-    let ok = 0
-    for (let i = 0; i < targetItems.length; i += BATCH) {
-      if (rtCancelRef.current) break
-      await Promise.all(targetItems.slice(i, i + BATCH).map(async item => {
-        try {
-          const res = await fetch('/api/runtime', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }) })
-          if (!res.ok) { failed.push(item); return }
-          const data = await res.json()
-          const patch: Record<string, unknown> = { ...item.metadata }
-          if (item.type === 'book' && typeof data.pages === 'number') patch.pages = data.pages
-          if ((item.type === 'film' || item.type === 'tv') && typeof data.runtime === 'number') patch.runtime = data.runtime
-          if (patch.pages !== item.metadata?.pages || patch.runtime !== item.metadata?.runtime) { await editItem(item.id, { metadata: patch }); ok++ }
-          else ok++ // got a response, just no change needed
-        } catch { failed.push(item) }
-      }))
-      setRtProgress(Math.min(i + BATCH, targetItems.length))
-      if (i + BATCH < targetItems.length) await new Promise(r => setTimeout(r, 300))
-    }
-    setRtBackfilling(false)
-    rtCancelRef.current = false
-    setRtFailed(failed)
-    setRtResult({ ok, fail: failed.length })
-  }
-
-  async function runMoodMigration() {
-    if (migrating || needsMoodMigration.length === 0) return
-    setMigrating(true); setMigrateProgress(0)
-    for (const item of needsMoodMigration) {
-      const remapped: string[] = []
-      const fields: Record<string, unknown> = {}
-      for (const m of (item.moods ?? [])) {
-        // Legacy pre-MOOD_REMAP mappings
-        if (m === 'gripping') { remapped.push('intense'); continue }
-        if (m === 'project' || m === 'easy') continue
-        if (m === 'classic') {
-          // classic mood → classic/classics genre tag (pre-existing migration)
-          const tag = item.type === 'book' ? 'classics' : 'classic'
-          fields.tags = [...new Set([...(item.tags ?? []), tag])]
-          continue
-        }
-        // New MOOD_REMAP remappings
-        if (m in MOOD_REMAP) {
-          const replacement = MOOD_REMAP[m]
-          if (replacement) remapped.push(replacement)
-          // null = drop the tag
-          continue
-        }
-        remapped.push(m)
-      }
-      fields.moods = [...new Set(remapped)]
-      try { await editItem(item.id, fields) } catch { /* skip */ }
-      setMigrateProgress(p => p + 1)
-    }
-    setMigrating(false)
-  }
-
-  async function runWikiBackfill() {
-    if (wikiBackfilling || needsWiki.length === 0) return
-    wikiCancelRef.current = false
-    setWikiBackfilling(true); setWikiProgress(0); setWikiTotal(needsWiki.length)
-    const BATCH = 6
-    for (let i = 0; i < needsWiki.length; i += BATCH) {
-      if (wikiCancelRef.current) break
-      await Promise.all(needsWiki.slice(i, i + BATCH).map(async item => {
-        try {
-          const info = await fetchWikiInfo(item.type, item.title, item.creator, item.year)
-          if (info.url) await editItem(item.id, { metadata: { ...item.metadata, wikiUrl: info.url, wikiThumb: info.thumbnail, wikiSummary: info.summary } })
-        } catch { /* skip */ }
-      }))
-      setWikiProgress(Math.min(i + BATCH, needsWiki.length))
-    }
-    setWikiBackfilling(false); wikiCancelRef.current = false
-  }
-
-  async function runArtRefresh() {
-    if (artRefreshing || needsArtRefresh.length === 0) return
-    artCancelRef.current = false
-    setArtResult(null)
-    setArtRefreshing(true)
-    setArtProgress(0)
-    setArtTotal(needsArtRefresh.length)
-    const BATCH = 10
-    let cleared = 0
-    for (let i = 0; i < needsArtRefresh.length; i += BATCH) {
-      if (artCancelRef.current) break
-      await Promise.all(needsArtRefresh.slice(i, i + BATCH).map(async item => {
-        try {
-          const { coverUrl: _drop, ...restMeta } = (item.metadata ?? {}) as Record<string, unknown>
-          await editItem(item.id, { metadata: restMeta })
-          cleared++
-        } catch { /* skip */ }
-      }))
-      setArtProgress(Math.min(i + BATCH, needsArtRefresh.length))
-    }
-    setArtRefreshing(false)
-    artCancelRef.current = false
-    setArtResult(cleared)
-  }
-
-  const runBtn = { background: 'none', border: 'none', fontSize: 12, color: '#1C1B19', cursor: 'pointer', padding: 0, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 } as const
-  const ghostBtn = { background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: '0 4px' } as const
-  const warnBtn = { background: 'none', border: 'none', fontSize: 12, color: '#C00', cursor: 'pointer', padding: '0 4px', fontWeight: 600 } as const
-  const cost = (n: number) => `~${n} API calls (~$${(n * 0.001).toFixed(2)})`
-  const listLinkBtn = { background: 'none', border: 'none', fontSize: 12, color: '#6F6B64', cursor: 'pointer', padding: 0, textDecoration: 'underline' } as const
-
-  const sectionLabel = { fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C' } as const
-
-  return (
-    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {autoTotal > 0 && (
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={sectionLabel}>fill automatically</span>
-          <button onClick={() => setAutoOpen(v => !v)} style={listLinkBtn}>{autoOpen ? 'hide' : 'show'}</button>
-        </div>
-        {autoOpen && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
-      {untagged.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 12, color: '#888' }}>genres — {untagged.length} untagged</span>
-          {backfilling
-            ? <span style={{ fontSize: 12, color: '#555' }}>tagging {Math.min(backfillProgress + 5, backfillTotal)}/{backfillTotal}… <button onClick={() => { cancelRef.current = true }} style={ghostBtn}>cancel</button></span>
-            : backfillResult
-              ? <span style={{ fontSize: 12, color: '#555' }}>
-                  {backfillResult.ok} tagged
-                  {backfillResult.fail > 0 && <> · <button onClick={() => runBackfill(backfillFailed)} style={warnBtn}>retry {backfillResult.fail}</button></>}
-                  <button onClick={() => setBackfillResult(null)} style={ghostBtn}>×</button>
-                </span>
-              : backfillConfirm
-                ? <span style={{ fontSize: 12, color: '#888' }}>
-                    {cost(untagged.length)} · <button onClick={() => runBackfill()} style={runBtn}>run</button>
-                    <button onClick={() => setBackfillConfirm(false)} style={ghostBtn}>cancel</button>
-                  </span>
-                : <button onClick={() => setBackfillConfirm(true)} style={runBtn}>tag →</button>}
-        </div>
-      )}
-      {needsRuntime.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 12, color: '#888' }}>runtime / pages — {needsRuntime.length} missing</span>
-          {rtBackfilling
-            ? <span style={{ fontSize: 12, color: '#555' }}>filling {Math.min(rtProgress + 5, rtTotal)}/{rtTotal}… <button onClick={() => { rtCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
-            : rtResult
-              ? <span style={{ fontSize: 12, color: '#555' }}>
-                  {rtResult.ok} filled
-                  {rtResult.fail > 0 && <> · <button onClick={() => runRtBackfill(rtFailed)} style={warnBtn}>retry {rtResult.fail}</button></>}
-                  <button onClick={() => setRtResult(null)} style={ghostBtn}>×</button>
-                </span>
-              : rtConfirm
-                ? <span style={{ fontSize: 12, color: '#888' }}>
-                    {cost(needsRuntime.length)} · <button onClick={() => runRtBackfill()} style={runBtn}>run</button>
-                    <button onClick={() => setRtConfirm(false)} style={ghostBtn}>cancel</button>
-                  </span>
-                : <button onClick={() => setRtConfirm(true)} style={runBtn}>fill →</button>}
-        </div>
-      )}
-      {needsMoodMigration.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: '#888' }}>old vibe words — {needsMoodMigration.length} items</span>
-          {migrating
-            ? <span style={{ fontSize: 12, color: '#555' }}>updating {migrateProgress}/{needsMoodMigration.length}…</span>
-            : <button onClick={runMoodMigration} style={runBtn}>clean up →</button>}
-        </div>
-      )}
-      {needsWiki.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: '#888' }}>wiki links — {needsWiki.length} missing</span>
-          {wikiBackfilling
-            ? <span style={{ fontSize: 12, color: '#555' }}>fetching {Math.min(wikiProgress + 6, wikiTotal)}/{wikiTotal}… <button onClick={() => { wikiCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
-            : <button onClick={runWikiBackfill} style={runBtn}>fill →</button>}
-        </div>
-      )}
-      {needsArtRefresh.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: '#888' }}>cover art — {needsArtRefresh.length} cached at old resolution</span>
-          {artRefreshing
-            ? <span style={{ fontSize: 12, color: '#555' }}>clearing {Math.min(artProgress + 10, artTotal)}/{artTotal}… <button onClick={() => { artCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
-            : artResult !== null
-              ? <span style={{ fontSize: 12, color: '#555' }}>{artResult} cleared — reload to fetch fresh <button onClick={() => setArtResult(null)} style={ghostBtn}>×</button></span>
-              : <button onClick={runArtRefresh} style={runBtn}>refresh →</button>}
-        </div>
-      )}
-        </div>
-        )}
-      </div>
-      )}
-
-    </div>
-  )
-}
-
 export function AddScreen() {
-  const { addItem, items, editItem } = useItems()
+  const { addItem } = useItems()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [title, setTitle] = useState('')
@@ -609,22 +314,20 @@ export function AddScreen() {
     navigate('/library')
   }
 
-  const [moreWaysOpen, setMoreWaysOpen] = useState(false)
-  const [libToolsOpen, setLibToolsOpen] = useState(false)
-  const hasLibraryWork = useMemo(() => {
-    const untagged = items.filter(i => (!i.tags || i.tags.length === 0) && ['film','tv','book','music'].includes(i.type))
-    const needsRuntime = items.filter(i => {
-      if (i.type === 'film' || i.type === 'tv') return !i.metadata?.runtime
-      if (i.type === 'book') return !i.metadata?.pages
-      return false
-    })
-    const needsMoodMigration = items.filter(i => i.moods?.some(m => m in MOOD_REMAP || m === 'gripping' || m === 'project' || m === 'classic'))
-    return (untagged.length + needsRuntime.length + needsMoodMigration.length) > 0
-  }, [items])
 
   return (
-    <div style={{ padding: '20px 16px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh' }}>
-      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 20px' }}>add</h1>
+    <div style={{ padding: '16px 16px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh' }}>
+
+      {/* Header row — close button only, no title */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <button
+          onClick={() => navigate(-1)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ABA69C', padding: '4px', lineHeight: 1, fontSize: 20 }}
+          aria-label="close"
+        >
+          ×︎
+        </button>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <textarea
@@ -638,8 +341,8 @@ export function AddScreen() {
           rows={2}
           style={{
             width: '100%', boxSizing: 'border-box',
-            padding: '14px', fontSize: 16,
-            border: '1px solid #E4E4E4', borderRadius: 12,
+            padding: '12px 14px', fontSize: 15,
+            border: '1px solid #E4E4E4', borderRadius: 8,
             resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
           }}
         />
@@ -648,61 +351,34 @@ export function AddScreen() {
           type="submit"
           disabled={!title.trim() || loading}
           style={{
-            width: '100%', marginTop: 12, padding: '14px',
-            background: title.trim() && !loading ? '#111111' : '#E2E2E2',
-            color: '#fff', border: 'none', borderRadius: 12,
-            fontSize: 15, fontWeight: 600, letterSpacing: '0.2px',
+            width: '100%', marginTop: 10, padding: '12px',
+            background: title.trim() && !loading ? '#1C1B19' : '#E2E2E2',
+            color: '#fff', border: 'none', borderRadius: 8,
+            fontSize: 14, fontWeight: 600, letterSpacing: '0.2px',
             cursor: title.trim() && !loading ? 'pointer' : 'default',
+            transition: 'background 0.15s ease',
           }}
         >
           {loading ? 'identifying…' : 'identify & save'}
         </button>
 
-        {/* Photo — compact grey pill, clearly a different input mode */}
-        <div style={{ textAlign: 'center', marginTop: 20 }}>
-          <button
-            type="button"
-            onClick={() => !bulkLoading && imageRef.current?.click()}
-            style={{
-              padding: '10px 22px', borderRadius: 4, border: 'none',
-              background: '#F0F0F0', fontSize: 14, color: '#444', cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-            }}
-          >
-            <CameraIcon />
-            {bulkLoading ? 'identifying…' : 'add from photos'}
-          </button>
-        </div>
-
-        {!loading && (
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
-            <button
-              type="button"
-              onClick={handleSaveAsScratch}
-              style={{ border: 'none', background: 'none', color: '#BBB', fontSize: 13, cursor: 'pointer', padding: 0 }}
-            >
-              save as note
-            </button>
-          </div>
-        )}
-
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
 
         {sonnetPrompt && !loading && (
-          <div style={{ marginTop: 16, padding: '14px 16px', background: '#F7F7F7', borderRadius: 12, textAlign: 'center' }}>
+          <div style={{ marginTop: 14, padding: '12px 14px', background: '#F7F7F7', borderRadius: 8, textAlign: 'center' }}>
             <p style={{ margin: '0 0 10px', fontSize: 13, color: '#555' }}>
               nothing found in the catalog — identify with Sonnet instead?
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button
                 onClick={handleFallbackIdentify}
-                style={{ padding: '8px 18px', borderRadius: 4, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 identify with Sonnet
               </button>
               <button
                 onClick={() => setSonnetPrompt(false)}
-                style={{ padding: '8px 18px', borderRadius: 4, border: '1px solid #DDD', background: 'none', color: '#888', fontSize: 13, cursor: 'pointer' }}
+                style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid #DDD', background: 'none', color: '#888', fontSize: 13, cursor: 'pointer' }}
               >
                 cancel
               </button>
@@ -711,33 +387,38 @@ export function AddScreen() {
         )}
       </form>
 
-      <div style={{ marginTop: 20, borderTop: '1px solid #ECEAE6', paddingTop: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 24 }}>
+      {/* Utility row — photo + note */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 18 }}>
+        <button
+          type="button"
+          onClick={() => !bulkLoading && imageRef.current?.click()}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6F6B64', padding: 0 }}
+        >
+          <CameraIcon />
+          {bulkLoading ? 'identifying…' : 'add from photos'}
+        </button>
+        <span style={{ color: '#DEDAD6', fontSize: 12 }}>·</span>
+        {!loading && (
           <button
-            onClick={() => setMoreWaysOpen(o => !o)}
-            style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
+            type="button"
+            onClick={handleSaveAsScratch}
+            style={{ border: 'none', background: 'none', color: '#6F6B64', fontSize: 13, cursor: 'pointer', padding: 0 }}
           >
-            more ways to add
+            save as note
           </button>
-          {hasLibraryWork && (
-            <button
-              onClick={() => setLibToolsOpen(o => !o)}
-              style={{ background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: 0 }}
-            >
-              library tools
-            </button>
-          )}
-        </div>
-        {moreWaysOpen && (
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-            <button type="button" onClick={() => navigate('/discover')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>discover</button>
-            <button type="button" onClick={() => navigate('/recommend')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>find recommendations</button>
-            <button type="button" onClick={() => navigate('/import')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>import from Letterboxd</button>
-            <button type="button" onClick={() => navigate('/spotify')} style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, cursor: 'pointer', padding: 0 }}>sync from Spotify</button>
-          </div>
         )}
-        <LibraryTools items={items} editItem={editItem} open={libToolsOpen} />
       </div>
+
+      {/* Other ways to add */}
+      <div style={{ marginTop: 28, borderTop: '1px solid #ECEAE6', paddingTop: 18 }}>
+        <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C' }}>other ways to add</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button type="button" onClick={() => navigate('/recommend')} style={{ border: 'none', background: 'none', color: '#6F6B64', fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>find recommendations</button>
+          <button type="button" onClick={() => navigate('/import')} style={{ border: 'none', background: 'none', color: '#6F6B64', fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>import from Letterboxd</button>
+          <button type="button" onClick={() => navigate('/spotify')} style={{ border: 'none', background: 'none', color: '#6F6B64', fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>sync from Spotify</button>
+        </div>
+      </div>
+
 
       {/* Image input — single pick → single confirm, multi-pick → bulk confirm */}
       <input ref={imageRef} type="file" accept="image/*" multiple
