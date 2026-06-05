@@ -6,6 +6,7 @@ import { NoteInput } from './NoteInput'
 import { MoodChips } from './MoodChips'
 import { VIBES, VERDICTS, vibesForType } from '../lib/moods'
 import { useWikipediaInfo } from '../lib/wikipedia'
+import { itemGaps } from '../lib/gaps'
 import { useArtwork, clearArtworkCache } from '../lib/artwork'
 import { useBookBlurb, clearBlurbCache } from '../lib/blurb'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
@@ -38,6 +39,7 @@ interface Props {
   onSaveNext?: () => void
   onSkipNext?: () => void
   onDismissNext?: () => void
+  seriesOptions?: string[]
 }
 
 const TYPES = ['film', 'book', 'music', 'tv', 'other']
@@ -97,7 +99,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext, seriesOptions }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -154,7 +156,11 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [editOpenGroups, setEditOpenGroups] = useState<Record<string, boolean>>({})
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
-  const [moreOpen, setMoreOpen] = useState(false)
+  // In tidy mode, which fields are genuinely missing (respects dismissedGaps)
+  const tidyGaps = tidyPosition ? new Set(itemGaps(item)) : new Set<string>()
+  const [moreOpen, setMoreOpen] = useState(() =>
+    !!(tidyPosition && itemGaps(item).some(g => ['runtime', 'pages', 'wiki'].includes(g)))
+  )
   const refLinkInputRef = useRef<HTMLInputElement>(null)
   const color = typeColor(item.type)
 
@@ -514,11 +520,6 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 {!item.metadata?.scratch && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
                     <button onClick={() => { setEditOpenGroups({}); setView('edit') }} className="tlink" style={{ flexShrink: 0 }}>edit</button>
-                    <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
-                      {item.type === 'book'
-                        ? (item.metadata?.owned ? 'on my shelf ✓︎' : 'on my shelf')
-                        : (item.metadata?.owned ? 'own it ✓︎' : 'own it')}
-                    </button>
                     {blurb && (
                       <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
                         <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource.length > 20 ? blurbSource.slice(0, 19) + '…' : blurbSource}` : 'about this'}</span>
@@ -538,6 +539,11 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     {(item.type === 'film' || item.type === 'tv') && (
                       <button onClick={() => setWatchOpen(true)} className="tlink" style={{ flexShrink: 0 }}>▶︎ watch</button>
                     )}
+                    <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
+                      {item.type === 'book'
+                        ? (item.metadata?.owned ? 'on my shelf ✓︎' : 'on my shelf')
+                        : (item.metadata?.owned ? 'own it ✓︎' : 'own it')}
+                    </button>
                   </div>
                 )}
               </div>
@@ -885,8 +891,8 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" style={smInput} />
-                  <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={smInput} />
-                  <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={smInput} />
+                  <input value={creator} onChange={e => setCreator(e.target.value)} placeholder="Creator" style={{ ...smInput, ...(tidyGaps.has('creator') ? { borderColor: '#C44' } : {}) }} />
+                  <input value={year} onChange={e => setYear(e.target.value)} placeholder="Year" type="number" style={{ ...smInput, ...(tidyGaps.has('year') ? { borderColor: '#C44' } : {}) }} />
                 </div>
               </div>
 
@@ -894,7 +900,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               <div style={{ marginBottom: 18 }}>
                 {vocab.length > 0 && (
                   <div style={{ marginBottom: 12 }}>
-                    <div style={fieldLabel}>genre</div>
+                    <div style={{ ...fieldLabel, ...(tidyGaps.has('genre') ? { color: '#C44' } : {}) }}>genre</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
                       {activeGenres.map(g => chip(g, true, () => toggleGenreEdit(g)))}
                       {!genrePickerOpen && (
@@ -937,28 +943,39 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   <div style={{ marginTop: 4 }}>
                     {(type === 'film' || type === 'tv') && (
                       <>
-                        <div style={fieldLabel}>runtime (min)</div>
-                        <input value={runtimeEdit} onChange={e => setRuntimeEdit(e.target.value)} placeholder="runtime (min)" type="number" style={{ ...smInput, marginBottom: 10 }} />
+                        <div style={{ ...fieldLabel, ...(tidyGaps.has('runtime') ? { color: '#C44' } : {}) }}>runtime (min)</div>
+                        <input value={runtimeEdit} onChange={e => setRuntimeEdit(e.target.value)} placeholder="runtime (min)" type="number" style={{ ...smInput, marginBottom: 10, ...(tidyGaps.has('runtime') ? { borderColor: '#C44' } : {}) }} />
                       </>
                     )}
                     {type === 'book' && (
                       <>
-                        <div style={fieldLabel}>pages</div>
-                        <input value={pagesEdit} onChange={e => setPagesEdit(e.target.value)} placeholder="pages" type="number" style={{ ...smInput, marginBottom: 10 }} />
+                        <div style={{ ...fieldLabel, ...(tidyGaps.has('pages') ? { color: '#C44' } : {}) }}>pages</div>
+                        <input value={pagesEdit} onChange={e => setPagesEdit(e.target.value)} placeholder="pages" type="number" style={{ ...smInput, marginBottom: 10, ...(tidyGaps.has('pages') ? { borderColor: '#C44' } : {}) }} />
                       </>
                     )}
-                    <div style={fieldLabel}>reference link</div>
+                    <div style={{ ...fieldLabel, ...(tidyGaps.has('wiki') ? { color: '#C44' } : {}) }}>reference link</div>
                     <input
                       ref={refLinkInputRef}
                       value={wikiUrlEdit}
                       onChange={e => { setWikiUrlEdit(e.target.value); setAutoFillInfo(null) }}
                       placeholder="reference url (wikipedia, goodreads…)"
-                      style={{ ...smInput, marginBottom: 10 }}
+                      style={{ ...smInput, marginBottom: 10, ...(tidyGaps.has('wiki') ? { borderColor: '#C44' } : {}) }}
                     />
                     {(type === 'film' || type === 'book' || type === 'tv') && (
                       <>
                         <div style={fieldLabel}>series</div>
-                        <input value={series} onChange={e => setSeries(e.target.value)} placeholder="series" style={{ ...smInput, marginBottom: 10 }} />
+                        <input
+                          list={`series-opts-${item.id}`}
+                          value={series}
+                          onChange={e => setSeries(e.target.value)}
+                          placeholder="series name"
+                          style={{ ...smInput, marginBottom: 10 }}
+                        />
+                        {seriesOptions && seriesOptions.length > 0 && (
+                          <datalist id={`series-opts-${item.id}`}>
+                            {seriesOptions.map(s => <option key={s} value={s} />)}
+                          </datalist>
+                        )}
                       </>
                     )}
                     <div style={fieldLabel}>cover image url</div>

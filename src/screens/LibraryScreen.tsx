@@ -146,6 +146,13 @@ export function LibraryScreen() {
   }, [patchMetadata])
   const dupes = duplicateCount()
   const gapCount = useMemo(() => items.filter(i => itemGaps(i).length > 0).length, [items])
+  const seriesOptions = useMemo(() =>
+    [...new Set(items.flatMap(i => {
+      const s = i.metadata?.series
+      return typeof s === 'string' && s.trim() ? [s.trim()] : []
+    }))].sort(),
+    [items]
+  )
 
   // Empty array = all categories. Single-select: tapping a type switches to just that
   // one (tap it again to clear back to All). Array kept so multi-select can return later.
@@ -759,6 +766,7 @@ export function LibraryScreen() {
             onEditReaction={(reaction, note, moods) => { editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }}
             onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
             onDelete={() => { deleteItem(fresh.id); setActionItem(null) }}
+            seriesOptions={seriesOptions}
             onKeep={reaction => {
               // Triage out of the review inbox: a reaction logs it as done
               // (preserving any note/moods); no reaction keeps it as want_to.
