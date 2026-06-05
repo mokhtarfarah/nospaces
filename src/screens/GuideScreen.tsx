@@ -4,19 +4,14 @@ export function GuideScreen() {
   const navigate = useNavigate()
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      background: '#fff',
-      paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
-    }}>
+    <div style={{ minHeight: '100dvh', background: '#fff', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+
       {/* top bar */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '16px 20px 8px',
+        display: 'flex', alignItems: 'center',
+        padding: '16px 20px 12px',
         paddingTop: 'calc(16px + env(safe-area-inset-top))',
         borderBottom: '1px solid #ECEAE6',
-        marginBottom: 0,
       }}>
         <button
           onClick={() => navigate('/library')}
@@ -33,154 +28,136 @@ export function GuideScreen() {
         </button>
       </div>
 
-      <div style={{ padding: '28px 24px 0', maxWidth: 480, margin: '0 auto' }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.08em', color: '#ABA69C', marginBottom: 10 }}>
-          how to use
-        </div>
-        <h1 style={{
-          fontSize: 30, fontWeight: 700, color: '#1C1B19',
-          letterSpacing: '-0.025em', margin: '0 0 12px', lineHeight: 1.15,
-        }}>
-          your personal<br />media library.
-        </h1>
-        <p style={{ fontSize: 15, color: '#6F6B64', lineHeight: 1.65, margin: '0 0 36px' }}>
-          save films, books, albums, and shows you want to try. log how they land.
-          build a picture of your taste over time.
-        </p>
+      <div style={{ padding: '28px 24px 0' }}>
 
-        {/* ── SECTION 1: SAVING ─────────────────────────────────── */}
-        <GuideSection
-          num="01"
-          title="saving things"
-          desc="tap the + button (bottom right of any screen) and type anything — a film title, a book name, an album, a show. nospaces finds it and drops it into your want-to list."
-        >
+        {/* header */}
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ fontSize: 11, letterSpacing: '0.08em', color: '#ABA69C', marginBottom: 10 }}>how to use</div>
+          <h1 style={{ fontSize: 30, fontWeight: 700, color: '#1C1B19', letterSpacing: '-0.025em', margin: '0 0 12px', lineHeight: 1.15 }}>
+            your personal<br />media library.
+          </h1>
+          <p style={{ fontSize: 15, color: '#6F6B64', lineHeight: 1.65, margin: 0 }}>
+            save films, books, albums, and shows. log how they land.
+            build a picture of your taste over time.
+          </p>
+        </div>
+
+        {/* ── 01 SAVING ────────────────────────────────────────── */}
+        <Section num="01" title="saving things" desc="three ways in — all of them do the same thing. you give nospaces a clue and it finds the item, fills in the details, and adds it to your want-to list.">
           <AddIllustration />
           <Tips items={[
-            { label: 'search', text: 'type or describe it — "that new Villeneuve film", "something dark and literary"' },
-            { label: 'photo', text: 'tap "from a photo" to snap a poster, a shelf, an article — it reads the image and extracts every title' },
-            { label: 'email', text: 'forward anything to anything@nospaces.xyz — newsletters, friends\' recs, reviews — it saves automatically' },
+            { label: 'type or search', text: 'describe or name it — "that new Villeneuve film", an album, a book title. search finds it.' },
+            { label: 'photo',          text: 'tap "from a photo" in the add screen. snap a poster, a shelf, a screenshot — it reads every title in the image.' },
+            { label: 'email',          text: 'forward anything to anything@nospaces.xyz — a newsletter, a review, a recommendation. every title in it gets saved.' },
           ]} />
-        </GuideSection>
+          <Extras items={[
+            { label: 'letterboxd', text: 'tap + → import from letterboxd to bring in your watchlist and ratings. stars map to reactions automatically.' },
+            { label: 'spotify',    text: 'tap + → sync from spotify to pull your saved albums. repeat syncs only add new ones.' },
+          ]} />
+        </Section>
 
-        {/* ── SECTION 2: REACTING ───────────────────────────────── */}
-        <GuideSection
-          num="02"
-          title="logging a reaction"
-          desc={`once you've finished something, tap it in your library and hit "mark as done". pick how it landed.`}
-        >
+        {/* ── 02 REACTING ──────────────────────────────────────── */}
+        <Section num="02" title="logging a reaction" desc={`tap any item in your library and hit "mark as done" once you've finished it. tell it how it landed — the rating, the feel, and your take.`}>
           <ReactionIllustration />
           <Tips items={[
-            { label: 'rating', text: 'loved it · liked it · eh · not for me — honest, not star-based' },
-            { label: 'vibe', text: 'tag the feel of it — dark, nostalgic, playful, intense, cozy... as many as fit' },
+            { label: 'rating',  text: 'loved it · liked it · eh · not for me. no stars, just how it actually hit.' },
+            { label: 'vibe',    text: 'the feel of it — dark, nostalgic, playful, intense, cozy... add as many as fit.' },
             { label: 'verdict', text: 'your personal label — comfort, hyperfixation, overrated, so bad it\'s good...' },
+            { label: '◆ canon', text: 'all-time favourites. tap canon on things you\'d genuinely put in a top 10. shows up on your taste page.' },
           ]} />
-        </GuideSection>
+          <Extras items={[
+            { label: 'in progress', text: 'reading something? halfway through a season? tap "mark as in progress" so you know what you\'re currently on.' },
+            { label: 'note',        text: 'free-text field in the reaction view if you want to say more about it.' },
+          ]} />
+        </Section>
 
-        {/* ── SECTION 3: BROWSING ───────────────────────────────── */}
-        <GuideSection
-          num="03"
-          title="your library"
-          desc={`browse everything you've saved. filter by type, status, vibe, or genre. when you can't choose what to watch or read next, use "help me decide".`}
-        >
+        {/* ── 03 LIBRARY ───────────────────────────────────────── */}
+        <Section num="03" title="your library" desc="everything in one place. filter by type (film, book, music, tv), status (want to / done), vibe, genre, or reaction. search by name. tap any item to open its action card.">
           <LibraryIllustration />
           <Tips items={[
-            { label: 'filter', text: 'filter by status (want to / done), vibe, genre, or reaction — or just search by name' },
-            { label: 'help me decide', text: 'stuck on what\'s next? tap it in the library header — it walks you through a few questions and picks something' },
-            { label: '◆ canon', text: 'tap ◆ canon on anything you\'d call an all-time favourite — separate bucket, shows on your taste page' },
+            { label: 'filter ▾',       text: 'tap to filter by vibe, verdict, genre, or series. the badge shows how many are active.' },
+            { label: 'help me decide', text: 'can\'t choose? tap the link in the library header. it asks 3 questions and picks something from your backlog.' },
           ]} />
-        </GuideSection>
+          <Extras items={[
+            { label: 'tidy',   text: '"tidy · N" in the header flags items missing info — year, director, runtime, genre. tap to fill them in one by one, or auto-fill in bulk.' },
+            { label: 'series', text: 'tap an item → edit → series field. groups trilogies, book series, and tv seasons together in the library.' },
+          ]} />
+        </Section>
 
-        {/* ── SECTION 4: DISCOVER ───────────────────────────────── */}
-        <GuideSection
-          num="04"
-          title="discover"
-          desc="the discover tab uses what you've reacted to — vibes, genres, reactions — to surface things you haven't tried yet. the more you log, the sharper it gets."
-        >
+        {/* ── 04 DISCOVER ──────────────────────────────────────── */}
+        <Section num="04" title="discover" desc="the discover tab suggests things you haven't seen based on what you've loved and liked. the more you react, the sharper it gets.">
           <DiscoverIllustration />
           <Tips items={[
-            { label: 'how it works', text: 'it looks at your loved + liked reactions and finds patterns — then suggests things that match your actual taste, not just popular picks' },
-            { label: 'music shows', text: 'in the music tab, tap "shows near you" to see upcoming concerts by artists in your library' },
+            { label: 'suggestions',    text: 'looks at your loved + liked reactions, finds patterns in vibes and genres, then surfaces things that match your actual taste.' },
+            { label: 'shows near you', text: 'in the music category, tap "shows near you" to see upcoming concerts for artists in your library.' },
           ]} />
-        </GuideSection>
+        </Section>
 
-        {/* ── MORE THINGS ───────────────────────────────────────── */}
-        <div style={{ paddingTop: 28, paddingBottom: 8, borderTop: '1px solid #ECEAE6', marginBottom: 40 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.07em', color: '#ABA69C', margin: '0 0 20px' }}>
-            a few more things
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {[
-              {
-                label: 'data gaps',
-                desc: '"tidy · N" in the library header flags items missing info — director, year, runtime, genre. tap to fill them one by one. you can also auto-fill in bulk.',
-              },
-              {
-                label: 'series',
-                desc: 'tap any item → edit → series to group things (e.g. a trilogy, a book series, tv seasons). they\'ll appear together in the library.',
-              },
-              {
-                label: 'in progress',
-                desc: 'reading something? halfway through a season? tap "mark as in progress" so you know what you\'re currently on.',
-              },
-              {
-                label: 'spotify sync',
-                desc: 'tap + → sync from spotify to pull in all your saved albums at once. repeating it only grabs new ones.',
-              },
-              {
-                label: 'letterboxd',
-                desc: 'tap + → import from letterboxd to bring in your watchlist and ratings. ratings map to reactions automatically.',
-              },
-            ].map(({ label, desc }) => (
-              <div key={label} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <span style={{
-                  fontSize: 12, fontWeight: 600, color: '#1C1B19',
-                  minWidth: 108, paddingTop: 1, lineHeight: 1.4,
-                }}>{label}</span>
-                <span style={{ fontSize: 13, color: '#6F6B64', lineHeight: 1.6 }}>{desc}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* ── 05 TASTE ─────────────────────────────────────────── */}
+        <Section num="05" title="your taste" desc="the taste tab is your snapshot — a breakdown of how you've reacted to things, your all-time canon, and the vibes and genres you keep coming back to.">
+          <TasteIllustration />
+          <Tips items={[
+            { label: 'reactions', text: 'see your loved / liked / eh breakdown per type — film, book, music, tv.' },
+            { label: '◆ canon',   text: 'all the things you\'ve marked canon, organised by type. your curated collection.' },
+            { label: 'vibes',     text: 'patterns across everything you\'ve reacted to — the moods and genres that keep showing up.' },
+          ]} />
+        </Section>
+
       </div>
     </div>
   )
 }
 
-// ── Layout components ─────────────────────────────────────────────────────────
+// ── Layout primitives ─────────────────────────────────────────────────────────
 
-function GuideSection({
+function Section({
   num, title, desc, children,
 }: {
   num: string; title: string; desc: string; children?: React.ReactNode
 }) {
   return (
-    <div style={{ paddingBottom: 32, marginBottom: 32, borderBottom: '1px solid #ECEAE6' }}>
+    <div style={{ paddingBottom: 36, marginBottom: 36, borderBottom: '1px solid #ECEAE6' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
-        <span style={{ fontSize: 11, color: '#ABA69C', fontWeight: 500, letterSpacing: '0.06em' }}>{num}</span>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C1B19', margin: 0, letterSpacing: '-0.015em' }}>
-          {title}
-        </h2>
+        <span style={{ fontSize: 11, color: '#ABA69C', fontWeight: 500, letterSpacing: '0.06em', flexShrink: 0 }}>{num}</span>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C1B19', margin: 0, letterSpacing: '-0.015em' }}>{title}</h2>
       </div>
-      <p style={{ fontSize: 14, color: '#6F6B64', lineHeight: 1.65, margin: '0 0 0' }}>
-        {desc}
-      </p>
+      <p style={{ fontSize: 14, color: '#6F6B64', lineHeight: 1.65, margin: 0 }}>{desc}</p>
       {children}
     </div>
   )
 }
 
+// Grid layout so all description text starts at the same left edge
 function Tips({ items }: { items: { label: string; text: string }[] }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 12, rowGap: 10, alignItems: 'start', marginTop: 16 }}>
       {items.map(({ label, text }) => (
-        <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <span style={{
+        <>
+          <span key={`${label}-lbl`} style={{
             fontSize: 11, fontWeight: 600, color: '#1C1B19',
             background: '#F4F2EF', padding: '2px 8px', borderRadius: 4,
-            flexShrink: 0, marginTop: 1, lineHeight: 1.6,
+            lineHeight: 1.6, whiteSpace: 'nowrap',
           }}>{label}</span>
-          <span style={{ fontSize: 13, color: '#6F6B64', lineHeight: 1.6 }}>{text}</span>
-        </div>
+          <span key={`${label}-txt`} style={{ fontSize: 13, color: '#6F6B64', lineHeight: 1.6 }}>{text}</span>
+        </>
+      ))}
+    </div>
+  )
+}
+
+// Secondary details — lighter style, attached to the bottom of a section
+function Extras({ items }: { items: { label: string; text: string }[] }) {
+  return (
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #ECEAE6', display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 12, rowGap: 8, alignItems: 'start' }}>
+      {items.map(({ label, text }) => (
+        <>
+          <span key={`${label}-lbl`} style={{
+            fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.03em',
+            background: '#F4F2EF', padding: '2px 7px', borderRadius: 3,
+            lineHeight: 1.6, whiteSpace: 'nowrap',
+          }}>{label}</span>
+          <span key={`${label}-txt`} style={{ fontSize: 12, color: '#ABA69C', lineHeight: 1.6 }}>{text}</span>
+        </>
       ))}
     </div>
   )
@@ -196,51 +173,35 @@ const card: React.CSSProperties = {
   margin: '20px 0 4px',
 }
 
-const pill = (active?: boolean): React.CSSProperties => ({
-  display: 'inline-flex',
-  alignItems: 'center',
-  padding: '6px 14px',
-  borderRadius: 100,
-  border: active ? '1.5px solid #1C1B19' : '1.5px solid #D5D3CF',
-  background: active ? '#1C1B19' : '#fff',
-  color: active ? '#fff' : '#6F6B64',
-  fontSize: 12,
-  fontWeight: active ? 600 : 400,
-  whiteSpace: 'nowrap' as const,
-})
-
 function AddIllustration() {
   return (
     <div style={card}>
-      {/* FAB hint */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 11, color: '#ABA69C' }}>tap + to open add</span>
-        <div style={{
-          width: 32, height: 32, borderRadius: '50%', background: '#1C1B19',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
+      {[
+        { num: '1', label: 'type or describe it',      hint: '"that Villeneuve film" · "Sally Rooney novel"' },
+        { num: '2', label: 'snap or share a photo',    hint: 'poster · shelf · article · screenshot' },
+        { num: '3', label: 'forward an email',         hint: 'anything@nospaces.xyz' },
+      ].map(({ num, label, hint }, i, arr) => (
+        <div key={num} style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          padding: '10px 0',
+          borderBottom: i < arr.length - 1 ? '1px solid #ECEAE6' : 'none',
         }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <div style={{
+            width: 20, height: 20, borderRadius: '50%', background: '#F4F2EF',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10, fontWeight: 700, color: '#6F6B64', flexShrink: 0, marginTop: 1,
+          }}>{num}</div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#1C1B19', marginBottom: 2 }}>{label}</div>
+            <div style={{ fontSize: 11, color: '#ABA69C' }}>{hint}</div>
+          </div>
         </div>
-      </div>
-      {/* fake text field */}
+      ))}
       <div style={{
-        border: '1px solid #ECEAE6', borderRadius: 8,
-        padding: '10px 12px', fontSize: 13, color: '#ABA69C',
-        background: '#fff', marginBottom: 10,
+        marginTop: 12, paddingTop: 10, borderTop: '1px solid #ECEAE6',
+        fontSize: 11, color: '#ABA69C', textAlign: 'center' as const,
       }}>
-        describe or type anything...
-      </div>
-      {/* input methods row */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        {['from a photo', 'email forward', 'save as note'].map(label => (
-          <div key={label} style={{
-            padding: '5px 10px', border: '1px solid #ECEAE6', borderRadius: 6,
-            fontSize: 11, color: '#6F6B64', background: '#fff', whiteSpace: 'nowrap',
-          }}>{label}</div>
-        ))}
+        nospaces finds it and fills in the details
       </div>
     </div>
   )
@@ -249,17 +210,8 @@ function AddIllustration() {
 function ReactionIllustration() {
   return (
     <div style={card}>
-      {/* item row */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #ECEAE6' }}>
-        <div style={{ width: 36, height: 50, borderRadius: 4, background: '#E8E4DE', flexShrink: 0 }} />
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 2 }}>dune: part two</div>
-          <div style={{ fontSize: 11, color: '#ABA69C' }}>Denis Villeneuve · 2024 · film</div>
-        </div>
-      </div>
-      {/* reaction grid */}
       <div style={{ fontSize: 11, color: '#ABA69C', marginBottom: 10 }}>how did it land?</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
         {[
           { label: 'loved it', active: true },
           { label: 'liked it', active: false },
@@ -267,13 +219,37 @@ function ReactionIllustration() {
           { label: 'not for me', active: false },
         ].map(({ label, active }) => (
           <div key={label} style={{
-            padding: '10px 0', textAlign: 'center', borderRadius: 8,
+            padding: '10px 0', textAlign: 'center' as const, borderRadius: 8,
             border: active ? '1.5px solid #1C1B19' : '1.5px solid #ECEAE6',
             background: active ? '#1C1B19' : '#fff',
             color: active ? '#fff' : '#6F6B64',
-            fontSize: 13, fontWeight: active ? 600 : 400,
+            fontSize: 12, fontWeight: active ? 600 : 400,
           }}>{label}</div>
         ))}
+      </div>
+      <div style={{ borderTop: '1px solid #ECEAE6', paddingTop: 12 }}>
+        <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '0.07em', marginBottom: 7 }}>VIBE</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 12 }}>
+          {['dark', 'epic', 'intense'].map((v, i) => (
+            <span key={v} style={{
+              padding: '3px 10px', borderRadius: 100, fontSize: 11,
+              border: i === 0 ? '1px solid #1C1B19' : '1px solid #ECEAE6',
+              background: i === 0 ? '#1C1B19' : '#fff',
+              color: i === 0 ? '#fff' : '#6F6B64',
+            }}>{v}</span>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '0.07em', marginBottom: 7 }}>VERDICT</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+          {['hyperfixation', 'delivers'].map((v, i) => (
+            <span key={v} style={{
+              padding: '3px 10px', borderRadius: 100, fontSize: 11,
+              border: i === 0 ? '1px solid #1C1B19' : '1px solid #ECEAE6',
+              background: i === 0 ? '#1C1B19' : '#fff',
+              color: i === 0 ? '#fff' : '#6F6B64',
+            }}>{v}</span>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -282,30 +258,38 @@ function ReactionIllustration() {
 function LibraryIllustration() {
   return (
     <div style={card}>
-      {/* filter bar */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid #ECEAE6', overflowX: 'auto', scrollbarWidth: 'none' }}>
-        {['all', 'want to', 'done'].map((label, i) => (
+      {/* filter bar — current UI: status tabs + filter button */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid #ECEAE6' }}>
+        {[
+          { label: 'all', active: true },
+          { label: 'want to', active: false },
+          { label: 'in progress', active: false },
+          { label: 'done', active: false },
+        ].map(({ label, active }) => (
           <span key={label} style={{
-            fontSize: 12, fontWeight: i === 0 ? 600 : 400,
-            color: i === 0 ? '#1C1B19' : '#ABA69C',
-            fontStyle: i === 0 ? 'italic' : 'normal',
-            whiteSpace: 'nowrap', flexShrink: 0,
+            fontSize: 11, fontWeight: active ? 600 : 400,
+            color: active ? '#1C1B19' : '#ABA69C',
+            fontStyle: active ? 'italic' : 'normal',
+            whiteSpace: 'nowrap' as const, flexShrink: 0,
           }}>{label}</span>
         ))}
-        <span style={{ fontSize: 12, color: '#ABA69C', whiteSpace: 'nowrap', flexShrink: 0 }}>filter ▾</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: '#ABA69C', flexShrink: 0 }}>filter ▾</span>
       </div>
-      {/* library rows */}
+      {/* item rows */}
       {[
-        { type: 'film', title: 'dune: part two', meta: 'Denis Villeneuve', dot: '#C4B9AB' },
-        { type: 'book', title: 'normal people', meta: 'Sally Rooney', dot: '#B3C4C4' },
-        { type: 'music', title: 'cowboy carter', meta: 'Beyoncé', dot: '#C4C4B3' },
+        { type: 'film',  title: 'dune: part two', meta: 'Denis Villeneuve · 2024', dot: '#C4B9AB' },
+        { type: 'book',  title: 'normal people',  meta: 'Sally Rooney · 2018',    dot: '#B3C4C4' },
+        { type: 'music', title: 'cowboy carter',  meta: 'Beyoncé · 2024',         dot: '#C4C4B3' },
       ].map(({ type, title, meta, dot }) => (
         <div key={title} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #ECEAE6' }}>
           <div style={{ width: 4, height: 28, borderRadius: 2, background: dot, flexShrink: 0 }} />
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#1C1B19' }}>{title}</div>
-            <div style={{ fontSize: 11, color: '#ABA69C' }}>{type} · {meta}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: '#1C1B19' }}>{title}</div>
+            <div style={{ fontSize: 10, color: '#ABA69C' }}>{type} · {meta}</div>
           </div>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D5D3CF" strokeWidth="2" strokeLinecap="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </div>
       ))}
     </div>
@@ -315,27 +299,70 @@ function LibraryIllustration() {
 function DiscoverIllustration() {
   return (
     <div style={card}>
-      <div style={{ fontSize: 11, color: '#ABA69C', marginBottom: 12 }}>because you loved dark films</div>
+      <div style={{ fontSize: 11, color: '#ABA69C', marginBottom: 12 }}>based on your taste · dark films</div>
       {[
         { title: 'the zone of interest', meta: 'Jonathan Glazer · 2023', dot: '#C4B9AB' },
-        { title: 'all of us strangers', meta: 'Andrew Haigh · 2023', dot: '#C4B9AB' },
+        { title: 'all of us strangers',  meta: 'Andrew Haigh · 2023',    dot: '#C4B5AB' },
       ].map(({ title, meta, dot }) => (
-        <div key={title} style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '10px 0', borderBottom: '1px solid #ECEAE6',
-        }}>
-          <div style={{ width: 36, height: 48, borderRadius: 4, background: dot, flexShrink: 0 }} />
+        <div key={title} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #ECEAE6' }}>
+          <div style={{ width: 34, height: 46, borderRadius: 4, background: dot, flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 2 }}>{title}</div>
-            <div style={{ fontSize: 11, color: '#ABA69C' }}>{meta}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#1C1B19', marginBottom: 2 }}>{title}</div>
+            <div style={{ fontSize: 10, color: '#ABA69C' }}>{meta}</div>
           </div>
-          <span style={{ fontSize: 11, color: '#ECEAE6' }}>+</span>
+          <div style={{ flexShrink: 0, width: 24, height: 24, borderRadius: '50%', border: '1px solid #ECEAE6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ABA69C" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </div>
         </div>
       ))}
-      <div style={{ paddingTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-        <span style={pill(true)}>dark</span>
-        <span style={pill()}>arthouse</span>
-        <span style={pill()}>intense</span>
+      <div style={{ paddingTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+        {['dark', 'arthouse', 'intense'].map((v, i) => (
+          <span key={v} style={{
+            padding: '3px 10px', borderRadius: 100, fontSize: 11,
+            border: i === 0 ? '1px solid #1C1B19' : '1px solid #ECEAE6',
+            background: i === 0 ? '#1C1B19' : '#fff',
+            color: i === 0 ? '#fff' : '#6F6B64',
+          }}>{v}</span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TasteIllustration() {
+  return (
+    <div style={card}>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '0.07em', marginBottom: 10 }}>REACTIONS</div>
+        {[
+          { type: 'film',  loved: 8,  total: 14 },
+          { type: 'book',  loved: 5,  total: 14 },
+          { type: 'music', loved: 12, total: 16 },
+        ].map(({ type, loved, total }) => (
+          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 10, color: '#6F6B64', width: 32, flexShrink: 0 }}>{type}</span>
+            <div style={{ flex: 1, height: 5, borderRadius: 3, background: '#ECEAE6', overflow: 'hidden' }}>
+              <div style={{ height: '100%', borderRadius: 3, background: '#1C1B19', width: `${(loved / total) * 100}%` }} />
+            </div>
+            <span style={{ fontSize: 10, color: '#ABA69C', flexShrink: 0 }}>{loved} loved</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: '1px solid #ECEAE6', paddingTop: 12 }}>
+        <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '0.07em', marginBottom: 10 }}>◆ CANON</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['#C4B9AB', '#B3C4C4', '#C4C4B3', '#C4BCAB'].map((color, i) => (
+            <div key={i} style={{ width: 36, height: 48, borderRadius: 4, background: color, flexShrink: 0 }} />
+          ))}
+          <div style={{
+            width: 36, height: 48, borderRadius: 4, background: '#F4F2EF', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: 10, color: '#ABA69C' }}>+8</span>
+          </div>
+        </div>
       </div>
     </div>
   )
