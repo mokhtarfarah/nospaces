@@ -1,10 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createClient } from '@supabase/supabase-js'
-const _ce = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
-let _sba: ReturnType<typeof createClient> | null = null
-const _ac = () => { if (!_sba) _sba = createClient(_ce(process.env.SUPABASE_URL), _ce(process.env.SUPABASE_SERVICE_ROLE_KEY)); return _sba }
-async function requireAuth(req: VercelRequest): Promise<boolean> { const a = req.headers['authorization']; if (!a?.startsWith('Bearer ')) return false; try { const { error } = await _ac().auth.getUser(a.slice(7)); return !error } catch { return false } }
+import { getAuthUserId, checkRateLimit } from './_ratelimit'
 
 // Both text queries and URL input go through web_search_20250305. Direct
 // server-side fetch doesn't work for modern editorial sites (JS-rendered, e.g.
@@ -176,7 +172,9 @@ function parseResponse(text: string, fallbackSourceUrl: string) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
-  if (!await requireAuth(req)) return res.status(401).end()
+  const userId = await getAuthUserId(req.headers['authorization'])
+  if (!userId) return res.status(401).end()
+  if (!await checkRateLimit(userId, 'recommend', 10)) return res.status(429).json({ error: 'Rate limit exceeded. Try again next hour.' })
 
   const body = req.body as { query?: string; pdfBase64?: string }
 

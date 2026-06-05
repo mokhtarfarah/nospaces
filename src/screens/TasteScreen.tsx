@@ -1,8 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useItems } from '../hooks/useItems'
 import { usePrefs } from '../hooks/usePrefs'
 import type { Item, ItemReaction } from '../lib/database.types'
-import { VIBES, VERDICTS } from '../lib/moods'
+import { VIBES, VERDICTS as _VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { authHeaders } from '../lib/supabase'
 import { useArtwork } from '../lib/artwork'
@@ -20,14 +20,12 @@ const TYPE_LABEL: Record<string, string> = {
   film: 'films', book: 'books', music: 'music', tv: 'tv',
 }
 
-
 interface Scored { label: string; score: number; count: number }
 
-function scoreTags(items: Item[], field: 'tags' | 'moods', type?: string): Scored[] {
+function scoreTags(items: Item[], field: 'tags' | 'moods'): Scored[] {
   const map = new Map<string, { score: number; count: number }>()
   for (const item of items) {
     if (item.status !== 'done' || !item.reaction) continue
-    if (type && item.type !== type) continue
     const w = WEIGHTS[item.reaction]
     for (const tag of (item[field] ?? [])) {
       const e = map.get(tag) ?? { score: 0, count: 0 }
@@ -35,43 +33,46 @@ function scoreTags(items: Item[], field: 'tags' | 'moods', type?: string): Score
     }
   }
   return Array.from(map.entries())
-    .filter(([, v]) => v.count >= 1)
     .map(([label, v]) => ({ label, score: v.score, count: v.count }))
     .sort((a, b) => b.score - a.score)
 }
 
 function inlineItalics(text: string) {
-  const parts = text.split(/\*([^*]+)\*/)
-  return parts.map((part, i) => i % 2 === 1 ? <em key={i}>{part}</em> : part)
-}
-
-function TextLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: '0 0 0 5px', textDecoration: 'underline', verticalAlign: 'baseline', fontFamily: 'inherit' }}
-    >
-      {children}
-    </button>
+  return text.split(/\*([^*]+)\*/).map((part, i) =>
+    i % 2 === 1 ? <em key={i}>{part}</em> : part
   )
 }
 
-function RankedLine({ scored, limit }: { scored: Scored[]; limit?: number }) {
-  if (!scored.length) return null
-  const shown = limit ? scored.slice(0, limit) : scored
-  return (
-    <div style={{ fontSize: 14, lineHeight: 1.85, color: GRAPHITE, letterSpacing: '-0.1px' }}>
-      {shown.map((s, i) => {
-        const isLead = i === 0 && s.score > 0
-        return (
-          <span key={s.label}>
-            {i > 0 && <span style={{ color: MUTE }}> · </span>}
-            <span style={{ color: isLead ? INK : GRAPHITE }}>{s.label}</span>
-          </span>
-        )
-      })}
-    </div>
-  )
+function topGenreForPool(pool: Item[]): string | null {
+  const map = new Map<string, number>()
+  for (const item of pool) {
+    for (const tag of item.tags ?? []) {
+      if (isGenreTag(tag)) map.set(tag, (map.get(tag) ?? 0) + 1)
+    }
+  }
+  let top: string | null = null, max = 0
+  for (const [g, c] of map) {
+    if (c > max && c >= 3) { top = g; max = c }
+  }
+  return top
+}
+
+function computeFaithfulCreators(items: Item[]) {
+  const map = new Map<string, { loved: number; total: number; type: string }>()
+  for (const item of items) {
+    if (item.status !== 'done' || !item.reaction || !item.creator) continue
+    const e = map.get(item.creator) ?? { loved: 0, total: 0, type: item.type }
+    map.set(item.creator, {
+      loved: e.loved + (item.reaction === 'loved_it' ? 1 : 0),
+      total: e.total + 1,
+      type: item.type,
+    })
+  }
+  return Array.from(map.entries())
+    .filter(([, v]) => v.total >= 2 && v.loved === v.total)
+    .map(([name, v]) => ({ name, count: v.total, type: v.type }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8)
 }
 
 function CoverTile({ item, width, height }: { item: Item; width: number; height: number }) {
@@ -79,285 +80,133 @@ function CoverTile({ item, width, height }: { item: Item; width: number; height:
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const src = artwork ?? stored
   return (
-    <div
-      title={item.title}
-      style={{
-        width, height, borderRadius: 3, overflow: 'hidden',
-        border: `1px solid ${HAIR}`, background: '#fff',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
-    >
+    <div style={{
+      width, height, borderRadius: 3, overflow: 'hidden',
+      border: `1px solid ${HAIR}`, background: '#f5f4f2',
+      flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
       {src
         ? <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <span style={{ fontSize: 9, color: MUTE, textAlign: 'center', padding: '0 3px', lineHeight: 1.3 }}>{TYPE_LABEL[item.type] ?? item.type}</span>}
+        : <span style={{ fontSize: 10, color: MUTE, textAlign: 'center', padding: '0 4px', lineHeight: 1.3 }}>{TYPE_LABEL[item.type] ?? item.type}</span>
+      }
     </div>
   )
 }
 
-interface GenreLoveRate { label: string; loveRate: number; total: number }
+const TILE_W = 88
 
-// Genres ranked by love rate (% loved_it), min 3 rated items.
-function genreLoveRates(items: Item[], type?: string): GenreLoveRate[] {
-  const map = new Map<string, { loved: number; total: number }>()
-  for (const item of items) {
-    if (!item.reaction) continue
-    if (type && item.type !== type) continue
-    for (const tag of item.tags ?? []) {
-      if (!isGenreTag(tag)) continue
-      const e = map.get(tag) ?? { loved: 0, total: 0 }
-      map.set(tag, { loved: e.loved + (item.reaction === 'loved_it' ? 1 : 0), total: e.total + 1 })
+function CanonGallery({ items }: { items: Item[] }) {
+  const byType = useMemo(() => {
+    const order = ['film', 'tv', 'book', 'music']
+    const groups = new Map<string, Item[]>()
+    for (const item of items) {
+      const g = groups.get(item.type) ?? []
+      g.push(item)
+      groups.set(item.type, g)
     }
-  }
-  return Array.from(map.entries())
-    .filter(([, v]) => v.total >= 3)
-    .map(([label, v]) => ({ label, loveRate: v.loved / v.total, total: v.total }))
-    .sort((a, b) => b.loveRate - a.loveRate)
-}
-
-type MediumFilter = 'all' | 'film' | 'book' | 'music' | 'tv'
-
-const STAT_MIN_RATED = 5
-
-function StatsSection({ items }: { items: Item[] }) {
-  const [selected, setSelected] = useState<MediumFilter>('all')
-
-  const filtered = useMemo(
-    () => selected === 'all' ? items : items.filter(i => i.type === selected),
-    [items, selected]
-  )
-
-  const lovedPct = filtered.length
-    ? Math.round(filtered.filter(i => i.reaction === 'loved_it').length / filtered.length * 100)
-    : 0
-
-  const genreRates = useMemo(
-    () => genreLoveRates(filtered, selected === 'all' ? undefined : selected).slice(0, 8),
-    [filtered, selected]
-  )
-
-  const verdicts = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const item of filtered) {
-      for (const mood of item.moods ?? []) {
-        if (VERDICTS.includes(mood)) map.set(mood, (map.get(mood) ?? 0) + 1)
-      }
-    }
-    return Array.from(map.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6)
-  }, [filtered])
-
-  const availableTypes = useMemo(() => {
-    const types = new Set(items.map(i => i.type))
-    return (['film', 'book', 'music', 'tv'] as const).filter(t => types.has(t))
+    return order.filter(t => groups.has(t)).map(t => ({ type: t, items: groups.get(t)! }))
   }, [items])
 
+  const multiType = byType.length > 1
+
   return (
-    <div style={{ borderBottom: `1.5px solid ${INK}`, paddingBottom: 20, marginBottom: 16 }}>
-      {/* Medium filter */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        {(['all', ...availableTypes] as MediumFilter[]).map(t => (
-          <button
-            key={t}
-            onClick={() => setSelected(t)}
-            style={{
-              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-              fontSize: 11, fontWeight: selected === t ? 700 : 400,
-              color: selected === t ? INK : MUTE,
-              fontFamily: 'inherit',
-            }}
-          >
-            {t === 'all' ? 'all' : TYPE_LABEL[t]}
-          </button>
-        ))}
+    <div style={{ marginBottom: 32 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 14 }}>
+        ◆ canon
       </div>
-
-      {/* Lede */}
-      {filtered.length > 0 && (
-        <div style={{ fontSize: 13, color: GRAPHITE, marginBottom: 16, letterSpacing: '-0.1px' }}>
-          <span style={{ color: INK, fontWeight: 600 }}>{filtered.length}</span> things
-          {filtered.length >= STAT_MIN_RATED && (
-            <> · <span style={{ color: INK, fontWeight: 600 }}>{lovedPct}%</span> loved</>
+      {byType.map(({ type, items: typeItems }) => (
+        <div key={type} style={{ marginBottom: multiType ? 20 : 0 }}>
+          {multiType && (
+            <div style={{ fontSize: 10, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>
+              {TYPE_LABEL[type] ?? type}
+            </div>
           )}
-        </div>
-      )}
-
-      {/* Genre love rate */}
-      {genreRates.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
-            where your taste is clearest
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {genreRates.map(({ label, loveRate, total }) => (
-              <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 13, color: INK, minWidth: 100, flexShrink: 0, letterSpacing: '-0.1px' }}>{label}</span>
-                <span style={{ fontSize: 11, color: loveRate >= 0.6 ? INK : GRAPHITE, fontWeight: loveRate >= 0.6 ? 600 : 400 }}>
-                  {Math.round(loveRate * 100)}% loved
-                </span>
-                <span style={{ fontSize: 11, color: MUTE }}>of {total}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Verdict tendencies */}
-      {verdicts.length > 0 && (
-        <div style={{ marginBottom: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 8 }}>
-            verdicts
-          </div>
-          <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.6, letterSpacing: '-0.1px' }}>
-            {verdicts.map((v, i) => (
-              <span key={v.label}>
-                {i > 0 && <span style={{ color: MUTE }}> · </span>}
-                {v.label}
-                <span style={{ color: MUTE }}> ({v.count})</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-const TILE_SIZE = 50
-
-function CategoryCard({ items, type }: { items: Item[]; type: string }) {
-  const [expanded, setExpanded] = useState(false)
-
-  const data = useMemo(() => {
-    const genresScored = scoreTags(items, 'tags', type).filter(s => isGenreTag(s.label))
-    const genres = genresScored.filter(s => s.score >= 0).slice(0, 5)
-
-    const creatorMap = new Map<string, { score: number; count: number }>()
-    for (const i of items) {
-      if (i.type !== type || i.status !== 'done' || !i.reaction || !i.creator) continue
-      const w = WEIGHTS[i.reaction]
-      const e = creatorMap.get(i.creator) ?? { score: 0, count: 0 }
-      creatorMap.set(i.creator, { score: e.score + w, count: e.count + 1 })
-    }
-    const creators = Array.from(creatorMap.entries())
-      .filter(([, v]) => v.count >= 2)
-      .map(([label, v]) => ({ label, score: v.score, count: v.count }))
-      .sort((a, b) => b.score - a.score || b.count - a.count)
-      .slice(0, 5)
-
-    const rated = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
-    const lovedPct = rated.length
-      ? Math.round(rated.filter(i => i.reaction === 'loved_it').length / rated.length * 100)
-      : 0
-    const canon = items.filter(i => i.type === type && !!i.metadata?.canon)
-
-    return { genres, creators, ratedCount: rated.length, lovedPct, canon }
-  }, [items, type])
-
-  const { genres, creators, ratedCount, lovedPct, canon } = data
-  if (ratedCount === 0 && canon.length === 0) return null
-
-  return (
-    <div style={{ borderTop: `1px solid ${HAIR}` }}>
-      <button
-        onClick={() => setExpanded(v => !v)}
-        style={{
-          display: 'flex', alignItems: 'baseline', gap: 8, width: '100%',
-          padding: '13px 0 11px', background: 'none', border: 'none',
-          cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-        }}
-      >
-        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: INK }}>
-          {TYPE_LABEL[type] ?? type}
-        </span>
-        <span style={{ fontSize: 11, color: MUTE, flex: 1 }}>
-          {ratedCount} rated
-          {ratedCount >= STAT_MIN_RATED ? ` · ${lovedPct}% loved` : ''}
-          {canon.length > 0 ? ` · ${canon.length} canon` : ''}
-        </span>
-        <span style={{ fontSize: 10, color: MUTE }}>{expanded ? '▴' : '▾'}</span>
-      </button>
-
-      {expanded && (
-        <div style={{ paddingBottom: 16 }}>
-          {canon.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase', color: MUTE, marginBottom: 8 }}>
-                ◆ canon
-              </div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-                {canon.map(item => {
-                  const tileH = type === 'music' ? TILE_SIZE : Math.round(TILE_SIZE * 1.5)
-                  return (
-                    <div key={item.id} style={{ flex: '0 0 auto', width: TILE_SIZE, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <CoverTile item={item} width={TILE_SIZE} height={tileH} />
-                      <div style={{ fontSize: 9, color: GRAPHITE, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.title}>
-                        {item.title}
-                      </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {typeItems.map(item => {
+              const h = type === 'music' ? TILE_W : Math.round(TILE_W * 1.5)
+              return (
+                <div key={item.id} style={{ width: TILE_W, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <CoverTile item={item} width={TILE_W} height={h} />
+                  <div style={{
+                    fontSize: 11, color: GRAPHITE, lineHeight: 1.3,
+                    display: '-webkit-box', WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                  }}>
+                    {item.title}
+                  </div>
+                  {item.creator && (
+                    <div style={{ fontSize: 10, color: MUTE, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.creator}
                     </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-          {creators.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <RankedLine scored={creators} limit={5} />
-            </div>
-          )}
-          {genres.length > 0 && (
-            <RankedLine scored={genres} limit={5} />
-          )}
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   )
 }
 
 export function TasteScreen() {
   const { items, loading } = useItems()
-  const { tasteProfile, tasteProfileGeneratedAt, setTasteProfile } = usePrefs()
-  const [generatingProfile, setGeneratingProfile] = useState(false)
-  const [profileExpanded, setProfileExpanded] = useState(false)
-  const [profileError, setProfileError] = useState('')
+  const { tasteProfile, setTasteProfile } = usePrefs()
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState('')
 
   const doneWithReaction = useMemo(() => items.filter(i => i.status === 'done' && i.reaction), [items])
 
-  const moodScores = useMemo(() => scoreTags(items, 'moods'), [items])
-  const topVibes = moodScores.filter(s => VIBES.includes(s.label) && s.score >= 0)
-  const lowVibes = moodScores.filter(s => VIBES.includes(s.label) && s.score < 0)
+  const topVibes = useMemo(() =>
+    scoreTags(items, 'moods').filter(s => VIBES.includes(s.label) && s.score > 0).slice(0, 3),
+    [items]
+  )
 
-  async function generateProfile() {
-    if (generatingProfile) return
-    setGeneratingProfile(true)
-    setProfileError('')
+  const aspirationGap = useMemo(() => {
+    const wantTo = items.filter(i => i.status === 'want_to')
+    const done = items.filter(i => i.status === 'done')
+    const adding = topGenreForPool(wantTo)
+    const finishing = topGenreForPool(done)
+    if (!adding || !finishing || adding === finishing) return null
+    return { adding, finishing }
+  }, [items])
+
+  const faithfulCreators = useMemo(() => computeFaithfulCreators(items), [items])
+
+  const canonItems = useMemo(() =>
+    items.filter(i => i.metadata?.canon && i.reaction === 'loved_it'),
+    [items]
+  )
+
+  async function generate() {
+    if (generating) return
+    setGenerating(true)
+    setGenError('')
     try {
       const signal = items.filter(i => i.status === 'done' && (i.reaction === 'loved_it' || i.reaction === 'liked_it'))
+      const canonTitles = canonItems.map(i => `${i.title} (${i.type})`)
       const res = await fetch('/api/taste-profile', {
         method: 'POST',
         headers: await authHeaders(),
         body: JSON.stringify({
           items: signal.map(i => ({ title: i.title, creator: i.creator, type: i.type, reaction: i.reaction, note: i.note })),
-          vibes: topVibes.slice(0, 8).map(v => v.label),
+          vibes: topVibes.map(v => v.label),
+          canon: canonTitles.length ? canonTitles : undefined,
+          aspirationGap,
         }),
       })
       if (!res.ok) {
-        console.error('[taste-profile] HTTP', res.status)
-        setProfileError('couldn\'t regenerate — try again')
+        setGenError('couldn\'t generate — try again')
       } else {
         const { profile } = await res.json()
-        if (profile) {
-          await setTasteProfile(profile)
-        } else {
-          setProfileError('no profile returned — try again')
-        }
+        if (profile) await setTasteProfile(profile)
+        else setGenError('no profile returned — try again')
       }
-    } catch (err) {
-      console.error('[taste-profile] error:', err instanceof Error ? err.message : err)
-      setProfileError('couldn\'t regenerate — try again')
+    } catch {
+      setGenError('couldn\'t generate — try again')
     }
-    setGeneratingProfile(false)
+    setGenerating(false)
   }
 
   if (loading) return (
@@ -379,99 +228,107 @@ export function TasteScreen() {
 
   return (
     <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 14px', color: INK }}>taste</h1>
+      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 20px', color: INK }}>taste</h1>
 
-      {/* ① Identity — vibe ranked line + AI prose */}
-      <div style={{ borderBottom: `1.5px solid ${INK}`, paddingBottom: 18, marginBottom: 16 }}>
-        {topVibes.length > 0 && (
-          <div style={{ marginBottom: 14 }}>
-            <RankedLine scored={topVibes} limit={8} />
-            {lowVibes.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <span style={{ fontSize: 10, color: MUTE, marginRight: 4 }}>rarely lands</span>
-                <RankedLine scored={lowVibes} limit={4} />
-              </div>
-            )}
+      {/* Vibe words */}
+      {topVibes.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 18, fontWeight: 500, color: INK, letterSpacing: '-0.3px', lineHeight: 1.4 }}>
+            {topVibes.map((v, i) => (
+              <span key={v.label}>
+                {i > 0 && <span style={{ color: HAIR, margin: '0 6px' }}>·</span>}
+                {v.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* AI prose */}
+      <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 16, marginBottom: 16 }}>
+        {tasteProfile ? (
+          <div>
+            {tasteProfile.split('\n\n').filter(p => p.trim()).map((para, i) => (
+              <p key={i} style={{
+                fontSize: 14, lineHeight: 1.75, color: GRAPHITE,
+                letterSpacing: '-0.1px', margin: i === 0 ? '0 0 12px' : '0',
+              }}>
+                {inlineItalics(para.replace(/^[-–]\s*/gm, '').trim())}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, color: MUTE }}>ai taste profile</span>
+            <button
+              onClick={generate}
+              disabled={generating}
+              style={{
+                padding: '7px 16px', borderRadius: 20, cursor: generating ? 'default' : 'pointer',
+                border: `1.5px solid ${INK}`, background: INK,
+                color: '#fff', fontSize: 12, fontWeight: 600,
+                opacity: generating ? 0.5 : 1, fontFamily: 'inherit',
+              }}
+            >
+              {generating ? 'generating…' : 'generate'}
+            </button>
           </div>
         )}
-
-        {tasteProfile ? (() => {
-          const lines = tasteProfile.split('\n').filter(l => l.trim())
-          const opener = lines.find(l => !l.trimStart().startsWith('- ')) ?? ''
-          const bullets = lines.filter(l => l.trimStart().startsWith('- '))
-          return (
-            <>
-              <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
-                {inlineItalics(opener)}
-                {bullets.length > 0 && !profileExpanded && (
-                  <TextLink onClick={() => setProfileExpanded(true)}>see more</TextLink>
-                )}
-              </div>
-              {bullets.length > 0 && profileExpanded && (
-                <div style={{ fontSize: 13, lineHeight: 1.6, color: GRAPHITE, marginBottom: 8, letterSpacing: '-0.1px' }}>
-                  {bullets.map((line, i) => {
-                    const isLast = i === bullets.length - 1
-                    return (
-                      <div key={i} style={{ display: 'flex', gap: 9, marginBottom: isLast ? 0 : 7 }}>
-                        <span style={{ color: MUTE, flexShrink: 0, lineHeight: 1.6, fontWeight: 700 }}>·</span>
-                        <span>
-                          {inlineItalics(line.replace(/^[\s-]+/, ''))}
-                          {isLast && <TextLink onClick={() => setProfileExpanded(false)}>see less</TextLink>}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
-                {tasteProfileGeneratedAt && (
-                  <span style={{ fontSize: 11, color: MUTE }}>
-                    {new Date(tasteProfileGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ·
-                  </span>
-                )}
-                <TextLink onClick={generateProfile}>
-                  {generatingProfile ? 'generating…' : 'regenerate'}
-                </TextLink>
-              </div>
-              {profileError && (
-                <div style={{ fontSize: 11, color: '#C0392B', marginTop: 4 }}>{profileError}</div>
-              )}
-            </>
-          )
-        })() : (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: GRAPHITE }}>ai taste profile</span>
-              <button
-                onClick={generateProfile}
-                disabled={generatingProfile}
-                style={{
-                  padding: '7px 16px', borderRadius: 20, cursor: generatingProfile ? 'default' : 'pointer',
-                  border: '1.5px solid #111', background: '#111',
-                  color: '#fff', fontSize: 12, fontWeight: 600,
-                  opacity: generatingProfile ? 0.5 : 1,
-                }}
-              >
-                {generatingProfile ? 'generating…' : 'generate'}
-              </button>
-            </div>
-            {profileError && (
-              <div style={{ fontSize: 11, color: '#C0392B', marginTop: 6 }}>{profileError}</div>
-            )}
-          </>
-        )}
+        {genError && <div style={{ fontSize: 11, color: '#C0392B', marginTop: 6 }}>{genError}</div>}
       </div>
 
-      {/* ② Stats — lede · reaction breakdown · verdict tendencies · effort axis */}
-      <StatsSection items={doneWithReaction} />
+      {/* The gap */}
+      {aspirationGap && (
+        <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 6 }}>
+            the gap
+          </div>
+          <div style={{ fontSize: 13, color: GRAPHITE, fontStyle: 'italic', letterSpacing: '-0.1px' }}>
+            adding {aspirationGap.adding} · finishing {aspirationGap.finishing}
+          </div>
+        </div>
+      )}
 
-      {/* ③ By medium — collapsible */}
-      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, margin: '4px 0 2px' }}>
-        by medium
-      </div>
-      {(['film', 'book', 'music', 'tv'] as const).map(type => (
-        <CategoryCard key={type} items={items} type={type} />
-      ))}
+      {/* Creator faithfulness */}
+      {faithfulCreators.length > 0 && (
+        <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
+            always loved
+          </div>
+          <div style={{ fontSize: 14, color: GRAPHITE, lineHeight: 1.7, letterSpacing: '-0.1px' }}>
+            {faithfulCreators.map((c, i) => (
+              <span key={c.name}>
+                {i > 0 && <span style={{ color: MUTE }}> · </span>}
+                <span style={{ color: INK }}>{c.name}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Canon gallery */}
+      {canonItems.length > 0 && (
+        <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 16 }}>
+          <CanonGallery items={canonItems} />
+        </div>
+      )}
+
+      {/* Refresh profile — available but unobtrusive */}
+      {tasteProfile && (
+        <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginTop: 4 }}>
+          <button
+            onClick={generate}
+            disabled={generating}
+            style={{
+              background: 'none', border: 'none', padding: 0, cursor: generating ? 'default' : 'pointer',
+              fontSize: 11, color: MUTE, fontFamily: 'inherit',
+              textDecoration: 'underline', textUnderlineOffset: 2,
+            }}
+          >
+            {generating ? 'generating…' : 'refresh profile'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

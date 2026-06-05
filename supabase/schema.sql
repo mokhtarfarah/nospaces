@@ -88,3 +88,34 @@ create policy "Users can update own prefs"
 create trigger user_prefs_updated_at
   before update on public.user_prefs
   for each row execute function public.set_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- API rate limiting. One row per (user, endpoint, UTC-hour window).
+-- The check_rate_limit() function atomically increments and returns the count.
+-- Used by /api/identify (60/hr) and /api/recommend (10/hr).
+-- ---------------------------------------------------------------------------
+create table if not exists public.api_rate_limits (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  endpoint   text not null,
+  window_hour text not null,  -- "2026-06-05T14" (UTC)
+  count      int not null default 0,
+  primary key (user_id, endpoint, window_hour)
+);
+
+create or replace function public.check_rate_limit(
+  p_user_id uuid,
+  p_endpoint text,
+  p_window text,
+  p_limit int
+) returns int language plpgsql security definer as $$
+declare
+  v_count int;
+begin
+  insert into public.api_rate_limits (user_id, endpoint, window_hour, count)
+  values (p_user_id, p_endpoint, p_window, 1)
+  on conflict (user_id, endpoint, window_hour)
+  do update set count = api_rate_limits.count + 1
+  returning count into v_count;
+  return v_count;
+end;
+$$;

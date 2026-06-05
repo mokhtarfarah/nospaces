@@ -17,7 +17,7 @@
 **Ranked improvement list (from session 35 audit) — pick in order:**
 
 1. ✅ Library defaults + dynamic tab order + thumbnail size (session 35)
-2. **Rate limiting on `/api/recommend` + `/api/identify`** — real dollar risk with a compromised JWT. Simple per-user hourly cap via Vercel edge middleware or Upstash. Recommend is $0.15-0.20/call.
+2. ✅ **Rate limiting on `/api/recommend` + `/api/identify`** — `api/_ratelimit.ts` shared utility + Supabase `api_rate_limits` table + `check_rate_limit()` RPC. Limits: identify 60/hr, recommend 10/hr. **Needs one-time SQL run in Supabase console** (SQL added to `supabase/schema.sql` bottom).
 3. **Taste page canon gallery** — 50px tiles at 9px type are illegible. Canon items should render as a proper gallery (larger tiles, readable title beneath). This is the centerpiece of the taste page.
 4. **React error boundary at app root** — any unhandled component throw blank-screens the whole app. 10 lines, high crash-prevention value.
 5. **`window.open` without `noopener`** — Spotify + Wikipedia quick-links in `ItemRow`. Add `rel="noopener noreferrer"` (or pass as 3rd arg to `window.open`).
