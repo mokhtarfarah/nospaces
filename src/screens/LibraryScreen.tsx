@@ -805,18 +805,24 @@ function DropdownMenu({ options, selected, onSelect, anchorRef }: {
 }) {
   // The filter row scrolls horizontally, which clips absolutely-positioned
   // children. Position the menu `fixed` to the button's on-screen rect instead.
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+  const [pos, setPos] = useState<{ left?: number; right?: number; top: number } | null>(null)
   useLayoutEffect(() => {
     const el = anchorRef.current
     if (el) {
       const r = el.getBoundingClientRect()
-      setPos({ left: r.left, top: r.bottom - 4 })
+      const menuWidth = 160
+      // If left-anchoring would overflow the right edge, right-anchor instead.
+      if (r.left + menuWidth > window.innerWidth - 8) {
+        setPos({ right: window.innerWidth - r.right, top: r.bottom - 4 })
+      } else {
+        setPos({ left: r.left, top: r.bottom - 4 })
+      }
     }
   }, [anchorRef])
   if (!pos) return null
   return (
     <div style={{
-      position: 'fixed', top: pos.top, left: pos.left,
+      position: 'fixed', top: pos.top, left: pos.left, right: pos.right,
       background: '#fff', border: '1px solid #E8E8E8',
       borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
       zIndex: 200, minWidth: 160, maxHeight: 220, overflowY: 'auto',
