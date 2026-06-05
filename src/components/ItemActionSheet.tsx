@@ -471,15 +471,17 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#fff', borderRadius: '16px 16px 0 0',
-        padding: '6px 20px 0', zIndex: 201,
+        padding: '14px 20px 0', zIndex: 201,
         maxWidth: 480, margin: '0 auto',
         maxHeight: '96dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
         {view === 'main' && (
           <>
-            {/* Item preview — square cover for albums, poster (2:3) for everything else.
-                × is inline with the title so it aligns visually. */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18, marginTop: 4 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4 }}>✕</button>
+            </div>
+            {/* Item preview — square cover for albums, poster (2:3) for everything else */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
               {(() => {
                 const w = item.type === 'music' ? 64 : 52
                 const h = item.type === 'music' ? 64 : 78
@@ -527,7 +529,6 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   </div>
                 )}
               </div>
-              <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: '2px 0 0', flexShrink: 0, alignSelf: 'flex-start' }}>✕</button>
             </div>
 
             {/* Blurb expansion — below the flat link row */}
@@ -759,7 +760,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
           return (
             <>
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, marginTop: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <p style={{ ...sectionHeading, margin: 0 }}>
                   edit
                   <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#888', textTransform: 'none', letterSpacing: 0 }}>{item.title}</span>
@@ -991,7 +992,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
 
         {view === 'reaction' && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <p style={{ ...sectionHeading, margin: 0 }}>
                 {item.status === 'done' ? 'edit reaction' : 'mark as done'}
               </p>
@@ -1007,18 +1008,35 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             <div style={{ marginBottom: 16 }}>
               <NoteInput value={note} onChange={setNote} />
             </div>
-            {/* First mark-done: collapsible chips (active vibes pre-seeded from unconfirmedVibes,
-                shown compact — expand to see all options). Edit reaction: tags link reveals on demand. */}
+            {/* First mark-done: verdict starts open (no active verdict yet), vibes collapsible.
+                Active AI-suggested vibes show pre-selected. Edit reaction: tags link on demand. */}
             {item.status !== 'done' ? (
               <div style={{ marginBottom: 16 }}>
-                <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} collapsible />
+                {unconfirmedVibes.length > 0 && (
+                  <div style={{ fontSize: 10, color: '#C9C6C0', marginBottom: 10 }}>
+                    vibes below are ai guesses — keep the ones that fit, saving confirms them.
+                  </div>
+                )}
+                <MoodChips
+                  type={item.type}
+                  isActive={m => selectedMoods.includes(m)}
+                  onToggle={toggleMood}
+                  collapsible
+                  initialOpen={{ verdict: !VERDICTS.some(v => selectedMoods.includes(v)) }}
+                />
               </div>
             ) : (
               <div style={{ marginBottom: 16 }}>
                 <button onClick={() => setReactionTagsOpen(v => !v)} className="tlink">{reactionTagsOpen ? 'done ▴' : 'edit tags ▾'}</button>
                 {reactionTagsOpen && (
                   <div style={{ marginTop: 10 }}>
-                    <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} collapsible />
+                    <MoodChips
+                      type={item.type}
+                      isActive={m => selectedMoods.includes(m)}
+                      onToggle={toggleMood}
+                      collapsible
+                      initialOpen={{ verdict: !VERDICTS.some(v => selectedMoods.includes(v)) }}
+                    />
                   </div>
                 )}
               </div>

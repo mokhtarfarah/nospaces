@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor } from '../lib/colors'
+import { VERDICTS } from '../lib/moods'
 import { NoteInput } from './NoteInput'
 import { MoodChips } from './MoodChips'
 
@@ -48,15 +49,15 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         bottom: 0, left: 0, right: 0,
         background: '#fff',
         borderRadius: '16px 16px 0 0',
-        padding: '6px 20px calc(28px + env(safe-area-inset-bottom))',
+        padding: '14px 20px calc(28px + env(safe-area-inset-bottom))',
         zIndex: 201,
         maxWidth: 480,
         margin: '0 auto',
         maxHeight: '85dvh',
         overflowY: 'auto',
       }}>
-        {/* Item preview + close — × aligned with the title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, marginBottom: 20 }}>
+        {/* Item preview + close */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
           <div style={{ width: 4, height: 36, borderRadius: 2, background: color.border, flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 600 }}>{item.title}</div>
@@ -92,8 +93,19 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         <div style={{ marginBottom: 16 }}>
           <NoteInput value={note} onChange={setNote} />
         </div>
+        {unconfirmed.length > 0 && (
+          <div style={{ fontSize: 10, color: '#C9C6C0', marginBottom: 10 }}>
+            vibes below are ai guesses — keep the ones that fit, saving confirms them.
+          </div>
+        )}
         <div style={{ marginBottom: 16 }}>
-          <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} collapsible />
+          <MoodChips
+            type={item.type}
+            isActive={m => selectedMoods.includes(m)}
+            onToggle={toggleMood}
+            collapsible
+            initialOpen={{ verdict: !VERDICTS.some(v => selectedMoods.includes(v)) }}
+          />
         </div>
 
         <button

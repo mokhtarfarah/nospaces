@@ -46,7 +46,7 @@ export function MoodChips({ type = 'other', isActive, onToggle, size = 'md', lay
   const toggleBtn = (label: string, isOpen: boolean) => (
     <button
       onClick={() => setOpen(o => ({ ...o, [label]: !o[label] }))}
-      style={{ padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #CCC', background: 'none', color: '#AAA', flexShrink: 0 }}
+      style={{ padding: sm ? '3px 10px' : '5px 12px', borderRadius: 4, fontSize: sm ? 11 : 13, cursor: 'pointer', border: '1.5px dashed #CCC', background: 'none', color: '#AAA', flexShrink: 0 }}
     >
       {isOpen ? 'done' : '+ add'}
     </button>
