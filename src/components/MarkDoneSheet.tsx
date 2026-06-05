@@ -72,29 +72,23 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
 
         {/* 2×2 reaction grid — monochrome to match the editorial card */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }}>
-          {REACTIONS.map(r => {
+          {REACTIONS.slice(0, 2).map(r => {
             const active = reaction === r.value
             return (
-              <button
-                key={r.value}
-                onClick={() => setReaction(r.value)}
-                style={{
-                  padding: '12px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 14,
-                  border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
-                  background: active ? '#F4F2EE' : '#fff',
-                  color: active ? '#1C1B19' : '#6F6B64',
-                  fontWeight: active ? 600 : 400,
-                }}
-              >
-                {r.label}
-              </button>
+              <button key={r.value} onClick={() => setReaction(r.value)} style={{
+                padding: '12px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 14,
+                border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
+                background: active ? '#F4F2EE' : '#fff',
+                color: active ? '#1C1B19' : '#6F6B64',
+                fontWeight: active ? 600 : 400,
+              }}>{r.label}</button>
             )
           })}
         </div>
         <button
           onClick={() => setCanon(v => !v)}
           style={{
-            width: '100%', marginBottom: 18, padding: '12px 8px', borderRadius: 10,
+            width: '100%', marginBottom: 6, padding: '12px 8px', borderRadius: 10,
             cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
             border: canon ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
             background: canon ? '#F4F2EE' : '#fff',
@@ -106,6 +100,20 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
           <span style={{ fontSize: 10 }}>{canon ? '◆' : '◇'}</span>
           canon
         </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+          {REACTIONS.slice(2).map(r => {
+            const active = reaction === r.value
+            return (
+              <button key={r.value} onClick={() => setReaction(r.value)} style={{
+                padding: '12px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 14,
+                border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
+                background: active ? '#F4F2EE' : '#fff',
+                color: active ? '#1C1B19' : '#6F6B64',
+                fontWeight: active ? 600 : 400,
+              }}>{r.label}</button>
+            )
+          })}
+        </div>
 
         <div style={{ marginBottom: 16 }}>
           <NoteInput value={note} onChange={setNote} />

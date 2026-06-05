@@ -1004,7 +1004,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }}>
-              {REACTIONS.map(r => (
+              {REACTIONS.slice(0, 2).map(r => (
                 <button key={r.value} onClick={() => setReaction(r.value)} style={reactionBtnStyle(reaction === r.value)}>
                   {r.label}
                 </button>
@@ -1014,13 +1014,20 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               onClick={() => onToggleCanon(!item.metadata?.canon)}
               style={{
                 ...reactionBtnStyle(!!item.metadata?.canon),
-                width: '100%', marginBottom: 18, fontSize: 13,
+                width: '100%', marginBottom: 6, fontSize: 13,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}
             >
               <span style={{ fontSize: 10 }}>{item.metadata?.canon ? '◆' : '◇'}</span>
               canon
             </button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+              {REACTIONS.slice(2).map(r => (
+                <button key={r.value} onClick={() => setReaction(r.value)} style={reactionBtnStyle(reaction === r.value)}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
             <div style={{ marginBottom: 16 }}>
               <NoteInput value={note} onChange={setNote} />
             </div>
