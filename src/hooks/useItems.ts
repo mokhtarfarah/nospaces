@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase, authHeaders } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import type { Item, ItemReaction } from '../lib/database.types'
+import { enqueueCapture } from '../lib/offlineQueue'
 
 // Types we keep genres for. Anything else (other) never gets auto-genred.
 const GENRE_TYPES = ['film', 'tv', 'book', 'music']
@@ -55,6 +56,10 @@ export function useItems() {
     source_detail?: string,
   ) {
     if (!user) return
+    if (!navigator.onLine) {
+      await enqueueCapture({ title, type, creator, year, metadata, tags, done, source_detail })
+      return
+    }
     const { data: inserted } = await db().from('items').insert({
       user_id: user.id,
       title,

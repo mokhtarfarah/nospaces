@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { useOfflineSync } from './hooks/useOfflineSync'
 import { LoginScreen } from './components/LoginScreen'
 import { BottomNav } from './components/BottomNav'
 import { LibraryScreen } from './screens/LibraryScreen'
@@ -16,6 +17,7 @@ import { GuideScreen } from './screens/GuideScreen'
 export default function App() {
   const { user, loading } = useAuth()
   const location = useLocation()
+  const { pendingCount, syncStatus } = useOfflineSync()
 
   if (loading) {
     return (
@@ -48,6 +50,24 @@ export default function App() {
         </Routes>
       </div>
       <BottomNav />
+      {(pendingCount > 0 || syncStatus !== 'idle') && (
+        <div style={{
+          position: 'fixed',
+          bottom: 'calc(56px + env(safe-area-inset-bottom))',
+          left: 0, right: 0,
+          background: '#1C1B19',
+          color: '#ABA69C',
+          fontSize: 11,
+          textAlign: 'center',
+          padding: '6px 16px',
+          zIndex: 98,
+          letterSpacing: '0.02em',
+        }}>
+          {syncStatus === 'syncing' && 'syncing...'}
+          {syncStatus === 'synced' && 'synced'}
+          {syncStatus === 'idle' && pendingCount > 0 && `${pendingCount} item${pendingCount === 1 ? '' : 's'} saved offline — will sync when back online`}
+        </div>
+      )}
     </>
   )
 }
