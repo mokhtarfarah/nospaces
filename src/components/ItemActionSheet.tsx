@@ -22,6 +22,7 @@ interface Props {
   onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
   onToggleOwned: (owned: boolean) => void
+  onPatchMetadata: (patch: Record<string, unknown>) => void
   onDelete: () => void
   onClose: () => void
   // Triage an item out of the "for review" inbox. No reaction = keep as want_to;
@@ -94,7 +95,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onPatchMetadata, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -172,6 +173,32 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoCount])
+
+  // Fetch vibe suggestions on card open for items that have no vibes yet
+  // (confirmed moods or provisional unconfirmedVibes). Only fires once per item —
+  // once vibes are written to metadata they won't be empty next open.
+  useEffect(() => {
+    if (item.metadata?.scratch) return
+    const hasVibes = (item.moods ?? []).length > 0 || (item.metadata?.unconfirmedVibes as string[] | undefined)?.length
+    if (hasVibes) return
+    const VIBE_TYPES = ['film', 'tv', 'book', 'music']
+    if (!VIBE_TYPES.includes(item.type)) return
+    let cancelled = false
+    authHeaders()
+      .then(h => window.fetch('/api/vibes', {
+        method: 'POST', headers: h,
+        body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }),
+      }))
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { suggestions?: string[] } | null) => {
+        if (cancelled || !data) return
+        const vibes = Array.isArray(data.suggestions) ? data.suggestions : []
+        if (vibes.length) onPatchMetadata({ unconfirmedVibes: vibes })
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id])
 
   // Wikipedia article link (null if no page exists / type not linked).
   // Music resolves a page (for the cover) but keeps Spotify as its button.
