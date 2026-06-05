@@ -16,9 +16,12 @@
 
 Priority order:
 
-1. **Move "shows near you" to discover** — currently surfaced in the music filter row; conceptually belongs on the discover tab. UI move only, no data change.
-3. **Decade filter** — derived from `item.year`, pure client-side. Lives inside the `filter ↓` sheet (already exists) once built.
-4. **Regions map** — creator origin/nationality breakdown on the taste page. Data dependency: `item.creator` is a name string with no country stored. Options: add a country field, or batch-pull from Wikidata. Parked until data strategy is decided.
+1. **"Not interested" dismiss on discover** — dismiss button per result row; store dismissed titles in prefs (client-side only, same pattern as `savedItems`). Goal: keep discover feed clean. No AI signal value — purely UX.
+2. **Descriptive library search** — "cozy films I haven't watched" → one Haiku call maps the sentence to existing filters. No loop, low cost.
+
+**Parked (do not re-raise without new signal):**
+- **Want-to priority** — pin/tier system for backlog. Decision: adds clutter to every want-to row for a problem that help-me-decide + search already cover. Revisit only if backlog grows genuinely unwieldy.
+- **Regions map** — creator origin/nationality breakdown on taste page. Needs nationality data (not stored). Decide: manual country field vs Wikidata batch-pull.
 
 ---
 
@@ -175,7 +178,7 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 
 **Library UX**
 - **Filter bar declutter** — ✅ shipped. Single "filter ▾" button with active-count badge; opens bottom sheet with pill chips for vibe/verdict/genre/series.
-- **Decade filter** — derived from `item.year`, pure client-side, zero API cost. Lives inside the `filter ↓` sheet once built.
+- **Decade section headers** — ✅ shipped. "By year" view groups items into decade sections (2020s, 2010s, etc.) instead of a flat chronological list.
 - **"Help me decide" decision tree** — ✅ shipped. Guided 3-step flow (seen before? → type → vibe) from `/decide`. Entry: inline link in library header.
 
 **Action card / edit view**
@@ -192,7 +195,8 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 - **"How to use" tutorial page** — ✅ shipped. `/guide` — 5 sections, inline CSS illustrations, accurate to current UI. Entry: `?` in library header + empty-state link. Auto-reminder hook fires when screens change.
 
 **Discovery**
-- **Move "shows near you" to discover tab** — currently in music filter row; belongs on discover. UI move only.
+- **Move "shows near you" to discover tab** — ✅ shipped. Removed from music filter row; now a "shows near you / browse →" row above sources on the discover tab.
+- **"Not interested" dismiss on discover** — dismiss per result row, titles stored in prefs. Client-side only, no AI signal value — purely keeps feed clean.
 
 **Dev automation (next 3 to build)**
 - **Typecheck on Stop hook** — ✅ done. Stop hook runs `tsc --noEmit` and injects a system message if any `error TS` lines are found.
@@ -208,7 +212,7 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 
 **Taxonomy / vocabulary**
 - **New verdict: "stuck with me"** — ✅ shipped. Between "delivers" and "respect, not love". For things that weren't immediately enjoyable but lingered.
-- **Want-to priority** — pin or tier system for backlog items, especially books and music. Affects sort order and help-me-decide weighting.
+- **Want-to priority** — ⏸ parked. Pin/tier system for backlog adds clutter to every want-to row; help-me-decide + search already cover the acute case. Revisit if backlog grows genuinely unwieldy.
 
 **Discovery & search**
 - **Discovery improvements** — "not interested" / dismiss on Discover suggestions; divert mode as data accumulates.
@@ -232,6 +236,13 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 32 (2026-06-05) — Discover UX, tidy fix, decade headers
+
+1. **"Shows near you" moved to discover tab** — removed from music filter row in LibraryScreen; now appears as a "shows near you / browse →" row above sources in DiscoverScreen.
+2. **Tidy queue end-of-queue bug fixed** — last item's "save & next" was navigating to `/add`; now closes the sheet and returns to library. Button label on final item changed to "save & finish".
+3. **Decade section headers in by-year view** — "by year" sort now groups into decade buckets (2020s, 1990s, etc.) using the existing section header rendering. Items without a year land under "unknown".
+4. **Roadmap decisions** — "not interested" on discover: build it (UX value, no AI signal). Want-to priority: parked (adds clutter, help-me-decide covers the acute case).
 
 ### Session 31 (2026-06-05) — Stats section refinement
 
