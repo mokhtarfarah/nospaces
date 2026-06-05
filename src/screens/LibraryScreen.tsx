@@ -606,7 +606,7 @@ export function LibraryScreen() {
 
       {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(150px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))' }}>
-        {statusFilter === 'want_to' && !loading && filtered.length > 0 && (
+        {statusFilter !== 'in_progress' && !loading && items.length > 0 && (
           <div style={{ padding: '10px 16px 0' }}>
             <button
               onClick={() => navigate('/decide')}

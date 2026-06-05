@@ -6,11 +6,13 @@ import { VIBES } from '../lib/moods'
 import { typeColor } from '../lib/colors'
 import type { Item } from '../lib/database.types'
 
+type SeenChoice = 'new' | 'revisit'
 type TypeChoice = 'film' | 'tv' | 'book' | 'music' | 'any'
 type TimeChoice = 'quick' | 'medium' | 'long' | 'any'
-type Step = 'type' | 'time' | 'vibe' | 'result'
+type Step = 'seen' | 'type' | 'time' | 'vibe' | 'result'
 
 interface Picks {
+  seen: SeenChoice | null
   type: TypeChoice | null
   time: TimeChoice | null
   vibe: string | null
@@ -25,17 +27,17 @@ const TYPE_OPTIONS: { value: TypeChoice; label: string }[] = [
 ]
 
 const TIME_OPTIONS_FILM: { value: TimeChoice; label: string; sub: string }[] = [
-  { value: 'quick',  label: 'short',       sub: 'under 95 min' },
-  { value: 'medium', label: 'feature',     sub: '95 – 135 min' },
-  { value: 'long',   label: 'long one',    sub: '135+ min' },
-  { value: 'any',    label: "doesn't matter", sub: '' },
+  { value: 'quick',  label: 'short',           sub: 'under 95 min' },
+  { value: 'medium', label: 'feature',         sub: '95 – 135 min' },
+  { value: 'long',   label: 'long one',        sub: '135+ min' },
+  { value: 'any',    label: "doesn't matter",  sub: '' },
 ]
 
 const TIME_OPTIONS_BOOK: { value: TimeChoice; label: string; sub: string }[] = [
-  { value: 'quick',  label: 'quick read',  sub: 'under 200 pages' },
-  { value: 'medium', label: 'medium',      sub: '200 – 400 pages' },
-  { value: 'long',   label: 'long haul',   sub: '400+ pages' },
-  { value: 'any',    label: "doesn't matter", sub: '' },
+  { value: 'quick',  label: 'quick read',      sub: 'under 200 pages' },
+  { value: 'medium', label: 'medium',          sub: '200 – 400 pages' },
+  { value: 'long',   label: 'long haul',       sub: '400+ pages' },
+  { value: 'any',    label: "doesn't matter",  sub: '' },
 ]
 
 function seededShuffle<T>(arr: T[], seed: number): T[] {
@@ -52,7 +54,10 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 }
 
 function candidatePool(items: Item[], picks: Picks): Item[] {
-  let pool = items.filter(i => i.status === 'want_to')
+  // Status pool: new = want_to, revisit = done. null = not yet chosen (empty)
+  const targetStatus = picks.seen === 'new' ? 'want_to' : picks.seen === 'revisit' ? 'done' : null
+  if (!targetStatus) return []
+  let pool = items.filter(i => i.status === targetStatus)
 
   if (picks.type && picks.type !== 'any') {
     pool = pool.filter(i => i.type === picks.type)
@@ -159,7 +164,6 @@ function ResultCard({ item, onTap }: { item: Item; onTap: () => void }) {
         fontFamily: 'inherit',
       }}
     >
-      {/* cover or type swatch */}
       {coverUrl ? (
         <img
           src={coverUrl}
@@ -227,21 +231,31 @@ export function HelpMeDecideScreen() {
   const { items, markDone, markWantTo, markInProgress, deleteItem, editItem,
           toggleOwned, toggleCanon, patchMetadata } = useItems()
 
-  const [step, setStep] = useState<Step>('type')
-  const [picks, setPicks] = useState<Picks>({ type: null, time: null, vibe: null })
+  const [step, setStep] = useState<Step>('seen')
+  const [picks, setPicks] = useState<Picks>({ seen: null, type: null, time: null, vibe: null })
   const [resultSeed, setResultSeed] = useState(Date.now())
   const [actionItem, setActionItem] = useState<Item | null>(null)
 
-  const wantTo = useMemo(() => items.filter(i => i.status === 'want_to'), [items])
-  const availableTypes = useMemo(() => new Set(wantTo.map(i => i.type)), [wantTo])
+  // Types available in the current seen-pool
+  const availableTypes = useMemo(() => {
+    if (!picks.seen) return new Set<string>()
+    const status = picks.seen === 'new' ? 'want_to' : 'done'
+    return new Set(items.filter(i => i.status === status).map(i => i.type))
+  }, [items, picks.seen])
+
+  function handleSeen(seen: SeenChoice) {
+    const newPicks: Picks = { seen, type: null, time: null, vibe: null }
+    setPicks(newPicks)
+    setStep('type')
+  }
 
   function handleType(type: TypeChoice) {
-    const newPicks: Picks = { type, time: null, vibe: null }
+    const newPicks: Picks = { ...picks, type, time: null, vibe: null }
     setPicks(newPicks)
     if (type === 'film' || type === 'book') {
       setStep('time')
     } else {
-      const pool = candidatePool(wantTo, newPicks)
+      const pool = candidatePool(items, newPicks)
       const vibes = availableVibes(pool)
       setStep(vibes.length >= 2 ? 'vibe' : 'result')
     }
@@ -250,7 +264,7 @@ export function HelpMeDecideScreen() {
   function handleTime(time: TimeChoice) {
     const newPicks: Picks = { ...picks, time, vibe: null }
     setPicks(newPicks)
-    const pool = candidatePool(wantTo, newPicks)
+    const pool = candidatePool(items, newPicks)
     const vibes = availableVibes(pool)
     setStep(vibes.length >= 2 ? 'vibe' : 'result')
   }
@@ -263,33 +277,33 @@ export function HelpMeDecideScreen() {
   }
 
   const vibeOptions = useMemo(() => {
-    const pool = candidatePool(wantTo, { ...picks, vibe: null })
+    const pool = candidatePool(items, { ...picks, vibe: null })
     return availableVibes(pool)
-  }, [wantTo, picks])
+  }, [items, picks])
 
   const resultItems = useMemo(() => {
-    const pool = candidatePool(wantTo, picks)
+    const pool = candidatePool(items, picks)
     if (pool.length === 0) return []
     return seededShuffle(pool, resultSeed).slice(0, 3)
-  }, [wantTo, picks, resultSeed])
+  }, [items, picks, resultSeed])
 
   function goBack() {
-    if (step === 'type') { navigate('/library'); return }
-    if (step === 'time') { setStep('type'); return }
+    if (step === 'seen')   { navigate('/library'); return }
+    if (step === 'type')   { setStep('seen'); return }
+    if (step === 'time')   { setStep('type'); return }
     if (step === 'vibe') {
       if (picks.type === 'film' || picks.type === 'book') setStep('time')
       else setStep('type')
       return
     }
     if (step === 'result') {
-      const hasVibes = vibeOptions.length >= 2
-      if (hasVibes) { setStep('vibe'); return }
+      if (vibeOptions.length >= 2) { setStep('vibe'); return }
       if (picks.type === 'film' || picks.type === 'book') { setStep('time'); return }
       setStep('type')
     }
   }
 
-  const poolSize = useMemo(() => candidatePool(wantTo, picks).length, [wantTo, picks])
+  const poolSize = useMemo(() => candidatePool(items, picks).length, [items, picks])
 
   // ---------------------------------------------------------------------------
   return (
@@ -319,12 +333,12 @@ export function HelpMeDecideScreen() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          {step === 'type' ? 'library' : 'back'}
+          {step === 'seen' ? 'library' : 'back'}
         </button>
 
-        {step !== 'type' && (
+        {step !== 'seen' && (
           <button
-            onClick={() => { setPicks({ type: null, time: null, vibe: null }); setStep('type') }}
+            onClick={() => { setPicks({ seen: null, type: null, time: null, vibe: null }); setStep('seen') }}
             style={{
               marginLeft: 'auto',
               background: 'none', border: 'none', cursor: 'pointer',
@@ -349,12 +363,30 @@ export function HelpMeDecideScreen() {
         boxSizing: 'border-box',
       }}>
 
+        {/* SEEN STEP */}
+        {step === 'seen' && (
+          <>
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 11, color: '#ABA69C', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
+                help me decide
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: '#1C1B19', lineHeight: 1.25, letterSpacing: '-0.02em' }}>
+                seen it before, or something new?
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              <OptionPill label="new to me" onClick={() => handleSeen('new')} />
+              <OptionPill label="seen it before" onClick={() => handleSeen('revisit')} />
+            </div>
+          </>
+        )}
+
         {/* TYPE STEP */}
         {step === 'type' && (
           <>
             <div style={{ marginBottom: 32 }}>
               <div style={{ fontSize: 11, color: '#ABA69C', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
-                help me decide
+                {picks.seen === 'revisit' ? 'revisit' : 'something new'}
               </div>
               <div style={{ fontSize: 26, fontWeight: 700, color: '#1C1B19', lineHeight: 1.25, letterSpacing: '-0.02em' }}>
                 what are you in the mood for?
@@ -415,18 +447,20 @@ export function HelpMeDecideScreen() {
           <>
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 11, color: '#ABA69C', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
-                {resultItems.length === 0 ? 'no matches' : 'your pick'}
+                {resultItems.length === 0 ? 'no matches' : picks.seen === 'revisit' ? 'revisit' : 'your pick'}
               </div>
               <div style={{ fontSize: 26, fontWeight: 700, color: '#1C1B19', lineHeight: 1.25, letterSpacing: '-0.02em' }}>
                 {resultItems.length === 0
                   ? 'nothing quite fits'
                   : resultItems.length === 1
                     ? 'this one.'
-                    : 'here\'s what we\'ve got.'}
+                    : picks.seen === 'revisit'
+                      ? 'worth another go.'
+                      : 'here\'s what we\'ve got.'}
               </div>
               {resultItems.length === 0 && (
                 <p style={{ fontSize: 14, color: '#6F6B64', marginTop: 10, lineHeight: 1.5 }}>
-                  no items in your want-to list match those filters. try loosening a constraint.
+                  no items match those filters. try loosening a constraint.
                 </p>
               )}
             </div>
@@ -443,7 +477,6 @@ export function HelpMeDecideScreen() {
               </div>
             )}
 
-            {/* actions */}
             <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
               {poolSize > resultItems.length && (
                 <button
@@ -459,7 +492,7 @@ export function HelpMeDecideScreen() {
                 </button>
               )}
               <button
-                onClick={() => { setPicks({ type: null, time: null, vibe: null }); setStep('type') }}
+                onClick={() => { setPicks({ seen: null, type: null, time: null, vibe: null }); setStep('seen') }}
                 style={{
                   padding: '12px 22px', borderRadius: 100,
                   border: '1.5px solid #D5D3CF', background: '#fff',
@@ -474,7 +507,6 @@ export function HelpMeDecideScreen() {
         )}
       </div>
 
-      {/* action sheet */}
       {actionItem && (() => {
         const fresh = items.find(i => i.id === actionItem.id) ?? actionItem
         return (
