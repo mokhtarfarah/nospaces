@@ -16,10 +16,10 @@
 
 Priority order:
 
-1. **Offline capture queue** — IndexedDB queue; save items while offline, sync on reconnect. PWA service worker already in place. No AI involved — pure infrastructure.
-2. **Describe-by-recency for film/TV** — "that new Villeneuve movie" → TMDB person→credits lookup. Music/books already handle recency; film/TV is the gap.
+1. **Describe-by-recency for film/TV** — "that new Villeneuve movie" → TMDB person→credits lookup. Music/books already handle recency; film/TV is the gap.
 
 **Parked (do not re-raise without new signal):**
+- **Offline library cache** — cache Supabase items in IndexedDB so the library loads while offline. Skipped: the capture queue covers the "save something quick" case. Full offline-first requires queuing mutations (markDone, edits, deletes) too — different scope. Revisit only if offline usage becomes a real pattern.
 - **Want-to priority** — pin/tier system for backlog. Adds clutter to every want-to row; help-me-decide + search already cover the acute case.
 - **Regions map** — creator origin/nationality on taste page. Needs nationality data (not stored). Decide: manual country field vs Wikidata batch-pull.
 
