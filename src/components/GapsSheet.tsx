@@ -28,11 +28,23 @@ function AutoFillTools({ items, editItem }: {
     items.filter(i => i.moods?.some(m => m in MOOD_REMAP || m === 'gripping' || m === 'project' || m === 'classic')), [items])
   const needsWiki = useMemo(() =>
     items.filter(i => !i.metadata?.wikiUrl && ['film','tv','book','music'].includes(i.type)), [items])
-  const AUTO_ART_DOMAINS = ['image.tmdb.org', 'dzcdn.net', 'mzstatic.com', 'covers.openlibrary.org']
+
+  // Flag covers that are genuinely low-res (< 300px) — will look soft on retina.
+  // Each source encodes size in the URL; we check the specific pattern.
+  function coverIsTooSmall(url: string): boolean {
+    const tmdb = url.match(/\/t\/p\/(w\d+)\//)
+    if (tmdb) return parseInt(tmdb[1].slice(1)) < 300
+    if (url.includes('covers.openlibrary.org')) return /-[SM]\.jpg$/i.test(url)
+    const dz = url.match(/\/(\d+)x\d+-\d+-\d+-\d+-\d+\.jpg/)
+    if (dz) return parseInt(dz[1]) < 300
+    const itunes = url.match(/\/(\d+)x\d+bb\.jpg/)
+    if (itunes) return parseInt(itunes[1]) < 300
+    return false
+  }
   const needsArtRefresh = useMemo(() =>
     items.filter(i => {
       const url = i.metadata?.coverUrl as string | undefined
-      return url && AUTO_ART_DOMAINS.some(d => url.includes(d))
+      return url && coverIsTooSmall(url)
     }), [items])
 
   const total = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length + needsArtRefresh.length
@@ -65,6 +77,7 @@ function AutoFillTools({ items, editItem }: {
   const [wikiProgress, setWikiProgress] = useState(0)
   const [wikiTotal2, setWikiTotal2] = useState(0)
   const wikiCancel = useRef(false)
+
 
   // Art refresh
   const [artRunning, setArtRunning] = useState(false)
@@ -238,7 +251,7 @@ function AutoFillTools({ items, editItem }: {
 
         {needsArtRefresh.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: '#6F6B64' }}>cover art — {needsArtRefresh.length} to refresh</span>
+            <span style={{ fontSize: 12, color: '#6F6B64' }}>cover art — {needsArtRefresh.length} below 300px</span>
             {artRunning
               ? <span style={{ fontSize: 12, color: '#888' }}>{Math.min(artProgress + 10, artTotal2)}/{artTotal2}… <button onClick={() => { artCancel.current = true }} style={ghost}>cancel</button></span>
               : artResult !== null
