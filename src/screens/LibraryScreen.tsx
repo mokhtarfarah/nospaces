@@ -174,9 +174,9 @@ export function LibraryScreen() {
   const [genreFilter, setGenreFilter] = useState<string | null>(null)
   const [seriesFilter, setSeriesFilter] = useState<string | null>(null)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
-  const [view, setView] = useState<ViewMode>(() => loadPrefs().view ?? 'recent')
-  const [dir, setDir] = useState<SortDir>(() => loadPrefs().dir ?? VIEW_CONFIG.recent.defaultDir)
-  const [layout, setLayout] = useState<'list' | 'grid'>(() => loadPrefs().layout ?? 'list')
+  const [view, setView] = useState<ViewMode>(() => loadPrefs().view ?? 'year')
+  const [dir, setDir] = useState<SortDir>(() => loadPrefs().dir ?? VIEW_CONFIG.year.defaultDir)
+  const [layout, setLayout] = useState<'list' | 'grid'>(() => loadPrefs().layout ?? 'grid')
   // 3 vs 4 columns in grid view — 3 reads well on mobile, 4 is tighter for desktop.
   // Persisted per-device (localStorage), so each device keeps its own preference.
   const [gridCols, setGridCols] = useState<3 | 4>(() => loadPrefs().gridCols ?? 3)
@@ -348,12 +348,15 @@ export function LibraryScreen() {
     return groupByMonth(filtered)
   }, [filtered, group, view])
 
-  // Unique types from real data for filter row (excluding in-review items)
-  const types = useMemo(() => {
-    const seen = new Set<string>()
-    items.filter(i => !inReview(i)).forEach(i => seen.add(i.type))
-    return Array.from(seen).sort()
+  // Types sorted by item count descending — library reflects the user's actual collection
+  const typeOrder = useMemo(() => {
+    const counts = new Map<string, number>()
+    items.filter(i => !inReview(i)).forEach(i => {
+      counts.set(i.type, (counts.get(i.type) ?? 0) + 1)
+    })
+    return Array.from(counts.keys()).sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0))
   }, [items])
+
 
   const reviewN = useMemo(() => reviewCount(items), [items])
   const hasReview = reviewN > 0
@@ -486,10 +489,9 @@ export function LibraryScreen() {
           </div>
         )}
 
-        {/* Filter row 1 — category (tab style: navigation, not selection) */}
+        {/* Filter row 1 — category tabs ordered by how much of each type is in the library */}
         <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 0 }}>
-          <TabChip label="all" active={categories.length === 0 && !reviewOnly} onClick={() => { setCategories([]); setReviewOnly(false) }} />
-          {['film', 'book', 'music', 'tv', ...types.filter(t => !['film','book','music','tv'].includes(t))].map(t => (
+          {typeOrder.map(t => (
             <TabChip
               key={t}
               label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
@@ -497,9 +499,7 @@ export function LibraryScreen() {
               onClick={() => selectCategory(t)}
             />
           ))}
-          {!types.includes('other') && (
-            <TabChip label="other" active={categories.includes('other') && !reviewOnly} onClick={() => selectCategory('other')} />
-          )}
+          <TabChip label="all" active={categories.length === 0 && !reviewOnly} onClick={() => { setCategories([]); setReviewOnly(false) }} />
           {hasReview && (
             <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
           )}
@@ -605,7 +605,7 @@ export function LibraryScreen() {
                     <GridCard
                       key={item.id}
                       item={item}
-                      square={musicOnly}
+                      square={categories.length !== 1 || categories[0] === 'music'}
                       showType={categories.length !== 1}
                       onTap={() => (selectMode ? toggleSelect(item.id) : (setActionEdit(false), setActionItem(item)))}
                       onSaveArt={handleSaveArt}
@@ -1051,7 +1051,7 @@ const CATEGORY_LABEL: Record<string, string> = { film: 'films', book: 'books', m
 
 // Small cover/poster thumbnail. Falls back to a type-colored tile so rows stay aligned.
 function Thumb({ src, type, color }: { src: string | null; type: string; color: { bg: string; border: string } }) {
-  const box: React.CSSProperties = { width: 42, height: 42, borderRadius: 0, flexShrink: 0, marginRight: 14, alignSelf: 'center' }
+  const box: React.CSSProperties = { width: 52, height: 52, borderRadius: 0, flexShrink: 0, marginRight: 14, alignSelf: 'center' }
   if (src) {
     return <img src={src} alt="" loading="lazy" style={{ ...box, objectFit: 'cover', border: '1px solid #EEE', background: '#F4F4F4' }} />
   }
@@ -1091,7 +1091,7 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
       <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : '1px solid #EBEBEB' }}>
         {artwork
-          ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: selectMode && !selected ? 0.55 : 1 }} />
+          ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: square && item.type !== 'music' ? 'top' : 'center', opacity: selectMode && !selected ? 0.55 : 1 }} />
           : <div style={{ fontSize: 18, color: color.border, opacity: 0.4 }}>✦</div>}
         {selectMode && (
           <div style={{
