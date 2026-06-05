@@ -471,15 +471,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#fff', borderRadius: '16px 16px 0 0',
-        padding: '0 20px 0', zIndex: 201,
+        padding: '10px 20px 0', zIndex: 201,
         maxWidth: 480, margin: '0 auto',
         maxHeight: '96dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
-        {/* Drag handle — creates breathing room at the rounded top + signals dismissable sheet */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px' }}>
-          <div style={{ width: 32, height: 4, borderRadius: 2, background: '#ECEAE6' }} />
-        </div>
-
         {view === 'main' && (
           <>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
