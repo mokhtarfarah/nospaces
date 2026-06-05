@@ -149,7 +149,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [lookingUp, setLookingUp] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showBlurb, setShowBlurb] = useState(false)
-  const [reactionTagsOpen, setReactionTagsOpen] = useState(false)
+  const [reactionTagsOpen, setReactionTagsOpen] = useState(true)
   const [editOpenGroups, setEditOpenGroups] = useState<Record<string, boolean>>({})
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
