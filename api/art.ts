@@ -22,7 +22,7 @@ async function tmdbPoster(media: 'movie' | 'tv', title: string, year: string): P
     const search = await (await fetch(`https://api.themoviedb.org/3/search/${media}?${sp}`)).json()
     const hit = search?.results?.[0]
     if (!hit) return null
-    if (hit.poster_path) return `https://image.tmdb.org/t/p/w185${hit.poster_path}`
+    if (hit.poster_path) return `https://image.tmdb.org/t/p/w342${hit.poster_path}`
     if (media === 'tv') {
       const details = await (await fetch(`https://api.themoviedb.org/3/tv/${hit.id}?api_key=${TMDB}`)).json()
       const seasonPoster = (details?.seasons ?? []).map((s: { poster_path?: string }) => s.poster_path).find(Boolean)
@@ -104,7 +104,7 @@ function appleBookMatches(trackName: string | undefined, artistName: string | un
 
 async function openLibraryCover(title: string, creator: string, year?: number): Promise<string | null> {
   const doc = await searchBookDoc(title, creator, year)
-  return doc?.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : null
+  return doc?.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : null
 }
 
 // Apple Books fallback (Goodreads has no public API since 2020; Google Books' keyless
