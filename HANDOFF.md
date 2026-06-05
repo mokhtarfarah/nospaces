@@ -218,14 +218,14 @@ All shipped to `main`. Eyeballed in prod. Working.
 - Suggested vibes should show pre-populated (pre-selected but not yet confirmed) on the mark-as-done sheet — so you can confirm them in the same step as marking done, instead of needing a second edit pass
 
 **Features:**
-- Canon status field — lightweight pin for ~10 defining items, separate from reaction scale
+- ✅ Canon status field — `◆ canon` toggle on action card; filter chip in library; ◆ marker on rows/cards.
 - Page transitions feel like one product (shared design language, consistent spacing)
-- **Duplicates tool UX** — in the "review duplicates" sheet, make it clearer which entry is the original vs the newer one (e.g. label with date added, or "added earlier" / "added later" tag so it's obvious which to keep)
+- ✅ **Duplicates tool UX** — "added first (Mon YYYY)" label on the original entry in the review sheet.
 
 ### Phase 4 — Data management
 
 - **"last watched / read / listened" date** — log when you last engaged with an item (separate from the original add date). Shows on the action card. Useful for rewatches, rereads, re-listens. No schema migration needed if stored in `metadata.lastEngaged: ISO string`. Display as "last watched 3 months ago" on the card; optionally surface as a sort option.
-- Move data-gaps nav from Add page → Library as a dedicated linked page with easy in/out
+- ✅ Data-gaps nav moved to Library — "N items with data gaps / tidy up" banner → `GapsSheet` bottom sheet. Auto-fill tools remain on Add page.
 - Cover-art quality pass — biggest visual/tastemaker payoff; own dedicated session
 - Offline capture queue (IndexedDB) — save offline, sync on reconnect
 - Tom's login — publish Google OAuth consent screen
@@ -320,16 +320,25 @@ All shipped to `main`. Eyeballed in prod. Working.
 
 **⚠️ ACTION NEEDED:** Run "clean up" (Add → library tools) to migrate "would revisit" → "in rotation" on existing items. Run "cover art → refresh →" to re-fetch covers at new resolution, then reload.
 
-### 🔜 Next session priorities (session 25)
+### 📌 Session 25 (2026-06-05) — Canon status, duplicates UX, data-gaps nav
 
-**Phase 4 remaining (pick one):**
-- **"last engaged" date** — `metadata.lastEngaged: ISO string`. Log when you last watched/read/listened. Shows on action card as "last watched 3 months ago". Optional sort option. No schema migration needed.
-- **Data-gaps nav** — move from Add page → Library as a dedicated linked page with easy in/out.
+**Shipped to `main` / live (auth-gated, not eyeballed logged-in):**
+
+1. ✅ **Canon status** — `metadata.canon: true` flag. `◇ canon` / `◆ canon` toggle in action card read view (flat link row, after "own it"). `◆` marker on list rows and grid cards. `◆ canon` filter chip in library filter row 2 (only appears when ≥1 canon item exists). Clears with clear-all-filters. `src/hooks/useItems.ts` (`toggleCanon`), `src/components/ItemActionSheet.tsx`, `src/screens/LibraryScreen.tsx`.
+2. ✅ **Duplicates UX** — each row in the review sheet now shows "added first (Mon YYYY)" for the original entry and "added Mon YYYY" for later duplicates, so you can tell which is which without guessing. Colors updated to use app palette (ink/graphite/hairline). `src/components/DuplicatesSheet.tsx`.
+3. ✅ **Data-gaps nav from Library** — `GapsSheet` (new component, `src/components/GapsSheet.tsx`) — bottom sheet with filter chips (all / missing genre / wiki / etc.) and scrollable gap rows, each tapping into the same `/library?item=&edit=1&tidy=1` tidy-queue flow. Accessible via "N items with data gaps — tidy up" banner in Library (below duplicates banner). Fill-by-hand list removed from Add page (auto-fill tools remain). Formatting pass: consistent font sizes (13/11/10) and app palette throughout.
+
+**⚠️ Verify next session (auth-gated):**
+- Mark an item as canon → `◆` appears on row and in action card
+- `◆ canon` filter chip appears and filters correctly
+- Library banner shows gap count → "tidy up" opens the sheet, items open into edit view
+- Duplicates sheet shows "added first" label on the original entry
+
+### 🔜 Next session priorities (session 26)
+
+**Phase 4 remaining:**
 - **Tom's login** — publish Google OAuth consent screen.
-
-**Phase 3 parked (small, do whenever):**
-- **Canon status** — lightweight pin for ~10 defining items, separate from reaction scale.
-- **Duplicates tool UX** — label which entry is original vs newer (date added / "added earlier") in the review sheet.
+- **"last engaged" date** — skipped (value unclear for now).
 
 **Phase 5 (own session):**
 - **"Help me decide" decision tree** — pure client-side, zero API cost. Guided question tree (mood? time? type?) → surfaces 2–3 matching want-to items. See Phase 5 in roadmap for full spec.
