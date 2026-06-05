@@ -1055,29 +1055,25 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               </p>
               <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
             </div>
-            {/* 5-chip row: loved it · liked it · canon · eh · not for me */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-              {(['loved_it', 'liked_it'] as ItemReaction[]).map(r => (
+            {/* 5-chip row: not for me · eh · liked it · loved it | canon */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 18, alignItems: 'stretch' }}>
+              {(['not_for_me', 'eh', 'liked_it', 'loved_it'] as ItemReaction[]).map(r => (
                 <button key={r} onClick={() => setReaction(r)} style={{ ...reactionBtnStyle(reaction === r), flex: 1, padding: '10px 4px', fontSize: 12 }}>
                   {REACTIONS.find(x => x.value === r)!.label}
                 </button>
               ))}
+              <div style={{ width: 1, background: '#ECEAE6', flexShrink: 0, alignSelf: 'stretch' }} />
               <button
                 onClick={() => onToggleCanon(!item.metadata?.canon)}
                 style={{
                   ...reactionBtnStyle(!!item.metadata?.canon),
                   flex: 1, padding: '10px 4px', fontSize: 12,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                  display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
                 }}
               >
-                <span style={{ fontSize: 9 }}>{item.metadata?.canon ? '◆' : '◇'}</span>
+                <span style={{ fontSize: 9, lineHeight: 1 }}>{item.metadata?.canon ? '◆' : '◇'}</span>
                 canon
               </button>
-              {(['eh', 'not_for_me'] as ItemReaction[]).map(r => (
-                <button key={r} onClick={() => setReaction(r)} style={{ ...reactionBtnStyle(reaction === r), flex: 1, padding: '10px 4px', fontSize: 12 }}>
-                  {REACTIONS.find(x => x.value === r)!.label}
-                </button>
-              ))}
             </div>
             <div style={{ marginBottom: 16 }}>
               <NoteInput value={note} onChange={setNote} />
