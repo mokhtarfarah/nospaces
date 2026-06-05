@@ -160,6 +160,11 @@ function LibraryTools({ items, editItem, open }: {
   const [wikiProgress, setWikiProgress] = useState(0)
   const [wikiTotal, setWikiTotal] = useState(0)
   const wikiCancelRef = useRef(false)
+  const [artRefreshing, setArtRefreshing] = useState(false)
+  const [artProgress, setArtProgress] = useState(0)
+  const [artTotal, setArtTotal] = useState(0)
+  const artCancelRef = useRef(false)
+  const [artResult, setArtResult] = useState<number | null>(null)
 
   const navigate = useNavigate()
   const [openList, setOpenList] = useState<string | null>(null)
@@ -182,6 +187,12 @@ function LibraryTools({ items, editItem, open }: {
     items.filter(i => i.moods?.some(m => m in MOOD_REMAP || m === 'gripping' || m === 'project' || m === 'classic')), [items])
   const needsWiki = useMemo(() =>
     items.filter(i => !i.metadata?.wikiUrl && ['film','tv','book','music'].includes(i.type)), [items])
+  const AUTO_ART_DOMAINS = ['image.tmdb.org', 'dzcdn.net', 'mzstatic.com', 'covers.openlibrary.org']
+  const needsArtRefresh = useMemo(() =>
+    items.filter(i => {
+      const url = i.metadata?.coverUrl as string | undefined
+      return url && AUTO_ART_DOMAINS.some(d => url.includes(d))
+    }), [items])
 
   // Holistic, item-first view for manual filling — any item missing any data field.
   const incomplete = useMemo(() =>
@@ -199,7 +210,7 @@ function LibraryTools({ items, editItem, open }: {
   }, [incomplete])
   const shownIncomplete = gapFilter ? incomplete.filter(x => x.gaps.includes(gapFilter)) : incomplete
 
-  const autoTotal = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length
+  const autoTotal = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length + needsArtRefresh.length
   if ((autoTotal === 0 && incomplete.length === 0) || !open) return null
 
   async function runBackfill(targetItems: Item[] = untagged) {
@@ -317,6 +328,31 @@ function LibraryTools({ items, editItem, open }: {
     setWikiBackfilling(false); wikiCancelRef.current = false
   }
 
+  async function runArtRefresh() {
+    if (artRefreshing || needsArtRefresh.length === 0) return
+    artCancelRef.current = false
+    setArtResult(null)
+    setArtRefreshing(true)
+    setArtProgress(0)
+    setArtTotal(needsArtRefresh.length)
+    const BATCH = 10
+    let cleared = 0
+    for (let i = 0; i < needsArtRefresh.length; i += BATCH) {
+      if (artCancelRef.current) break
+      await Promise.all(needsArtRefresh.slice(i, i + BATCH).map(async item => {
+        try {
+          const { coverUrl: _drop, ...restMeta } = (item.metadata ?? {}) as Record<string, unknown>
+          await editItem(item.id, { metadata: restMeta })
+          cleared++
+        } catch { /* skip */ }
+      }))
+      setArtProgress(Math.min(i + BATCH, needsArtRefresh.length))
+    }
+    setArtRefreshing(false)
+    artCancelRef.current = false
+    setArtResult(cleared)
+  }
+
   const runBtn = { background: 'none', border: 'none', fontSize: 12, color: '#1C1B19', cursor: 'pointer', padding: 0, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 } as const
   const ghostBtn = { background: 'none', border: 'none', fontSize: 12, color: '#BBB', cursor: 'pointer', padding: '0 4px' } as const
   const warnBtn = { background: 'none', border: 'none', fontSize: 12, color: '#C00', cursor: 'pointer', padding: '0 4px', fontWeight: 600 } as const
@@ -392,6 +428,16 @@ function LibraryTools({ items, editItem, open }: {
           {wikiBackfilling
             ? <span style={{ fontSize: 12, color: '#555' }}>fetching {Math.min(wikiProgress + 6, wikiTotal)}/{wikiTotal}… <button onClick={() => { wikiCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
             : <button onClick={runWikiBackfill} style={runBtn}>fill →</button>}
+        </div>
+      )}
+      {needsArtRefresh.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: '#888' }}>cover art — {needsArtRefresh.length} cached at old resolution</span>
+          {artRefreshing
+            ? <span style={{ fontSize: 12, color: '#555' }}>clearing {Math.min(artProgress + 10, artTotal)}/{artTotal}… <button onClick={() => { artCancelRef.current = true }} style={ghostBtn}>cancel</button></span>
+            : artResult !== null
+              ? <span style={{ fontSize: 12, color: '#555' }}>{artResult} cleared — reload to fetch fresh <button onClick={() => setArtResult(null)} style={ghostBtn}>×</button></span>
+              : <button onClick={runArtRefresh} style={runBtn}>refresh →</button>}
         </div>
       )}
         </div>
