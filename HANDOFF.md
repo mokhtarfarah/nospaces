@@ -7,8 +7,8 @@
 | Phase 1 — Stop the bleeding | ✅ Done | Mobile, status, genres, header |
 | Phase 2 — Action card + editing | ✅ Done | Two-verb read, auto-fill, type-fix, unconfirmed vibes, labelled tags |
 | Phase 3 — Cohesion + tag system | ✅ Done | Vibe/verdict split, canon, data-gaps nav, edit tightening |
-| Phase 4 — Data management | 🔄 In progress | Cover art ✅ · data-gaps nav ✅ · Tom's login remaining |
-| Phase 5 — Discovery + taste | ⏳ Not started | Help-me-decide, taste page rebuild |
+| Phase 4 — Data management | ✅ Done | Cover art · data-gaps nav · Tom's login |
+| Phase 5 — Discovery + taste | 🔄 In progress | Help-me-decide, how to use, taste page rebuild |
 
 **▶ START HERE:** See "Next session" at the bottom.
 
@@ -165,14 +165,22 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 
 ### Near-term
 
-- **Tom's login** — publish Google OAuth consent screen (currently only Farah's account works in prod).
-- **"Help me decide" decision tree** — pure client-side, zero API cost. Guided question tree (mood? time? type?) → filters want-to list in real time → surfaces 2–3 matching items. One question at a time, full-screen, minimal. Entry: "help me decide" button on want-to view.
-- **Wiki match correctness** — film/TV resolution is lenient, so some items may have the wrong Wikipedia article stored. Spot-check items where `metadata.wikiUrl` title doesn't match the item title. Re-identify fixes it case-by-case.
-- **Page transitions** — shared design language, consistent spacing across all screens.
+- **"Help me decide" decision tree** — ✅ shipped. Guided 3-step flow (seen before? → type → vibe) from `/decide`. Entry: inline link in library header.
+- **"How to use" tutorial page** — onboarding / feature guide for new users (Tom).
+- **Wiki gap false positives** — GapsSheet flags wiki as missing even when it's visible on the action card. Likely a lag / stale field check. Investigate `itemGaps()` wiki condition vs when `wikiUrl` is actually set in metadata.
+- **Action card link order** — reorder the flat link row: `about this` first, `own it / on my shelf` last. Current order has "own it" too prominent.
+- **Filter bar declutter** — filter row is getting crowded again. Consider collapsing vibe/verdict/genre into a single "filter ↓" dropdown or moving less-used ones behind a toggle.
+- **Data-gaps tidy mode: highlight missing fields** — when in tidy-queue flow (`?tidy=1`), show missing fields in red and auto-expand them in edit view so users don't have to hunt. Only in tidy mode, not normal editing.
+- **"Add to series" dropdown** — replace the manual series text input in edit view with a dropdown populated from series already in the user's library. Makes series linking faster and consistent.
+- **Wiki match correctness** — code fix shipped (title guard now applies to film/TV). Existing bad matches: spot-check and re-identify case-by-case.
 
 ### Medium-term
 
 - **Taste page rebuild** — think tastemaker's annual report, not a sorted list. Needs richer data first. Key additions: effort axis (easy ↔ demanding, pairs with runtime/pages), cross-type vibe patterns, verdict tendencies, era/decade clustering, regional split (creator origin — pure client-side, no API cost), aspirational vs actual (gap between want-to saves and what you actually rate highly), visual element on hero (covers/collage — currently all text).
+- **Taste stats: breakdown of loved/liked** — e.g. "50% of your loved films are drama · dark · intense". Analysis of reaction × genre/vibe/verdict patterns per type. Pure client-side, no API cost.
+- **Decade filter** — hidden behind the genre/vibe filter area (or as a collapsed option). Derived from `item.year`, pure client-side. Useful for era browsing.
+- **Want-to priority** — ability to mark some want-to items as higher priority. Especially useful for books and music backlogs. Could be a simple pin/star or an ordered tier. Affects sort order and help-me-decide weighting.
+- **New verdict: "left me thinking"** — something between "delivers" and "respect, not love". Captures films/books that weren't immediately enjoyable but lingered. Could also explore "wrecked me" for things that hit hard emotionally. Needs a session to finalise vocab before adding.
 - **Discovery improvements** — "not interested" / dismiss on Discover suggestions; divert mode improvements as data accumulates.
 - **Offline capture queue** — IndexedDB, save offline, sync on reconnect. PWA service worker already in place.
 - **Individual songs** — currently albums-only for music.
@@ -190,6 +198,15 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 26 (2026-06-05) — Nav overhaul, add screen, wiki fix, transitions
+
+1. **Tom's login** — confirmed already working (was already a test user). Phase 4 complete.
+2. **Wiki match correctness** — title guard (`const guarded = true`) now applies to film/TV, not just book/music. Prevents wrong Wikipedia articles being saved. Existing bad matches: re-identify case-by-case.
+3. **Page transitions** — fade + 6px lift, 180ms, on all route changes. CSS keyframe in `index.css`, wrapper div with `key={location.pathname}` in `App.tsx`.
+4. **Nav restructure** — add tab removed; FAB (ink circle, bottom-right, above nav) replaces it. Nav is now library → taste → discover. FAB hides on `/add`.
+5. **Add screen streamlined** — no heading; tighter textarea + button; photo + note as compact utility row; "other ways to add" always visible (no toggle); library tools removed entirely.
+6. **Library tools → GapsSheet** — batch auto-fill (genre, runtime/pages, mood migration, wiki, art refresh) moved into the tidy sheet as a "fill automatically" section above the individual gap items. Art refresh now only flags covers genuinely below 300px (checks URL patterns per source).
 
 ### Session 25 (2026-06-05) — Canon, duplicates UX, data-gaps nav
 
