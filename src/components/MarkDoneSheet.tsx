@@ -15,14 +15,16 @@ const REACTIONS: { value: ItemReaction; label: string }[] = [
 interface Props {
   item: Item
   onConfirm: (reaction: ItemReaction, note: string, moods: string[]) => void
+  onToggleCanon?: (canon: boolean) => void
   onClose: () => void
 }
 
-export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
+export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props) {
   const [reaction, setReaction] = useState<ItemReaction | null>(null)
   const [note, setNote] = useState('')
   const unconfirmed = Array.isArray(item.metadata?.unconfirmedVibes) ? (item.metadata.unconfirmedVibes as string[]) : []
   const [selectedMoods, setSelectedMoods] = useState<string[]>(unconfirmed)
+  const [canon, setCanon] = useState(!!item.metadata?.canon)
   const color = typeColor(item.type)
 
   function toggleMood(mood: string) {
@@ -68,32 +70,46 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
 
         <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }}>what did you think?</p>
 
-        {/* 2×2 reaction grid — monochrome to match the editorial card */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }}>
-          {REACTIONS.slice(0, 2).map(r => {
-            const active = reaction === r.value
+        {/* 5-chip row: loved it · liked it · canon · eh · not for me */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
+          {(['loved_it', 'liked_it'] as ItemReaction[]).map(v => {
+            const label = REACTIONS.find(r => r.value === v)!.label
+            const active = reaction === v
             return (
-              <button key={r.value} onClick={() => setReaction(r.value)} style={{
-                padding: '12px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 14,
+              <button key={v} onClick={() => setReaction(v)} style={{
+                flex: 1, padding: '10px 4px', borderRadius: 10, cursor: 'pointer', fontSize: 12,
                 border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
                 background: active ? '#F4F2EE' : '#fff',
                 color: active ? '#1C1B19' : '#6F6B64',
-                fontWeight: active ? 600 : 400,
-              }}>{r.label}</button>
+                fontWeight: active ? 600 : 400, fontFamily: 'inherit',
+              }}>{label}</button>
             )
           })}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
-          {REACTIONS.slice(2).map(r => {
-            const active = reaction === r.value
+          <button
+            onClick={() => setCanon(v => !v)}
+            style={{
+              flex: 1, padding: '10px 4px', borderRadius: 10, cursor: 'pointer', fontSize: 12,
+              border: canon ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
+              background: canon ? '#F4F2EE' : '#fff',
+              color: canon ? '#1C1B19' : '#6F6B64',
+              fontWeight: canon ? 600 : 400, fontFamily: 'inherit',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+            }}
+          >
+            <span style={{ fontSize: 9 }}>{canon ? '◆' : '◇'}</span>
+            canon
+          </button>
+          {(['eh', 'not_for_me'] as ItemReaction[]).map(v => {
+            const label = REACTIONS.find(r => r.value === v)!.label
+            const active = reaction === v
             return (
-              <button key={r.value} onClick={() => setReaction(r.value)} style={{
-                padding: '12px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 14,
+              <button key={v} onClick={() => setReaction(v)} style={{
+                flex: 1, padding: '10px 4px', borderRadius: 10, cursor: 'pointer', fontSize: 12,
                 border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
                 background: active ? '#F4F2EE' : '#fff',
                 color: active ? '#1C1B19' : '#6F6B64',
-                fontWeight: active ? 600 : 400,
-              }}>{r.label}</button>
+                fontWeight: active ? 600 : 400, fontFamily: 'inherit',
+              }}>{label}</button>
             )
           })}
         </div>
@@ -125,6 +141,7 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
           onClick={() => {
             if (!reaction) return
             onConfirm(reaction, note, selectedMoods)
+            if (onToggleCanon && canon !== !!item.metadata?.canon) onToggleCanon(canon)
           }}
           style={{
             width: '100%',

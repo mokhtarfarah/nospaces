@@ -45,6 +45,7 @@ export function DiscoverScreen() {
   const [divertLoading, setDivertLoading] = useState(false)
   const [divertLoaded, setDivertLoaded] = useState(false)
   const [intasteCachedAt, setIntasteCachedAt] = useState<string | null>(null)
+  const [divertCachedAt, setDivertCachedAt] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Map of lowercase title → first source label, for saved-this-session items
   const [savedItems, setSavedItems] = useState<Map<string, string>>(new Map())
@@ -69,6 +70,7 @@ export function DiscoverScreen() {
     const cachedDivert = discoveryCache?.divert
     if (cachedDivert && !isStale(cachedDivert.cachedAt)) {
       setDivertResults(normaliseSources(cachedDivert.results))
+      setDivertCachedAt(cachedDivert.cachedAt)
       setDivertLoaded(true)
     }
   }, [prefsLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -102,7 +104,7 @@ export function DiscoverScreen() {
       if (mode === 'intaste') {
         setIntasteResults(recs); setIntasteCachedAt(new Date().toISOString()); setDiscoveryCache('intaste', recs)
       } else {
-        setDivertResults(recs); setDivertLoaded(true); setDiscoveryCache('divert', recs)
+        setDivertResults(recs); setDivertCachedAt(new Date().toISOString()); setDivertLoaded(true); setDiscoveryCache('divert', recs)
       }
     } catch { setError('network error — try again') }
     finally { mode === 'intaste' ? setIntasteLoading(false) : setDivertLoading(false) }
@@ -158,15 +160,6 @@ export function DiscoverScreen() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>discover</h1>
-        {hasIntaste && (
-          <button
-            onClick={() => fetchMode('intaste', true)}
-            disabled={intasteLoading}
-            style={{ background: 'none', border: 'none', color: intasteLoading ? MUTE : GRAPHITE, fontSize: 11, cursor: 'pointer', padding: 0 }}
-          >
-            {intasteLoading ? 'loading…' : 'refresh ↺'}
-          </button>
-        )}
       </div>
 
       {/* Shows near you — prominent entry */}
@@ -183,6 +176,9 @@ export function DiscoverScreen() {
         <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>shows near you</span>
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>browse →</span>
       </button>
+
+      {/* Media section label */}
+      <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 12 }}>media</div>
 
       {/* Type tabs */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 28, borderBottom: `1px solid ${HAIR}`, paddingBottom: 14 }}>
@@ -226,7 +222,7 @@ export function DiscoverScreen() {
       {/* In taste section */}
       {(hasIntaste || intasteLoading) && (
         <div style={{ marginBottom: 40 }}>
-          <SectionHeader label="in taste" cachedAt={intasteCachedAt} />
+          <SectionHeader label="in taste" cachedAt={intasteCachedAt} onRefresh={() => fetchMode('intaste', true)} refreshing={intasteLoading} />
           {intasteLoading && <p style={{ fontSize: 12, color: MUTE }}>loading…</p>}
           {displayedIntaste.length === 0 && !intasteLoading && typeFilter !== 'all' && (
             <p style={{ fontSize: 12, color: MUTE }}>no {typeFilter} picks this round</p>
@@ -240,18 +236,13 @@ export function DiscoverScreen() {
       {/* Divert section */}
       {hasIntaste && (
         <div style={{ marginBottom: 40 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: `1px solid ${HAIR}`, paddingBottom: 8, marginBottom: 16 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '0.5px', textTransform: 'uppercase' }}>divert</span>
-            {hasDivert ? (
-              <button onClick={() => fetchMode('divert', true)} disabled={divertLoading} style={{ background: 'none', border: 'none', color: divertLoading ? MUTE : GRAPHITE, fontSize: 11, cursor: 'pointer', padding: 0 }}>
-                {divertLoading ? 'loading…' : 'refresh ↺'}
-              </button>
-            ) : (
-              <button onClick={() => fetchMode('divert')} disabled={divertLoading} style={{ background: 'none', border: 'none', color: divertLoading ? MUTE : INK, fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-                {divertLoading ? 'loading…' : 'load →'}
-              </button>
-            )}
-          </div>
+          <SectionHeader
+            label="divert"
+            cachedAt={divertCachedAt}
+            onRefresh={hasDivert ? () => fetchMode('divert', true) : undefined}
+            refreshing={divertLoading}
+            loadAction={!hasDivert ? () => fetchMode('divert') : undefined}
+          />
           {divertLoading && <p style={{ fontSize: 12, color: MUTE }}>loading…</p>}
           {!divertLoaded && !divertLoading && (
             <p style={{ fontSize: 12, color: MUTE, lineHeight: 1.6 }}>things outside your usual patterns — coherent with your sensibility but further afield</p>
@@ -317,15 +308,33 @@ export function DiscoverScreen() {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function SectionHeader({ label, cachedAt }: { label: string; cachedAt: string | null }) {
+function SectionHeader({ label, cachedAt, onRefresh, refreshing, loadAction }: {
+  label: string
+  cachedAt: string | null
+  onRefresh?: () => void
+  refreshing?: boolean
+  loadAction?: () => void
+}) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: `1px solid ${HAIR}`, paddingBottom: 8, marginBottom: 16 }}>
       <span style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{label}</span>
-      {cachedAt && (
-        <span style={{ fontSize: 10, color: MUTE }}>
-          {new Date(cachedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-        </span>
-      )}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        {cachedAt && (
+          <span style={{ fontSize: 10, color: MUTE }}>
+            {new Date(cachedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+        )}
+        {onRefresh && (
+          <button onClick={onRefresh} disabled={refreshing} style={{ background: 'none', border: 'none', color: refreshing ? MUTE : GRAPHITE, fontSize: 11, cursor: 'pointer', padding: 0 }}>
+            {refreshing ? 'loading…' : 'refresh ↺'}
+          </button>
+        )}
+        {loadAction && (
+          <button onClick={loadAction} disabled={refreshing} style={{ background: 'none', border: 'none', color: refreshing ? MUTE : INK, fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+            {refreshing ? 'loading…' : 'load →'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

@@ -157,7 +157,7 @@ export function ShowsScreen() {
   return (
     <div style={{ padding: '20px 16px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh' }}>
       <button
-        onClick={() => navigate('/library')}
+        onClick={() => navigate('/discover')}
         style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, padding: 0, marginBottom: 16, cursor: 'pointer' }}
       >
         ← back
