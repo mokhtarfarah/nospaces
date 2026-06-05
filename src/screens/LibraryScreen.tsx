@@ -685,6 +685,7 @@ export function LibraryScreen() {
             onEdit={fields => { editItem(fresh.id, fields) }}
             onToggleOwned={owned => toggleOwned(fresh.id, owned)}
             onPatchMetadata={patch => patchMetadata(fresh.id, patch)}
+            onPatchTags={tags => editItem(fresh.id, { tags })}
             onMarkInProgress={() => { markInProgress(fresh.id); setActionItem(null) }}
             onMarkWantTo={() => { markWantTo(fresh.id); setActionItem(null) }}
             onMarkDone={(reaction, note, moods) => { markDone(fresh.id, reaction, note, moods); setActionItem(null) }}

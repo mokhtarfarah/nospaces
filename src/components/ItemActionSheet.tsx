@@ -23,6 +23,7 @@ interface Props {
   onSetSeasons: (seasons: Season[]) => void
   onToggleOwned: (owned: boolean) => void
   onPatchMetadata: (patch: Record<string, unknown>) => void
+  onPatchTags: (tags: string[]) => void
   onDelete: () => void
   onClose: () => void
   // Triage an item out of the "for review" inbox. No reaction = keep as want_to;
@@ -95,7 +96,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onPatchMetadata, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -174,28 +175,49 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoCount])
 
-  // Fetch vibe suggestions on card open for items that have no vibes yet
-  // (confirmed moods or provisional unconfirmedVibes). Only fires once per item —
-  // once vibes are written to metadata they won't be empty next open.
+  // On card open, fill genres and/or vibes if the item is missing them.
+  // Only fires when data is absent — once written to DB, subsequent opens skip.
+  // Genres: item has no genre tags. Vibes: no confirmed moods + no unconfirmedVibes.
   useEffect(() => {
     if (item.metadata?.scratch) return
-    const hasVibes = (item.moods ?? []).length > 0 || (item.metadata?.unconfirmedVibes as string[] | undefined)?.length
-    if (hasVibes) return
-    const VIBE_TYPES = ['film', 'tv', 'book', 'music']
-    if (!VIBE_TYPES.includes(item.type)) return
+    const FILL_TYPES = ['film', 'tv', 'book', 'music']
+    if (!FILL_TYPES.includes(item.type)) return
     let cancelled = false
-    authHeaders()
-      .then(h => window.fetch('/api/vibes', {
-        method: 'POST', headers: h,
-        body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }),
-      }))
-      .then(r => r.ok ? r.json() : null)
-      .then((data: { suggestions?: string[] } | null) => {
-        if (cancelled || !data) return
-        const vibes = Array.isArray(data.suggestions) ? data.suggestions : []
-        if (vibes.length) onPatchMetadata({ unconfirmedVibes: vibes })
-      })
-      .catch(() => {})
+    const missingGenres = !(item.tags ?? []).some(isGenreTag)
+    const missingVibes = !(item.moods ?? []).length && !(item.metadata?.unconfirmedVibes as string[] | undefined)?.length
+    if (!missingGenres && !missingVibes) return
+    authHeaders().then(async h => {
+      if (cancelled) return
+      if (missingGenres) {
+        try {
+          const r = await window.fetch('/api/genres', {
+            method: 'POST', headers: h,
+            body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type }),
+          })
+          if (r.ok && !cancelled) {
+            const d = await r.json() as { tags?: string[] }
+            const newGenres = Array.isArray(d.tags) ? d.tags : []
+            if (newGenres.length) {
+              const descriptors = (item.tags ?? []).filter(t => !isGenreTag(t))
+              onPatchTags([...newGenres, ...descriptors])
+            }
+          }
+        } catch { /* leave untagged */ }
+      }
+      if (missingVibes && !cancelled) {
+        try {
+          const r = await window.fetch('/api/vibes', {
+            method: 'POST', headers: h,
+            body: JSON.stringify({ title: item.title, creator: item.creator, type: item.type, year: item.year }),
+          })
+          if (r.ok && !cancelled) {
+            const d = await r.json() as { suggestions?: string[] }
+            const vibes = Array.isArray(d.suggestions) ? d.suggestions : []
+            if (vibes.length) onPatchMetadata({ unconfirmedVibes: vibes })
+          }
+        } catch { /* leave without vibes */ }
+      }
+    }).catch(() => {})
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id])
