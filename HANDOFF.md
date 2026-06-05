@@ -171,8 +171,9 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 - **"Help me decide" decision tree** — ✅ shipped. Guided 3-step flow (seen before? → type → vibe) from `/decide`. Entry: inline link in library header.
 
 **Action card / edit view**
-- **Action card link order** — reorder the flat link row: `about this` first, `own it / on my shelf` last.
-- **"Add to series" dropdown** — replace the manual series text input with a dropdown of series already in the library. Faster and keeps names consistent.
+- **Action card link order** — ✅ shipped. New order: edit · about this · spotify · wikipedia · watch · own it.
+- **"Add to series" dropdown** — ✅ shipped. Native `<select>` of existing series + "+ new series…" option that reveals a text input. Works on mobile.
+- **Data-gaps tidy mode: highlight missing fields** — ✅ shipped. Missing fields show red border/label in tidy-queue flow; more-details auto-expands when runtime/pages/wiki are gaps.
 
 **Data quality / tidy**
 - **Wiki gap false positives** — ✅ fixed. Two bugs: (1) ItemActionSheet fetched wiki but never saved it — added auto-save effect. (2) Fill-auto counters didn't respect dismissedGaps — now all derived from itemGaps().
@@ -214,6 +215,15 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 27 (2026-06-05) — Help me decide, data gaps fixes, action card polish
+
+1. **"Help me decide"** — new screen at `/decide`. Three-step decision tree: seen before? → type → vibe. Filters want-to (new) or done (revisit) pool client-side. 2–3 shuffled picks, reshuffable. Entry: inline link in library header title row. Zero API cost.
+2. **Wiki gap false positives** — two bugs fixed: (a) `ItemActionSheet` fetched wiki but never saved `metadata.wikiUrl` — added auto-save effect mirroring `ItemRow`. (b) Fill-auto counters (`needsWiki`, `needsRuntime`, `untagged`) didn't respect `dismissedGaps` — now all derived from `itemGaps()`.
+3. **Action card link reorder** — `about this` now first after edit, `own it` moved to last.
+4. **Series dropdown** — native `<select>` populated from existing series in library. "+ new series…" option reveals a text input. Works on mobile (replaced broken `<datalist>`).
+5. **Tidy mode highlights** — in tidy-queue flow, missing fields show red border + red label. "More details" section auto-expands when runtime/pages/wiki are among the gaps.
+6. **Roadmap grouped thematically** — near/medium/long-term items now organised by theme (Library UX, Action card, Data quality, Taste & stats, etc.).
 
 ### Session 26 (2026-06-05) — Nav overhaul, add screen, wiki fix, transitions
 
