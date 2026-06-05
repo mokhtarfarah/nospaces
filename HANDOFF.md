@@ -14,9 +14,7 @@
 
 ## Next session
 
-Priority order:
-
-1. **Describe-by-recency for film/TV** — "that new Villeneuve movie" → TMDB person→credits lookup. Music/books already handle recency; film/TV is the gap.
+No immediate priorities — both session 34 items shipped. Pick from roadmap or parked list.
 
 **Parked (do not re-raise without new signal):**
 - **Offline library cache** — cache Supabase items in IndexedDB so the library loads while offline. Skipped: the capture queue covers the "save something quick" case. Full offline-first requires queuing mutations (markDone, edits, deletes) too — different scope. Revisit only if offline usage becomes a real pattern.
@@ -240,6 +238,13 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 34 (2026-06-05) — Offline capture queue, describe-by-recency film/TV, canon chip fix
+
+1. **Canon chip reorder + inline icon** — reaction row now: `not for me · eh · liked it · loved it | canon`. Hairline divider before canon. Diamond glyph inline with text (was stacked above).
+2. **Offline capture queue** — `src/lib/offlineQueue.ts` (IndexedDB) + `src/hooks/useOfflineSync.ts`. `addItem` checks `navigator.onLine`; if offline, enqueues to IndexedDB instead of calling Supabase. On reconnect, `useOfflineSync` flushes the queue. Banner in `App.tsx` shows pending count + syncing/synced state. "Save as note" is the cleanest offline path (no API calls). Main submit falls back to queued plain-title save with an offline-aware error message.
+3. **Describe-by-recency for film/TV** — `tmdbByPerson()` in `api/lookup.ts`. Recency queries now resolve person by name via TMDB `/search/person`, pull `combined_credits`, sort newest-first. Director/Writer crew credits carry person as creator; cast credits fill in for actors. Falls back to plain `tmdb()` if no person found. Matches the existing music (`itunesByArtist`) and books (`openLibraryByAuthor`) pattern.
+4. **Offline library cache** — parked. Full offline-first requires queuing mutations (markDone, edits, deletes); disproportionate scope. Revisit if offline usage becomes a real pattern.
 
 ### Session 33 (2026-06-05) — Discover polish, mark-done redesign, bug fixes, roadmap
 

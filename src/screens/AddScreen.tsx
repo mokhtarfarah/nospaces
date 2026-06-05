@@ -244,7 +244,7 @@ export function AddScreen() {
       if (err instanceof Error && err.message === 'auth_error') {
         setError('Session expired — reload the app and try again.')
       } else {
-        setError('Could not reach AI — saved as typed.')
+        setError(navigator.onLine ? 'Could not reach AI — saved as typed.' : 'offline — saved locally, will sync when back online.')
         await addItem(title.trim())
         setTitle('')
         navigate('/library')
