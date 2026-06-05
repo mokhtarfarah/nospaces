@@ -961,23 +961,50 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                       placeholder="reference url (wikipedia, goodreads…)"
                       style={{ ...smInput, marginBottom: 10, ...(tidyGaps.has('wiki') ? { borderColor: '#C44' } : {}) }}
                     />
-                    {(type === 'film' || type === 'book' || type === 'tv') && (
-                      <>
-                        <div style={fieldLabel}>series</div>
-                        <input
-                          list={`series-opts-${item.id}`}
-                          value={series}
-                          onChange={e => setSeries(e.target.value)}
-                          placeholder="series name"
-                          style={{ ...smInput, marginBottom: 10 }}
-                        />
-                        {seriesOptions && seriesOptions.length > 0 && (
-                          <datalist id={`series-opts-${item.id}`}>
-                            {seriesOptions.map(s => <option key={s} value={s} />)}
-                          </datalist>
-                        )}
-                      </>
-                    )}
+                    {(type === 'film' || type === 'book' || type === 'tv') && (() => {
+                      const opts = seriesOptions ?? []
+                      const inOpts = opts.includes(series)
+                      // select value: matching option, '__new__' if user is typing new, '' for none
+                      const selectVal = series === '' ? '' : inOpts ? series : '__new__'
+                      return (
+                        <>
+                          <div style={fieldLabel}>series</div>
+                          {opts.length > 0 ? (
+                            <>
+                              <select
+                                value={selectVal}
+                                onChange={e => {
+                                  if (e.target.value === '') setSeries('')
+                                  else if (e.target.value === '__new__') setSeries('')
+                                  else setSeries(e.target.value)
+                                }}
+                                style={{ ...smInput, marginBottom: selectVal === '__new__' ? 6 : 10 }}
+                              >
+                                <option value="">— none —</option>
+                                {opts.map(s => <option key={s} value={s}>{s}</option>)}
+                                <option value="__new__">+ new series…</option>
+                              </select>
+                              {selectVal === '__new__' && (
+                                <input
+                                  autoFocus
+                                  value={series}
+                                  onChange={e => setSeries(e.target.value)}
+                                  placeholder="series name"
+                                  style={{ ...smInput, marginBottom: 10 }}
+                                />
+                              )}
+                            </>
+                          ) : (
+                            <input
+                              value={series}
+                              onChange={e => setSeries(e.target.value)}
+                              placeholder="series name"
+                              style={{ ...smInput, marginBottom: 10 }}
+                            />
+                          )}
+                        </>
+                      )
+                    })()}
                     <div style={fieldLabel}>cover image url</div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10 }}>
                       <input value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="cover url" style={{ ...smInput, flex: 1 }} />
