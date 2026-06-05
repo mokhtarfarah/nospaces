@@ -95,7 +95,9 @@ export const VIBES: string[] = [
 export const VERDICTS: string[] = [
   'comfort',
   'guilty pleasure',
-  'would revisit',
+  'hyperfixation',
+  'in rotation',
+  'unfinished business',
   'delivers',
   'respect, not love',
   'overrated',
@@ -124,6 +126,7 @@ export const MOOD_REMAP: Record<string, string | null> = {
   'life-changing':         null,
   'just really, really good': null,
   'overhyped':                    'overrated',
+  'would revisit':                'in rotation',
   'just really really good':      null,
   'they don\'t make \'em like this': null,
 }
