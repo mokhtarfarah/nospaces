@@ -14,7 +14,23 @@
 
 ## Next session
 
-No immediate priorities — both session 34 items shipped. Pick from roadmap or parked list.
+**Ranked improvement list (from session 35 audit) — pick in order:**
+
+1. ✅ Library defaults + dynamic tab order + thumbnail size (session 35)
+2. **Rate limiting on `/api/recommend` + `/api/identify`** — real dollar risk with a compromised JWT. Simple per-user hourly cap via Vercel edge middleware or Upstash. Recommend is $0.15-0.20/call.
+3. **Taste page canon gallery** — 50px tiles at 9px type are illegible. Canon items should render as a proper gallery (larger tiles, readable title beneath). This is the centerpiece of the taste page.
+4. **React error boundary at app root** — any unhandled component throw blank-screens the whole app. 10 lines, high crash-prevention value.
+5. **`window.open` without `noopener`** — Spotify + Wikipedia quick-links in `ItemRow`. Add `rel="noopener noreferrer"` (or pass as 3rd arg to `window.open`).
+6. **Strip `console.log` in production** — `AddScreen.tsx` logs user query text. Guard behind `import.meta.env.DEV`.
+7. **`alert()` → in-app toast** — `LibraryScreen.tsx:749` after bulk delete. Native alert looks foreign in PWA mode.
+8. **Input length cap on API endpoints** — `/api/identify` accepts unbounded `input` string; cap at ~2000 chars.
+9. **Discover screen editorial redesign** — largest gap between concept and execution. No visual hierarchy; reads like a JSON array rendered into divs. Medium-effort.
+10. **Remove hardcoded emails from source** — `api/email.ts` fallback contains PII. Remove fallback, fail closed if env var missing.
+
+**Design decisions made this session (don't re-litigate):**
+- Grid default with year/decade view — editorial library feel vs. feed/log feel of list+recent
+- Tab order derived from library composition (most items first), "all" last — avoids imposing a medium hierarchy
+- "All" grid mode: uniform square tiles, `object-position: top` for non-music. Single-medium: native ratio.
 
 **Parked (do not re-raise without new signal):**
 - **Offline library cache** — cache Supabase items in IndexedDB so the library loads while offline. Skipped: the capture queue covers the "save something quick" case. Full offline-first requires queuing mutations (markDone, edits, deletes) too — different scope. Revisit only if offline usage becomes a real pattern.
@@ -178,6 +194,7 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 - **Filter bar declutter** — ✅ shipped. Single "filter ▾" button with active-count badge; opens bottom sheet with pill chips for vibe/verdict/genre/series.
 - **Decade section headers** — ✅ shipped. "By year" view groups items into decade sections (2020s, 2010s, etc.) instead of a flat chronological list.
 - **"Help me decide" decision tree** — ✅ shipped. Guided 3-step flow (seen before? → type → vibe) from `/decide`. Entry: inline link in library header.
+- **Library defaults + dynamic tabs** — ✅ shipped. Default: grid + year (decade headers). Category tabs ordered by item count (most-used first), "all" last. "All" grid mode uses uniform square tiles (object-position:top for posters). List thumbnails 42→52px.
 
 **Action card / edit view**
 - **Action card link order** — ✅ shipped. New order: edit · about this · spotify · wikipedia · watch · own it.
@@ -217,10 +234,10 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 - **Descriptive library search** — ⛔ shelved. AI applies too many filters simultaneously → tiny intersections. Filter sheet covers the use case better.
 
 **Data & input**
-- **Describe-by-recency for film/TV** — "that new Villeneuve movie" via TMDB person→credits. Music/books already work. **Next session priority 2.**
+- **Describe-by-recency for film/TV** — ✅ shipped (session 34). `tmdbByPerson()` in `api/lookup.ts`.
 
 **Infrastructure**
-- **Offline capture queue** — IndexedDB, save offline, sync on reconnect. PWA service worker already in place. **Next session priority 1.**
+- **Offline capture queue** — ✅ shipped (session 34). `src/lib/offlineQueue.ts` + `src/hooks/useOfflineSync.ts`.
 
 ### Shelved (decided against — keep for reference)
 
@@ -238,6 +255,14 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 35 (2026-06-05) — App audit + library UX overhaul
+
+1. **Full app audit** — two-lens review: editorial designer (would you pay for this?) + independent tech auditor (systems, security, functionality). Produced a ranked improvement list of 18 items now in "Next session" above.
+2. **Library default view** — changed from list+recent to grid+year (decade headers). Rationale: grid is a collection, list is a log; year/decade shows taste range vs. recency as feed.
+3. **Dynamic category tab order** — tabs now sorted by item count from actual library data, most-used type first, "all" moved to last. Avoids imposing a medium hierarchy (films > books etc.) that may not match the user's collection.
+4. **Grid aspect ratio fix** — "all" mode uses uniform 1:1 square tiles with `object-position:top` for non-music covers (preserves faces/titles). Single-medium grids keep native ratios (2:3 film/book/tv, 1:1 music).
+5. **List thumbnail size** — 42px → 52px.
 
 ### Session 34 (2026-06-05) — Offline capture queue, describe-by-recency film/TV, canon chip fix
 
