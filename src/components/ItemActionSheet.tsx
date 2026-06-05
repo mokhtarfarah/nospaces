@@ -235,6 +235,15 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
     : null
   const { url, summary, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year, metaWiki?.summary ? metaWiki : null)
   const wikiUrl = item.type === 'music' ? null : url
+  // Persist wiki data when the action sheet resolves it but metadata.wikiUrl isn't saved yet.
+  // Without this, itemGaps() keeps flagging wiki as missing even though the card shows the link.
+  const wikiSavedRef = useRef(false)
+  useEffect(() => {
+    if (wikiUrl && !metaWiki?.url && !wikiSavedRef.current) {
+      wikiSavedRef.current = true
+      onPatchMetadata?.({ wikiUrl, wikiThumb: wikiThumb ?? null, wikiSummary: summary ?? null })
+    }
+  }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, coverUrl || null)
   const cover = artwork ?? wikiThumb
   // For books with no Wikipedia summary, fall back to an Open Library / Apple Books blurb.
