@@ -97,16 +97,19 @@ export function useItems() {
         headers: await authHeaders(),
         body: JSON.stringify({ title, creator, type, year }),
       })
+      if (!r.ok) { console.error('[fillVibes] HTTP', r.status, 'for', title); return }
       const data = await r.json()
       const vibes: string[] = Array.isArray(data.suggestions) ? data.suggestions : []
       if (!vibes.length) return
-      // Merge onto whatever metadata the row now has (don't clobber a concurrent
-      // genre patch — re-read current state).
-      const current = items.find(i => i.id === id)
-      const meta = { ...(current?.metadata ?? {}), unconfirmedVibes: vibes }
-      await db().from('items').update({ metadata: meta }).eq('id', id)
+      // Re-fetch the row's current metadata before writing to avoid clobbering a
+      // concurrent genres patch (both run in parallel; they write different columns
+      // but metadata is a JSON blob so we must merge carefully).
+      const { data: row } = await db().from('items').select('metadata').eq('id', id).single()
+      const meta = { ...(row?.metadata ?? {}), unconfirmedVibes: vibes }
+      const { error } = await db().from('items').update({ metadata: meta }).eq('id', id)
+      if (error) { console.error('[fillVibes] update error', error); return }
       await fetch({ silent: true })
-    } catch { /* no vibes is fine — they stay unfilled */ }
+    } catch (e) { console.error('[fillVibes] error', e) }
   }
 
   // Ask /api/genres (Haiku, cheap) for 1–3 genres and patch them onto the row.
@@ -114,10 +117,11 @@ export function useItems() {
     try {
       const res = await fetch_genres(title, creator, type)
       if (res.length) {
-        await db().from('items').update({ tags: res }).eq('id', id)
+        const { error } = await db().from('items').update({ tags: res }).eq('id', id)
+        if (error) { console.error('[fillGenres] update error', error); return }
         await fetch({ silent: true })
       }
-    } catch { /* leave untagged — the library-tools backfill can retry */ }
+    } catch (e) { console.error('[fillGenres] error', e) }
   }
   async function fetch_genres(title: string, creator: string | null, type: string): Promise<string[]> {
     const r = await window.fetch('/api/genres', {

@@ -17,6 +17,7 @@ interface Props {
   item: Item
   onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; moods?: string[]; source_detail?: string | null; metadata?: Record<string, unknown> }) => void
   onMarkInProgress?: () => void
+  onMarkWantTo?: () => void
   onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
   onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
@@ -93,7 +94,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -656,7 +657,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
               </div>
             ) : (
               <div style={{ ...footer }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: item.status === 'want_to' && onMarkInProgress ? 6 : 0 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: (item.status === 'want_to' && onMarkInProgress) || item.status === 'in_progress' ? 6 : 0 }}>
                   <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
                     {item.status === 'done' ? `your reaction · ${item.reaction ? REACTION_LABELS[item.reaction] : 'set'}` : 'mark as done'}
                   </button>
@@ -668,6 +669,14 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
                     style={{ background: 'none', border: 'none', fontSize: 11, color: '#ABA69C', cursor: 'pointer', padding: '0 0 2px', width: '100%', textAlign: 'center' }}
                   >
                     mark as in progress
+                  </button>
+                )}
+                {item.status === 'in_progress' && onMarkWantTo && (
+                  <button
+                    onClick={onMarkWantTo}
+                    style={{ background: 'none', border: 'none', fontSize: 11, color: '#ABA69C', cursor: 'pointer', padding: '0 0 2px', width: '100%', textAlign: 'center' }}
+                  >
+                    move back to want to
                   </button>
                 )}
               </div>
