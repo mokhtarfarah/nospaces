@@ -45,11 +45,6 @@ export function GuideScreen() {
         {/* ── 01 SAVING ────────────────────────────────────────── */}
         <Section num="01" title="saving things" desc="three ways in — all of them do the same thing. you give nospaces a clue and it finds the item, fills in the details, and adds it to your want-to list.">
           <AddIllustration />
-          <Tips items={[
-            { label: 'type or search', text: 'describe or name it — "that new Villeneuve film", an album, a book title. search finds it.' },
-            { label: 'photo',          text: 'tap "from a photo" in the add screen. snap a poster, a shelf, a screenshot — it reads every title in the image.' },
-            { label: 'email',          text: 'forward anything to anything@nospaces.xyz — a newsletter, a review, a recommendation. every title in it gets saved.' },
-          ]} />
           <Extras items={[
             { label: 'letterboxd', text: 'tap + → import from letterboxd to bring in your watchlist and ratings. stars map to reactions automatically.' },
             { label: 'spotify',    text: 'tap + → sync from spotify to pull your saved albums. repeat syncs only add new ones.' },
@@ -80,7 +75,7 @@ export function GuideScreen() {
           ]} />
           <Extras items={[
             { label: 'tidy',   text: '"tidy · N" in the header flags items missing info — year, director, runtime, genre. tap to fill them in one by one, or auto-fill in bulk.' },
-            { label: 'series', text: 'tap an item → edit → series field. groups trilogies, book series, and tv seasons together in the library.' },
+            { label: 'series', text: 'tap an item → edit → series field. groups trilogies and book series together in the library.' },
           ]} />
         </Section>
 
@@ -174,92 +169,115 @@ const card: React.CSSProperties = {
 }
 
 function AddIllustration() {
+  const rows = [
+    {
+      num: '1',
+      label: 'type or describe it',
+      desc: 'name it, describe it, or be vague — "that new Villeneuve film", "something by Sally Rooney". search finds it.',
+    },
+    {
+      num: '2',
+      label: 'snap or share a photo',
+      desc: 'tap "from a photo" in the add screen. point it at a poster, a shelf, a screenshot — it reads every title in the image.',
+    },
+    {
+      num: '3',
+      label: 'forward an email',
+      desc: 'forward anything to anything@nospaces.xyz — a newsletter, a photo, a title, a review. everything in it gets saved.',
+    },
+  ]
   return (
     <div style={card}>
-      {[
-        { num: '1', label: 'type or describe it',      hint: '"that Villeneuve film" · "Sally Rooney novel"' },
-        { num: '2', label: 'snap or share a photo',    hint: 'poster · shelf · article · screenshot' },
-        { num: '3', label: 'forward an email',         hint: 'anything@nospaces.xyz' },
-      ].map(({ num, label, hint }, i, arr) => (
+      {rows.map(({ num, label, desc }, i) => (
         <div key={num} style={{
           display: 'flex', alignItems: 'flex-start', gap: 12,
-          padding: '10px 0',
-          borderBottom: i < arr.length - 1 ? '1px solid #ECEAE6' : 'none',
+          padding: '12px 0',
+          borderBottom: i < rows.length - 1 ? '1px solid #ECEAE6' : 'none',
         }}>
           <div style={{
             width: 20, height: 20, borderRadius: '50%', background: '#F4F2EF',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 10, fontWeight: 700, color: '#6F6B64', flexShrink: 0, marginTop: 1,
+            fontSize: 10, fontWeight: 700, color: '#6F6B64', flexShrink: 0, marginTop: 2,
           }}>{num}</div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#1C1B19', marginBottom: 2 }}>{label}</div>
-            <div style={{ fontSize: 11, color: '#ABA69C' }}>{hint}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 12, color: '#6F6B64', lineHeight: 1.55 }}>{desc}</div>
           </div>
         </div>
       ))}
       <div style={{
-        marginTop: 12, paddingTop: 10, borderTop: '1px solid #ECEAE6',
-        fontSize: 11, color: '#ABA69C', textAlign: 'center' as const,
+        marginTop: 12, paddingTop: 12, borderTop: '1px solid #ECEAE6',
+        fontSize: 13, fontWeight: 600, color: '#1C1B19',
       }}>
-        nospaces finds it and fills in the details
+        nospaces finds it and fills in the details.
       </div>
     </div>
   )
 }
 
 function ReactionIllustration() {
+  const btnBase: React.CSSProperties = {
+    padding: '11px 8px', borderRadius: 10, fontSize: 13,
+    textAlign: 'center' as const,
+  }
   return (
     <div style={card}>
-      <div style={{ fontSize: 11, color: '#ABA69C', marginBottom: 10 }}>how did it land?</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-        {[
-          { label: 'loved it', active: true },
-          { label: 'liked it', active: false },
-          { label: 'eh', active: false },
-          { label: 'not for me', active: false },
-        ].map(({ label, active }) => (
-          <div key={label} style={{
-            padding: '10px 0', textAlign: 'center' as const, borderRadius: 8,
-            border: active ? '1.5px solid #1C1B19' : '1.5px solid #ECEAE6',
-            background: active ? '#1C1B19' : '#fff',
-            color: active ? '#fff' : '#6F6B64',
-            fontSize: 12, fontWeight: active ? 600 : 400,
-          }}>{label}</div>
-        ))}
+      {/* Item header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #ECEAE6' }}>
+        <div style={{ width: 4, height: 32, borderRadius: 2, background: '#C4B9AB', flexShrink: 0 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>dune: part two</div>
+          <div style={{ fontSize: 11, color: '#ABA69C' }}>Denis Villeneuve</div>
+        </div>
       </div>
-      <div style={{ borderTop: '1px solid #ECEAE6', paddingTop: 12 }}>
-        <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '0.07em', marginBottom: 7 }}>VIBE</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 12 }}>
-          {['dark', 'epic', 'intense'].map((v, i) => (
-            <span key={v} style={{
-              padding: '3px 10px', borderRadius: 100, fontSize: 11,
-              border: i === 0 ? '1px solid #1C1B19' : '1px solid #ECEAE6',
-              background: i === 0 ? '#1C1B19' : '#fff',
-              color: i === 0 ? '#fff' : '#6F6B64',
-            }}>{v}</span>
-          ))}
-        </div>
-        <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '0.07em', marginBottom: 7 }}>VERDICT</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-          {['hyperfixation', 'delivers'].map((v, i) => (
-            <span key={v} style={{
-              padding: '3px 10px', borderRadius: 100, fontSize: 11,
-              border: i === 0 ? '1px solid #1C1B19' : '1px solid #ECEAE6',
-              background: i === 0 ? '#1C1B19' : '#fff',
-              color: i === 0 ? '#fff' : '#6F6B64',
-            }}>{v}</span>
-          ))}
-        </div>
+
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#1C1B19', marginBottom: 12 }}>what did you think?</div>
+
+      {/* loved it / liked it */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+        <div style={{ ...btnBase, border: '2px solid #1C1B19', background: '#F4F2EE', color: '#1C1B19', fontWeight: 600 }}>loved it</div>
+        <div style={{ ...btnBase, border: '1.5px solid #E6E3DE', background: '#fff', color: '#6F6B64' }}>liked it</div>
+      </div>
+
+      {/* canon full-width */}
+      <div style={{ ...btnBase, border: '1.5px solid #E6E3DE', background: '#fff', color: '#6F6B64', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <span style={{ fontSize: 10 }}>◇</span> canon
+      </div>
+
+      {/* eh / not for me */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+        <div style={{ ...btnBase, border: '1.5px solid #E6E3DE', background: '#fff', color: '#6F6B64' }}>eh</div>
+        <div style={{ ...btnBase, border: '1.5px solid #E6E3DE', background: '#fff', color: '#6F6B64' }}>not for me</div>
+      </div>
+
+      {/* vibe */}
+      <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase' as const, marginBottom: 8 }}>
+        vibe <span style={{ textTransform: 'none' as const, fontWeight: 400, color: '#D5D3CF' }}>· optional</span>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+        {['dark', 'epic', 'intense', 'melancholic', 'lush'].map((v, i) => (
+          <span key={v} style={{
+            padding: '4px 10px', borderRadius: 100, fontSize: 11,
+            border: i === 0 ? '1px solid #1C1B19' : '1px solid #ECEAE6',
+            background: i === 0 ? '#1C1B19' : '#fff',
+            color: i === 0 ? '#fff' : '#6F6B64',
+          }}>{v}</span>
+        ))}
       </div>
     </div>
   )
 }
 
 function LibraryIllustration() {
+  const rows = [
+    { title: 'dune: part two', creator: 'Denis Villeneuve', sub: 'film · 2024 · sci-fi · loved it', bg: '#E8E4DE', square: false },
+    { title: 'normal people',  creator: 'Sally Rooney',     sub: 'book · 2018 · literary',          bg: '#DFE8E8', square: false },
+    { title: 'cowboy carter',  creator: 'Beyoncé',          sub: 'music · 2024',                    bg: '#E8E8DF', square: true  },
+  ]
   return (
     <div style={card}>
-      {/* filter bar — current UI: status tabs + filter button */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid #ECEAE6' }}>
+      {/* filter bar — current UI */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingBottom: 12, marginBottom: 4, borderBottom: '1px solid #ECEAE6' }}>
         {[
           { label: 'all', active: true },
           { label: 'want to', active: false },
@@ -275,21 +293,23 @@ function LibraryIllustration() {
         ))}
         <span style={{ marginLeft: 'auto', fontSize: 11, color: '#ABA69C', flexShrink: 0 }}>filter ▾</span>
       </div>
-      {/* item rows */}
-      {[
-        { type: 'film',  title: 'dune: part two', meta: 'Denis Villeneuve · 2024', dot: '#C4B9AB' },
-        { type: 'book',  title: 'normal people',  meta: 'Sally Rooney · 2018',    dot: '#B3C4C4' },
-        { type: 'music', title: 'cowboy carter',  meta: 'Beyoncé · 2024',         dot: '#C4C4B3' },
-      ].map(({ type, title, meta, dot }) => (
-        <div key={title} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #ECEAE6' }}>
-          <div style={{ width: 4, height: 28, borderRadius: 2, background: dot, flexShrink: 0 }} />
+      {/* item rows — matching current ItemRow design: thumb + title·creator + subtitle + ✓ */}
+      {rows.map(({ title, creator, sub, bg, square }) => (
+        <div key={title} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #F4F4F4' }}>
+          <div style={{ width: square ? 36 : 28, height: square ? 36 : 48, borderRadius: 4, background: bg, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: '#1C1B19' }}>{title}</div>
-            <div style={{ fontSize: 10, color: '#ABA69C' }}>{type} · {meta}</div>
+            <div style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontWeight: 500, color: '#111' }}>{title}</span>
+              <span style={{ color: '#ABA69C' }}>  ·  {creator}</span>
+            </div>
+            <div style={{ fontSize: 10, color: '#999', marginTop: 3 }}>{sub}</div>
           </div>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D5D3CF" strokeWidth="2" strokeLinecap="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+          <div style={{
+            width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+            border: '1.5px solid #DDD', background: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, color: '#CCC',
+          }}>✓</div>
         </div>
       ))}
     </div>
@@ -297,36 +317,38 @@ function LibraryIllustration() {
 }
 
 function DiscoverIllustration() {
+  const results = [
+    {
+      title: 'the zone of interest',
+      creator: 'Jonathan Glazer',
+      meta: 'film · 2023 · via dark films',
+      why: 'matches your taste for dark, slow-burn films with a heavy atmosphere.',
+      bg: '#C4B9AB',
+    },
+    {
+      title: 'all of us strangers',
+      creator: 'Andrew Haigh',
+      meta: 'film · 2023 · via melancholic',
+      why: 'you loved similar quiet, emotional films.',
+      bg: '#C4B5AB',
+    },
+  ]
   return (
     <div style={card}>
-      <div style={{ fontSize: 11, color: '#ABA69C', marginBottom: 12 }}>based on your taste · dark films</div>
-      {[
-        { title: 'the zone of interest', meta: 'Jonathan Glazer · 2023', dot: '#C4B9AB' },
-        { title: 'all of us strangers',  meta: 'Andrew Haigh · 2023',    dot: '#C4B5AB' },
-      ].map(({ title, meta, dot }) => (
-        <div key={title} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #ECEAE6' }}>
-          <div style={{ width: 34, height: 46, borderRadius: 4, background: dot, flexShrink: 0 }} />
+      {results.map(({ title, creator, meta, why, bg }, i) => (
+        <div key={title} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingBottom: 16, marginBottom: i < results.length - 1 ? 16 : 0, borderBottom: i < results.length - 1 ? '1px solid #ECEAE6' : 'none' }}>
+          <div style={{ width: 42, height: 62, borderRadius: 3, background: bg, flexShrink: 0, border: '1px solid #ECEAE6' }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#1C1B19', marginBottom: 2 }}>{title}</div>
-            <div style={{ fontSize: 10, color: '#ABA69C' }}>{meta}</div>
-          </div>
-          <div style={{ flexShrink: 0, width: 24, height: 24, borderRadius: '50%', border: '1px solid #ECEAE6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ABA69C" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+            <div style={{ marginBottom: 3 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>{title}</span>
+              <span style={{ fontSize: 11, color: '#6F6B64' }}> — {creator}</span>
+            </div>
+            <div style={{ fontSize: 10, color: '#ABA69C', marginBottom: 6 }}>{meta}</div>
+            <div style={{ fontSize: 11, color: '#6F6B64', fontStyle: 'italic' as const, lineHeight: 1.5, marginBottom: 8 }}>{why}</div>
+            <span style={{ fontSize: 11, color: '#ABA69C', textDecoration: 'underline' }}>+ save</span>
           </div>
         </div>
       ))}
-      <div style={{ paddingTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-        {['dark', 'arthouse', 'intense'].map((v, i) => (
-          <span key={v} style={{
-            padding: '3px 10px', borderRadius: 100, fontSize: 11,
-            border: i === 0 ? '1px solid #1C1B19' : '1px solid #ECEAE6',
-            background: i === 0 ? '#1C1B19' : '#fff',
-            color: i === 0 ? '#fff' : '#6F6B64',
-          }}>{v}</span>
-        ))}
-      </div>
     </div>
   )
 }
@@ -334,34 +356,59 @@ function DiscoverIllustration() {
 function TasteIllustration() {
   return (
     <div style={card}>
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '0.07em', marginBottom: 10 }}>REACTIONS</div>
-        {[
-          { type: 'film',  loved: 8,  total: 14 },
-          { type: 'book',  loved: 5,  total: 14 },
-          { type: 'music', loved: 12, total: 16 },
-        ].map(({ type, loved, total }) => (
-          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span style={{ fontSize: 10, color: '#6F6B64', width: 32, flexShrink: 0 }}>{type}</span>
-            <div style={{ flex: 1, height: 5, borderRadius: 3, background: '#ECEAE6', overflow: 'hidden' }}>
-              <div style={{ height: '100%', borderRadius: 3, background: '#1C1B19', width: `${(loved / total) * 100}%` }} />
-            </div>
-            <span style={{ fontSize: 10, color: '#ABA69C', flexShrink: 0 }}>{loved} loved</span>
-          </div>
+      {/* Top vibe chips — matches hero section of taste page */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 16, paddingBottom: 16, borderBottom: '1.5px solid #1C1B19' }}>
+        {['dark', 'melancholic', 'intense', 'nostalgic', 'lush', 'epic'].map((v, i) => (
+          <span key={v} style={{
+            padding: '3px 10px', borderRadius: 100, fontSize: 11,
+            border: i < 3 ? '1px solid #1C1B19' : '1px solid #ECEAE6',
+            background: i < 3 ? '#1C1B19' : '#fff',
+            color: i < 3 ? '#fff' : '#6F6B64',
+          }}>{v}</span>
         ))}
       </div>
-      <div style={{ borderTop: '1px solid #ECEAE6', paddingTop: 12 }}>
-        <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '0.07em', marginBottom: 10 }}>◆ CANON</div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {['#C4B9AB', '#B3C4C4', '#C4C4B3', '#C4BCAB'].map((color, i) => (
-            <div key={i} style={{ width: 36, height: 48, borderRadius: 4, background: color, flexShrink: 0 }} />
+
+      {/* Category card — matches CategoryCard component */}
+      <div style={{ paddingBottom: 16, borderBottom: '1px solid #ECEAE6' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' as const, color: '#1C1B19' }}>film</span>
+          <span style={{ fontSize: 11, color: '#ABA69C' }}>14 rated · 71% loved</span>
+        </div>
+        {/* ◆ canon tiles */}
+        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase' as const, color: '#ABA69C', marginBottom: 8 }}>◆ canon</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {['#C4B9AB', '#C0B5A8', '#C8BCAF', '#BDB5AB'].map((bg, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column' as const, gap: 3, width: 44 }}>
+              <div style={{ width: 44, height: 64, borderRadius: 3, background: bg, border: '1px solid #ECEAE6' }} />
+              <div style={{ fontSize: 9, color: '#6F6B64', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                {['dune', 'there will be blood', 'hereditary', 'mulholland dr.'][i]}
+              </div>
+            </div>
           ))}
-          <div style={{
-            width: 36, height: 48, borderRadius: 4, background: '#F4F2EF', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ fontSize: 10, color: '#ABA69C' }}>+8</span>
-          </div>
+        </div>
+        {/* ranked genres */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+          {['sci-fi', 'drama', 'thriller', 'arthouse'].map((g, i) => (
+            <span key={g} style={{ fontSize: 11, color: i === 0 ? '#1C1B19' : '#6F6B64', fontWeight: i === 0 ? 600 : 400 }}>{g}{i < 3 ? ' ·' : ''}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Second category */}
+      <div style={{ paddingTop: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' as const, color: '#1C1B19' }}>book</span>
+          <span style={{ fontSize: 11, color: '#ABA69C' }}>8 rated · 62% loved</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {['#DFE8E8', '#D8E0E0'].map((bg, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column' as const, gap: 3, width: 44 }}>
+              <div style={{ width: 44, height: 64, borderRadius: 3, background: bg, border: '1px solid #ECEAE6' }} />
+              <div style={{ fontSize: 9, color: '#6F6B64', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                {['normal people', 'the sympathizer'][i]}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
