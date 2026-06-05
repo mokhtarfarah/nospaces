@@ -49,13 +49,16 @@ export function MarkDoneSheet({ item, onConfirm, onClose }: Props) {
         bottom: 0, left: 0, right: 0,
         background: '#fff',
         borderRadius: '16px 16px 0 0',
-        padding: '6px 20px calc(28px + env(safe-area-inset-bottom))',
+        padding: '0 20px calc(28px + env(safe-area-inset-bottom))',
         zIndex: 201,
         maxWidth: 480,
         margin: '0 auto',
         maxHeight: '85dvh',
         overflowY: 'auto',
       }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px' }}>
+          <div style={{ width: 32, height: 4, borderRadius: 2, background: '#ECEAE6' }} />
+        </div>
         {/* Item preview + close */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
           <div style={{ width: 4, height: 36, borderRadius: 2, background: color.border, flexShrink: 0 }} />
