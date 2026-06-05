@@ -175,7 +175,7 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 - **"Add to series" dropdown** — replace the manual series text input with a dropdown of series already in the library. Faster and keeps names consistent.
 
 **Data quality / tidy**
-- **Wiki gap false positives** — GapsSheet flags wiki as missing even when the action card shows it. Likely a stale check in `itemGaps()`. Investigate vs when `wikiUrl` is actually written to metadata.
+- **Wiki gap false positives** — ✅ fixed. Two bugs: (1) ItemActionSheet fetched wiki but never saved it — added auto-save effect. (2) Fill-auto counters didn't respect dismissedGaps — now all derived from itemGaps().
 - **Wiki match correctness** — title guard shipped. Existing bad matches: re-identify case-by-case.
 - **Data-gaps tidy mode: highlight missing fields** — in tidy-queue flow (`?tidy=1`), show missing fields in red and auto-expand them in edit view. Only in tidy mode.
 
