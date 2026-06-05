@@ -5,7 +5,7 @@ import { itemGaps, dismissGaps } from '../lib/gaps'
 import { useArtwork } from '../lib/artwork'
 import { authHeaders } from '../lib/supabase'
 import { fetchWikiInfo } from '../lib/wikipedia'
-import { isGenreTag } from '../lib/genres'
+
 import { MOOD_REMAP } from '../lib/moods'
 
 // ---------------------------------------------------------------------------
@@ -16,18 +16,12 @@ function AutoFillTools({ items, editItem }: {
   items: Item[]
   editItem: (id: string, fields: Record<string, unknown>) => Promise<void>
 }) {
-  const untagged = useMemo(() =>
-    items.filter(i => !(i.tags ?? []).some(isGenreTag) && ['film','tv','book','music'].includes(i.type)), [items])
-  const needsRuntime = useMemo(() =>
-    items.filter(i => {
-      if (i.type === 'film' || i.type === 'tv') return !i.metadata?.runtime
-      if (i.type === 'book') return !i.metadata?.pages
-      return false
-    }), [items])
+  // Derive from itemGaps() so dismissed gaps are respected — consistent with DATA GAPS list
+  const untagged = useMemo(() => items.filter(i => itemGaps(i).includes('genre')), [items])
+  const needsRuntime = useMemo(() => items.filter(i => itemGaps(i).some(g => g === 'runtime' || g === 'pages')), [items])
   const needsMoodMigration = useMemo(() =>
     items.filter(i => i.moods?.some(m => m in MOOD_REMAP || m === 'gripping' || m === 'project' || m === 'classic')), [items])
-  const needsWiki = useMemo(() =>
-    items.filter(i => !i.metadata?.wikiUrl && ['film','tv','book','music'].includes(i.type)), [items])
+  const needsWiki = useMemo(() => items.filter(i => itemGaps(i).includes('wiki')), [items])
 
   // Flag covers that are genuinely low-res (< 300px) — will look soft on retina.
   // Each source encodes size in the URL; we check the specific pattern.
