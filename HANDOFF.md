@@ -114,7 +114,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-04, updated session 20)
+## TODO / Roadmap (last edited 2026-06-04, updated session 21)
 
 ---
 
@@ -134,9 +134,9 @@ All shipped to `main`:
 - ✅ Verdict removed — "they don't make 'em like this" dropped from vocab + MOOD_REMAP (cleanup tool will strip from existing items)
 - ✅ Genre 3-copy problem fixed — `api/genres.ts` + `api/wiki.ts` now import from `src/lib/genres.ts`; one place to edit genres forever
 
-### Phase 2 — Action card + editing flow (✅ BUILT session 21, not pushed)
+### Phase 2 — Action card + editing flow ✅ DONE (session 21, 2026-06-04)
 
-**▶ FRESH CHAT STARTS HERE.** Wiki fix + full card restructure both DONE on branch `phase2-wiki-autofill-fix` (committed, NOT pushed). Next: eyeball logged-in (auth-gated — see verify checklist below), then push/merge to `main`, then Phase 3.
+All shipped to `main`. Eyeballed in prod. Working.
 
 **✅ DONE session 21 — the wiki auto-fill fix** (branch `phase2-wiki-autofill-fix`, committed, NOT pushed):
 - Root cause found: fill-from-wiki missed runtime/director/author/pages because `api/wiki.ts` parsed the article *prose* (`explaintext`), which strips the infobox where those facts live. See memory `wiki-autofill-rootcause`.
@@ -228,6 +228,33 @@ All shipped to `main`:
 - Bandsintown API access (if/when approved) — broader show coverage beyond Ticketmaster
 - Describe-by-recency for film/TV (TMDB person→credits path — music/books already work)
 - Individual songs (currently albums-only for music)
+
+---
+
+### 📌 Session 21 (2026-06-04) — Phase 2 shipped + genre/vibe bug fixes
+
+**Shipped to `main` / live (all verified in prod):**
+
+1. ✅ **Phase 2 card restructure** — full rebuild of `ItemActionSheet.tsx`. See Phase 2 section for the 6-step breakdown. Short version: two-verb read view (edit + own it), merged auto-fill button, type-fixable, labelled tag lines, unconfirmed vibes, more-details collapsed.
+2. ✅ **One flat link row** — `edit · own it · about this · wikipedia · watch` all on one row (was split into two rows, no hierarchy between actions and links).
+3. ✅ **Better escape hatch** — after auto-fill in edit view, "wrong article?" now offers two options: `identify with ai →` OR `paste a different wikipedia link ↓`. Second option opens more-details and focuses the URL field. Changing the URL resets the callout so auto-fill can re-run against the new article.
+4. ✅ **In progress → want to** — "move back to want to" text link added to the in_progress footer (was one-way — you could mark in progress but had no escape).
+5. ✅ **`api/genres` 500 fixed** — the import `from '../src/lib/genres'` was silently failing in Vercel's serverless bundler (`tsconfig.json` has `"include": ["src"]` which doesn't cover the `api/` layer). Every background genre fill has been returning 500 since session 18 — hidden by a silent catch. Fixed by inlining the GENRE_VOCAB directly in `api/genres.ts`.
+6. ✅ **`api/identify.ts` GENRE_VOCAB synced** — was missing genres added in Phase 1: `historical fiction`, `memoir`, `art pop`, `experimental`, `funk`, `glam rock`, `new wave`, `post-punk`. Items identified via AI were getting wrong/missing genre suggestions.
+7. ✅ **On-open genre + vibe fill** — items that were added while the genre API was broken (or where add-time fills returned empty) now auto-fill on first card open. One `useEffect` on `item.id` checks for missing genres AND missing vibes; fires whichever API calls are needed; writes genres to `tags` and vibes to `metadata.unconfirmedVibes`. Subsequent opens skip both (data already present). Cost: ~$0.002/item, one-time.
+
+**Genre vocab — FOUR copies now. Update all when adding genres:**
+- `src/lib/genres.ts` — frontend source of truth (chip editors, filters, isGenreTag)
+- `api/genres.ts` — background fill endpoint (inline copy, can't import from src/)
+- `api/identify.ts` — AI identify endpoint (inline copy)
+- `api/wiki.ts` — Wikidata parse genres list (inline in the `wikidataFields` function)
+
+**▶ NEXT SESSION STARTS HERE:** Phase 3. See roadmap below. Suggested priorities in order:
+
+1. **Vibe + verdict as separate filters** (Phase 3, S) — currently mixed in the mood filter. Split into two filter chips. Needs a UX decision first: show vibes filter on "all" tab or only per-type?
+2. **Taste page rebuild** (Phase 5, L) — now that vibe/verdict taxonomy is locked and vibes are actually filling, the taste page reflects real data. Good time to rebuild it: cross-type vibe patterns, effort axis, verdict tendencies. This is the "tastemaker mirror" — the killer feature.
+3. **Cover-art quality pass** (Phase 4, M) — biggest visual impact. Low-res / inconsistent art cheapens the grid. Own session.
+4. **Canon / pinned favorites** (Phase 3, S) — lightweight pin for ~10 defining items, separate from the reaction scale.
 
 ---
 
