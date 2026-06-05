@@ -14,10 +14,7 @@
 
 ## Next session
 
-Priority order:
-
-1. **"Not interested" dismiss on discover** — dismiss button per result row; store dismissed titles in prefs (client-side only, same pattern as `savedItems`). Goal: keep discover feed clean. No AI signal value — purely UX.
-2. **Descriptive library search** — "cozy films I haven't watched" → one Haiku call maps the sentence to existing filters. No loop, low cost.
+No queued priorities — pick from roadmap or raise new signal.
 
 **Parked (do not re-raise without new signal):**
 - **Want-to priority** — pin/tier system for backlog. Decision: adds clutter to every want-to row for a problem that help-me-decide + search already cover. Revisit only if backlog grows genuinely unwieldy.
@@ -236,6 +233,15 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 33 (2026-06-05) — Discover polish, mark-done redesign, descriptive search
+
+1. **"Not interested" dismiss on discover** — dismiss button per result row; dismissed titles persisted to `user_prefs.dismissedDiscoverTitles`. Filtered client-side in `filterResults`.
+2. **Discover UX polish** — "shows near you" moved to top as prominent full-width dark button; `MEDIA` section label above type tabs; refresh button moved inline on both `IN TASTE` and `DIVERT` section headers (date + refresh on same line); removed top-level refresh from page header.
+3. **Shows back nav** — back button on `/shows` now returns to `/discover` instead of `/library`.
+4. **Mark-done sheet redesign** — replaced awkward full-width canon row between 2×2 grids with a single row of 5 equal chips: loved it · liked it · ◇ canon · eh · not for me. Canon restored with better placement.
+5. **Canon filter removed** — `◆ canon` filter chip removed from library header. Canon still visible as `◆` marker on items and on the taste page.
+6. **Descriptive library search** — `api/search.ts` (Haiku). Type a sentence in the library search bar (3+ words), tap "interpret →" or press Enter. Maps to existing filters (type, status, vibe, verdict, genre), applies them, clears the query, shows a summary label. ~$0.001/call.
 
 ### Session 32 (2026-06-05) — Discover UX, tidy fix, decade headers
 
