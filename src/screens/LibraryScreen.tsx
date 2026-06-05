@@ -15,6 +15,7 @@ import { VIBES, VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 import { inReview, reviewCount } from '../lib/review'
+import { authHeaders } from '../lib/supabase'
 
 type StatusFilter = 'all' | ItemStatus
 
@@ -181,6 +182,8 @@ export function LibraryScreen() {
   const [gridCols, setGridCols] = useState<3 | 4>(() => loadPrefs().gridCols ?? 3)
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [interpretLoading, setInterpretLoading] = useState(false)
+  const [interpretLabel, setInterpretLabel] = useState<string | null>(null)
   const [viewSheetOpen, setViewSheetOpen] = useState(false)
   const [dupesOpen, setDupesOpen] = useState(false)
   const [gapsOpen, setGapsOpen] = useState(false)
@@ -251,7 +254,42 @@ export function LibraryScreen() {
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null)
-    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setFilterSheetOpen(false)
+    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setFilterSheetOpen(false); setInterpretLabel(null)
+  }
+
+  // Descriptive search — maps natural language to filters via Haiku
+  const isDescriptive = query.trim().split(/\s+/).length >= 3
+  async function interpretQuery() {
+    if (!isDescriptive || interpretLoading) return
+    setInterpretLoading(true)
+    setInterpretLabel(null)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch('/api/search', { method: 'POST', headers, body: JSON.stringify({ query }) })
+      if (!res.ok) return
+      const { filters } = await res.json() as { filters: { type: string | null; status: string | null; vibe: string | null; verdict: string | null; genre: string | null } }
+      // Apply filter values to existing filter state
+      if (filters.type) setCategories([filters.type])
+      else setCategories([])
+      if (filters.status && filters.status !== 'all') setStatusFilter(filters.status as StatusFilter)
+      if (filters.vibe) setVibeFilter(filters.vibe)
+      if (filters.verdict) setVerdictFilter(filters.verdict)
+      if (filters.genre) setGenreFilter(filters.genre)
+      setQuery('')
+      // Build readable label
+      const parts = [
+        filters.type,
+        filters.status === 'want_to' ? 'want to' : filters.status === 'done' ? 'done' : filters.status === 'in_progress' ? 'in progress' : null,
+        filters.vibe,
+        filters.verdict,
+        filters.genre,
+      ].filter(Boolean)
+      setInterpretLabel(parts.length ? parts.join(' · ') : 'no filters found')
+    } catch {
+      setInterpretLabel(null)
+    } finally {
+      setInterpretLoading(false)
+    }
   }
 
   const sort: SortOption = VIEW_CONFIG[view].sort
@@ -456,31 +494,52 @@ export function LibraryScreen() {
         </div>
 
         {searchOpen && (
-          <div style={{ position: 'relative', marginBottom: 8 }}>
-            <input
-              autoFocus
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search titles, creators..."
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                padding: '8px 34px 8px 12px', border: '1px solid #ddd',
-                borderRadius: 4, fontSize: 16, outline: 'none',
-              }}
-            />
-            {query && (
-              <button
-                onClick={() => setQuery('')}
-                title="Clear search"
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ position: 'relative' }}>
+              <input
+                autoFocus
+                value={query}
+                onChange={e => { setQuery(e.target.value); setInterpretLabel(null) }}
+                onKeyDown={e => { if (e.key === 'Enter' && isDescriptive) interpretQuery() }}
+                placeholder="search titles, or describe: cozy films i haven't watched"
                 style={{
-                  position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-                  width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#ECEAE6',
-                  color: '#6F6B64', fontSize: 13, lineHeight: 1, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '8px 34px 8px 12px', border: '1px solid #ddd',
+                  borderRadius: 4, fontSize: 14, outline: 'none', fontFamily: 'inherit',
                 }}
-              >
-                ×
-              </button>
+              />
+              {query && (
+                <button
+                  onClick={() => { setQuery(''); setInterpretLabel(null) }}
+                  title="Clear search"
+                  style={{
+                    position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                    width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#ECEAE6',
+                    color: '#6F6B64', fontSize: 13, lineHeight: 1, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            {isDescriptive && !interpretLabel && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
+                <button
+                  onClick={interpretQuery}
+                  disabled={interpretLoading}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: interpretLoading ? 'default' : 'pointer', fontSize: 11, color: interpretLoading ? '#ABA69C' : '#1C1B19', fontWeight: 600, fontFamily: 'inherit' }}
+                >
+                  {interpretLoading ? 'interpreting…' : 'interpret →'}
+                </button>
+                {!interpretLoading && <span style={{ fontSize: 11, color: '#ABA69C' }}>apply as filters</span>}
+              </div>
+            )}
+            {interpretLabel && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
+                <span style={{ fontSize: 11, color: '#6F6B64' }}>{interpretLabel}</span>
+                <button onClick={() => setInterpretLabel(null)} style={{ background: 'none', border: 'none', color: '#ABA69C', fontSize: 11, cursor: 'pointer', padding: 0 }}>×</button>
+              </div>
             )}
           </div>
         )}
