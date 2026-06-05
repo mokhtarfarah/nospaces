@@ -163,45 +163,29 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 
 ## Roadmap
 
-### Near-term (Phase 4 remainder + Phase 3 leftovers)
+### Near-term
 
 - **Tom's login** — publish Google OAuth consent screen (currently only Farah's account works in prod).
+- **"Help me decide" decision tree** — pure client-side, zero API cost. Guided question tree (mood? time? type?) → filters want-to list in real time → surfaces 2–3 matching items. One question at a time, full-screen, minimal. Entry: "help me decide" button on want-to view.
 - **Wiki match correctness** — film/TV resolution is lenient, so some items may have the wrong Wikipedia article stored. Spot-check items where `metadata.wikiUrl` title doesn't match the item title. Re-identify fixes it case-by-case.
 - **Page transitions** — shared design language, consistent spacing across all screens.
 
-### Phase 5 — Discovery + taste
-
-**"Help me decide" decision tree:**
-- Pure client-side, zero API cost. Guided question tree (mood? time? type?) → filters want-to list in real time → surfaces 2–3 matching items. One question at a time, full-screen, minimal. Entry: "help me decide" button on want-to view.
-
-**Taste page rebuild** (once data is richer):
-- Effort axis (easy ↔ demanding) — pairs with runtime/pages
-- Cross-type vibe patterns ("hazy + melancholic across all media")
-- Verdict tendencies
-- Era/decade clustering
-- **Regional split** — creator origin analysis ("70% of your favourite films are by European directors") — pure client-side from creator names, no API cost
-- **Aspirational vs actual** — gap between what you save as want-to vs what you actually rate highly
-- Visual element on hero (covers/collage) — currently all text
-- Think like a tastemaker's annual report, not a sorted list
-
-**Discovery improvements:**
-- "Not interested" / dismiss on Discover suggestions
-- Divert mode improvements as data accumulates
-
 ### Medium-term
 
-- **Offline capture queue** — IndexedDB queue holds captures while offline, syncs on reconnect. PWA service worker already in place.
+- **Taste page rebuild** — think tastemaker's annual report, not a sorted list. Needs richer data first. Key additions: effort axis (easy ↔ demanding, pairs with runtime/pages), cross-type vibe patterns, verdict tendencies, era/decade clustering, regional split (creator origin — pure client-side, no API cost), aspirational vs actual (gap between want-to saves and what you actually rate highly), visual element on hero (covers/collage — currently all text).
+- **Discovery improvements** — "not interested" / dismiss on Discover suggestions; divert mode improvements as data accumulates.
+- **Offline capture queue** — IndexedDB, save offline, sync on reconnect. PWA service worker already in place.
 - **Individual songs** — currently albums-only for music.
-- **Describe-by-recency for film/TV** — "that new Villeneuve movie" via TMDB person→credits path. Music/books recency already work.
+- **Describe-by-recency for film/TV** — "that new Villeneuve movie" via TMDB person→credits. Music/books already work.
 - **Letterboxd diary.csv** — per-watch dates and repeat viewings. Not imported yet.
-- **Bandsintown API** — broader show coverage. Applied for access; not approved yet. Proxy + Show shape already ready to merge sources.
+- **Bandsintown API** — broader show coverage. Applied, not approved. Proxy + Show shape already ready to merge sources.
 - **Descriptive library search** — "cozy films I haven't watched" → light AI step turns sentence into filters you already support.
 
-### Long-term (directional)
+### Long-term
 
 - **Restaurants, museums, exhibitions, experiences** — expand beyond media. Same reaction/note/tag model; new types. Taste profile generalises naturally.
-- **Calendar integration** — surface relevant items + suggestions based on where Farah will be. "You'll be in Tokyo in March — here are 3 things from your want-to list."
-- **Master "life index"** — nospaces as curated self-portrait across all domains (media, food, places, events). Not a tracker but a mirror + recommendation engine. Every feature decision should ask: does this make the index richer or the curation sharper?
+- **Calendar integration** — surface relevant items + suggestions based on where Farah will be. "You'll be in Tokyo in March — 3 things from your want-to list."
+- **Master "life index"** — nospaces as curated self-portrait across all domains (media, food, places, events). Not a tracker but a mirror + recommendation engine. Every feature decision: does this make the index richer or the curation sharper?
 
 ---
 
