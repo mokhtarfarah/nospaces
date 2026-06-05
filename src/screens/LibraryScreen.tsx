@@ -683,8 +683,6 @@ export function LibraryScreen() {
             onSkipNext={tidyQueue ? () => goToTidy(tidyIndex + 1) : undefined}
             onDismissNext={tidyQueue ? () => { editItem(fresh.id, { metadata: dismissGaps(fresh, itemGaps(fresh)) }); goToTidy(tidyIndex + 1) } : undefined}
             onEdit={fields => { editItem(fresh.id, fields) }}
-            onSetMoods={moods => editItem(fresh.id, { moods })}
-            onSetTags={tags => editItem(fresh.id, { tags })}
             onToggleOwned={owned => toggleOwned(fresh.id, owned)}
             onMarkInProgress={() => { markInProgress(fresh.id); setActionItem(null) }}
             onMarkDone={(reaction, note, moods) => { markDone(fresh.id, reaction, note, moods); setActionItem(null) }}
