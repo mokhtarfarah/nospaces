@@ -104,7 +104,11 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [year, setYear] = useState(item.year?.toString() ?? '')
   const [reaction, setReaction] = useState<ItemReaction | null>(item.reaction)
   const [note, setNote] = useState(item.note ?? '')
-  const [selectedMoods, setSelectedMoods] = useState<string[]>(item.moods ?? [])
+  const [selectedMoods, setSelectedMoods] = useState<string[]>(() => {
+    const unconfirmed = ((item.metadata?.unconfirmedVibes as string[] | undefined) ?? [])
+      .filter(v => VIBES.includes(v) && !(item.moods ?? []).includes(v))
+    return [...new Set([...(item.moods ?? []), ...unconfirmed])]
+  })
 
   function toggleMood(mood: string) {
     setSelectedMoods(prev =>
@@ -471,14 +475,11 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
         maxWidth: 480, margin: '0 auto',
         maxHeight: '96dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 2 }}>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4 }}>✕</button>
-        </div>
-
         {view === 'main' && (
           <>
-            {/* Item preview — square cover for albums, poster (2:3) for everything else */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
+            {/* Item preview — square cover for albums, poster (2:3) for everything else.
+                × is inline with the title so it aligns visually. */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18, marginTop: 4 }}>
               {(() => {
                 const w = item.type === 'music' ? 64 : 52
                 const h = item.type === 'music' ? 64 : 78
@@ -526,6 +527,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   </div>
                 )}
               </div>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: '2px 0 0', flexShrink: 0, alignSelf: 'flex-start' }}>✕</button>
             </div>
 
             {/* Blurb expansion — below the flat link row */}
@@ -660,7 +662,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   {(feel.length > 0 || unconfirmedVibes.length > 0) && row('vibe', tagLine(feel, unconfirmedVibes))}
                   {verdicts.length > 0 && row('verdict', tagLine(verdicts))}
                   {needsVerdict && row('verdict', (
-                    <button onClick={() => { setEditOpenGroups({ 'how it landed': true }); setView('edit') }} className="tlink" style={{ color: '#ABA69C', fontStyle: 'italic' }}>
+                    <button onClick={() => { setReactionTagsOpen(true); setView('reaction') }} className="tlink" style={{ color: '#ABA69C', fontStyle: 'italic' }}>
                       how did it land? add a verdict →
                     </button>
                   ))}
@@ -757,7 +759,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
           return (
             <>
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, marginTop: 4 }}>
                 <p style={{ ...sectionHeading, margin: 0 }}>
                   edit
                   <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#888', textTransform: 'none', letterSpacing: 0 }}>{item.title}</span>
@@ -767,7 +769,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     </span>
                   )}
                 </p>
-                <button onClick={() => { setEditOpenGroups({}); setView('main') }} className="tlink" style={{ flexShrink: 0 }}>cancel</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                  <button onClick={() => { setEditOpenGroups({}); setView('main') }} className="tlink">cancel</button>
+                  <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4 }}>✕</button>
+                </div>
               </div>
 
               {/* The one merged action: auto-fill from wikipedia, or AI identify. */}
@@ -889,12 +894,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     <div style={fieldLabel}>genre</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
                       {activeGenres.map(g => chip(g, true, () => toggleGenreEdit(g)))}
-                      {genrePickerOpen
-                        ? inactiveGenres.map(g => chip(g, false, () => toggleGenreEdit(g)))
-                        : <button onClick={() => setGenrePickerOpen(true)} style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #DDD', background: '#fff', color: '#BBB' }}>
-                            {activeGenres.length === 0 ? '+ genre' : '…'}
-                          </button>
-                      }
+                      {!genrePickerOpen && (
+                        <button onClick={() => setGenrePickerOpen(true)} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #CCC', background: 'none', color: '#AAA', flexShrink: 0 }}>+ add</button>
+                      )}
+                      {genrePickerOpen && inactiveGenres.map(g => chip(g, false, () => toggleGenreEdit(g)))}
                       {genrePickerOpen && (
                         <button onClick={() => setGenrePickerOpen(false)} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #CCC', background: 'none', color: '#AAA', flexShrink: 0 }}>done</button>
                       )}
@@ -988,9 +991,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
 
         {view === 'reaction' && (
           <>
-            <p style={sectionHeading}>
-              {item.status === 'done' ? 'edit reaction' : 'mark as done'}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, marginTop: 4 }}>
+              <p style={{ ...sectionHeading, margin: 0 }}>
+                {item.status === 'done' ? 'edit reaction' : 'mark as done'}
+              </p>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
               {REACTIONS.map(r => (
                 <button key={r.value} onClick={() => setReaction(r.value)} style={reactionBtnStyle(reaction === r.value)}>
@@ -1001,21 +1007,18 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             <div style={{ marginBottom: 16 }}>
               <NoteInput value={note} onChange={setNote} />
             </div>
-            {/* Hybrid: first "mark as done" (want_to or in_progress) shows the full vibe picker.
-                "edit reaction" on a done item keeps it minimal — tags link reveals on demand. */}
+            {/* First mark-done: collapsible chips (active vibes pre-seeded from unconfirmedVibes,
+                shown compact — expand to see all options). Edit reaction: tags link reveals on demand. */}
             {item.status !== 'done' ? (
-              <>
-                <p style={fieldLabel}>vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span></p>
-                <div style={{ marginBottom: 16 }}>
-                  <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
-                </div>
-              </>
+              <div style={{ marginBottom: 16 }}>
+                <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} collapsible />
+              </div>
             ) : (
               <div style={{ marginBottom: 16 }}>
                 <button onClick={() => setReactionTagsOpen(v => !v)} className="tlink">{reactionTagsOpen ? 'done ▴' : 'edit tags ▾'}</button>
                 {reactionTagsOpen && (
                   <div style={{ marginTop: 10 }}>
-                    <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} />
+                    <MoodChips type={item.type} isActive={m => selectedMoods.includes(m)} onToggle={toggleMood} collapsible />
                   </div>
                 )}
               </div>
