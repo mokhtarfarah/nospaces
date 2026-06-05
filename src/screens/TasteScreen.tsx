@@ -218,8 +218,6 @@ function EraMap({ items }: { items: Item[] }) {
 
 const STAT_MIN_RATED = 5 // below this, a loved-% is just noise — show the count alone
 
-const CANON_MAX = 5
-
 // Per-medium section — title + stats, dissolved into hairline-ruled rows (no boxes).
 function CategoryCard({ items, type }: { items: Item[]; type: string }) {
   const data = useMemo(() => {
@@ -242,9 +240,7 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
     const rated = items.filter(i => i.type === type && i.status === 'done' && i.reaction)
     const lovedPct = rated.length ? Math.round(rated.filter(i => i.reaction === 'loved_it').length / rated.length * 100) : 0
 
-    const canon = items
-      .filter(i => i.type === type && !!i.metadata?.canon)
-      .slice(0, CANON_MAX)
+    const canon = items.filter(i => i.type === type && !!i.metadata?.canon)
 
     return { genres, creators, ratedCount: rated.length, lovedPct, canon }
   }, [items, type])

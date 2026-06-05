@@ -71,7 +71,7 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
         <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }}>what did you think?</p>
 
         {/* 2×2 reaction grid — monochrome to match the editorial card */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }}>
           {REACTIONS.map(r => {
             const active = reaction === r.value
             return (
@@ -91,6 +91,21 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
             )
           })}
         </div>
+        <button
+          onClick={() => setCanon(v => !v)}
+          style={{
+            width: '100%', marginBottom: 18, padding: '12px 8px', borderRadius: 10,
+            cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
+            border: canon ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
+            background: canon ? '#F4F2EE' : '#fff',
+            color: canon ? '#1C1B19' : '#6F6B64',
+            fontWeight: canon ? 600 : 400,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+        >
+          <span style={{ fontSize: 10 }}>{canon ? '◆' : '◇'}</span>
+          canon
+        </button>
 
         <div style={{ marginBottom: 16 }}>
           <NoteInput value={note} onChange={setNote} />
@@ -114,20 +129,6 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-          <button
-            onClick={() => setCanon(v => !v)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'none', border: `1.5px solid ${canon ? '#1C1B19' : '#E0E0E0'}`,
-              borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: 13, color: canon ? '#1C1B19' : '#ABA69C', fontWeight: canon ? 600 : 400,
-            }}
-          >
-            <span style={{ fontSize: 11 }}>{canon ? '◆' : '◇'}</span>
-            canon
-          </button>
-        </div>
         <button
           disabled={!reaction}
           onClick={() => {
