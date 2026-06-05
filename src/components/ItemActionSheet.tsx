@@ -1025,7 +1025,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 {onSaveNext ? (
                   <>
                     <button onClick={onSkipNext} style={{ ...actionBtn('#333'), flex: 1 }}>skip ›</button>
-                    <button onClick={handleSaveNext} style={{ ...actionBtn('#fff'), flex: 2, background: '#111111', border: 'none' }}>save &amp; next ›</button>
+                    <button onClick={handleSaveNext} style={{ ...actionBtn('#fff'), flex: 2, background: '#111111', border: 'none' }}>{tidyPosition && tidyPosition.index + 1 === tidyPosition.total ? 'save & finish' : 'save & next ›'}</button>
                   </>
                 ) : (
                   <>

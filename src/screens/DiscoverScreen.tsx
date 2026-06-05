@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
 import { usePrefs } from '../hooks/usePrefs'
 import { authHeaders } from '../lib/supabase'
@@ -35,6 +36,7 @@ function normaliseSources(results: DiscoveryResult[]): DiscoveryResult[] {
 export function DiscoverScreen() {
   const { items, addItem } = useItems()
   const { tasteProfile, discoveryCache, setDiscoveryCache, customFeeds, setCustomFeeds, prefsLoaded } = usePrefs()
+  const navigate = useNavigate()
 
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [intasteResults, setIntasteResults] = useState<DiscoveryResult[]>([])
@@ -244,6 +246,17 @@ export function DiscoverScreen() {
           ))}
         </div>
       )}
+
+      {/* Shows near you */}
+      <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, color: GRAPHITE }}>shows near you</span>
+        <button
+          onClick={() => navigate('/shows')}
+          style={{ background: 'none', border: 'none', color: INK, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+        >
+          browse →
+        </button>
+      </div>
 
       {/* Sources */}
       <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14 }}>

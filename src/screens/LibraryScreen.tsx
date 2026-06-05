@@ -111,6 +111,16 @@ function groupNone(items: Item[]): Map<string, Item[]> {
   return new Map([['', items]])
 }
 
+function groupByDecade(items: Item[]): Map<string, Item[]> {
+  const map = new Map<string, Item[]>()
+  for (const item of items) {
+    const key = item.year ? `${Math.floor(item.year / 10) * 10}s` : 'unknown'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(item)
+  }
+  return map
+}
+
 function groupByStatus(items: Item[]): Map<string, Item[]> {
   const wantTo     = items.filter(i => i.status === 'want_to')
   const inProgress = items.filter(i => i.status === 'in_progress')
@@ -217,7 +227,6 @@ export function LibraryScreen() {
       if (next) { setTidyIndex(i); setActionItem(next); setActionEdit(true); return }
     }
     setActionItem(null); setActionEdit(false); setTidyQueue(null)
-    navigate('/add')
   }, [tidyQueue, items, navigate])
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -332,11 +341,12 @@ export function LibraryScreen() {
   useEffect(() => { setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null) }, [categories, statusFilter, reactionFilter, reviewOnly])
 
   const grouped = useMemo(() => {
+    if (view === 'year')     return groupByDecade(filtered)
     if (group === 'creator') return groupByCreator(filtered)
     if (group === 'status')  return groupByStatus(filtered)
     if (group === 'none')    return groupNone(filtered)
     return groupByMonth(filtered)
-  }, [filtered, group])
+  }, [filtered, group, view])
 
   // Unique types from real data for filter row (excluding in-review items)
   const types = useMemo(() => {
@@ -557,12 +567,6 @@ export function LibraryScreen() {
                 active={newMusicOnly}
                 onClick={() => setNewMusicOnly(v => !v)}
               />
-              <button
-                onClick={() => navigate('/shows')}
-                style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 4, border: '1px solid #111', background: '#111', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
-              >
-                shows near you
-              </button>
             </>
           )}
           {/* Canon filter — always available */}
