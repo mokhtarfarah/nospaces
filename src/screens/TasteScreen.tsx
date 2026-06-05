@@ -263,15 +263,18 @@ function CategoryCard({ items, type }: { items: Item[]; type: string }) {
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase', color: MUTE, marginBottom: 8 }}>
             ◆ canon
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {canon.map(item => (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+            {canon.map(item => {
+              const tileH = type === 'music' ? TILE_SIZE : Math.round(TILE_SIZE * 1.5)
+              return (
               <div key={item.id} style={{ flex: '0 0 auto', width: TILE_SIZE, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <CoverTile item={item} width={TILE_SIZE} height={TILE_SIZE} />
+                <CoverTile item={item} width={TILE_SIZE} height={tileH} />
                 <div style={{ fontSize: 9, color: GRAPHITE, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.title}>
                   {item.title}
                 </div>
               </div>
-            ))}
+            )})}
+
           </div>
         </div>
       )}
