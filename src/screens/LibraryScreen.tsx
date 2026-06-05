@@ -606,6 +606,32 @@ export function LibraryScreen() {
 
       {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(150px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))' }}>
+        {statusFilter === 'want_to' && !loading && filtered.length > 0 && (
+          <div style={{ padding: '10px 16px 0' }}>
+            <button
+              onClick={() => navigate('/decide')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: 8,
+                border: '1px solid #ECEAE6',
+                background: '#FAFAF9',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 13, color: '#1C1B19', fontWeight: 500 }}>help me decide</span>
+              <span style={{ fontSize: 12, color: '#ABA69C', flex: 1 }}>guided pick from your want-to list</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ABA69C" strokeWidth="2" strokeLinecap="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+        )}
         {dupes > 0 && !loading && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', border: '1px solid #ECEAE6', borderRadius: 4 }}>
             <span style={{ fontSize: 12, color: '#6F6B64' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>

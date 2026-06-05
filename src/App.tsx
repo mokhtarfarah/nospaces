@@ -10,6 +10,7 @@ import { TasteScreen } from './screens/TasteScreen'
 import { ShowsScreen } from './screens/ShowsScreen'
 import { RecommendScreen } from './screens/RecommendScreen'
 import { DiscoverScreen } from './screens/DiscoverScreen'
+import { HelpMeDecideScreen } from './screens/HelpMeDecideScreen'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/shows" element={<ShowsScreen />} />
           <Route path="/recommend" element={<RecommendScreen />} />
           <Route path="/discover" element={<DiscoverScreen />} />
+          <Route path="/decide" element={<HelpMeDecideScreen />} />
         </Routes>
       </div>
       <BottomNav />
