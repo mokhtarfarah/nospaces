@@ -6,7 +6,14 @@ let _sba: ReturnType<typeof createClient> | null = null
 const _ac = () => { if (!_sba) _sba = createClient(_ce(process.env.SUPABASE_URL), _ce(process.env.SUPABASE_SERVICE_ROLE_KEY)); return _sba }
 async function requireAuth(req: VercelRequest): Promise<boolean> { const a = req.headers['authorization']; if (!a?.startsWith('Bearer ')) return false; try { const { error } = await _ac().auth.getUser(a.slice(7)); return !error } catch { return false } }
 
-import { GENRES as GENRE_VOCAB } from '../src/lib/genres'
+// Keep in sync with src/lib/genres.ts (can't import across dirs in Vercel functions).
+const GENRE_VOCAB: Record<string, string[]> = {
+  film:  ['action','animation','classic','comedy','crime','documentary','drama','fantasy','horror','musical','period piece','romance','satire','sci-fi','thriller','western'],
+  tv:    ['animation','classic','comedy','crime','documentary','drama','fantasy','horror','period piece','reality','satire','sci-fi','thriller'],
+  book:  ['biography','business','classics','crime','essay','fantasy','historical fiction','history','horror','literary fiction','memoir','mystery','period piece','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
+  music: ['afrobeats','ambient','art pop','classical','country','electronic','experimental','folk','funk','glam rock','hip-hop','indie','jazz','latin','metal','new wave','pop','post-punk','punk','r&b','rock','soul'],
+  other: [],
+}
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
