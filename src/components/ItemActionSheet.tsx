@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { authHeaders } from '../lib/supabase'
@@ -145,6 +145,8 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
   const [reactionTagsOpen, setReactionTagsOpen] = useState(false)
   const [seasons, setSeasons] = useState<Season[]>(() => getSeasons(item.metadata))
   const [watchOpen, setWatchOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const refLinkInputRef = useRef<HTMLInputElement>(null)
   const color = typeColor(item.type)
 
   const hasWikiLink = wikiUrlEdit.includes('wikipedia.org')
@@ -443,18 +445,55 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
                 {typeof item.metadata?.series === 'string' && item.metadata.series.trim() && (
                   <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>↳ {item.metadata.series}</div>
                 )}
-                {/* Two verbs only: edit (the whole item) + own it. Everything else
-                    — tags, source, identity — lives behind edit. */}
+                {/* One flat row: edit · own it · about this · wikipedia · watch.
+                    No hierarchy between actions and links — they all sit equal. */}
                 {!item.metadata?.scratch && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
                     <button onClick={() => setView('edit')} className="tlink" style={{ flexShrink: 0 }}>edit</button>
                     <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
                       {item.metadata?.owned ? 'own it ✓︎' : 'own it'}
                     </button>
+                    {blurb && (
+                      <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
+                        <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource}` : 'about this'}</span>
+                        <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
+                      </button>
+                    )}
+                    {spotifyUrl && (
+                      <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" className="tlink" style={{ flexShrink: 0 }}>
+                        <SpotifyIcon /> spotify
+                      </a>
+                    )}
+                    {wikiUrl && (
+                      <a href={wikiUrl} target="_blank" rel="noopener noreferrer" className="tlink" style={{ flexShrink: 0 }}>
+                        {`${refLinkLabel(wikiUrl)} ↗︎`}
+                      </a>
+                    )}
+                    {(item.type === 'film' || item.type === 'tv') && (
+                      <button onClick={() => setWatchOpen(true)} className="tlink" style={{ flexShrink: 0 }}>▶︎ watch</button>
+                    )}
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Blurb expansion — below the flat link row */}
+            {showBlurb && blurb && (
+              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginBottom: 14, fontStyle: 'italic' }}>
+                {blurb}{' '}
+                {(item.metadata?.recommendationUrl as string | undefined) && (
+                  <a
+                    href={item.metadata?.recommendationUrl as string}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="tlink"
+                    style={{ fontStyle: 'normal', whiteSpace: 'nowrap', display: 'inline' }}
+                  >
+                    {'see source ↗︎'}
+                  </a>
+                )}
+              </div>
+            )}
 
             {onKeep && inReview(item) && (
               <div style={{ marginBottom: 16, border: '1px solid #ECEAE6', borderRadius: 10, padding: '10px 12px', background: '#FAFAFA' }}>
@@ -476,54 +515,6 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Blurb toggle + inline quick links (Spotify / Wikipedia / Watch) in one row */}
-            {(blurb || spotifyUrl || wikiUrl || item.type === 'film' || item.type === 'tv') && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  {blurb && (
-                    <button onClick={() => setShowBlurb(v => !v)} className="tlink">
-                      {/* Wikipedia blurbs always read "about this" (not "via Wikipedia") so
-                          cards stay consistent across categories — and it avoids duplicating
-                          the wikipedia ↗ link when that's shown. Other sources keep "via [source]". */}
-                      <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource}` : 'about this'}</span>
-                      <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
-                    </button>
-                  )}
-                  {spotifyUrl && (
-                    <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" className="tlink">
-                      <SpotifyIcon /> spotify
-                    </a>
-                  )}
-                  {wikiUrl && (
-                    <a href={wikiUrl} target="_blank" rel="noopener noreferrer" className="tlink">
-                      {`${refLinkLabel(wikiUrl)} ↗︎`}
-                    </a>
-                  )}
-                  {(item.type === 'film' || item.type === 'tv') && (
-                    <button onClick={() => setWatchOpen(true)} className="tlink">
-                      {'▶︎ watch'}
-                    </button>
-                  )}
-                </div>
-                {showBlurb && blurb && (
-                  <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginTop: 5, fontStyle: 'italic' }}>
-                    {blurb}{' '}
-                    {(item.metadata?.recommendationUrl as string | undefined) && (
-                      <a
-                        href={item.metadata?.recommendationUrl as string}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="tlink"
-                        style={{ fontStyle: 'normal', whiteSpace: 'nowrap', display: 'inline' }}
-                      >
-                        {'see source ↗︎'}
-                      </a>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 
@@ -747,10 +738,24 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
                     ? <>filled <b>{autoFillInfo.filled.join(' · ')}</b> {autoFillInfo.viaWiki ? <>from “{autoFillInfo.article}”</> : 'with ai'}.</>
                     : <>nothing new to fill{autoFillInfo.viaWiki ? <> from “{autoFillInfo.article}”</> : ''}.</>}
                   {autoFillInfo.viaWiki && (
-                    <>
-                      {' '}
-                      <button onClick={() => handleAutoFill(true)} className="tlink" style={{ fontSize: 11 }}>wrong article? identify instead →</button>
-                    </>
+                    <div style={{ marginTop: 6 }}>
+                      wrong article?{' '}
+                      <button
+                        onClick={() => handleAutoFill(true)}
+                        className="tlink"
+                        style={{ fontSize: 11 }}
+                      >identify with ai →</button>
+                      {' '}or{' '}
+                      <button
+                        onClick={() => {
+                          setMoreOpen(true)
+                          // Focus the url field after the section opens
+                          setTimeout(() => refLinkInputRef.current?.focus(), 50)
+                        }}
+                        className="tlink"
+                        style={{ fontSize: 11 }}
+                      >paste a different wikipedia link ↓</button>
+                    </div>
                   )}
                 </div>
               )}
@@ -854,38 +859,46 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkDone, on
               </div>
 
               {/* MORE DETAILS — reference link, series, cover, source, your blurb */}
-              <details style={{ marginBottom: 14 }}>
-                <summary style={{ fontSize: 12, color: '#6F6B64', cursor: 'pointer', listStyle: 'none', marginBottom: 4 }}>more details ▾</summary>
-                <div style={{ marginTop: 8 }}>
-                  <div style={fieldLabel}>reference link</div>
-                  <input
-                    value={wikiUrlEdit}
-                    onChange={e => { setWikiUrlEdit(e.target.value); setAutoFillInfo(null) }}
-                    placeholder="reference url (wikipedia, goodreads…)"
-                    style={{ ...smInput, marginBottom: 10 }}
-                  />
-                  {(type === 'film' || type === 'book' || type === 'tv') && (
-                    <>
-                      <div style={fieldLabel}>series</div>
-                      <input value={series} onChange={e => setSeries(e.target.value)} placeholder="series" style={{ ...smInput, marginBottom: 10 }} />
-                    </>
-                  )}
-                  <div style={fieldLabel}>cover image url</div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10 }}>
-                    <input value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="cover url" style={{ ...smInput, flex: 1 }} />
-                    {coverUrl.trim() && (
-                      <img src={coverUrl.trim()} alt="" onError={e => (e.currentTarget.style.display = 'none')}
-                        style={{ width: 30, height: 30, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
+              <div style={{ marginBottom: 14 }}>
+                <button
+                  onClick={() => setMoreOpen(v => !v)}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#6F6B64', cursor: 'pointer', padding: 0, marginBottom: moreOpen ? 8 : 0 }}
+                >
+                  more details {moreOpen ? '▴' : '▾'}
+                </button>
+                {moreOpen && (
+                  <div style={{ marginTop: 4 }}>
+                    <div style={fieldLabel}>reference link</div>
+                    <input
+                      ref={refLinkInputRef}
+                      value={wikiUrlEdit}
+                      onChange={e => { setWikiUrlEdit(e.target.value); setAutoFillInfo(null) }}
+                      placeholder="reference url (wikipedia, goodreads…)"
+                      style={{ ...smInput, marginBottom: 10 }}
+                    />
+                    {(type === 'film' || type === 'book' || type === 'tv') && (
+                      <>
+                        <div style={fieldLabel}>series</div>
+                        <input value={series} onChange={e => setSeries(e.target.value)} placeholder="series" style={{ ...smInput, marginBottom: 10 }} />
+                      </>
                     )}
+                    <div style={fieldLabel}>cover image url</div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10 }}>
+                      <input value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="cover url" style={{ ...smInput, flex: 1 }} />
+                      {coverUrl.trim() && (
+                        <img src={coverUrl.trim()} alt="" onError={e => (e.currentTarget.style.display = 'none')}
+                          style={{ width: 30, height: 30, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
+                      )}
+                    </div>
+                    <div style={fieldLabel}>where it came from</div>
+                    <input value={sourceDetail} onChange={e => setSourceDetail(e.target.value)} placeholder="source (e.g. a friend, NYT)" style={{ ...smInput, marginBottom: 10 }} />
+                    <div style={fieldLabel}>your description</div>
+                    <textarea value={blurbText} onChange={e => setBlurbText(e.target.value)}
+                      placeholder="about this — your own words" rows={2}
+                      style={{ ...smInput, resize: 'none', lineHeight: 1.5 }} />
                   </div>
-                  <div style={fieldLabel}>where it came from</div>
-                  <input value={sourceDetail} onChange={e => setSourceDetail(e.target.value)} placeholder="source (e.g. a friend, NYT)" style={{ ...smInput, marginBottom: 10 }} />
-                  <div style={fieldLabel}>your description</div>
-                  <textarea value={blurbText} onChange={e => setBlurbText(e.target.value)}
-                    placeholder="about this — your own words" rows={2}
-                    style={{ ...smInput, resize: 'none', lineHeight: 1.5 }} />
-                </div>
-              </details>
+                )}
+              </div>
 
               {/* Footer */}
               <div style={{ ...footer, display: 'flex', gap: 8 }}>
