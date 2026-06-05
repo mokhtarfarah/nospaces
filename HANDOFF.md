@@ -6,11 +6,11 @@
 |---|---|---|
 | Phase 1 — Stop the bleeding | ✅ Done | Mobile cutoff, header unification, in-progress status, genre fixes |
 | Phase 2 — Action card + editing | ✅ Done | Two-verb read view, auto-fill, type fixable, unconfirmed vibes, labelled tags |
-| Phase 3 — Cohesion + tag system | 🔄 In progress | Vibe/verdict split, reaction view UX polish (session 23) |
-| Phase 4 — Data management | ⏳ Next | Cover art, last-engaged date, data-gaps nav |
+| Phase 3 — Cohesion + tag system | ✅ Done | Vibe/verdict split, edit view tightening, music verdicts overhaul |
+| Phase 4 — Data management | 🔄 In progress | Cover art done; last-engaged date, data-gaps nav, Tom's login remaining |
 | Phase 5 — Discovery + taste | ⏳ Later | Help-me-decide tree, taste page rebuild |
 
-**▶ START SESSION HERE:** Phase 3 has one design decision left (music verdicts), then move to Phase 4 cover-art pass. See "Next session priorities" in the session 23 notes below.
+**▶ START SESSION HERE:** Phase 3 fully done. Phase 4 cover art done. See "Next session priorities" in the session 24 notes below.
 
 ---
 
@@ -128,7 +128,7 @@ Add screen → "Import from Letterboxd" → `/import`. Upload `watchlist.csv`, `
 
 ✅ **Tested with real export.** No public Letterboxd API exists for sync — CSV is the only path.
 
-## TODO / Roadmap (last edited 2026-06-05, updated session 23)
+## TODO / Roadmap (last edited 2026-06-05, updated session 24)
 
 ---
 
@@ -308,20 +308,31 @@ All shipped to `main`. Eyeballed in prod. Working.
 
 **▶ NEXT SESSION STARTS HERE:** See next session priorities below.
 
-### 🔜 Next session priorities (session 24)
+### 📌 Session 24 (2026-06-05) — Music verdicts, edit view tightening, cover art pass
 
-**1. Music verdicts design decision (15 min, design call):**
-Verdicts (comfort, guilty pleasure, would revisit, delivers, respect not love, overrated, so bad it's good) feel film/tv/book-specific. Options:
-- Hide verdicts entirely for music type
-- Replace with music-specific ones: "on rotation", "era-defining", "grew on me"
-- Keep as-is (music can still use comfort, overrated, etc.)
-Decide, then it's a small code change in `src/lib/moods.ts` + `MoodChips` type-filtering.
+**Shipped to `main` / live:**
 
-**2. Cover-art quality pass (Phase 4, own session):**
-HANDOFF's "biggest visual/tastemaker payoff." The grid is the face of the app — low-res / missing covers cheapen it. Audit current art sources (Deezer/iTunes/TMDB), identify what's bad, improve resolution + fallback chain. `src/lib/artwork.ts`, `api/art.ts`.
+1. ✅ **Verdict overhaul** — dropped "would revisit"; added "hyperfixation", "in rotation", "unfinished business". `MOOD_REMAP` remaps "would revisit" → "in rotation" on next clean-up run. Final verdict set (9): comfort · guilty pleasure · hyperfixation · in rotation · unfinished business · delivers · respect, not love · overrated · so bad it's good. `src/lib/moods.ts`.
+2. ✅ **Edit view tightening** — removed redundant "WHAT IT IS" and "TAGS" section headings (field labels carry hierarchy on their own). Runtime/pages moved to "more details" collapsed section. Auto-fill button description trimmed. `size="sm"` added to reaction view + MarkDoneSheet MoodChips — chips now match edit view style everywhere. `src/components/ItemActionSheet.tsx`, `src/components/MarkDoneSheet.tsx`.
+3. ✅ **Cover art resolution bumps** — TMDB `w185` → `w342`, Open Library `-M` → `-L`, Wikipedia thumbnail `pithumbsize=160` → `500`. `api/art.ts`, `api/wiki.ts`.
+4. ✅ **Cover art refresh tool** — "cover art — N cached at old resolution" row in library tools (Add → library tools). Clears `metadata.coverUrl` for items with TMDB/Deezer/iTunes/Open Library URLs so they re-fetch at new resolution on next load. Manual overrides untouched. `src/screens/AddScreen.tsx`.
+5. ✅ **Series dropdown right-anchor fix** — dropdown now detects if left-anchoring would overflow the right screen edge and flips to right-anchor. Fixes series filter cutoff on mobile. Applies to all four dropdowns. `src/screens/LibraryScreen.tsx`.
 
-**3. "Help me decide" decision tree (Phase 5, own session):**
-Pure client-side, zero API cost. A few questions → surfaces 2-3 matching want-to items from your library. Vibe/verdict taxonomy now locked — good to build. See Phase 5 in roadmap for spec.
+**⚠️ ACTION NEEDED:** Run "clean up" (Add → library tools) to migrate "would revisit" → "in rotation" on existing items. Run "cover art → refresh →" to re-fetch covers at new resolution, then reload.
+
+### 🔜 Next session priorities (session 25)
+
+**Phase 4 remaining (pick one):**
+- **"last engaged" date** — `metadata.lastEngaged: ISO string`. Log when you last watched/read/listened. Shows on action card as "last watched 3 months ago". Optional sort option. No schema migration needed.
+- **Data-gaps nav** — move from Add page → Library as a dedicated linked page with easy in/out.
+- **Tom's login** — publish Google OAuth consent screen.
+
+**Phase 3 parked (small, do whenever):**
+- **Canon status** — lightweight pin for ~10 defining items, separate from reaction scale.
+- **Duplicates tool UX** — label which entry is original vs newer (date added / "added earlier") in the review sheet.
+
+**Phase 5 (own session):**
+- **"Help me decide" decision tree** — pure client-side, zero API cost. Guided question tree (mood? time? type?) → surfaces 2–3 matching want-to items. See Phase 5 in roadmap for full spec.
 
 ---
 
