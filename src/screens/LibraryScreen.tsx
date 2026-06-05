@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
@@ -130,14 +130,6 @@ export function LibraryScreen() {
   const { items, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  // Anchors for the vibe/genre dropdown menus — the filter row scrolls
-  // horizontally (overflow clips absolutely-positioned children), so the menus
-  // position themselves `fixed` relative to these.
-  const vibeBtnRef = useRef<HTMLDivElement>(null)
-  const verdictBtnRef = useRef<HTMLDivElement>(null)
-  const genreBtnRef = useRef<HTMLDivElement>(null)
-  const seriesBtnRef = useRef<HTMLDivElement>(null)
-
   const handleSaveWiki = useCallback((id: string, wiki: WikiInfo) => {
     patchMetadata(id, { wikiUrl: wiki.url, wikiThumb: wiki.thumbnail, wikiSummary: wiki.summary })
   }, [patchMetadata])
@@ -160,7 +152,7 @@ export function LibraryScreen() {
   const [reviewOnly, setReviewOnly] = useState(false)
   const selectCategory = (t: string) => {
     setReviewOnly(false)
-    setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null)
+    setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setFilterSheetOpen(false)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   }
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => loadPrefs().statusFilter ?? 'all')
@@ -170,7 +162,7 @@ export function LibraryScreen() {
   const [verdictFilter, setVerdictFilter] = useState<string | null>(null)
   const [genreFilter, setGenreFilter] = useState<string | null>(null)
   const [seriesFilter, setSeriesFilter] = useState<string | null>(null)
-  const [openDropdown, setOpenDropdown] = useState<'vibe' | 'verdict' | 'genre' | 'series' | null>(null)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [view, setView] = useState<ViewMode>(() => loadPrefs().view ?? 'recent')
   const [dir, setDir] = useState<SortDir>(() => loadPrefs().dir ?? VIEW_CONFIG.recent.defaultDir)
   const [layout, setLayout] = useState<'list' | 'grid'>(() => loadPrefs().layout ?? 'list')
@@ -246,10 +238,11 @@ export function LibraryScreen() {
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
     || !!vibeFilter || !!verdictFilter || !!genreFilter || !!seriesFilter || reviewOnly || newMusicOnly || !!query.trim() || canonFilter
+  const filterCount = [vibeFilter, verdictFilter, genreFilter, seriesFilter].filter(Boolean).length
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null)
-    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setOpenDropdown(null); setCanonFilter(false)
+    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setFilterSheetOpen(false); setCanonFilter(false)
   }
 
   const sort: SortOption = VIEW_CONFIG[view].sort
@@ -336,7 +329,7 @@ export function LibraryScreen() {
   }, [baseFiltered])
 
   // Reset vibe/verdict/genre filters when base filters change so they don't silently hide results.
-  useEffect(() => { setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null); setOpenDropdown(null) }, [categories, statusFilter, reactionFilter, reviewOnly])
+  useEffect(() => { setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null) }, [categories, statusFilter, reactionFilter, reviewOnly])
 
   const grouped = useMemo(() => {
     if (group === 'creator') return groupByCreator(filtered)
@@ -366,17 +359,26 @@ export function LibraryScreen() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
-          {items.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {items.length > 0 && (
+              <button
+                onClick={() => navigate('/decide')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, color: '#ABA69C', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}
+              >
+                help me decide
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            )}
             <button
-              onClick={() => navigate('/decide')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, color: '#ABA69C', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}
+              onClick={() => navigate('/guide')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, color: '#C9C6C0', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+              title="how to use"
             >
-              help me decide
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
+              ?
             </button>
-          )}
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -506,81 +508,30 @@ export function LibraryScreen() {
           {(availableTags.vibes.length > 0 || availableTags.verdicts.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0)) && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-              {availableTags.vibes.length > 0 && (
-                <div ref={vibeBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
-                  <DropdownButton
-                    label="vibe"
-                    value={vibeFilter}
-                    active={openDropdown === 'vibe'}
-                    onToggle={() => setOpenDropdown(d => d === 'vibe' ? null : 'vibe')}
-                    onClear={() => { setVibeFilter(null); setOpenDropdown(null) }}
-                  />
-                  {openDropdown === 'vibe' && (
-                    <DropdownMenu
-                      anchorRef={vibeBtnRef}
-                      options={availableTags.vibes}
-                      selected={vibeFilter}
-                      onSelect={v => { setVibeFilter(f => f === v ? null : v); setOpenDropdown(null) }}
-                    />
-                  )}
-                </div>
-              )}
-              {availableTags.verdicts.length > 0 && (
-                <div ref={verdictBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
-                  <DropdownButton
-                    label="verdict"
-                    value={verdictFilter}
-                    active={openDropdown === 'verdict'}
-                    onToggle={() => setOpenDropdown(d => d === 'verdict' ? null : 'verdict')}
-                    onClear={() => { setVerdictFilter(null); setOpenDropdown(null) }}
-                  />
-                  {openDropdown === 'verdict' && (
-                    <DropdownMenu
-                      anchorRef={verdictBtnRef}
-                      options={availableTags.verdicts}
-                      selected={verdictFilter}
-                      onSelect={v => { setVerdictFilter(f => f === v ? null : v); setOpenDropdown(null) }}
-                    />
-                  )}
-                </div>
-              )}
-              {availableTags.genres.length > 0 && (
-                <div ref={genreBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
-                  <DropdownButton
-                    label="genre"
-                    value={genreFilter}
-                    active={openDropdown === 'genre'}
-                    onToggle={() => setOpenDropdown(d => d === 'genre' ? null : 'genre')}
-                    onClear={() => { setGenreFilter(null); setOpenDropdown(null) }}
-                  />
-                  {openDropdown === 'genre' && (
-                    <DropdownMenu
-                      anchorRef={genreBtnRef}
-                      options={availableTags.genres}
-                      selected={genreFilter}
-                      onSelect={g => { setGenreFilter(f => f === g ? null : g); setOpenDropdown(null) }}
-                    />
-                  )}
-                </div>
-              )}
-              {seriesRelevant && availableTags.series.length > 0 && (
-                <div ref={seriesBtnRef} style={{ position: 'relative', flexShrink: 0 }}>
-                  <DropdownButton
-                    label="series"
-                    value={seriesFilter}
-                    active={openDropdown === 'series'}
-                    onToggle={() => setOpenDropdown(d => d === 'series' ? null : 'series')}
-                    onClear={() => { setSeriesFilter(null); setOpenDropdown(null) }}
-                  />
-                  {openDropdown === 'series' && (
-                    <DropdownMenu
-                      anchorRef={seriesBtnRef}
-                      options={availableTags.series}
-                      selected={seriesFilter}
-                      onSelect={s => { setSeriesFilter(f => f === s ? null : s); setOpenDropdown(null) }}
-                    />
-                  )}
-                </div>
+              <button
+                onClick={() => setFilterSheetOpen(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+                  padding: '4px 2px 8px', border: 'none', background: 'none',
+                  color: filterCount > 0 ? '#1C1B19' : '#888',
+                  fontSize: 13, fontWeight: filterCount > 0 ? 600 : 400,
+                  fontStyle: filterCount > 0 ? 'italic' : 'normal',
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                {filterCount > 0 ? `filter · ${filterCount}` : 'filter'}
+                <span style={{ fontSize: 10, lineHeight: 1 }}>▾</span>
+              </button>
+              {filterSheetOpen && (
+                <FilterSheet
+                  availableTags={availableTags}
+                  seriesRelevant={seriesRelevant}
+                  vibeFilter={vibeFilter} setVibeFilter={setVibeFilter}
+                  verdictFilter={verdictFilter} setVerdictFilter={setVerdictFilter}
+                  genreFilter={genreFilter} setGenreFilter={setGenreFilter}
+                  seriesFilter={seriesFilter} setSeriesFilter={setSeriesFilter}
+                  onClose={() => setFilterSheetOpen(false)}
+                />
               )}
             </>
           )}
@@ -642,7 +593,7 @@ export function LibraryScreen() {
             Loading...
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState hasItems={items.length > 0} />
+          <EmptyState hasItems={items.length > 0} onGuide={() => navigate('/guide')} />
         ) : (
           Array.from(grouped.entries()).map(([month, monthItems]) => (
             <div key={month || 'all'}>
@@ -817,95 +768,112 @@ export function LibraryScreen() {
   )
 }
 
-function DropdownButton({ label, value, active, onToggle, onClear }: {
-  label: string; value: string | null; active: boolean
-  onToggle: () => void; onClear: () => void
+function FilterSheet({
+  availableTags, seriesRelevant,
+  vibeFilter, setVibeFilter,
+  verdictFilter, setVerdictFilter,
+  genreFilter, setGenreFilter,
+  seriesFilter, setSeriesFilter,
+  onClose,
+}: {
+  availableTags: { vibes: string[]; verdicts: string[]; genres: string[]; series: string[] }
+  seriesRelevant: boolean
+  vibeFilter: string | null; setVibeFilter: (v: string | null) => void
+  verdictFilter: string | null; setVerdictFilter: (v: string | null) => void
+  genreFilter: string | null; setGenreFilter: (v: string | null) => void
+  seriesFilter: string | null; setSeriesFilter: (v: string | null) => void
+  onClose: () => void
 }) {
-  // Matches TabChip — the whole filter row shares one flat language (no border
-  // chips). A selected value or open menu shows as ink + italics.
-  const on = !!value || active
+  const activeCount = [vibeFilter, verdictFilter, genreFilter, seriesFilter].filter(Boolean).length
   return (
-    <button
-      onClick={onToggle}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-        padding: '4px 2px 8px', border: 'none', background: 'none',
-        color: on ? '#111' : '#888',
-        fontSize: 13, fontWeight: value ? 600 : 400,
-        fontStyle: on ? 'italic' : 'normal',
-        cursor: 'pointer', whiteSpace: 'nowrap',
-      }}
-    >
-      <span>{value ?? label}</span>
-      {value ? (
-        <span
-          onClickCapture={e => { e.stopPropagation(); onClear() }}
-          style={{ fontSize: 11, color: '#666', lineHeight: 1, marginLeft: 1 }}
-        >✕</span>
-      ) : (
-        <span style={{ fontSize: 10, color: '#888', lineHeight: 1 }}>{active ? '▴' : '▾'}</span>
-      )}
-    </button>
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: '#fff', borderRadius: '16px 16px 0 0',
+        padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201, maxWidth: 480, margin: '0 auto',
+        maxHeight: '80dvh', overflowY: 'auto',
+      }}>
+        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>filter</span>
+          {activeCount > 0 && (
+            <button
+              onClick={() => { setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null) }}
+              style={{ fontSize: 12, color: '#ABA69C', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+            >clear all</button>
+          )}
+        </div>
+        {availableTags.vibes.length > 0 && (
+          <FilterSection label="vibe" options={availableTags.vibes} selected={vibeFilter}
+            onSelect={v => setVibeFilter(vibeFilter === v ? null : v)} />
+        )}
+        {availableTags.verdicts.length > 0 && (
+          <FilterSection label="verdict" options={availableTags.verdicts} selected={verdictFilter}
+            onSelect={v => setVerdictFilter(verdictFilter === v ? null : v)} />
+        )}
+        {availableTags.genres.length > 0 && (
+          <FilterSection label="genre" options={availableTags.genres} selected={genreFilter}
+            onSelect={v => setGenreFilter(genreFilter === v ? null : v)} />
+        )}
+        {seriesRelevant && availableTags.series.length > 0 && (
+          <FilterSection label="series" options={availableTags.series} selected={seriesFilter}
+            onSelect={v => setSeriesFilter(seriesFilter === v ? null : v)} />
+        )}
+      </div>
+    </>
   )
 }
 
-function DropdownMenu({ options, selected, onSelect, anchorRef }: {
-  options: string[]; selected: string | null; onSelect: (v: string) => void
-  anchorRef: React.RefObject<HTMLDivElement>
+function FilterSection({ label, options, selected, onSelect }: {
+  label: string; options: string[]; selected: string | null; onSelect: (v: string) => void
 }) {
-  // The filter row scrolls horizontally, which clips absolutely-positioned
-  // children. Position the menu `fixed` to the button's on-screen rect instead.
-  const [pos, setPos] = useState<{ left?: number; right?: number; top: number } | null>(null)
-  useLayoutEffect(() => {
-    const el = anchorRef.current
-    if (el) {
-      const r = el.getBoundingClientRect()
-      const menuWidth = 160
-      // If left-anchoring would overflow the right edge, right-anchor instead.
-      if (r.left + menuWidth > window.innerWidth - 8) {
-        setPos({ right: window.innerWidth - r.right, top: r.bottom - 4 })
-      } else {
-        setPos({ left: r.left, top: r.bottom - 4 })
-      }
-    }
-  }, [anchorRef])
-  if (!pos) return null
   return (
-    <div style={{
-      position: 'fixed', top: pos.top, left: pos.left, right: pos.right,
-      background: '#fff', border: '1px solid #E8E8E8',
-      borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-      zIndex: 200, minWidth: 160, maxHeight: 220, overflowY: 'auto',
-      padding: '4px 0',
-    }}>
-      {options.map(opt => (
-        <button
-          key={opt}
-          onClick={() => onSelect(opt)}
-          style={{
-            display: 'block', width: '100%', textAlign: 'left',
-            padding: '9px 14px', background: selected === opt ? '#F4F4F4' : 'none',
-            border: 'none', fontSize: 13, cursor: 'pointer',
-            fontWeight: selected === opt ? 600 : 400,
-            color: selected === opt ? '#111' : '#444',
-          }}
-        >
-          {opt}
-        </button>
-      ))}
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{label}</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {options.map(opt => (
+          <button
+            key={opt}
+            onClick={() => onSelect(opt)}
+            style={{
+              padding: '5px 12px', borderRadius: 20,
+              border: selected === opt ? '1.5px solid #1C1B19' : '1.5px solid #ECEAE6',
+              background: selected === opt ? '#1C1B19' : '#fff',
+              color: selected === opt ? '#fff' : '#6F6B64',
+              fontSize: 12, fontWeight: selected === opt ? 600 : 400,
+              cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          >{opt}</button>
+        ))}
+      </div>
     </div>
   )
 }
 
-function EmptyState({ hasItems }: { hasItems: boolean }) {
+function EmptyState({ hasItems, onGuide }: { hasItems: boolean; onGuide: () => void }) {
   return (
     <div style={{ padding: '64px 32px', textAlign: 'center' }}>
       <div style={{ fontSize: 16, fontWeight: 600, color: '#222', marginBottom: 6 }}>
         {hasItems ? 'nothing matches' : 'your library is empty'}
       </div>
       <div style={{ fontSize: 13, color: '#999', lineHeight: 1.5 }}>
-        {hasItems ? 'try changing your filters' : 'tap add to save your first item'}
+        {hasItems ? 'try changing your filters' : 'tap + to save your first item'}
       </div>
+      {!hasItems && (
+        <button
+          onClick={onGuide}
+          style={{
+            marginTop: 20, background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 13, color: '#ABA69C', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          not sure where to start? how to use
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }
