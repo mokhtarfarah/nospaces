@@ -330,7 +330,7 @@ export function TasteScreen() {
             {faithfulCreators.map((c, i) => (
               <span key={c.name}>
                 {i > 0 && <span style={{ color: MUTE }}> · </span>}
-                <span style={{ color: INK }}>{c.name}</span>
+                {c.name}
               </span>
             ))}
           </div>
