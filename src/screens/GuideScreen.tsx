@@ -58,7 +58,7 @@ export function GuideScreen() {
             { label: 'rating',  text: 'loved it · liked it · eh · not for me. no stars, just how it actually hit.' },
             { label: 'vibe',    text: 'the feel of it — dark, nostalgic, playful, intense, cozy... add as many as fit.' },
             { label: 'verdict', text: 'your personal label — comfort, hyperfixation, overrated, so bad it\'s good...' },
-            { label: '◆ canon', text: 'all-time favourites. tap canon on things you\'d genuinely put in a top 10. shows up on your taste page.' },
+            { label: '◆ desert island', text: 'all-time picks. tap desert island on things you\'d genuinely keep forever. shows up on your taste page.' },
           ]} />
           <Extras items={[
             { label: 'in progress', text: 'reading something? halfway through a season? tap "mark as in progress" so you know what you\'re currently on.' },
@@ -89,12 +89,12 @@ export function GuideScreen() {
         </Section>
 
         {/* ── 05 TASTE ─────────────────────────────────────────── */}
-        <Section num="05" title="your taste" desc="the taste tab is your snapshot — a breakdown of how you've reacted to things, your all-time canon, and the vibes and genres you keep coming back to.">
+        <Section num="05" title="your taste" desc="the taste tab is your snapshot — your defining vibes, an ai-written taste profile, your desert island picks, and the creators you always love.">
           <TasteIllustration />
           <Tips items={[
-            { label: 'reactions', text: 'see your loved / liked / eh breakdown per type — film, book, music, tv.' },
-            { label: '◆ canon',   text: 'all the things you\'ve marked canon, organised by type. your curated collection.' },
-            { label: 'vibes',     text: 'patterns across everything you\'ve reacted to — the moods and genres that keep showing up.' },
+            { label: 'vibes',          text: 'the moods and feels that define your taste — derived from everything you\'ve tagged.' },
+            { label: '◆ desert island', text: 'the things you\'d keep forever, organised by type. your curated collection.' },
+            { label: 'always loved',   text: 'directors, authors, artists where you\'ve never not loved their work.' },
           ]} />
         </Section>
 
@@ -239,9 +239,9 @@ function ReactionIllustration() {
         <div style={{ ...btnBase, border: '1.5px solid #E6E3DE', background: '#fff', color: '#6F6B64' }}>liked it</div>
       </div>
 
-      {/* canon full-width */}
+      {/* desert island full-width */}
       <div style={{ ...btnBase, border: '1.5px solid #E6E3DE', background: '#fff', color: '#6F6B64', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-        <span style={{ fontSize: 10 }}>◇</span> canon
+        <span style={{ fontSize: 10 }}>◇</span> desert island
       </div>
 
       {/* eh / not for me */}
@@ -374,8 +374,8 @@ function TasteIllustration() {
           <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' as const, color: '#1C1B19' }}>film</span>
           <span style={{ fontSize: 11, color: '#ABA69C' }}>14 rated · 71% loved</span>
         </div>
-        {/* ◆ canon tiles */}
-        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase' as const, color: '#ABA69C', marginBottom: 8 }}>◆ canon</div>
+        {/* desert island tiles */}
+        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase' as const, color: '#ABA69C', marginBottom: 8 }}>desert island</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           {['#C4B9AB', '#C0B5A8', '#C8BCAF', '#BDB5AB'].map((bg, i) => (
             <div key={i} style={{ display: 'flex', flexDirection: 'column' as const, gap: 3, width: 44 }}>

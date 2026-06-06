@@ -1,16 +1,4 @@
 {
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "{ git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached 2>/dev/null; git show --name-only --format=\"\" HEAD 2>/dev/null; } | grep -qE 'src/screens/|src/components/(ItemActionSheet|MarkDoneSheet)' && printf '{\"systemMessage\": \"guide reminder: screens or key components changed this session — does /guide need updating?\"}\\n' || true"
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(npm --version)",
@@ -175,7 +163,53 @@
       "Bash(curl -s -A 'Nospaces/1.0 \\(https://nospaces.vercel.app; farahmokhtar94@gmail.com\\)' 'https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=claims&ids=Q112761982')",
       "Skill(update-config)",
       "Skill(update-config:*)",
-      "Bash(bash -c '{ git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached 2>/dev/null; git show --name-only --format=\"\" HEAD 2>/dev/null; } | grep -qE \"src/screens/|src/components/\\(ItemActionSheet|MarkDoneSheet\\)\" && printf \"{\\\\\"systemMessage\\\\\": \\\\\"guide reminder: screens or key components changed this session — does /guide need updating?\\\\\"}\\\\n\" || true')"
+      "Bash(bash -c '{ git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached 2>/dev/null; git show --name-only --format=\"\" HEAD 2>/dev/null; } | grep -qE \"src/screens/|src/components/\\(ItemActionSheet|MarkDoneSheet\\)\" && printf \"{\\\\\"systemMessage\\\\\": \\\\\"guide reminder: screens or key components changed this session — does /guide need updating?\\\\\"}\\\\n\" || true')",
+      "Bash(chmod +x /Users/farahmokhtar/nospaces/.git/hooks/pre-commit)",
+      "Bash(chmod +x /Users/farahmokhtar/nospaces/scripts/check-session-length.sh)",
+      "Bash(bash /Users/farahmokhtar/nospaces/scripts/check-session-length.sh)",
+      "Bash(chmod +x /Users/farahmokhtar/nospaces/scripts/check-handoff-staleness.sh)",
+      "Bash(bash /Users/farahmokhtar/nospaces/scripts/check-handoff-staleness.sh)",
+      "Bash(chmod +x /Users/farahmokhtar/nospaces/scripts/check-session-wrap.sh)",
+      "Bash(bash /Users/farahmokhtar/nospaces/scripts/check-session-wrap.sh)",
+      "Bash(bash -c 'SESSION_ID=$\\(jq -r \".session_id // \\\\\"unknown\\\\\"\" 2>/dev/null\\); MARKER=\"/tmp/nospaces_started_${SESSION_ID}\"; [ ! -f \"$MARKER\" ] && touch \"$MARKER\" && printf \"{\\\\\"hookSpecificOutput\\\\\": {\\\\\"hookEventName\\\\\": \\\\\"UserPromptSubmit\\\\\", \\\\\"additionalContext\\\\\": \\\\\"SESSION START: Read HANDOFF.md before responding — focus on the Next session priorities and Roadmap sections.\\\\\"}}\\\\n\" || true')"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "SESSION_ID=$(jq -r '.session_id // \"unknown\"' 2>/dev/null); MARKER=\"/tmp/nospaces_started_${SESSION_ID}\"; [ ! -f \"$MARKER\" ] && touch \"$MARKER\" && printf '{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"SESSION START: Read HANDOFF.md before responding — focus on the Next session priorities and Roadmap sections to orient yourself for this session.\"}}\n' || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{ git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached 2>/dev/null; git show --name-only --format=\"\" HEAD 2>/dev/null; } | grep -qE 'src/screens/|src/components/(ItemActionSheet|MarkDoneSheet)|src/lib/moods\\.ts' && printf '{\"systemMessage\": \"guide reminder: screens, key components, or moods.ts changed this session — does /guide need updating?\"}\\n' || true"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/check-session-length.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/check-handoff-staleness.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/check-session-wrap.sh"
+          },
+          {
+            "type": "command",
+            "command": "npx tsc --noEmit 2>&1 | tail -5 | grep -q 'error TS' && printf '{\"systemMessage\": \"typecheck: TypeScript errors found — run npm run typecheck to see them.\"}\\n' || true"
+          }
+        ]
+      }
     ]
   }
 }

@@ -97,7 +97,7 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
             }}
           >
             <span style={{ fontSize: 9 }}>{canon ? '◆' : '◇'}</span>
-            canon
+            <span style={{ fontSize: 10 }}>desert island</span>
           </button>
           {(['eh', 'not_for_me'] as ItemReaction[]).map(v => {
             const label = REACTIONS.find(r => r.value === v)!.label

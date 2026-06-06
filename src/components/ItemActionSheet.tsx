@@ -1072,7 +1072,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 }}
               >
                 <span style={{ fontSize: 9, lineHeight: 1 }}>{item.metadata?.canon ? '◆' : '◇'}</span>
-                canon
+                <span style={{ fontSize: 10 }}>desert island</span>
               </button>
             </div>
             <div style={{ marginBottom: 16 }}>

@@ -52,9 +52,36 @@ function topGenreForPool(pool: Item[]): string | null {
   }
   let top: string | null = null, max = 0
   for (const [g, c] of map) {
-    if (c > max && c >= 3) { top = g; max = c }
+    if (c > max && c >= 2) { top = g; max = c }
   }
   return top
+}
+
+interface GapEntry { adding: string; finishing: string; medium?: string }
+
+function computeAspirationGaps(items: Item[]): GapEntry[] {
+  const gaps: GapEntry[] = []
+  const seen = new Set<string>()
+
+  function tryGap(pool: Item[], medium?: string) {
+    const wantTo = pool.filter(i => i.status === 'want_to')
+    const done = pool.filter(i => i.status === 'done')
+    const adding = topGenreForPool(wantTo)
+    const finishing = topGenreForPool(done)
+    if (!adding || !finishing || adding === finishing) return
+    const key = `${adding}>${finishing}`
+    if (seen.has(key)) return
+    seen.add(key)
+    gaps.push({ adding, finishing, medium })
+  }
+
+  // Overall first, then per-medium
+  tryGap(items)
+  for (const type of ['film', 'book', 'music', 'tv'] as const) {
+    tryGap(items.filter(i => i.type === type), TYPE_LABEL[type])
+  }
+
+  return gaps.slice(0, 3)
 }
 
 function computeFaithfulCreators(items: Item[]) {
@@ -75,26 +102,14 @@ function computeFaithfulCreators(items: Item[]) {
     .slice(0, 8)
 }
 
-function CoverTile({ item, width, height }: { item: Item; width: number; height: number }) {
+// Inner image layer — used inside a sized container so the grid handles dimensions
+function CoverTileInner({ item }: { item: Item }) {
   const stored = (item.metadata?.coverUrl as string | null) ?? (item.metadata?.wikiThumb as string | null) ?? null
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const src = artwork ?? stored
-  return (
-    <div style={{
-      width, height, borderRadius: 3, overflow: 'hidden',
-      border: `1px solid ${HAIR}`, background: '#f5f4f2',
-      flexShrink: 0,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      {src
-        ? <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <span style={{ fontSize: 10, color: MUTE, textAlign: 'center', padding: '0 4px', lineHeight: 1.3 }}>{TYPE_LABEL[item.type] ?? item.type}</span>
-      }
-    </div>
-  )
+  if (src) return <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+  return <span style={{ fontSize: 10, color: MUTE, textAlign: 'center', padding: '0 4px', lineHeight: 1.3 }}>{TYPE_LABEL[item.type] ?? item.type}</span>
 }
-
-const TILE_W = 88
 
 function CanonGallery({ items }: { items: Item[] }) {
   const byType = useMemo(() => {
@@ -112,22 +127,34 @@ function CanonGallery({ items }: { items: Item[] }) {
 
   return (
     <div style={{ marginBottom: 32 }}>
-      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 14 }}>
-        ◆ canon
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 14 }}>
+        desert island
       </div>
       {byType.map(({ type, items: typeItems }) => (
-        <div key={type} style={{ marginBottom: multiType ? 20 : 0 }}>
+        <div key={type} style={{ marginBottom: multiType ? 22 : 0 }}>
           {multiType && (
-            <div style={{ fontSize: 10, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>
+            <div style={{ fontSize: 11, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>
               {TYPE_LABEL[type] ?? type}
             </div>
           )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 10,
+          }}>
             {typeItems.map(item => {
-              const h = type === 'music' ? TILE_W : Math.round(TILE_W * 1.5)
+              const isMusic = type === 'music'
               return (
-                <div key={item.id} style={{ width: TILE_W, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <CoverTile item={item} width={TILE_W} height={h} />
+                <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{
+                    width: '100%',
+                    aspectRatio: isMusic ? '1' : '2/3',
+                    borderRadius: 3, overflow: 'hidden',
+                    border: `1px solid ${HAIR}`, background: '#f5f4f2',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <CoverTileInner item={item} />
+                  </div>
                   <div style={{
                     fontSize: 11, color: GRAPHITE, lineHeight: 1.3,
                     display: '-webkit-box', WebkitLineClamp: 2,
@@ -163,14 +190,7 @@ export function TasteScreen() {
     [items]
   )
 
-  const aspirationGap = useMemo(() => {
-    const wantTo = items.filter(i => i.status === 'want_to')
-    const done = items.filter(i => i.status === 'done')
-    const adding = topGenreForPool(wantTo)
-    const finishing = topGenreForPool(done)
-    if (!adding || !finishing || adding === finishing) return null
-    return { adding, finishing }
-  }, [items])
+  const aspirationGaps = useMemo(() => computeAspirationGaps(items), [items])
 
   const faithfulCreators = useMemo(() => computeFaithfulCreators(items), [items])
 
@@ -186,6 +206,7 @@ export function TasteScreen() {
     try {
       const signal = items.filter(i => i.status === 'done' && (i.reaction === 'loved_it' || i.reaction === 'liked_it'))
       const canonTitles = canonItems.map(i => `${i.title} (${i.type})`)
+      const primaryGap = aspirationGaps[0] ?? null
       const res = await fetch('/api/taste-profile', {
         method: 'POST',
         headers: await authHeaders(),
@@ -193,7 +214,7 @@ export function TasteScreen() {
           items: signal.map(i => ({ title: i.title, creator: i.creator, type: i.type, reaction: i.reaction, note: i.note })),
           vibes: topVibes.map(v => v.label),
           canon: canonTitles.length ? canonTitles : undefined,
-          aspirationGap,
+          aspirationGap: primaryGap,
         }),
       })
       if (!res.ok) {
@@ -218,7 +239,7 @@ export function TasteScreen() {
 
   if (!doneWithReaction.length) return (
     <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 20px', color: INK }}>taste</h1>
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 20 }}>taste</div>
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 6 }}>nothing to show yet</div>
         <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.6 }}>mark items as done and add reactions — your taste profile builds up here.</div>
@@ -228,15 +249,18 @@ export function TasteScreen() {
 
   return (
     <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 20px', color: INK }}>taste</h1>
+      {/* "taste" as a small section label, vibe words as the headline */}
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: topVibes.length > 0 ? 8 : 20 }}>
+        taste
+      </div>
 
-      {/* Vibe words */}
+      {/* Vibe words — the actual headline */}
       {topVibes.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 18, fontWeight: 500, color: INK, letterSpacing: '-0.3px', lineHeight: 1.4 }}>
+          <div style={{ fontSize: 22, fontWeight: 600, color: INK, letterSpacing: '-0.5px', lineHeight: 1.2 }}>
             {topVibes.map((v, i) => (
               <span key={v.label}>
-                {i > 0 && <span style={{ color: HAIR, margin: '0 6px' }}>·</span>}
+                {i > 0 && <span style={{ color: MUTE, margin: '0 7px', fontWeight: 400 }}>·</span>}
                 {v.label}
               </span>
             ))}
@@ -277,15 +301,22 @@ export function TasteScreen() {
         {genError && <div style={{ fontSize: 11, color: '#C0392B', marginTop: 6 }}>{genError}</div>}
       </div>
 
-      {/* The gap */}
-      {aspirationGap && (
+      {/* The gap — per-medium where meaningful */}
+      {aspirationGaps.length > 0 && (
         <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 8 }}>
             the gap
           </div>
-          <div style={{ fontSize: 13, color: GRAPHITE, fontStyle: 'italic', letterSpacing: '-0.1px' }}>
-            adding {aspirationGap.adding} · finishing {aspirationGap.finishing}
-          </div>
+          {aspirationGaps.map((g, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: i < aspirationGaps.length - 1 ? 5 : 0 }}>
+              <span style={{ fontSize: 14, color: GRAPHITE, letterSpacing: '-0.1px' }}>
+                adding {g.adding} · finishing {g.finishing}
+              </span>
+              {g.medium && (
+                <span style={{ fontSize: 11, color: MUTE }}>{g.medium}</span>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
@@ -306,7 +337,7 @@ export function TasteScreen() {
         </div>
       )}
 
-      {/* Canon gallery */}
+      {/* Desert island gallery */}
       {canonItems.length > 0 && (
         <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 16 }}>
           <CanonGallery items={canonItems} />
