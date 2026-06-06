@@ -155,6 +155,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [picks, setPicks] = useState<Candidate[] | null>(null)
   const [lookingUp, setLookingUp] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [inboxDoneMode, setInboxDoneMode] = useState(false)
   const [showBlurb, setShowBlurb] = useState(false)
   const [reactionTagsOpen, setReactionTagsOpen] = useState(true)
   const [editOpenGroups, setEditOpenGroups] = useState<Record<string, boolean>>({})
@@ -576,23 +577,49 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             {onKeep && inReview(item) && (
               <div style={{ marginBottom: 16, border: '1px solid #ECEAE6', borderRadius: 10, padding: '10px 12px', background: '#FAFAFA' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#777', marginBottom: 8 }}>in your review inbox — file it</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  <button
-                    onClick={() => onKeep()}
-                    style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid #DDD', background: '#fff', color: '#1C1B19', fontSize: 12, cursor: 'pointer' }}
-                  >
-                    keep · want to
-                  </button>
-                  {REACTIONS.map(r => (
+                {inboxDoneMode ? (
+                  <div>
+                    <div style={{ fontSize: 11, color: '#AAA', marginBottom: 6 }}>how was it?</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {REACTIONS.map(r => (
+                        <button
+                          key={r.value}
+                          onClick={() => onKeep(r.value)}
+                          style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid #DDD', background: '#fff', color: '#1C1B19', fontSize: 12, cursor: 'pointer' }}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setInboxDoneMode(false)}
+                        style={{ padding: '5px 11px', borderRadius: 6, border: 'none', background: 'none', color: '#AAA', fontSize: 12, cursor: 'pointer' }}
+                      >
+                        ← back
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     <button
-                      key={r.value}
-                      onClick={() => onKeep(r.value)}
+                      onClick={() => onKeep()}
                       style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid #DDD', background: '#fff', color: '#1C1B19', fontSize: 12, cursor: 'pointer' }}
                     >
-                      {r.label}
+                      want to
                     </button>
-                  ))}
-                </div>
+                    <button
+                      onClick={() => setInboxDoneMode(true)}
+                      style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid #DDD', background: '#fff', color: '#1C1B19', fontSize: 12, cursor: 'pointer' }}
+                    >
+                      mark as done
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid #EABCB8', background: '#fff', color: '#C0392B', fontSize: 12, cursor: 'pointer' }}
+                    >
+                      discard
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

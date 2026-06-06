@@ -195,6 +195,8 @@ export function LibraryScreen() {
   // walks through them without bouncing back to the Add page. null = not tidying.
   const [tidyQueue, setTidyQueue] = useState<string[] | null>(null)
   const [tidyIndex, setTidyIndex] = useState(0)
+  const [reviewQueue, setReviewQueue] = useState<string[] | null>(null)
+  const [reviewIndex, setReviewIndex] = useState(0)
   // Deep-link: arriving with ?item=<id> (e.g. from the data-gaps list) opens that
   // item's action sheet so it can be filled in place, then clears the param.
   useEffect(() => {
@@ -220,6 +222,21 @@ export function LibraryScreen() {
     setSearchParams(prev => { prev.delete('item'); prev.delete('edit'); prev.delete('tidy'); prev.delete('gap'); return prev }, { replace: true })
   }, [searchParams, loading, items, setSearchParams])
 
+  // Build a review queue when an inbox item is opened (if not already in one).
+  // Reset it when the sheet is closed.
+  useEffect(() => {
+    if (actionItem && inReview(actionItem) && !reviewQueue) {
+      const queue = sortItems(items.filter(inReview), sort, dir).map(i => i.id)
+      const idx = queue.indexOf(actionItem.id)
+      setReviewQueue(queue)
+      setReviewIndex(idx >= 0 ? idx : 0)
+    }
+    if (!actionItem) {
+      setReviewQueue(null)
+      setReviewIndex(0)
+    }
+  }, [actionItem])
+
   // Advance the tidy queue to the next still-present item (skips deleted ones).
   // When the queue runs out, close the sheet and head back to the Add page.
   const goToTidy = useCallback((from: number) => {
@@ -230,6 +247,17 @@ export function LibraryScreen() {
     }
     setActionItem(null); setActionEdit(false); setTidyQueue(null)
   }, [tidyQueue, items, navigate])
+
+  const goToReview = useCallback((from: number) => {
+    if (!reviewQueue) { setActionItem(null); return }
+    for (let i = from; i < reviewQueue.length; i++) {
+      const next = items.find(it => it.id === reviewQueue[i] && inReview(it))
+      if (next) { setReviewIndex(i); setActionItem(next); return }
+    }
+    setReviewQueue(null); setActionItem(null)
+    setToast('🥂 inbox cleared')
+    setTimeout(() => setToast(null), 3000)
+  }, [reviewQueue, items])
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
@@ -597,7 +625,7 @@ export function LibraryScreen() {
             <div key={month || 'all'}>
               {month && (
                 <div style={{ padding: '22px 16px 8px', fontSize: 11, fontWeight: 600, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase' }}>
-                  {month}
+                  {/^\d{4}s$/.test(month) ? <>{month.slice(0, -1)}<span style={{ textTransform: 'lowercase' }}>s</span></> : month}
                 </div>
               )}
               {layout === 'grid' ? (
@@ -714,16 +742,14 @@ export function LibraryScreen() {
             onMarkDone={(reaction, note, moods) => { markDone(fresh.id, reaction, note, moods); setActionItem(null) }}
             onEditReaction={(reaction, note, moods) => { editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }}
             onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
-            onDelete={() => { deleteItem(fresh.id); setActionItem(null) }}
+            onDelete={() => { deleteItem(fresh.id); inReview(fresh) ? goToReview(reviewIndex + 1) : setActionItem(null) }}
             seriesOptions={seriesOptions}
             onKeep={reaction => {
-              // Triage out of the review inbox: a reaction logs it as done
-              // (preserving any note/moods); no reaction keeps it as want_to.
               if (reaction) markDone(fresh.id, reaction, fresh.note ?? '', fresh.moods ?? [])
               patchMetadata(fresh.id, { review: false })
-              setActionItem(null)
+              goToReview(reviewIndex + 1)
             }}
-            onClose={() => { setActionItem(null); setActionEdit(false); setTidyQueue(null) }}
+            onClose={() => { setActionItem(null); setActionEdit(false); setTidyQueue(null); setReviewQueue(null) }}
           />
         )
       })()}
