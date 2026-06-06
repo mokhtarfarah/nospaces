@@ -14,7 +14,7 @@
 
 ## Next session
 
-**▶ START WITH: open-ended assessment of where to go next.** The session 35 audit list is fully cleared. No pre-set work queue — review the app fresh and decide what's most valuable.
+**▶ START WITH: open-ended assessment of where to go next.** No pre-set work queue — review the app fresh and decide what's most valuable.
 
 **Quick win to knock out first:**
 - **Add `api/` to tsconfig** — Vercel caught pre-existing TS errors we missed locally because `tsc` only covers `src/`. Add `api/**/*.ts` to `tsconfig.json` include so they surface before deploy.
