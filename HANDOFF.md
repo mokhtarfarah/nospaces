@@ -14,28 +14,20 @@
 
 ## Next session
 
-**Ranked improvement list (from session 35 audit) — pick in order:**
+**▶ START WITH: open-ended assessment of where to go next.** The session 35 audit list is fully cleared. No pre-set work queue — review the app fresh and decide what's most valuable.
 
-1. ✅ Library defaults + dynamic tab order + thumbnail size (session 35)
-2. ✅ **Rate limiting on `/api/recommend` + `/api/identify`** — `api/_ratelimit.ts` shared utility + Supabase `api_rate_limits` table + `check_rate_limit()` RPC. Limits: identify 60/hr, recommend 10/hr. **Needs one-time SQL run in Supabase console** (SQL added to `supabase/schema.sql` bottom).
-3. ✅ **Taste page canon gallery** — 50px tiles at 9px type are illegible. Canon items should render as a proper gallery (larger tiles, readable title beneath). This is the centerpiece of the taste page.
-4. **React error boundary at app root** — any unhandled component throw blank-screens the whole app. 10 lines, high crash-prevention value.
-5. **`window.open` without `noopener`** — Spotify + Wikipedia quick-links in `ItemRow`. Add `rel="noopener noreferrer"` (or pass as 3rd arg to `window.open`).
-6. **Strip `console.log` in production** — `AddScreen.tsx` logs user query text. Guard behind `import.meta.env.DEV`.
-7. **`alert()` → in-app toast** — `LibraryScreen.tsx:749` after bulk delete. Native alert looks foreign in PWA mode.
-8. **Input length cap on API endpoints** — `/api/identify` accepts unbounded `input` string; cap at ~2000 chars.
-9. **Discover screen editorial redesign** — largest gap between concept and execution. No visual hierarchy; reads like a JSON array rendered into divs. Medium-effort.
-10. **Remove hardcoded emails from source** — `api/email.ts` fallback contains PII. Remove fallback, fail closed if env var missing.
+**Quick win to knock out first:**
+- **Add `api/` to tsconfig** — Vercel caught pre-existing TS errors we missed locally because `tsc` only covers `src/`. Add `api/**/*.ts` to `tsconfig.json` include so they surface before deploy.
 
-**Design decisions made this session (don't re-litigate):**
-- Grid default with year/decade view — editorial library feel vs. feed/log feel of list+recent
-- Tab order derived from library composition (most items first), "all" last — avoids imposing a medium hierarchy
-- "All" grid mode: uniform square tiles, `object-position: top` for non-music. Single-medium: native ratio.
+**Flagged / unresolved:**
+- **Discover page not in final form** — redesign shipped (bigger covers, blurb hero, ink save chip, no-repeat logic) but Farah flagged it still needs more work. Assess next session with fresh eyes.
+- **`ALLOWED_EMAILS` env var** — must be set in Vercel or all inbound email is rejected. Value: `farahmokhtar94@gmail.com,tom.effland@gmail.com`.
+- **Email talkback** — code live, waiting on Postmark account approval for sending to Gmail (submitted 2026-06-02).
 
 **Parked (do not re-raise without new signal):**
-- **Offline library cache** — cache Supabase items in IndexedDB so the library loads while offline. Skipped: the capture queue covers the "save something quick" case. Full offline-first requires queuing mutations (markDone, edits, deletes) too — different scope. Revisit only if offline usage becomes a real pattern.
-- **Want-to priority** — pin/tier system for backlog. Adds clutter to every want-to row; help-me-decide + search already cover the acute case.
-- **Regions map** — creator origin/nationality on taste page. Needs nationality data (not stored). Decide: manual country field vs Wikidata batch-pull.
+- **Offline library cache** — full offline-first requires queuing mutations (markDone, edits, deletes) — different scope. Revisit only if offline usage becomes a real pattern.
+- **Want-to priority** — help-me-decide covers the acute case.
+- **Regions map** — needs nationality data decision: manual country field vs Wikidata batch-pull.
 
 ---
 
@@ -255,6 +247,18 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 37 (2026-06-05) — Security fixes, discover redesign, no-repeat recs
+
+1. **React error boundary** — `src/components/ErrorBoundary.tsx` wrapped at app root in `main.tsx`. Unhandled component throws now show an in-app error screen instead of a blank page.
+2. **`window.open` noopener** — Spotify + Wikipedia quick-links in `LibraryScreen` now pass `'noopener,noreferrer'` as third arg.
+3. **`console.log` guard** — both logs in `AddScreen.tsx` wrapped in `import.meta.env.DEV`. Gone from production builds.
+4. **`alert()` → toast** — bulk duplicate removal in `LibraryScreen` now shows a fixed-position ink chip that auto-dismisses after 3s.
+5. **Input length cap** — `api/identify.ts` slices `input` to 2000 chars before sending to Claude.
+6. **Hardcoded emails removed** — `api/email.ts` fails closed (empty allowlist + console warning) if `ALLOWED_EMAILS` env var is missing. **Set `ALLOWED_EMAILS=farahmokhtar94@gmail.com,tom.effland@gmail.com` in Vercel.**
+7. **Discover editorial redesign** — `ResultRow`: covers 44→56/72px, title 14→15px, blurb 12→13px with 1.7 line-height, save is now an ink pill. Redundant "MEDIA" label removed. Farah flagged it still needs more work — revisit next session.
+8. **No-repeat recommendations** — `seenDiscoverTitles` accumulated in user prefs (cap 150). Passed to `/api/recommend-feeds` as `ALREADY RECOMMENDED IN PAST SESSIONS` exclusion block. Prevents repeats across sessions and cache refreshes.
+9. **Vercel TS fixes** — `api/_ratelimit.ts` RPC cast to `any`; `api/recommend-feeds.ts` raw AI response typed as `Record<string,unknown>` before mapping to `DiscoveryResult`. Both were pre-existing, caught by Vercel's stricter compiler.
 
 ### Session 35 (2026-06-05) — App audit + library UX overhaul
 
