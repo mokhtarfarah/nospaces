@@ -270,12 +270,12 @@ Return ONLY valid JSON (no markdown, no preamble):
     const text = message.content[0].type === 'text' ? message.content[0].text.trim() : '{}'
     const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
     const recommendations: DiscoveryResult[] = (parsed.recommendations ?? [])
-      .filter((r: DiscoveryResult) => r?.title && r?.type && ['film','book','music','tv'].includes(r.type))
-      .map((r: DiscoveryResult & { source?: string }) => ({
+      .filter((r: Record<string, unknown>) => r?.title && r?.type && ['film','book','music','tv'].includes(r.type as string))
+      .map((r: Record<string, unknown>) => ({
         ...r,
         // Normalise: model may return source (string) instead of sources (array)
-        sources: Array.isArray(r.sources) ? r.sources : r.source ? [r.source] : ['Claude\'s knowledge'],
-      }))
+        sources: Array.isArray(r['sources']) ? r['sources'] : r['source'] ? [r['source']] : ['Claude\'s knowledge'],
+      })) as DiscoveryResult[]
 
     return res.status(200).json({ recommendations })
   } catch (err) {

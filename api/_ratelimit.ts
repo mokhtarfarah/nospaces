@@ -27,7 +27,8 @@ export async function getAuthUserId(authHeader: string | undefined): Promise<str
 export async function checkRateLimit(userId: string, endpoint: string, limitPerHour: number): Promise<boolean> {
   const window = new Date().toISOString().slice(0, 13) // "2026-06-05T14"
   try {
-    const { data, error } = await _ac().rpc('check_rate_limit', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (_ac().rpc as any)('check_rate_limit', {
       p_user_id: userId,
       p_endpoint: endpoint,
       p_window: window,
