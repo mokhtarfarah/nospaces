@@ -27,7 +27,7 @@
 **Parked (do not re-raise without new signal):**
 - **Offline library cache** — full offline-first requires queuing mutations (markDone, edits, deletes) — different scope. Revisit only if offline usage becomes a real pattern.
 - **Want-to priority** — help-me-decide covers the acute case.
-- **Regions map** — needs nationality data decision: manual country field vs Wikidata batch-pull.
+- **Regions map / country filter** — filter library by country of origin (UK vs US vs French films etc). Data blocker: need to pull `P495` (country of origin) from Wikidata and store on items before the filter UI is possible. Wikidata is the right source — reliable structured field.
 
 ---
 

@@ -400,7 +400,7 @@ export function LibraryScreen() {
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C' }}>library</div>
+          <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {items.length > 0 && (
               <button
@@ -1012,7 +1012,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
         <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
           <span style={{ fontWeight: 500 }}>{item.title}</span>
           {item.creator && <span style={{ fontWeight: 400, color: '#A0A0A0' }}>{'  ·  '}{item.creator}</span>}
-          {!!item.metadata?.canon && <span title="Canon" style={{ fontWeight: 400, color: '#1C1B19', fontSize: 10 }}>{'  '}◆</span>}
+          {!!item.metadata?.canon && <span title="Canon" style={{ fontWeight: 400, color: '#ABA69C', fontSize: 10 }}>{'  '}◆</span>}
           {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: '#999', fontSize: 11 }}>{'  '}⌂</span>}
           {!!item.metadata?.scratch && <span title="Needs identifying" style={{ fontWeight: 500, color: '#BBBBBB', fontSize: 11 }}>{'  '}?</span>}
         </div>

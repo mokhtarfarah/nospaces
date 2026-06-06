@@ -93,10 +93,9 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
               background: canon ? '#F4F2EE' : '#fff',
               color: canon ? '#1C1B19' : '#6F6B64',
               fontWeight: canon ? 600 : 400, fontFamily: 'inherit',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
             }}
           >
-            <span style={{ fontSize: 9 }}>{canon ? '◆' : '◇'}</span>
             <span style={{ fontSize: 10 }}>desert island</span>
           </button>
           {(['eh', 'not_for_me'] as ItemReaction[]).map(v => {

@@ -239,7 +239,7 @@ export function TasteScreen() {
 
   if (!doneWithReaction.length) return (
     <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 20 }}>taste</div>
+      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 20px', color: INK }}>taste</h1>
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 6 }}>nothing to show yet</div>
         <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.6 }}>mark items as done and add reactions — your taste profile builds up here.</div>
@@ -250,9 +250,7 @@ export function TasteScreen() {
   return (
     <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
       {/* "taste" as a small section label, vibe words as the headline */}
-      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: topVibes.length > 0 ? 8 : 20 }}>
-        taste
-      </div>
+      <h1 style={{ fontSize: 15, fontWeight: 600, margin: topVibes.length > 0 ? '0 0 8px' : '0 0 20px', color: INK }}>taste</h1>
 
       {/* Vibe words — the actual headline */}
       {topVibes.length > 0 && (
