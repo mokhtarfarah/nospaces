@@ -473,12 +473,14 @@ export function LibraryScreen() {
             >
               <SearchIcon />
             </button>
-            <button
-              onClick={() => setGapsOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: gapCount > 0 ? '#6F6B64' : '#C9C6C0', padding: '4px 4px' }}
-            >
-              tidy{gapCount > 0 ? ` · ${gapCount}` : ''}
-            </button>
+            {gapCount > 0 && (
+              <button
+                onClick={() => setGapsOpen(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#6F6B64', padding: '4px 4px' }}
+              >
+                tidy · {gapCount}
+              </button>
+            )}
             <button
               onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: selectMode ? '#111' : '#888', fontWeight: selectMode ? 600 : 400, padding: '4px 4px' }}
