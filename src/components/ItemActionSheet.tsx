@@ -144,6 +144,14 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   // Vibes + verdicts edited together in the edit view. Unconfirmed AI vibes seed
   // it as active chips; saving the edit confirms whatever's selected into moods.
   const [editMoods, setEditMoods] = useState<string[]>(() => [...new Set([...(item.moods ?? []), ...unconfirmedVibes])])
+  // unconfirmedVibes may arrive async (fetched after mount) — seed editMoods when they land.
+  const unconfirmedVibesKey = JSON.stringify(item.metadata?.unconfirmedVibes ?? [])
+  useEffect(() => {
+    const arrived = ((item.metadata?.unconfirmedVibes as string[] | undefined) ?? [])
+      .filter(v => VIBES.includes(v) && !(item.moods ?? []).includes(v))
+    if (arrived.length) setEditMoods(prev => [...new Set([...prev, ...arrived])])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unconfirmedVibesKey])
   const [runtimeEdit, setRuntimeEdit] = useState(String((item.metadata?.runtime as number | null) ?? ''))
   const [pagesEdit, setPagesEdit] = useState(String((item.metadata?.pages as number | null) ?? ''))
   const [wikiUrlEdit, setWikiUrlEdit] = useState(String((item.metadata?.wikiUrl as string | null) ?? ''))
