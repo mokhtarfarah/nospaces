@@ -94,7 +94,11 @@ function candidatePool(items: Item[], picks: Picks): Item[] {
   }
 
   if (picks.vibe) {
-    pool = pool.filter(i => Array.isArray(i.moods) && i.moods.includes(picks.vibe!))
+    pool = pool.filter(i => {
+      const confirmed = Array.isArray(i.moods) && i.moods.includes(picks.vibe!)
+      const suggested = Array.isArray(i.metadata?.unconfirmedVibes) && (i.metadata!.unconfirmedVibes as string[]).includes(picks.vibe!)
+      return confirmed || suggested
+    })
   }
 
   return pool
@@ -103,8 +107,11 @@ function candidatePool(items: Item[], picks: Picks): Item[] {
 function availableVibes(pool: Item[]): string[] {
   const counts: Record<string, number> = {}
   for (const item of pool) {
-    if (!Array.isArray(item.moods)) continue
-    for (const m of item.moods) {
+    const allVibes = [
+      ...(Array.isArray(item.moods) ? item.moods : []),
+      ...(Array.isArray(item.metadata?.unconfirmedVibes) ? (item.metadata!.unconfirmedVibes as string[]) : []),
+    ]
+    for (const m of allVibes) {
       if (VIBES.includes(m)) counts[m] = (counts[m] ?? 0) + 1
     }
   }
