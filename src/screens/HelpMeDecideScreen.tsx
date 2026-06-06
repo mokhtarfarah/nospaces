@@ -9,12 +9,14 @@ import type { Item } from '../lib/database.types'
 type SeenChoice = 'new' | 'revisit'
 type TypeChoice = 'film' | 'tv' | 'book' | 'music' | 'any'
 type TimeChoice = 'quick' | 'medium' | 'long' | 'any'
-type Step = 'seen' | 'type' | 'time' | 'vibe' | 'result'
+type EraChoice = 'old' | 'new' | 'any'
+type Step = 'seen' | 'type' | 'time' | 'era' | 'vibe' | 'result'
 
 interface Picks {
   seen: SeenChoice | null
   type: TypeChoice | null
   time: TimeChoice | null
+  era: EraChoice | null
   vibe: string | null
 }
 
@@ -80,6 +82,14 @@ function candidatePool(items: Item[], picks: Picks): Item[] {
         if (picks.time === 'long')   return pg > 400
       }
       return true
+    })
+  }
+
+  if (picks.era && picks.era !== 'any') {
+    pool = pool.filter(i => {
+      const y = typeof i.year === 'string' ? parseInt(i.year) : (i.year as number | undefined)
+      if (!y) return true
+      return picks.era === 'old' ? y < 2000 : y >= 2000
     })
   }
 
@@ -232,7 +242,7 @@ export function HelpMeDecideScreen() {
           toggleOwned, toggleCanon, patchMetadata } = useItems()
 
   const [step, setStep] = useState<Step>('seen')
-  const [picks, setPicks] = useState<Picks>({ seen: null, type: null, time: null, vibe: null })
+  const [picks, setPicks] = useState<Picks>({ seen: null, type: null, time: null, era: null, vibe: null })
   const [resultSeed, setResultSeed] = useState(Date.now())
   const [actionItem, setActionItem] = useState<Item | null>(null)
 
@@ -244,25 +254,29 @@ export function HelpMeDecideScreen() {
   }, [items, picks.seen])
 
   function handleSeen(seen: SeenChoice) {
-    const newPicks: Picks = { seen, type: null, time: null, vibe: null }
+    const newPicks: Picks = { seen, type: null, time: null, era: null, vibe: null }
     setPicks(newPicks)
     setStep('type')
   }
 
   function handleType(type: TypeChoice) {
-    const newPicks: Picks = { ...picks, type, time: null, vibe: null }
+    const newPicks: Picks = { ...picks, type, time: null, era: null, vibe: null }
     setPicks(newPicks)
     if (type === 'film' || type === 'book') {
       setStep('time')
     } else {
-      const pool = candidatePool(items, newPicks)
-      const vibes = availableVibes(pool)
-      setStep(vibes.length >= 2 ? 'vibe' : 'result')
+      setStep('era')
     }
   }
 
   function handleTime(time: TimeChoice) {
-    const newPicks: Picks = { ...picks, time, vibe: null }
+    const newPicks: Picks = { ...picks, time, era: null, vibe: null }
+    setPicks(newPicks)
+    setStep('era')
+  }
+
+  function handleEra(era: EraChoice) {
+    const newPicks: Picks = { ...picks, era, vibe: null }
     setPicks(newPicks)
     const pool = candidatePool(items, newPicks)
     const vibes = availableVibes(pool)
@@ -291,15 +305,15 @@ export function HelpMeDecideScreen() {
     if (step === 'seen')   { navigate('/library'); return }
     if (step === 'type')   { setStep('seen'); return }
     if (step === 'time')   { setStep('type'); return }
-    if (step === 'vibe') {
+    if (step === 'era') {
       if (picks.type === 'film' || picks.type === 'book') setStep('time')
       else setStep('type')
       return
     }
+    if (step === 'vibe')   { setStep('era'); return }
     if (step === 'result') {
       if (vibeOptions.length >= 2) { setStep('vibe'); return }
-      if (picks.type === 'film' || picks.type === 'book') { setStep('time'); return }
-      setStep('type')
+      setStep('era')
     }
   }
 
@@ -338,7 +352,7 @@ export function HelpMeDecideScreen() {
 
         {step !== 'seen' && (
           <button
-            onClick={() => { setPicks({ seen: null, type: null, time: null, vibe: null }); setStep('seen') }}
+            onClick={() => { setPicks({ seen: null, type: null, time: null, era: null, vibe: null }); setStep('seen') }}
             style={{
               marginLeft: 'auto',
               background: 'none', border: 'none', cursor: 'pointer',
@@ -422,6 +436,25 @@ export function HelpMeDecideScreen() {
           </>
         )}
 
+        {/* ERA STEP */}
+        {step === 'era' && (
+          <>
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 11, color: '#ABA69C', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
+                era
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: '#1C1B19', lineHeight: 1.25, letterSpacing: '-0.02em' }}>
+                old school or newer?
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              <OptionPill label="old school" sub="before 2000" onClick={() => handleEra('old')} />
+              <OptionPill label="more recent" sub="2000 onward" onClick={() => handleEra('new')} />
+              <OptionPill label="doesn't matter" onClick={() => handleEra('any')} />
+            </div>
+          </>
+        )}
+
         {/* VIBE STEP */}
         {step === 'vibe' && (
           <>
@@ -478,9 +511,17 @@ export function HelpMeDecideScreen() {
             )}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
-              {poolSize > resultItems.length && (
+              {resultItems.length > 0 && (
                 <button
-                  onClick={() => setResultSeed(Date.now())}
+                  onClick={() => {
+                    if (poolSize > resultItems.length) {
+                      setResultSeed(Date.now())
+                    } else {
+                      // pool exhausted — step back to loosen filters
+                      if (vibeOptions.length >= 2) setStep('vibe')
+                      else setStep('era')
+                    }
+                  }}
                   style={{
                     padding: '12px 22px', borderRadius: 100,
                     border: '1.5px solid #D5D3CF', background: '#fff',
@@ -492,7 +533,7 @@ export function HelpMeDecideScreen() {
                 </button>
               )}
               <button
-                onClick={() => { setPicks({ seen: null, type: null, time: null, vibe: null }); setStep('seen') }}
+                onClick={() => { setPicks({ seen: null, type: null, time: null, era: null, vibe: null }); setStep('seen') }}
                 style={{
                   padding: '12px 22px', borderRadius: 100,
                   border: '1.5px solid #D5D3CF', background: '#fff',
