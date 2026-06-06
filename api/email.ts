@@ -207,8 +207,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ignored: true, reason: 'Unauthorized sender' })
   }
 
-  // Sanitize body — strip non-latin characters that break ByteString conversion
-  const body = sanitize(TextBody ?? HtmlBody?.replace(/<[^>]+>/g, ' ') ?? '')
+  // Sanitize body — strip non-latin characters that break ByteString conversion.
+  // Strip <style>/<script> block content first so CSS/JS doesn't consume the
+  // 12 000-char prompt budget and push book lists past the slice cutoff.
+  const htmlToText = (html: string) =>
+    html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+  const body = sanitize(TextBody ?? (HtmlBody ? htmlToText(HtmlBody) : ''))
 
   // Identify media from any image attachments. Each image is normalized first (HEIC→JPEG,
   // media-type cleanup) so iPhone photos work. Errors are logged, never silently dropped.
