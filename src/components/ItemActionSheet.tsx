@@ -112,6 +112,14 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       .filter(v => VIBES.includes(v) && !(item.moods ?? []).includes(v))
     return [...new Set([...(item.moods ?? []), ...unconfirmed])]
   })
+  // unconfirmedVibes may arrive async — seed selectedMoods when they land (mirrors editMoods fix).
+  const unconfirmedVibesKeyReaction = JSON.stringify(item.metadata?.unconfirmedVibes ?? [])
+  useEffect(() => {
+    const arrived = ((item.metadata?.unconfirmedVibes as string[] | undefined) ?? [])
+      .filter(v => VIBES.includes(v) && !(item.moods ?? []).includes(v))
+    if (arrived.length) setSelectedMoods(prev => [...new Set([...prev, ...arrived])])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unconfirmedVibesKeyReaction])
 
   function toggleMood(mood: string) {
     setSelectedMoods(prev =>
