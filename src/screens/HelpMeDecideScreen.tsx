@@ -265,26 +265,28 @@ export function HelpMeDecideScreen() {
     if (type === 'film' || type === 'book') {
       setStep('time')
     } else {
-      setStep('era')
+      const pool = candidatePool(items, newPicks)
+      const vibes = availableVibes(pool)
+      setStep(vibes.length >= 2 ? 'vibe' : 'era')
     }
   }
 
   function handleTime(time: TimeChoice) {
     const newPicks: Picks = { ...picks, time, era: null, vibe: null }
     setPicks(newPicks)
-    setStep('era')
-  }
-
-  function handleEra(era: EraChoice) {
-    const newPicks: Picks = { ...picks, era, vibe: null }
-    setPicks(newPicks)
     const pool = candidatePool(items, newPicks)
     const vibes = availableVibes(pool)
-    setStep(vibes.length >= 2 ? 'vibe' : 'result')
+    setStep(vibes.length >= 2 ? 'vibe' : 'era')
   }
 
   function handleVibe(vibe: string | null) {
     const newPicks: Picks = { ...picks, vibe }
+    setPicks(newPicks)
+    setStep('era')
+  }
+
+  function handleEra(era: EraChoice) {
+    const newPicks: Picks = { ...picks, era }
     setPicks(newPicks)
     setResultSeed(Date.now())
     setStep('result')
@@ -305,16 +307,13 @@ export function HelpMeDecideScreen() {
     if (step === 'seen')   { navigate('/library'); return }
     if (step === 'type')   { setStep('seen'); return }
     if (step === 'time')   { setStep('type'); return }
-    if (step === 'era') {
+    if (step === 'vibe') {
       if (picks.type === 'film' || picks.type === 'book') setStep('time')
       else setStep('type')
       return
     }
-    if (step === 'vibe')   { setStep('era'); return }
-    if (step === 'result') {
-      if (vibeOptions.length >= 2) { setStep('vibe'); return }
-      setStep('era')
-    }
+    if (step === 'era')    { setStep(vibeOptions.length >= 2 ? 'vibe' : (picks.type === 'film' || picks.type === 'book' ? 'time' : 'type')); return }
+    if (step === 'result') { setStep('era') }
   }
 
   const poolSize = useMemo(() => candidatePool(items, picks).length, [items, picks])
@@ -518,8 +517,7 @@ export function HelpMeDecideScreen() {
                       setResultSeed(Date.now())
                     } else {
                       // pool exhausted — step back to loosen filters
-                      if (vibeOptions.length >= 2) setStep('vibe')
-                      else setStep('era')
+                      setStep('era')
                     }
                   }}
                   style={{
