@@ -159,7 +159,7 @@ export function DiscoverScreen() {
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>discover</h1>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE }}>discover</div>
       </div>
 
       {/* Shows near you — prominent entry */}

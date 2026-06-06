@@ -371,7 +371,7 @@ export function LibraryScreen() {
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C' }}>library</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {items.length > 0 && (
               <button
