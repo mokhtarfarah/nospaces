@@ -21,7 +21,7 @@
 
 **Flagged / unresolved:**
 - **Discover page not in final form** — redesign shipped (bigger covers, blurb hero, ink save chip, no-repeat logic) but Farah flagged it still needs more work. Assess next session with fresh eyes.
-- **`ALLOWED_EMAILS` env var** — must be set in Vercel or all inbound email is rejected. Value: `farahmokhtar94@gmail.com,tom.effland@gmail.com`.
+- **`ALLOWED_EMAILS` env var** — ✅ set in Vercel.
 - **Email talkback** — code live, waiting on Postmark account approval for sending to Gmail (submitted 2026-06-02).
 
 **Parked (do not re-raise without new signal):**
