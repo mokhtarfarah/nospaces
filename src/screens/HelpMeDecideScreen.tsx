@@ -371,12 +371,12 @@ export function HelpMeDecideScreen() {
                 help me decide
               </div>
               <div style={{ fontSize: 26, fontWeight: 700, color: '#1C1B19', lineHeight: 1.25, letterSpacing: '-0.02em' }}>
-                seen it before, or something new?
+                something new, or revisit an old favourite?
               </div>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               <OptionPill label="new to me" onClick={() => handleSeen('new')} />
-              <OptionPill label="seen it before" onClick={() => handleSeen('revisit')} />
+              <OptionPill label="been here before" onClick={() => handleSeen('revisit')} />
             </div>
           </>
         )}

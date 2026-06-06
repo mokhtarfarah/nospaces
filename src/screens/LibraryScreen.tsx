@@ -898,7 +898,7 @@ function EmptyState({ hasItems, onGuide }: { hasItems: boolean; onGuide: () => v
         {hasItems ? 'nothing matches' : 'your library is empty'}
       </div>
       <div style={{ fontSize: 13, color: '#999', lineHeight: 1.5 }}>
-        {hasItems ? 'try changing your filters' : 'tap + to save your first item'}
+        {hasItems ? 'try changing your filters' : 'go listen to some music you loser'}
       </div>
       {!hasItems && (
         <button
