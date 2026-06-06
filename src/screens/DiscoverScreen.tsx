@@ -177,9 +177,6 @@ export function DiscoverScreen() {
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>browse →</span>
       </button>
 
-      {/* Media section label */}
-      <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 12 }}>media</div>
-
       {/* Type tabs */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 28, borderBottom: `1px solid ${HAIR}`, paddingBottom: 14 }}>
         {TYPE_TABS.map(t => (
@@ -345,32 +342,52 @@ function ResultRow({ result: r, savedSource, onSave, onDismiss }: {
   onSave: () => void
   onDismiss: () => void
 }) {
-  const sourceLabel = r.sources.length === 1 ? r.sources[0] : `${r.sources[0]} + ${r.sources.length - 1} more`
+  const sourceLabel = r.sources.length === 1 ? r.sources[0] : `${r.sources[0]} +${r.sources.length - 1}`
   const isSaved = savedSource !== null
 
   return (
-    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', paddingBottom: 20, marginBottom: 20, borderBottom: `1px solid ${HAIR}` }}>
+    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', paddingBottom: 24, marginBottom: 24, borderBottom: `1px solid ${HAIR}` }}>
       <DiscoverCover title={r.title} creator={r.creator} type={r.type} year={r.year} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ marginBottom: 3 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: INK }}>{r.title}</span>
-          {r.creator && <span style={{ fontSize: 12, color: GRAPHITE }}> — {r.creator}</span>}
+        {/* Title + year */}
+        <div style={{ marginBottom: 2 }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{r.title}</span>
+          {r.year && <span style={{ fontSize: 12, color: MUTE, marginLeft: 6 }}>{r.year}</span>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-          <span style={{ fontSize: 11, color: MUTE }}>
-            {r.type}{r.year ? ` · ${r.year}` : ''} · via {sourceLabel}
-          </span>
+        {/* Creator */}
+        {r.creator && (
+          <div style={{ fontSize: 12, color: GRAPHITE, marginBottom: 6 }}>{r.creator}</div>
+        )}
+        {/* Type · source */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: MUTE }}>{r.type} · via {sourceLabel}</span>
           <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
         </div>
-        <p style={{ fontSize: 12, color: GRAPHITE, lineHeight: 1.65, margin: '0 0 10px', fontStyle: 'italic' }}>{r.why}</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Why blurb — the editorial reason to care */}
+        {r.why && (
+          <p style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.7, margin: '0 0 12px', fontStyle: 'italic' }}>{r.why}</p>
+        )}
+        {/* Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {isSaved ? (
             <span style={{ fontSize: 11, color: MUTE }}>saved ✓︎</span>
           ) : (
-            <button onClick={onSave} className="tlink" style={{ fontSize: 11 }}>+ save</button>
+            <button
+              onClick={onSave}
+              style={{
+                background: INK, color: '#fff', border: 'none', borderRadius: 6,
+                fontSize: 11, fontWeight: 600, padding: '5px 12px', cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              + save
+            </button>
           )}
           {!isSaved && (
-            <button onClick={onDismiss} style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0 }}>
+            <button
+              onClick={onDismiss}
+              style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
+            >
               not interested
             </button>
           )}
@@ -383,8 +400,9 @@ function ResultRow({ result: r, savedSource, onSave, onDismiss }: {
 function DiscoverCover({ title, creator, type, year }: { title: string; creator: string | null; type: string; year: number | null }) {
   const artwork = useArtwork(type, title, creator, year, null)
   const color = typeColor(type)
-  const w = type === 'music' ? 56 : 44
-  const h = type === 'music' ? 56 : 66
+  const isMusic = type === 'music'
+  const w = isMusic ? 72 : 56
+  const h = isMusic ? 72 : 84
   return artwork
     ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: `1px solid ${HAIR}`, flexShrink: 0 }} />
     : <div style={{ width: w, height: h, background: color.bg, flexShrink: 0, border: `1px solid ${HAIR}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: color.border, letterSpacing: '0.3px' }}>{type}</div>

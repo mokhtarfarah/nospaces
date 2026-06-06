@@ -31,7 +31,7 @@ async function describeToSearch(input: string): Promise<{ searchQuery: string; t
   })
   if (!res.ok) { console.warn('[describe] HTTP', res.status, '— using raw input'); return { searchQuery: input, type: null } }
   const r = await res.json()
-  console.log('[describe]', input, '→', r)
+  if (import.meta.env.DEV) console.log('[describe]', input, '→', r)
   return r
 }
 
@@ -40,7 +40,7 @@ async function catalogLookup(q: string, recency = false): Promise<Candidate[]> {
   const res = await fetch(url)
   if (!res.ok) { console.error('[lookup] HTTP', res.status, url); return [] }
   const data = await res.json()
-  console.log('[lookup]', url, '→', data.results?.length ?? 0, 'results')
+  if (import.meta.env.DEV) console.log('[lookup]', url, '→', data.results?.length ?? 0, 'results')
   const { results } = data
   return Array.isArray(results) ? results : []
 }

@@ -61,12 +61,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return res.status(401).end()
   if (!await checkRateLimit(userId, 'identify', 60)) return res.status(429).json({ error: 'Rate limit exceeded. Try again next hour.' })
 
-  const { input, imageBase64, mimeType, typeHint } = req.body as {
+  const { input: rawInput, imageBase64, mimeType, typeHint } = req.body as {
     input?: string
     imageBase64?: string
     mimeType?: string
     typeHint?: string
   }
+  const input = typeof rawInput === 'string' ? rawInput.slice(0, 2000) : rawInput
 
   const hintLine = typeHint ? `\nThe user indicates this is a ${typeHint}. Strongly prefer that type.` : ''
   const knownType = typeHint && GENRE_VOCAB[typeHint] ? typeHint : null

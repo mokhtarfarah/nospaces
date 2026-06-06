@@ -185,6 +185,7 @@ export function LibraryScreen() {
   const [viewSheetOpen, setViewSheetOpen] = useState(false)
   const [dupesOpen, setDupesOpen] = useState(false)
   const [gapsOpen, setGapsOpen] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
@@ -747,7 +748,10 @@ export function LibraryScreen() {
           onConfirm={async ids => {
             setDupesOpen(false)
             const n = await deleteMany(ids)
-            if (n) alert(`Removed ${n} duplicate${n > 1 ? 's' : ''}`)
+            if (n) {
+              setToast(`removed ${n} duplicate${n > 1 ? 's' : ''}`)
+              setTimeout(() => setToast(null), 3000)
+            }
           }}
           onClose={() => setDupesOpen(false)}
         />
@@ -760,6 +764,17 @@ export function LibraryScreen() {
           editItem={(id, fields) => editItem(id, fields)}
           onClose={() => setGapsOpen(false)}
         />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+          background: '#1C1B19', color: '#fff', fontSize: 13, padding: '8px 16px',
+          borderRadius: 8, zIndex: 9999, pointerEvents: 'none', whiteSpace: 'nowrap',
+        }}>
+          {toast}
+        </div>
       )}
     </div>
   )
@@ -988,7 +1003,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
             const url = (item.metadata?.spotifyUrl as string | undefined)
               ?? (item.metadata?.spotifyId ? `https://open.spotify.com/album/${item.metadata.spotifyId}` : null)
               ?? `https://open.spotify.com/search/${encodeURIComponent([item.title, item.creator].filter(Boolean).join(' '))}`
-            window.open(url, '_blank')
+            window.open(url, '_blank', 'noopener,noreferrer')
           }}
           title="Open in Spotify"
           style={{
@@ -1005,7 +1020,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
         <button
           onClick={e => {
             e.stopPropagation()
-            window.open(wikiUrl, '_blank')
+            window.open(wikiUrl, '_blank', 'noopener,noreferrer')
           }}
           title="Open Wikipedia page"
           style={{
