@@ -19,6 +19,7 @@ interface Prefs {
   discoveryCache?: { intaste?: DiscoveryCache; divert?: DiscoveryCache }
   customFeeds?: FeedEntry[]
   dismissedDiscoverTitles?: string[]
+  seenDiscoverTitles?: string[]
 }
 
 // Per-user preferences, synced across devices via the public.user_prefs table.
@@ -76,6 +77,12 @@ export function usePrefs() {
     patch({ dismissedDiscoverTitles: [...existing, key] })
   }
 
+  const addSeenDiscoverTitles = (titles: string[]) => {
+    const existing = prefs.seenDiscoverTitles ?? []
+    const next = [...new Set([...existing, ...titles.map(t => t.toLowerCase())])].slice(-150)
+    patch({ seenDiscoverTitles: next })
+  }
+
   return {
     cities, setCities,
     tasteProfile: prefs.tasteProfile,
@@ -87,6 +94,8 @@ export function usePrefs() {
     setCustomFeeds,
     dismissedDiscoverTitles: prefs.dismissedDiscoverTitles ?? [],
     dismissDiscoverTitle,
+    seenDiscoverTitles: prefs.seenDiscoverTitles ?? [],
+    addSeenDiscoverTitles,
     prefsLoaded: loaded,
   }
 }

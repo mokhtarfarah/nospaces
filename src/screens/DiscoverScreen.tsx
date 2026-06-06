@@ -35,7 +35,7 @@ function normaliseSources(results: DiscoveryResult[]): DiscoveryResult[] {
 
 export function DiscoverScreen() {
   const { items, addItem } = useItems()
-  const { tasteProfile, discoveryCache, setDiscoveryCache, customFeeds, setCustomFeeds, dismissedDiscoverTitles, dismissDiscoverTitle, prefsLoaded } = usePrefs()
+  const { tasteProfile, discoveryCache, setDiscoveryCache, customFeeds, setCustomFeeds, dismissedDiscoverTitles, dismissDiscoverTitle, seenDiscoverTitles, addSeenDiscoverTitles, prefsLoaded } = usePrefs()
   const navigate = useNavigate()
 
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
@@ -96,11 +96,12 @@ export function DiscoverScreen() {
       const headers = await authHeaders()
       const res = await fetch('/api/recommend-feeds', {
         method: 'POST', headers,
-        body: JSON.stringify({ mode, type: 'all', tasteProfile, libraryItems, customFeeds }),
+        body: JSON.stringify({ mode, type: 'all', tasteProfile, libraryItems, customFeeds, priorRecs: seenDiscoverTitles }),
       })
       if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; setError(d.error ?? 'something went wrong'); return }
       const data = await res.json() as { recommendations: DiscoveryResult[] }
       const recs = normaliseSources(data.recommendations ?? [])
+      addSeenDiscoverTitles(recs.map(r => r.title))
       if (mode === 'intaste') {
         setIntasteResults(recs); setIntasteCachedAt(new Date().toISOString()); setDiscoveryCache('intaste', recs)
       } else {

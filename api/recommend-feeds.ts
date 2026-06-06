@@ -165,12 +165,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     tasteProfile,
     libraryItems = [],
     customFeeds = [],
+    priorRecs = [],
   } = req.body as {
     mode?: 'intaste' | 'divert'
     type?: string
     tasteProfile?: string
     libraryItems?: { title: string; type: string }[]
     customFeeds?: FeedEntry[]
+    priorRecs?: string[]
   }
 
   if (!tasteProfile) return res.status(400).json({ error: 'no taste profile — generate one on the taste page first' })
@@ -189,6 +191,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .map(i => `${i.title} (${i.type})`)
     .join('\n') || '(none yet)'
 
+  // Build prior-recs exclusion list (titles already recommended in past sessions)
+  const priorRecsList = priorRecs.length > 0 ? priorRecs.join('\n') : null
+
   // Build feed content block
   const feedBlock = posts
     .map(p => `[${p.source}] ${p.title}${p.content ? ' — ' + p.content : ''}`)
@@ -204,7 +209,7 @@ ${tasteProfile}
 
 ALREADY IN THEIR LIBRARY — do not recommend these:
 ${libraryList}
-
+${priorRecsList ? `\nALREADY RECOMMENDED IN PAST SESSIONS — do not repeat these:\n${priorRecsList}\n` : ''}
 CULTURAL CONTEXT (for inspiration, not as the source of your picks):
 ${feedBlock}
 
@@ -238,7 +243,7 @@ ${tasteProfile}
 
 ALREADY IN THEIR LIBRARY — do not recommend these:
 ${libraryList}
-
+${priorRecsList ? `\nALREADY RECOMMENDED IN PAST SESSIONS — do not repeat these:\n${priorRecsList}\n` : ''}
 RECENT CONTENT FROM THEIR TRUSTED SOURCES:
 ${feedBlock}
 
