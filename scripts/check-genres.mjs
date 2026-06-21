@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
  * Genre sync guard — run as a pre-commit hook.
- * Extracts the GENRES object from all three copies and diffs them.
- * Exits 1 (blocks commit) if any copy is out of sync with src/lib/genres.ts.
+ * Diffs the two genre-vocab copies and exits 1 (blocks commit) if they drift.
  *
- * The three copies exist because Vercel serverless can't import from src/.
- * When you add/remove a genre, update all three manually, then this script
- * confirms they match before letting the commit through.
+ * There are only two copies now: src/lib/genres.ts (frontend source of truth)
+ * and api/_genres.ts (shared by every Vercel function — they can't import from
+ * src/). All api/ endpoints import from api/_genres.ts, so updating these two
+ * files keeps the whole app in sync. When you add/remove a genre, update both,
+ * then this script confirms they match before letting the commit through.
  */
 
 import { readFileSync } from 'fs'
@@ -17,8 +18,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const FILES = {
   'src/lib/genres.ts':  resolve(root, 'src/lib/genres.ts'),
-  'api/genres.ts':      resolve(root, 'api/genres.ts'),
-  'api/identify.ts':    resolve(root, 'api/identify.ts'),
+  'api/_genres.ts':     resolve(root, 'api/_genres.ts'),
 }
 
 // Extract genre arrays from any of the three formats:
@@ -62,7 +62,7 @@ if (failed) process.exit(1)
 
 const truth = sources['src/lib/genres.ts']
 
-for (const label of ['api/genres.ts', 'api/identify.ts']) {
+for (const label of ['api/_genres.ts']) {
   const copy = sources[label]
   const diffs = []
 
@@ -83,9 +83,9 @@ for (const label of ['api/genres.ts', 'api/identify.ts']) {
 }
 
 if (!failed) {
-  console.log('✓ genre sync: all three copies match')
+  console.log('✓ genre sync: src/lib/genres.ts and api/_genres.ts match')
 } else {
-  console.error('\nFix: update all three copies to match src/lib/genres.ts, then re-commit.')
-  console.error('Files: src/lib/genres.ts · api/genres.ts · api/identify.ts\n')
+  console.error('\nFix: update both copies to match, then re-commit.')
+  console.error('Files: src/lib/genres.ts · api/_genres.ts\n')
   process.exit(1)
 }

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit'
+import { GENRE_VOCAB } from './_genres'
 
 // Both text queries and URL input go through web_search_20250305. Direct
 // server-side fetch doesn't work for modern editorial sites (JS-rendered, e.g.
@@ -11,12 +12,6 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export const config = { maxDuration: 120 }
 
-const GENRE_VOCAB: Record<string, string[]> = {
-  film:  ['action','animation','classic','comedy','crime','documentary','drama','fantasy','horror','musical','period piece','romance','satire','sci-fi','thriller','western'],
-  tv:    ['animation','classic','comedy','crime','documentary','drama','fantasy','horror','period piece','reality','satire','sci-fi','thriller'],
-  book:  ['biography','business','classics','crime','essay','fantasy','history','horror','literary fiction','mystery','period piece','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
-  music: ['afrobeats','ambient','classical','country','electronic','folk','hip-hop','indie','jazz','latin','metal','pop','punk','r&b','rock','soul'],
-}
 
 const SYSTEM_PROMPT = `You are a media-recommendation assistant. Use web search to find and read the exact list the user asks for, then return its entries as structured data. Return JSON only — no preamble, no text outside the JSON.`
 
@@ -25,7 +20,7 @@ function buildPrompt(input: string, isUrl: boolean): string {
     ? `The user has provided a direct link to a list. Read the content at this exact URL: ${input}`
     : `Find and read this published list: "${input}". Search for it from the named publication, or a well-known outlet if none is named.`
 
-  const genreBlock = Object.entries(GENRE_VOCAB).map(([t, g]) => `  ${t}: ${g.join(', ')}`).join('\n')
+  const genreBlock = Object.entries(GENRE_VOCAB).filter(([, g]) => g.length).map(([t, g]) => `  ${t}: ${g.join(', ')}`).join('\n')
 
   return `${finding}
 
@@ -75,7 +70,7 @@ interface RecItem {
 }
 
 function buildPdfPrompt(): string {
-  const genreBlock = Object.entries(GENRE_VOCAB).map(([t, g]) => `  ${t}: ${g.join(', ')}`).join('\n')
+  const genreBlock = Object.entries(GENRE_VOCAB).filter(([, g]) => g.length).map(([t, g]) => `  ${t}: ${g.join(', ')}`).join('\n')
   return `Extract the ranked list from this PDF document.
 
 Return ONLY a JSON object in this exact shape:

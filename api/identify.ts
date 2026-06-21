@@ -1,17 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit'
-
-// Genre vocab — keep in sync with src/lib/genres.ts (server-side copy, Vercel
-// functions can't import from src/).
-// Keep in sync with src/lib/genres.ts (can't import across dirs in Vercel functions).
-const GENRE_VOCAB: Record<string, string[]> = {
-  film:  ['action','animation','classic','comedy','crime','documentary','drama','fantasy','horror','musical','period piece','romance','satire','sci-fi','thriller','western'],
-  tv:    ['animation','classic','comedy','crime','documentary','drama','fantasy','horror','period piece','reality','satire','sci-fi','thriller'],
-  book:  ['biography','business','classics','cookbook','crime','essay','fantasy','historical fiction','history','horror','literary fiction','memoir','mystery','period piece','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
-  music: ['afrobeats','ambient','art pop','classical','country','electronic','experimental','folk','funk','glam rock','hip-hop','indie','jazz','latin','metal','new wave','pop','post-punk','punk','r&b','rock','soul'],
-  other: [],
-}
+import { GENRE_VOCAB } from './_genres'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 

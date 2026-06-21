@@ -71,11 +71,8 @@ npm run typecheck    # tsc --noEmit
 - `src/components/DuplicatesSheet.tsx` — duplicate review sheet
 - `src/hooks/useItems.ts` — all item CRUD + toggleOwned, toggleCanon, duplicateGroups
 - `src/lib/moods.ts` — vibe/verdict vocab + MOOD_REMAP. Edit freely.
-- `src/lib/genres.ts` — genre vocab per type. ⚠️ **FOUR copies — update all when adding genres:**
-  1. `src/lib/genres.ts` (source of truth for frontend)
-  2. `api/genres.ts` (inline — can't import from src/ in Vercel serverless)
-  3. `api/identify.ts` (inline)
-  4. `api/wiki.ts` (inline in `wikidataFields`)
+- `src/lib/genres.ts` — genre vocab per type (frontend source of truth).
+- `api/_genres.ts` — genre vocab for all Vercel functions (they can't import from src/). **Only TWO copies now** (session 40): `src/lib/genres.ts` + `api/_genres.ts`. Every api endpoint (`genres`, `identify`, `recommend`, `search`, `email`) imports from `api/_genres.ts` — never redeclare a local copy. `scripts/check-genres.mjs` (pre-commit) diffs the two and blocks drift.
 - `api/{identify,genres,email,art,blurb,lookup,watch,wiki,vibes,runtime}.ts`
 - `supabase/schema.sql`
 
@@ -166,8 +163,8 @@ Stored as `metadata.canon: true`. Toggle lives in the reaction view — sits bet
 ### Wikipedia
 Proxied through Vercel (`api/wiki.ts`) to avoid CORS. Multi-fallback cascade (4 queries per item). Film/TV resolution is lenient (trusts top hit, no title guard) — meaning film/TV items may get the wrong article. Books/music use title guard. Persisted to `metadata.wikiUrl/wikiThumb/wikiSummary` via `patchMetadata`. Wikidata fields (year, runtime, director, author, pages) read from structured claims, not article prose.
 
-### Genre vocab — four copies
-Vercel serverless can't import from `src/` in `api/`. All four copies must be updated manually when adding genres. See Key files above.
+### Genre vocab — two copies (consolidated session 40)
+Vercel serverless can't import from `src/`. Previously the vocab was duplicated across 5+ api files (genres, identify, recommend, search, email) — several had silently drifted into reduced subsets. Now there's a single `api/_genres.ts` (exports `GENRE_VOCAB`, `GENRE_FLAT`, `genreBlock()`) that every api endpoint imports. Only two copies remain: `src/lib/genres.ts` and `api/_genres.ts`, kept in sync by `scripts/check-genres.mjs`. Side effect: `recommend` and `email` now use the full vocab (they used to omit `memoir` etc.).
 
 ### Action card structure
 Read view: flat link row (edit · on my shelf/own it · about this · wikipedia · watch). Unconfirmed vibes shown muted. "add a verdict →" nudge on done items with no verdict → opens reaction view with verdict expanded. Edit view: auto-fill button at top, more-details collapsed section. Reaction view: reaction grid → canon → note → vibe/verdict chips → save.
@@ -249,6 +246,7 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 
 ### Session 40 (2026-06-21) — tsconfig api typecheck, TV auto-status, taste page ratings
 
+0. **Genre vocab consolidation** — added `cookbook` to books, then discovered the vocab was duplicated across 5 api files (not the "4 copies" the handoff claimed — and `wiki.ts` had none). Several copies (`recommend`, `email`) had silently drifted into reduced subsets, and the sync guard only checked 3. Consolidated to a single `api/_genres.ts` imported by all api endpoints; only 2 copies remain (src + api shared); updated `check-genres.mjs` accordingly. `recommend`/`email` now use the full vocab.
 1. **api/ typecheck (quick win)** — new `tsconfig.api.json` (Node types + DOM lib to mirror Vercel's environment, avoiding undici `.json()→unknown` false positives). Added to `npm run typecheck` (`tsc && tsc -p tsconfig.api.json`) and the Stop hook so api TS errors surface locally before deploy.
 2. **TV auto-status** — ticking/unticking seasons now keeps status honest. `editItem` accepts `status`/`date_done`; `onSetSeasons` in `LibraryScreen` demotes a **done** show to **in_progress** when not all aired seasons are watched, and nudges a **want_to** show to **in_progress** once the first season is ticked. Auto-populated season lists (TVmaze) don't trigger this — only explicit user toggles persist via `onSetSeasons`.
 3. **Desert island gallery fixes** (`TasteScreen.tsx`) — (a) tiles were mismatched sizes across media (music 1:1 vs film/book/tv 2:3); now uniform 1:1 squares with `objectPosition:top` for posters (matches the library "all" grid pattern). (b) Section is now collapsible — header is a toggle button with item count + chevron, defaults open.

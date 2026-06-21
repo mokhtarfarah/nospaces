@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { GENRE_FLAT as GENRES } from './_genres'
 
 const _ce = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
 let _sba: ReturnType<typeof createClient> | null = null
@@ -11,7 +12,6 @@ const TYPES = ['film', 'book', 'music', 'tv']
 const STATUSES = ['want_to', 'done', 'in_progress']
 const VIBES = ['hazy','dark','melancholic','nostalgic','romantic','off-kilter','epic','playful','sexy','sharp','lush','intense','heavy','easy','demanding','funny','cozy','earnest','arthouse','fun','hype','raw','danceable','groovy','mellow','hypnotic','propulsive','dense','lyrical','immersive','literary','spare']
 const VERDICTS = ['comfort','guilty pleasure','hyperfixation','in rotation','unfinished business','delivers','stuck with me','respect, not love','overrated','so bad it\'s good']
-const GENRES = ['action','animation','classic','comedy','crime','documentary','drama','fantasy','horror','musical','period piece','romance','satire','sci-fi','thriller','western','reality','biography','business','classics','essay','historical fiction','history','memoir','mystery','philosophy','poetry','self-help','short stories','travel','afrobeats','ambient','art pop','classical','country','electronic','experimental','folk','funk','glam rock','hip-hop','indie','jazz','latin','metal','new wave','pop','post-punk','punk','r&b','rock','soul']
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
