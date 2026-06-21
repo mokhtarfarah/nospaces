@@ -743,7 +743,20 @@ export function LibraryScreen() {
             onMarkWantTo={() => { markWantTo(fresh.id); setActionItem(null) }}
             onMarkDone={(reaction, note, moods) => { markDone(fresh.id, reaction, note, moods); setActionItem(null) }}
             onEditReaction={(reaction, note, moods) => { editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }}
-            onSetSeasons={seasons => editItem(fresh.id, { metadata: { ...fresh.metadata, seasons } })}
+            onSetSeasons={seasons => {
+              // Persist the season checklist, and keep status honest: a TV show
+              // isn't really "done" until every aired season is watched. Demote a
+              // done show to in progress when seasons remain; nudge a want-to show
+              // to in progress once the first season is ticked.
+              const total = seasons.length
+              const completed = seasons.filter(s => s.done).length
+              const fields: Parameters<typeof editItem>[1] = { metadata: { ...fresh.metadata, seasons } }
+              if (total > 0 && completed < total) {
+                if (fresh.status === 'done') { fields.status = 'in_progress'; fields.date_done = null }
+                else if (fresh.status === 'want_to' && completed > 0) fields.status = 'in_progress'
+              }
+              editItem(fresh.id, fields)
+            }}
             onDelete={() => { deleteItem(fresh.id); inReview(fresh) ? goToReview(reviewIndex + 1) : setActionItem(null) }}
             seriesOptions={seriesOptions}
             onKeep={reaction => {

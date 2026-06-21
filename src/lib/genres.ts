@@ -13,7 +13,7 @@ export const GENRES: Record<string, string[]> = {
     'sci-fi', 'thriller',
   ],
   book: [
-    'biography', 'business', 'classics', 'crime', 'essay',
+    'biography', 'business', 'classics', 'cookbook', 'crime', 'essay',
     'fantasy', 'historical fiction', 'history', 'horror', 'literary fiction', 'memoir', 'mystery',
     'period piece', 'philosophy', 'poetry', 'romance', 'satire',
     'sci-fi', 'self-help', 'short stories', 'thriller', 'travel',

@@ -27,9 +27,15 @@ const SYSTEM_PROMPT = `You are a taste profiler writing a short magazine-style p
 
 Write exactly 2 paragraphs in second person. Each paragraph 2–4 sentences.
 
+How to read the evidence — the RATING is the verdict and your primary signal:
+- LOVED items are the core of their taste. Anchor your profile on these. The strongest patterns should come from what they loved.
+- LIKED items are secondary positives — supporting evidence, not the center.
+- EH and NOT FOR ME items are the boundary of their taste: what leaves them cold or actively turns them off. A clear pattern in what they reject is as revealing as what they love — name it if one exists.
+- Private notes add specific color, but they NEVER override the rating. Do not let a heavily-annotated "liked" or "eh" item overshadow a "loved" item with no note. Weight by how they actually rated things, not by how much they wrote.
+
 Rules:
-- Name 2–3 specific titles total across both paragraphs — no more. Wrap titles in *asterisks*. Choose titles that actually illustrate the point you're making; don't pile on examples.
-- Make only observations that are clearly supported by the list. Do not speculate, invent patterns, or force a clever contrast that isn't genuinely there.
+- Name 2–3 specific titles total across both paragraphs — no more. Wrap titles in *asterisks*. Prefer loved titles unless a lower-rated one is essential to the point. Choose titles that actually illustrate the point; don't pile on examples.
+- Make only observations that are clearly supported by the ratings. Do not speculate, invent patterns, or force a clever contrast that isn't genuinely there.
 - If there is a real and interesting tension in the taste — name it plainly. If there isn't, don't manufacture one.
 - If an aspiration gap is provided (what they keep adding vs. what they actually finish), weave it in naturally if it adds something true.
 - The vibe words shown on the page are anchors — deepen them with one specific, do not restate or list them.
@@ -49,18 +55,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (!items?.length) return res.status(400).json({ error: 'no items' })
 
-  const signal = items
-    .filter(i => i.reaction === 'loved_it' || i.reaction === 'liked_it')
-    .slice(0, 150)
+  // Need at least one positive (loved/liked) reaction to anchor a profile.
+  const hasPositive = items.some(i => i.reaction === 'loved_it' || i.reaction === 'liked_it')
+  if (!hasPositive) return res.status(400).json({ error: 'no liked items' })
 
-  if (!signal.length) return res.status(400).json({ error: 'no liked items' })
+  // Build the list grouped by reaction, strongest signal first, so the model
+  // reads the verdicts as a hierarchy. Per-bucket caps keep the token budget
+  // sane while preserving the full rating spectrum (loved → not for me).
+  const BUCKETS: { reaction: string; label: string; cap: number }[] = [
+    { reaction: 'loved_it', label: 'LOVED', cap: 70 },
+    { reaction: 'liked_it', label: 'liked', cap: 50 },
+    { reaction: 'eh', label: 'eh (lukewarm)', cap: 25 },
+    { reaction: 'not_for_me', label: 'not for me (rejected)', cap: 25 },
+  ]
 
-  const list = signal.map(i => {
-    const label = i.reaction === 'loved_it' ? 'loved' : 'liked'
+  const fmt = (i: InputItem, label: string) => {
     const creator = i.creator ? ` — ${i.creator}` : ''
     const note = i.note ? ` (private note: ${i.note})` : ''
     return `[${label}] ${i.title}${creator} (${i.type})${note}`
-  }).join('\n')
+  }
+
+  const list = BUCKETS
+    .map(b => items.filter(i => i.reaction === b.reaction).slice(0, b.cap).map(i => fmt(i, b.label)))
+    .filter(rows => rows.length)
+    .map(rows => rows.join('\n'))
+    .join('\n')
 
   const canonLine = canon?.length
     ? `\n\nCanon items (things they have explicitly marked as defining works): ${canon.join(', ')}.`

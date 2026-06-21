@@ -102,16 +102,20 @@ function computeFaithfulCreators(items: Item[]) {
     .slice(0, 8)
 }
 
-// Inner image layer — used inside a sized container so the grid handles dimensions
+// Inner image layer — used inside a sized container so the grid handles dimensions.
+// objectPosition top keeps faces/titles in frame when a portrait cover is cropped
+// into a uniform square tile.
 function CoverTileInner({ item }: { item: Item }) {
   const stored = (item.metadata?.coverUrl as string | null) ?? (item.metadata?.wikiThumb as string | null) ?? null
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const src = artwork ?? stored
-  if (src) return <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+  if (src) return <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: item.type === 'music' ? 'center' : 'top' }} />
   return <span style={{ fontSize: 10, color: MUTE, textAlign: 'center', padding: '0 4px', lineHeight: 1.3 }}>{TYPE_LABEL[item.type] ?? item.type}</span>
 }
 
 function CanonGallery({ items }: { items: Item[] }) {
+  const [open, setOpen] = useState(true)
+
   const byType = useMemo(() => {
     const order = ['film', 'tv', 'book', 'music']
     const groups = new Map<string, Item[]>()
@@ -126,11 +130,23 @@ function CanonGallery({ items }: { items: Item[] }) {
   const multiType = byType.length > 1
 
   return (
-    <div style={{ marginBottom: 32 }}>
-      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 14 }}>
-        desert island
-      </div>
-      {byType.map(({ type, items: typeItems }) => (
+    <div style={{ marginBottom: open ? 32 : 0 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 7, width: '100%',
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          fontFamily: 'inherit', textAlign: 'left',
+          marginBottom: open ? 14 : 0,
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE }}>
+          desert island
+        </span>
+        <span style={{ fontSize: 11, color: MUTE }}>{items.length}</span>
+        <span style={{ fontSize: 10, color: MUTE, marginLeft: 'auto', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
+      </button>
+      {open && byType.map(({ type, items: typeItems }) => (
         <div key={type} style={{ marginBottom: multiType ? 22 : 0 }}>
           {multiType && (
             <div style={{ fontSize: 11, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>
@@ -142,34 +158,31 @@ function CanonGallery({ items }: { items: Item[] }) {
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 10,
           }}>
-            {typeItems.map(item => {
-              const isMusic = type === 'music'
-              return (
-                <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <div style={{
-                    width: '100%',
-                    aspectRatio: isMusic ? '1' : '2/3',
-                    borderRadius: 3, overflow: 'hidden',
-                    border: `1px solid ${HAIR}`, background: '#f5f4f2',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <CoverTileInner item={item} />
-                  </div>
-                  <div style={{
-                    fontSize: 11, color: GRAPHITE, lineHeight: 1.3,
-                    display: '-webkit-box', WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                  }}>
-                    {item.title}
-                  </div>
-                  {item.creator && (
-                    <div style={{ fontSize: 10, color: MUTE, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.creator}
-                    </div>
-                  )}
+            {typeItems.map(item => (
+              <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <div style={{
+                  width: '100%',
+                  aspectRatio: '1',
+                  borderRadius: 3, overflow: 'hidden',
+                  border: `1px solid ${HAIR}`, background: '#f5f4f2',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <CoverTileInner item={item} />
                 </div>
-              )
-            })}
+                <div style={{
+                  fontSize: 11, color: GRAPHITE, lineHeight: 1.3,
+                  display: '-webkit-box', WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                }}>
+                  {item.title}
+                </div>
+                {item.creator && (
+                  <div style={{ fontSize: 10, color: MUTE, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.creator}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       ))}
@@ -204,7 +217,9 @@ export function TasteScreen() {
     setGenerating(true)
     setGenError('')
     try {
-      const signal = items.filter(i => i.status === 'done' && (i.reaction === 'loved_it' || i.reaction === 'liked_it'))
+      // Send every rated item — including eh / not-for-me. The reaction is the
+      // primary signal; negatives tell the profiler what leaves this person cold.
+      const signal = doneWithReaction
       const canonTitles = canonItems.map(i => `${i.title} (${i.type})`)
       const primaryGap = aspirationGaps[0] ?? null
       const res = await fetch('/api/taste-profile', {

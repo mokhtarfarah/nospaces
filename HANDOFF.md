@@ -16,8 +16,7 @@
 
 **▶ START WITH: open-ended assessment of where to go next.** No pre-set work queue — review the app fresh and decide what's most valuable.
 
-**Quick win to knock out first:**
-- **Add `api/` to tsconfig** — Vercel caught pre-existing TS errors we missed locally because `tsc` only covers `src/`. Add `api/**/*.ts` to `tsconfig.json` include so they surface before deploy.
+**Quick win — ✅ done (session 40):** `api/` now typechecked via a dedicated `tsconfig.api.json` (Node types, DOM lib to match Vercel). Wired into `npm run typecheck` and the Stop hook. Surfaces api TS errors before deploy.
 
 **Flagged / unresolved:**
 - **Discover page not in final form** — redesign shipped (bigger covers, blurb hero, ink save chip, no-repeat logic) but Farah flagged it still needs more work. Assess next session with fresh eyes.
@@ -247,6 +246,13 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 40 (2026-06-21) — tsconfig api typecheck, TV auto-status, taste page ratings
+
+1. **api/ typecheck (quick win)** — new `tsconfig.api.json` (Node types + DOM lib to mirror Vercel's environment, avoiding undici `.json()→unknown` false positives). Added to `npm run typecheck` (`tsc && tsc -p tsconfig.api.json`) and the Stop hook so api TS errors surface locally before deploy.
+2. **TV auto-status** — ticking/unticking seasons now keeps status honest. `editItem` accepts `status`/`date_done`; `onSetSeasons` in `LibraryScreen` demotes a **done** show to **in_progress** when not all aired seasons are watched, and nudges a **want_to** show to **in_progress** once the first season is ticked. Auto-populated season lists (TVmaze) don't trigger this — only explicit user toggles persist via `onSetSeasons`.
+3. **Desert island gallery fixes** (`TasteScreen.tsx`) — (a) tiles were mismatched sizes across media (music 1:1 vs film/book/tv 2:3); now uniform 1:1 squares with `objectPosition:top` for posters (matches the library "all" grid pattern). (b) Section is now collapsible — header is a toggle button with item count + chevron, defaults open.
+4. **Taste profile takes ratings seriously** — the AI prose previously only received loved+liked items and treated private notes as primary evidence, so commentary outweighed ratings. Now `TasteScreen` sends the full rated spectrum; `api/taste-profile.ts` groups items by reaction (LOVED → liked → eh → not-for-me, per-bucket caps) and the prompt makes the **rating the primary signal**: anchor on loved, use rejections as the boundary of taste, and never let a heavily-annotated lower-rated item overshadow a loved one. Still requires ≥1 positive to generate.
 
 ### Session 38 (2026-06-05) — Review inbox redesign, vibe seeding fixes, small UX polish
 

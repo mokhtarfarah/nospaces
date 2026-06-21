@@ -268,6 +268,8 @@ export function useItems() {
     tags?: string[]
     source_detail?: string | null
     metadata?: Record<string, unknown>
+    status?: string
+    date_done?: string | null
   }) {
     await db().from('items').update(fields).eq('id', id)
     await fetch({ silent: true })

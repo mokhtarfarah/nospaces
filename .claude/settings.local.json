@@ -206,7 +206,7 @@
           },
           {
             "type": "command",
-            "command": "npx tsc --noEmit 2>&1 | tail -5 | grep -q 'error TS' && printf '{\"systemMessage\": \"typecheck: TypeScript errors found — run npm run typecheck to see them.\"}\\n' || true"
+            "command": "{ npx tsc --noEmit; npx tsc --noEmit -p tsconfig.api.json; } 2>&1 | grep -q 'error TS' && printf '{\"systemMessage\": \"typecheck: TypeScript errors found — run npm run typecheck to see them.\"}\\n' || true"
           }
         ]
       }
