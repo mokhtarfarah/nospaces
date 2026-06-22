@@ -14,7 +14,7 @@
 
 ## Next session
 
-**▶ START WITH: fix `api/email.ts` webhook spoofing (security #1 below) — top priority.** It's a real hole (spoofable `From`, no signature check, un-rate-limited → library injection + Anthropic cost-DoS) and was deliberately deferred to a fresh session because it also needs a Postmark-side shared secret. After that, work the security #2–#4 and the new-user audit #3–#7 queues below. Nothing in this list was fixed yet except audit #1 + #2 (session 43).
+**▶ START WITH: security #2 (rate-limit gaps on paid endpoints).** Security #1 (email webhook spoofing) is ✅ FIXED (session 44) — shared-secret gate live + verified. While fixing it, found and fixed a **production outage**: 5 endpoints (email, genres, identify, recommend, search) were crashing on every request since the genre consolidation — ESM `"type":"module"` rejects extensionless relative imports at runtime; added `.js` extensions. See session 44 log + the new ESM gotcha note in Architecture. After security #2, work security #3–#4 and the new-user audit #3–#7 queues below.
 
 ### ⭐ Review next time — new-user audit (session 43, verbatim)
 
@@ -42,7 +42,7 @@ Full editorial audit done through the lens of "a new user with great taste." Two
 
 Per-endpoint matrix (auth / rate-limit / calls-Anthropic) checked across all 17 `api/` endpoints. Findings, ranked:
 
-1. **[HIGH] `api/email.ts` inbound webhook is spoofable + un-rate-limited.** No auth, no Postmark signature/secret check — it trusts `req.body.From` and only checks it against `ALLOWED_EMAILS`. But `From` is attacker-controlled in a direct POST, and an allowed address (e.g. `farahmokhtar94@gmail.com`) is easy to guess. Impact: (a) inject arbitrary items into a real user's library, (b) **cost-DoS** — every POST fires multiple Sonnet calls (body up to 12k chars @ 8192 out, plus one per image attachment ≈ $0.05–0.15 each). Fix: verify a shared secret on the inbound URL (Postmark supports HTTP Basic Auth in the webhook URL, or add `?token=…` and check it) before any Anthropic call. **Top priority.**
+1. **[HIGH] `api/email.ts` inbound webhook is spoofable + un-rate-limited.** ✅ FIXED (session 44). Now requires `EMAIL_WEBHOOK_SECRET` (constant-time compared) on every request — via Postmark HTTP Basic Auth header OR `?token=` query param — verified *before* the body is read or any Anthropic call is made. Fails closed if the secret is unset. `EMAIL_WEBHOOK_SECRET` set in Vercel + on the Postmark inbound webhook URL. Verified: no/wrong token → 401 (free, pre-Anthropic); correct token → 200. *(Original hole: trusted attacker-controlled `req.body.From` against `ALLOWED_EMAILS`; a guessed allowed address → library injection + Sonnet cost-DoS.)*
 2. **[MEDIUM] Rate limiting is inconsistent.** Only `identify` + `recommend` call `checkRateLimit`. The other Anthropic endpoints — `describe`, `vibes`, `genres`, `taste-profile`, `recommend-feeds`, `search`, `runtime` — have auth but **no** rate limit. Auth caps blast radius to the 2 trusted users, but a runaway client loop or leaked session token could rack up cost (taste-profile / recommend-feeds / search are the pricier ones). Fix: add `checkRateLimit` to each (caps already patterned in `_ratelimit.ts`).
 3. **[LOW-MED] SSRF in `api/recommend-feeds.ts`.** `customFeeds[].url` from the request body is fetched server-side (`fetchFeed`) with no scheme/host allowlist — an authed user can point it at internal addresses. Blind-ish (only parsed RSS titles/content reach Claude) and auth-gated to 2 users, so low urgency. Fix: require `http(s)` + reject private/loopback hosts.
 4. **[LOW] `api/lookup.ts` is an unauthenticated open proxy.** Documented decision — only hits public catalog APIs (iTunes/TMDB/OpenLibrary/GoogleBooks), no Anthropic. Burns the TMDB key quota if scraped. Acceptable; optionally add light rate-limiting.
@@ -202,6 +202,9 @@ Vercel serverless can't import from `src/`. Previously the vocab was duplicated 
 ### Action card structure
 Read view: flat link row (edit · on my shelf/own it · about this · wikipedia · watch). Unconfirmed vibes shown muted. "add a verdict →" nudge on done items with no verdict → opens reaction view with verdict expanded. Edit view: auto-fill button at top, more-details collapsed section. Reaction view: reaction grid → canon → note → vibe/verdict chips → save.
 
+### api/ is ESM — relative imports MUST have `.js` extensions
+`package.json` has `"type": "module"`, so Vercel runs the `api/` functions as native ESM. **Node ESM rejects extensionless relative imports at runtime** (`ERR_MODULE_NOT_FOUND` → `FUNCTION_INVOCATION_FAILED` on every request) — even though the TS checker (`tsconfig.api.json`) and local `esbuild --bundle` both accept them (bundling inlines the import and hides the bug). So any `import … from './_genres'` must be written `'./_genres.js'` (the compiled output name, even though the source is `.ts`). This silently took down 5 endpoints between the genre consolidation and session 44. **When adding a new `api/` helper or importing one, always include the `.js` extension.**
+
 ### API auth + rate limiting
 Every `api/` endpoint requires Supabase auth and is rate-limited via the shared `api/_ratelimit.ts` (`checkRateLimit(userId, endpoint, limitPerHour)` → atomic `check_rate_limit()` RPC, backed by the `api_rate_limits` table in `schema.sql`). Caps are per-endpoint (e.g. identify 60/hr, recommend 10/hr). Fails closed if auth is missing.
 
@@ -278,6 +281,14 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 ---
 
 ## Recent session log
+
+### Session 44 (2026-06-22) — email webhook secret + ESM outage fix
+
+Set out to fix security #1 (email webhook spoofing); shipped that **and** uncovered/fixed a hidden production outage.
+
+1. **Security #1 — email webhook secret (shipped + verified).** `api/email.ts` now gates every request on `EMAIL_WEBHOOK_SECRET` (constant-time compare via `node:crypto`), accepted as Postmark HTTP Basic Auth OR a `?token=` query param, checked *before* the body is read or any Anthropic call fires. Fails closed if unset. Secret set in Vercel + on the Postmark inbound webhook URL. Verified live: no token → 401, wrong token → 401 (both free, pre-Anthropic), correct token → 200.
+2. **Production outage found + fixed (the real story).** While testing, the email endpoint 500'd (`FUNCTION_INVOCATION_FAILED`) — and so did `genres`, `identify`, `recommend`, `search`. Root cause: `package.json` `"type":"module"` makes Vercel run `api/` as ESM, which rejects **extensionless relative imports** at runtime. Every endpoint importing `./_genres` or `./_ratelimit` had been crashing on every request since the genre consolidation (session 40); failures were silent (email has no talkback yet, others fall back). Fixed by adding `.js` extensions to all 7 relative imports. New Architecture note documents the gotcha. Local typecheck + esbuild had hidden it (bundling inlines the import).
+3. **Committed earlier session-43 work** that was left uncommitted (login casing + model-name scrub) as `eccbf56`.
 
 ### Session 43 (2026-06-21) — new-user audit, casing/model-name fixes, security deep-dive
 
