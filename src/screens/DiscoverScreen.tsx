@@ -29,7 +29,7 @@ function normaliseSources(results: DiscoveryResult[]): DiscoveryResult[] {
     sources: Array.isArray(r.sources) ? r.sources
       : (r as unknown as { source?: string }).source
         ? [(r as unknown as { source: string }).source]
-        : ["Claude's knowledge"],
+        : ["nospaces"],
   }))
 }
 

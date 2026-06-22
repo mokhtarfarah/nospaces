@@ -14,13 +14,44 @@
 
 ## Next session
 
-**▶ START WITH: open-ended assessment of where to go next.** No pre-set work queue — review the app fresh and decide what's most valuable.
+**▶ START WITH: fix `api/email.ts` webhook spoofing (security #1 below) — top priority.** It's a real hole (spoofable `From`, no signature check, un-rate-limited → library injection + Anthropic cost-DoS) and was deliberately deferred to a fresh session because it also needs a Postmark-side shared secret. After that, work the security #2–#4 and the new-user audit #3–#7 queues below. Nothing in this list was fixed yet except audit #1 + #2 (session 43).
+
+### ⭐ Review next time — new-user audit (session 43, verbatim)
+
+Full editorial audit done through the lens of "a new user with great taste." Two items (#1 + #2) were fixed in session 43; the rest are the open queue. Kept word-for-word so it can be pulled back exactly.
+
+**Big ones (a discerning user notices in 10 seconds)**
+
+1. **The login screen is a different app.** ✅ FIXED (session 43). It was the only Title Case screen ("Nospaces" + "Your personal taste library"); now lowercase `nospaces` / `your personal taste library` to match the design constant.
+2. **Robot words leak into the UI.** ✅ FIXED (session 43). Scrubbed "Sonnet" (×2 in AddScreen) and the "Claude's knowledge" source fallback in Discover. Nobody with great taste knows what "Sonnet" is — it read like a debug label.
+3. **Discover is a locked door for a new user.** No taste profile = the whole page is a dead end that says "go to the taste page first." And the taste page itself needs rated items first. So a fresh user clicks Discover → wall. The most exciting feature is gated behind two prerequisites with no on-ramp. (`DiscoverScreen.tsx:84,202`)
+4. **Discover rows look ragged.** Music covers are 72×72, everything else is 56×84 — covers don't line up on a shared left edge in a mixed feed. Exactly what a design eye catches. (`DiscoverScreen.tsx:406`)
+
+**Medium**
+
+5. **"the gap" is a riddle.** On the taste page it shows `adding thriller · finishing horror` with no label explaining the idea. A new user has no clue what it means — needs one line of framing ("what you're collecting vs. what you actually finish"). (`TasteScreen.tsx:317`)
+6. **The empty-library line insults the visitor.** "go listen to some music you loser" — funny as a Farah-and-Tom inside joke, jarring to a stranger. Farah's call whether to keep it. (`LibraryScreen.tsx:899`)
+7. **The "nothing found — identify with Sonnet?" interstitial** adds a decision step mid-flow. A great-taste user expects "just find it" — make the fallback automatic or silent. (`AddScreen.tsx:367`)
+
+**What's genuinely good (don't touch):** library header restraint, decade grouping, the taste page's vibe-headline → prose → desert island arc, the editorial palette (once past login), the faithful-creators ("always loved") logic.
+
 
 **Quick win — ✅ done (session 40):** `api/` now typechecked via a dedicated `tsconfig.api.json` (Node types, DOM lib to match Vercel). Wired into `npm run typecheck` and the Stop hook. Surfaces api TS errors before deploy.
 
+### 🔐 Security audit (session 43, option-B manual deep-dive — fixes PENDING)
+
+Per-endpoint matrix (auth / rate-limit / calls-Anthropic) checked across all 17 `api/` endpoints. Findings, ranked:
+
+1. **[HIGH] `api/email.ts` inbound webhook is spoofable + un-rate-limited.** No auth, no Postmark signature/secret check — it trusts `req.body.From` and only checks it against `ALLOWED_EMAILS`. But `From` is attacker-controlled in a direct POST, and an allowed address (e.g. `farahmokhtar94@gmail.com`) is easy to guess. Impact: (a) inject arbitrary items into a real user's library, (b) **cost-DoS** — every POST fires multiple Sonnet calls (body up to 12k chars @ 8192 out, plus one per image attachment ≈ $0.05–0.15 each). Fix: verify a shared secret on the inbound URL (Postmark supports HTTP Basic Auth in the webhook URL, or add `?token=…` and check it) before any Anthropic call. **Top priority.**
+2. **[MEDIUM] Rate limiting is inconsistent.** Only `identify` + `recommend` call `checkRateLimit`. The other Anthropic endpoints — `describe`, `vibes`, `genres`, `taste-profile`, `recommend-feeds`, `search`, `runtime` — have auth but **no** rate limit. Auth caps blast radius to the 2 trusted users, but a runaway client loop or leaked session token could rack up cost (taste-profile / recommend-feeds / search are the pricier ones). Fix: add `checkRateLimit` to each (caps already patterned in `_ratelimit.ts`).
+3. **[LOW-MED] SSRF in `api/recommend-feeds.ts`.** `customFeeds[].url` from the request body is fetched server-side (`fetchFeed`) with no scheme/host allowlist — an authed user can point it at internal addresses. Blind-ish (only parsed RSS titles/content reach Claude) and auth-gated to 2 users, so low urgency. Fix: require `http(s)` + reject private/loopback hosts.
+4. **[LOW] `api/lookup.ts` is an unauthenticated open proxy.** Documented decision — only hits public catalog APIs (iTunes/TMDB/OpenLibrary/GoogleBooks), no Anthropic. Burns the TMDB key quota if scraped. Acceptable; optionally add light rate-limiting.
+
+**Verified OK:** service-role key is server-only (never shipped to client), `ALLOWED_EMAILS` fails closed when unset, Supabase queries are parameterized (no SQL injection), no `Access-Control-Allow-Origin: *`, `identify` caps input at 2000 chars, rate-limit fails open by design (Supabase hiccup won't block use).
+
 **Flagged / unresolved:**
 - **Discover page not in final form** — redesign shipped (bigger covers, blurb hero, ink save chip, no-repeat logic) but Farah flagged it still needs more work. Assess next session with fresh eyes. Two concrete code findings from the session-41 audit: (1) it's hard-gated behind the taste profile — no profile = a dead-end empty state; (2) cover sizes are inconsistent (music 72px vs others 56px) so rows don't align.
-- **Taste-page "stats" drift** — HANDOFF (sessions 30/31) describes a stats section on the taste page (medium filter pills, reaction breakdown, verdict counts, genre love-rate). That code is NOT in `TasteScreen.tsx` anymore — current page is vibe headline → AI prose → "the gap" → "always loved" → desert island. Unresolved whether it was deliberately cut or lost. **Next session: check git history (`git log -p src/screens/TasteScreen.tsx`) to find out which, then decide whether to restore.**
+- **Taste-page "stats" drift — RESOLVED (session 42).** The old stats section (medium filter pills, reaction breakdown, verdict counts, genre love-rate) was **deliberately removed**, not lost — commit `216e6ca` ("rate limiting + taste page redesign") stripped the page down to vibe words → AI prose → aspiration gap → always-loved creators → desert island gallery. Current `TasteScreen.tsx` matches this. The session 30/31 roadmap entries describing the 3-section page were stale and have been corrected. No action needed unless a stats section is wanted back.
 - **`ALLOWED_EMAILS` env var** — ✅ set in Vercel.
 - **Email talkback** — code live, waiting on Postmark account approval for sending to Gmail (submitted 2026-06-02).
 
@@ -55,7 +86,7 @@ cd /Users/farahmokhtar/nospaces && npm run dev  # localhost:5173
 ```bash
 npm test             # Vitest, run once
 npm run test:watch   # re-run on change
-npm run typecheck    # tsc --noEmit
+npm run typecheck    # tsc --noEmit (src) && tsc --noEmit -p tsconfig.api.json (api/)
 ```
 54 tests across `letterboxd`, `gaps`, `spotify`, `shows`, `genres`, `review`. CI runs on every push (GitHub Actions, free). **When adding pure logic, add a test.**
 
@@ -74,7 +105,8 @@ npm run typecheck    # tsc --noEmit
 - `src/lib/moods.ts` — vibe/verdict vocab + MOOD_REMAP. Edit freely.
 - `src/lib/genres.ts` — genre vocab per type (frontend source of truth).
 - `api/_genres.ts` — genre vocab for all Vercel functions (they can't import from src/). **Only TWO copies now** (session 40): `src/lib/genres.ts` + `api/_genres.ts`. Every api endpoint (`genres`, `identify`, `recommend`, `search`, `email`) imports from `api/_genres.ts` — never redeclare a local copy. `scripts/check-genres.mjs` (pre-commit) diffs the two and blocks drift.
-- `api/{identify,genres,email,art,blurb,lookup,watch,wiki,vibes,runtime}.ts`
+- `api/` endpoints: `identify` · `genres` · `vibes` · `email` · `art` · `blurb` · `lookup` · `watch` · `wiki` · `runtime` · `describe` · `search` · `geocode` · `shows` · `recommend` · `recommend-feeds` · `taste-profile`
+- `api/_genres.ts` (shared genre vocab) · `api/_ratelimit.ts` (shared auth + rate-limit; see Architecture)
 - `supabase/schema.sql`
 
 ---
@@ -149,7 +181,7 @@ iOS doesn't support PWA file share targets. Use screenshot → share → Mail �
 - **Vibes** = properties of the work → AI suggests (unconfirmed), user confirms. Stored in `moods[]` (confirmed) or `metadata.unconfirmedVibes` (unconfirmed, never in moods until user confirms).
 - **Axis metadata** in `moods.ts` groups cross-medium synonyms for the recommender.
 
-**Current verdicts (9):** comfort · guilty pleasure · hyperfixation · in rotation · unfinished business · delivers · respect, not love · overrated · so bad it's good
+**Current verdicts (10):** comfort · guilty pleasure · hyperfixation · in rotation · unfinished business · delivers · stuck with me · respect, not love · overrated · so bad it's good
 
 **Current vibes:**
 - Core (all media): hazy · dark · melancholic · nostalgic · romantic · off-kilter · epic · playful · sexy · sharp · lush
@@ -169,6 +201,9 @@ Vercel serverless can't import from `src/`. Previously the vocab was duplicated 
 
 ### Action card structure
 Read view: flat link row (edit · on my shelf/own it · about this · wikipedia · watch). Unconfirmed vibes shown muted. "add a verdict →" nudge on done items with no verdict → opens reaction view with verdict expanded. Edit view: auto-fill button at top, more-details collapsed section. Reaction view: reaction grid → canon → note → vibe/verdict chips → save.
+
+### API auth + rate limiting
+Every `api/` endpoint requires Supabase auth and is rate-limited via the shared `api/_ratelimit.ts` (`checkRateLimit(userId, endpoint, limitPerHour)` → atomic `check_rate_limit()` RPC, backed by the `api_rate_limits` table in `schema.sql`). Caps are per-endpoint (e.g. identify 60/hr, recommend 10/hr). Fails closed if auth is missing.
 
 ### Data gaps
 `itemGaps()` in `src/lib/gaps.ts` checks: year, creator, genre, runtime/pages, wikiUrl. Gaps accessible from Library header as persistent "tidy · N" link. Opens `GapsSheet` bottom sheet with filter chips + item list → deep-links into `/library?item=&edit=1&tidy=1` tidy-queue flow. Auto-fill tools (batch genre, runtime, wiki, art refresh, cleanup) remain on the Add page under "library tools."
@@ -210,9 +245,8 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ### Medium-term
 
 **Taste & stats**
-- **Taste page rebuild** — ✅ shipped. Three sections: identity (vibe ranked line + AI prose) → stats (lede, reaction breakdown, verdict tendencies, effort axis; filterable by medium) → by medium (collapsible cards per type).
+- **Taste page** — ✅ shipped, then redesigned (commit `216e6ca`). Current sections: vibe headline → AI prose → "the gap" (per-medium aspiration) → "always loved" (faithful creators) → desert island gallery. The earlier 3-section stats version (medium pills, reaction breakdown, verdict counts, effort axis) was **deliberately removed** in that redesign — do not assume it's still there.
 - **Regions map** — creator origin breakdown. Parked: needs nationality data (not stored). Next step: decide between manual country field vs Wikidata batch-pull.
-- **Taste stats: reaction breakdown** — ✅ shipped as part of taste page rebuild.
 
 **Taxonomy / vocabulary**
 - **New verdict: "stuck with me"** — ✅ shipped. Between "delivers" and "respect, not love". For things that weren't immediately enjoyable but lingered.
@@ -244,6 +278,27 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 43 (2026-06-21) — new-user audit, casing/model-name fixes, security deep-dive
+
+Editorial audit through a "new user with great taste" lens + an option-B manual security deep-dive of all 17 `api/` endpoints. Two small fixes shipped; everything else logged for next session (see "⭐ Review next time" and "🔐 Security audit" near the top).
+
+1. **Audit #1 — login casing fixed.** `LoginScreen.tsx` was the only Title Case surface ("Nospaces" / "Your personal taste library"); now lowercase to match the all-lowercase design constant.
+2. **Audit #2 — model names scrubbed from UI.** "Sonnet" → "ai" in `AddScreen.tsx` (sonnet-prompt copy + button + PickerSheet fallback). "Claude's knowledge" → "nospaces" in Discover — fixed at the source: the `api/recommend-feeds.ts` prompt instructed the model to emit `["Claude's knowledge"]` (two spots), plus the `normaliseSources` frontend fallback. Cached discover results may show the old label until the 48h TTL expires.
+3. **Audit #3–#7 logged, not fixed** — Discover dead-ends without a taste profile; ragged Discover cover sizes (72 vs 56/84); "the gap" needs a label; empty-library insult line (Farah's call); the catalog-miss interstitial is an extra step (kept as a deliberate cost gate).
+4. **Security deep-dive logged** — headline: `api/email.ts` is a spoofable, un-rate-limited inbound webhook (next session's #1). Plus rate-limit gaps on 7 paid endpoints, SSRF via custom feed URLs, and the documented unauth `lookup` proxy. Verified-clean list recorded too.
+5. **No code fixes** for #3–#7 or any security item this session — all deferred to a fresh session with clean context.
+
+### Session 42 (2026-06-21) — HANDOFF ↔ code reconciliation
+
+Docs-only pass: audited HANDOFF against the actual code and fixed every mismatch. No code changed.
+
+1. **Taste-page stats drift resolved** — confirmed via git (`216e6ca`) that the old 3-section stats page was **deliberately removed**, not lost. Rewrote the flag + the stale roadmap entries that still described medium pills / reaction breakdown / verdict counts / effort axis. Current page is correct as documented.
+2. **Verdict list corrected** — HANDOFF said "9 verdicts" and omitted `stuck with me`; code has 10.
+3. **Key files api list completed** — was 10 endpoints, actually 17 + `_genres.ts`/`_ratelimit.ts` helpers. Added the missing ones.
+4. **Added API auth + rate-limiting architecture note** — `api/_ratelimit.ts` (used by every endpoint, `check_rate_limit()` RPC) was undocumented.
+5. **`typecheck` comment fixed** — now runs two passes (src + `tsconfig.api.json`).
+6. **Verified accurate, left as-is** — 54 tests/6 files, models (sonnet-4-5 + haiku-4-5), all vibe lists, both discover flags (still real: taste-profile hard-gate + uneven cover sizes).
 
 ### Session 41 (2026-06-21) — fresh audit + library header / view / filter overhaul
 

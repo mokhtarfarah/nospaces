@@ -367,14 +367,14 @@ export function AddScreen() {
         {sonnetPrompt && !loading && (
           <div style={{ marginTop: 14, padding: '12px 14px', background: '#F7F7F7', borderRadius: 8, textAlign: 'center' }}>
             <p style={{ margin: '0 0 10px', fontSize: 13, color: '#555' }}>
-              nothing found in the catalog — identify with Sonnet instead?
+              nothing found in the catalog — let ai identify it instead?
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button
                 onClick={handleFallbackIdentify}
                 style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                identify with Sonnet
+                identify with ai
               </button>
               <button
                 onClick={() => setSonnetPrompt(false)}
@@ -523,7 +523,7 @@ function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
             onClick={onFallback}
             style={{ background: 'none', border: 'none', fontSize: 13, color: '#999', cursor: 'pointer', padding: 0 }}
           >
-            none of these — identify with Sonnet instead
+            none of these — let ai identify it instead
           </button>
         </div>
       </div>

@@ -15,10 +15,10 @@ export function LoginScreen() {
     }}>
       <div style={{ textAlign: 'center', maxWidth: 320, width: '100%' }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: '#111111', marginBottom: 8, letterSpacing: '-0.5px' }}>
-          Nospaces
+          nospaces
         </h1>
         <p style={{ color: '#666', fontSize: 15, marginBottom: 48, lineHeight: 1.5 }}>
-          Your personal taste library
+          your personal taste library
         </p>
         <button
           onClick={signInWithGoogle}

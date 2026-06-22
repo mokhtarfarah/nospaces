@@ -219,7 +219,7 @@ Find 8–10 recommendations that push beyond this person's established patterns.
 
 The "why" should make someone feel productively unsettled, not just confirmed. Don't write it like an in-taste pick with the departure mentioned as an afterthought.
 
-In "sources" put ["Claude's knowledge"] unless the feeds also happen to mention it.
+In "sources" put ["nospaces"] unless the feeds also happen to mention it.
 
 Return ONLY valid JSON (no markdown, no preamble):
 {
@@ -249,7 +249,7 @@ ${feedBlock}
 
 Find 8–12 recommendations that feel like an immediate yes for this person. Any type is fine. For each:
 - Explain in 1–2 sentences why it fits THIS person's specific taste, grounded in the profile
-- If the feeds mention it, list the relevant sources. If it comes from your knowledge alone, use ["Claude's knowledge"]. If multiple sources discuss it, list all of them — corroboration is meaningful signal.
+- If the feeds mention it, list the relevant sources. If it comes from your knowledge alone, use ["nospaces"]. If multiple sources discuss it, list all of them — corroboration is meaningful signal.
 
 Return ONLY valid JSON (no markdown, no preamble):
 {
