@@ -200,7 +200,16 @@
       "Bash(echo \"=== EXIT: $? ===\")",
       "Bash(grep -vE '^$|^>')",
       "Bash(npm install *)",
-      "Bash(node -e \"console.log\\('@sentry/react', require\\('./package.json'\\).dependencies['@sentry/react']\\)\")"
+      "Bash(node -e \"console.log\\('@sentry/react', require\\('./package.json'\\).dependencies['@sentry/react']\\)\")",
+      "Bash(gh run *)",
+      "Bash(curl -s \"https://api.github.com/repos/mokhtarfarah/nospaces/actions/runs?branch=main&per_page=1\")",
+      "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\)['workflow_runs'][0]; print\\('status:', r['status'], '| conclusion:', r['conclusion'], '| sha:', r['head_sha'][:7]\\)\")",
+      "Bash(lsof -ti:5173)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(git fetch *)",
+      "Bash(curl -s -o /dev/null -w \"live site: %{http_code}\\\\n\" https://nospaces.vercel.app)",
+      "Bash(curl -s -o /dev/null -w \"email endpoint \\(no auth, expect 401\\): %{http_code}\\\\n\" -X POST https://nospaces.vercel.app/api/email)",
+      "Bash(echo \"=== exit: $? ===\")"
     ]
   },
   "hooks": {

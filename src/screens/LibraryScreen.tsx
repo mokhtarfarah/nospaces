@@ -230,7 +230,20 @@ export function LibraryScreen() {
     scrollRestoredRef.current = true
     let saved = 0
     try { saved = Number(sessionStorage.getItem(SCROLL_KEY)) || 0 } catch { /* ignore */ }
-    if (saved > 0) requestAnimationFrame(() => listRef.current?.scrollTo({ top: saved }))
+    if (saved <= 0) return
+    // The list keeps growing for a few frames after load (decade groups + cover
+    // images mount), so a single scrollTo clamps to a too-short max and lands at
+    // top. Retry until the content is tall enough for the offset to stick (or we
+    // give up after ~1.5s of growing).
+    let frame = 0
+    const tryRestore = () => {
+      const el = listRef.current
+      if (!el) return
+      el.scrollTo({ top: saved })
+      const stuck = Math.abs(el.scrollTop - saved) <= 2
+      if (!stuck && frame < 90) { frame++; requestAnimationFrame(tryRestore) }
+    }
+    requestAnimationFrame(tryRestore)
   }, [loading])
 
   const [doneItem, setDoneItem] = useState<Item | null>(null)
@@ -917,8 +930,10 @@ function FilterSheet({
         )}
         {/* Trailing spacer instead of container padding-bottom: mobile WebKit
             omits a scroll container's own padding-bottom from the scrollable
-            area, clipping the last row. A real element is always scrollable to. */}
-        <div style={{ height: 'calc(28px + env(safe-area-inset-bottom))' }} />
+            area, clipping the last row. A real element is always scrollable to.
+            Height clears the fixed bottom tab bar (~80px) so the last row isn't
+            hidden behind it when the sheet is short (few tags / search active). */}
+        <div style={{ height: 'calc(88px + env(safe-area-inset-bottom))' }} />
       </div>
     </>
   )
