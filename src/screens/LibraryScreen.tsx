@@ -22,6 +22,10 @@ type StatusFilter = 'all' | ItemStatus
 // Persist the main library filters/view across reloads so a refresh doesn't reset
 // everything back to "all / recent". Stored in localStorage (per device).
 const PREFS_KEY = 'nospaces.libraryPrefs'
+// Scroll position is stashed per-session so an iOS PWA reload (e.g. tapping
+// through to Spotify and back kills + reloads the standalone app) returns you
+// to where you were instead of the top of the list.
+const SCROLL_KEY = 'nospaces.libraryScroll'
 type LibraryPrefs = {
   categories: string[]; statusFilter: StatusFilter; reactionFilter: ReactionFilter
   view: ViewMode; dir: SortDir; layout: 'list' | 'grid'; gridCols: 3 | 4
@@ -191,10 +195,34 @@ export function LibraryScreen() {
   // from momentum/rubber-band scrolling near the threshold.
   const [collapsed, setCollapsed] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+  const lastScrollRef = useRef(0)
   const onListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const t = e.currentTarget.scrollTop
+    lastScrollRef.current = t
     setCollapsed(prev => (prev ? t > 16 : t > 56))
   }, [])
+  // Persist scroll on background/hide (the moment iOS may kill a standalone PWA),
+  // and restore it once the list has loaded after the resulting reload.
+  useEffect(() => {
+    const save = () => {
+      try { sessionStorage.setItem(SCROLL_KEY, String(lastScrollRef.current)) } catch { /* ignore quota/private-mode */ }
+    }
+    const onVisibility = () => { if (document.visibilityState === 'hidden') save() }
+    window.addEventListener('pagehide', save)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', save)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
+  const scrollRestoredRef = useRef(false)
+  useEffect(() => {
+    if (loading || scrollRestoredRef.current) return
+    scrollRestoredRef.current = true
+    let saved = 0
+    try { saved = Number(sessionStorage.getItem(SCROLL_KEY)) || 0 } catch { /* ignore */ }
+    if (saved > 0) requestAnimationFrame(() => listRef.current?.scrollTo({ top: saved }))
+  }, [loading])
 
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
@@ -714,8 +742,15 @@ export function LibraryScreen() {
             onPatchTags={tags => editItem(fresh.id, { tags })}
             onMarkInProgress={() => { markInProgress(fresh.id); setActionItem(null) }}
             onMarkWantTo={() => { markWantTo(fresh.id); setActionItem(null) }}
-            onMarkDone={(reaction, note, moods) => { markDone(fresh.id, reaction, note, moods); setActionItem(null) }}
-            onEditReaction={(reaction, note, moods) => { editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }}
+            onMarkDone={async (reaction, note, moods) => {
+              try { await markDone(fresh.id, reaction, note, moods); setActionItem(null) }
+              catch { setToast("couldn't save — check your connection"); setTimeout(() => setToast(null), 3000) }
+            }}
+            onEditReaction={async (reaction, note, moods) => {
+              // reaction may be null: a note-only save on a not-yet-done item — keep status as-is.
+              try { await editItem(fresh.id, { reaction, note: note || null, moods }); setActionItem(null) }
+              catch { setToast("couldn't save — check your connection"); setTimeout(() => setToast(null), 3000) }
+            }}
             onSetSeasons={seasons => {
               // Persist the season checklist, and keep status honest: a TV show
               // isn't really "done" until every aired season is watched. Demote a

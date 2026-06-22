@@ -20,7 +20,7 @@ interface Props {
   onMarkInProgress?: () => void
   onMarkWantTo?: () => void
   onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
-  onEditReaction: (reaction: ItemReaction, note: string, moods: string[]) => void
+  onEditReaction: (reaction: ItemReaction | null, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
   onToggleOwned: (owned: boolean) => void
   onToggleCanon: (canon: boolean) => void
@@ -496,11 +496,15 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   }
 
   function handleSaveReaction() {
-    if (!reaction) return
     if (item.status === 'done') {
+      // Already done: persist the verdict + note + tags as-is.
       onEditReaction(reaction, note, selectedMoods)
-    } else {
+    } else if (reaction) {
+      // Verdict picked on a not-yet-done item: mark it done.
       onMarkDone(reaction, note, selectedMoods)
+    } else {
+      // Note-only (no verdict): save the note/tags without flipping status to done.
+      onEditReaction(null, note, selectedMoods)
     }
   }
 
@@ -1158,7 +1162,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             )}
             <div style={{ ...footer, display: 'flex', gap: 8 }}>
               <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
-              <button onClick={handleSaveReaction} disabled={!reaction} style={{ ...actionBtn('#fff'), flex: 1, background: reaction ? '#111111' : '#ccc', border: 'none' }}>save</button>
+              {(() => {
+                // Enable save when there's anything worth saving — a verdict, a note, or tags.
+                // A note no longer requires a verdict (notes can stand alone).
+                const canSave = !!reaction || note.trim().length > 0 || selectedMoods.length > 0
+                return <button onClick={handleSaveReaction} disabled={!canSave} style={{ ...actionBtn('#fff'), flex: 1, background: canSave ? '#111111' : '#ccc', border: 'none' }}>save</button>
+              })()}
             </div>
           </>
         )}

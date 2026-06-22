@@ -140,7 +140,7 @@ export function useItems() {
     const item = items.find(i => i.id === id)
     const metadata = item ? { ...item.metadata } : {}
     delete metadata.unconfirmedVibes
-    await db().from('items').update({
+    const { error } = await db().from('items').update({
       status: 'done',
       reaction,
       note: note || null,
@@ -148,6 +148,7 @@ export function useItems() {
       date_done: new Date().toISOString(),
       metadata,
     }).eq('id', id)
+    if (error) throw error
     await fetch({ silent: true })
   }
 
@@ -271,7 +272,8 @@ export function useItems() {
     status?: string
     date_done?: string | null
   }) {
-    await db().from('items').update(fields).eq('id', id)
+    const { error } = await db().from('items').update(fields).eq('id', id)
+    if (error) throw error
     await fetch({ silent: true })
   }
 

@@ -167,7 +167,7 @@ Return JSON only:
       "creator": "director / author / artist / showrunner",
       "type": "film|book|music|tv|other",
       "year": 1234,
-      "summary": "The newsletter's own description of this item — quote/paraphrase what the email actually says about it (1-2 sentences). Only if the email says nothing about it, write one sentence from your own knowledge. Null if there is genuinely nothing to say.",
+      "summary": "1-2 sentences describing the ITEM ITSELF — its sound/plot/themes and why it's worth attention — paraphrasing what the email says about it. Describe the work, not its role in the email: NEVER write meta sentences like 'this is the album reviewed in the article' or 'the main subject of this newsletter'. If the email says nothing substantive about it, write one sentence from your own knowledge. Null only if there is genuinely nothing to say.",
       "confidence": "high|medium|low",
       "metadata": {},
       "tags": []
