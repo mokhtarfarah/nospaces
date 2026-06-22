@@ -712,24 +712,22 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               // flexWrap so a long line (e.g. many vibes) wraps onto multiple
               // lines instead of overflowing. The terms are dot-separated with no
               // whitespace between them, so an inline layout has no break
-              // opportunity and can't wrap — flex items can. Each term carries its
-              // leading middot as one unit so the separator never orphans.
-              const tagLine = (terms: string[], muted: string[] = []) => (
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', fontSize: 13, lineHeight: 1.7, color: '#1C1B19' }}>
-                  {terms.map((t, i) => (
-                    <span key={t} style={{ display: 'inline-flex', alignItems: 'baseline' }}>
-                      {i > 0 && <span style={{ color: '#ABA69C', margin: '0 7px' }}>·</span>}
-                      <span>{t}</span>
-                    </span>
-                  ))}
-                  {muted.map((t, i) => (
-                    <span key={`m${t}`} style={{ color: '#ABA69C', display: 'inline-flex', alignItems: 'baseline' }}>
-                      {(terms.length > 0 || i > 0) && <span style={{ margin: '0 7px' }}>·</span>}
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              )
+              // opportunity and can't wrap — flex items can. The middot TRAILS each
+              // term (bundled with the term before it) so the separator stays at the
+              // end of a line and a wrapped line never begins with a dot.
+              const tagLine = (terms: string[], muted: string[] = []) => {
+                const all = [...terms.map(t => ({ t, muted: false })), ...muted.map(t => ({ t, muted: true }))]
+                return (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', fontSize: 13, lineHeight: 1.7, color: '#1C1B19' }}>
+                    {all.map((item, i) => (
+                      <span key={(item.muted ? 'm' : '') + item.t} style={{ display: 'inline-flex', alignItems: 'baseline', color: item.muted ? '#ABA69C' : undefined }}>
+                        {item.t}
+                        {i < all.length - 1 && <span style={{ color: '#ABA69C', margin: '0 7px' }}>·</span>}
+                      </span>
+                    ))}
+                  </div>
+                )
+              }
               const row = (label: string, content: React.ReactNode) => (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4 }}>
                   <span style={tagLabelStyle}>{label}</span>
