@@ -428,9 +428,9 @@ function ResultRow({ result: r, index, savedSource, onSave, onDismiss }: {
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: `url(${artwork})`, backgroundSize: 'cover', backgroundPosition: 'center',
-          filter: 'blur(14px)', opacity: 0.22, transform: 'scale(1.15)',
-          WebkitMaskImage: 'linear-gradient(90deg, transparent 28%, #000 105%)',
-          maskImage: 'linear-gradient(90deg, transparent 28%, #000 105%)',
+          filter: 'blur(12px)', opacity: 0.42, transform: 'scale(1.15)',
+          WebkitMaskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
+          maskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
         }} />
       ) : (
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent 35%, ${fallbackTint})` }} />
