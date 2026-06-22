@@ -13,12 +13,13 @@ const INK = '#1C1B19'
 const GRAPHITE = '#6F6B64'
 const MUTE = '#ABA69C'
 const HAIR = '#ECEAE6'
+const NUMERAL = '#CFCBC2' // light grey for the masthead-list numerals
 
 type TypeKey = 'film' | 'music' | 'book' | 'tv'
 // Section order: film → music → book → tv (locked in session-52 spec)
 const TYPE_ORDER: TypeKey[] = ['film', 'music', 'book', 'tv']
 const TYPE_LABEL: Record<TypeKey, string> = { film: 'films', music: 'music', book: 'books', tv: 'tv' }
-const PREVIEW_COUNT = 3 // picks shown per section before "more →"
+type MediumFilter = 'all' | TypeKey
 
 type Stream = 'foryou' | 'further'
 
@@ -26,6 +27,15 @@ const CACHE_TTL_MS = 48 * 60 * 60 * 1000
 
 function isStale(cachedAt: string): boolean {
   return Date.now() - new Date(cachedAt).getTime() > CACHE_TTL_MS
+}
+
+// ISO week number — drives the editorial "no.NN" so it ticks over weekly.
+function isoWeek(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const day = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
 }
 
 function normaliseSources(results: DiscoveryResult[]): DiscoveryResult[] {
@@ -43,7 +53,7 @@ export function DiscoverScreen() {
   const { tasteProfile, discoveryCache, setDiscoveryCache, customFeeds, setCustomFeeds, dismissedDiscoverTitles, dismissDiscoverTitle, seenDiscoverTitles, addSeenDiscoverTitles, prefsLoaded } = usePrefs()
 
   const [stream, setStream] = useState<Stream>('foryou')
-  const [drillType, setDrillType] = useState<TypeKey | null>(null)
+  const [mediumFilter, setMediumFilter] = useState<MediumFilter>('all')
 
   const [intasteResults, setIntasteResults] = useState<DiscoveryResult[]>([])
   const [divertResults, setDivertResults] = useState<DiscoveryResult[]>([])
@@ -57,6 +67,7 @@ export function DiscoverScreen() {
   const [moodResults, setMoodResults] = useState<DiscoveryResult[]>([])
   const [moodActive, setMoodActive] = useState(false)
   const [moodLoading, setMoodLoading] = useState(false)
+  const [moodOpen, setMoodOpen] = useState(false) // mood input row visible
 
   // Map of lowercase title → first source label, for saved-this-session items
   const [savedItems, setSavedItems] = useState<Map<string, string>>(new Map())
@@ -128,7 +139,7 @@ export function DiscoverScreen() {
   async function runMoodSearch() {
     const q = moodInput.trim()
     if (!q || moodLoading) return
-    setMoodLoading(true); setMoodActive(true); setDrillType(null); setError(null)
+    setMoodLoading(true); setMoodActive(true); setError(null)
     try {
       const headers = await authHeaders()
       const res = await fetch('/api/recommend-feeds', {
@@ -145,11 +156,11 @@ export function DiscoverScreen() {
   }
 
   function clearMood() {
-    setMoodActive(false); setMoodResults([]); setMoodInput(''); setDrillType(null)
+    setMoodActive(false); setMoodResults([]); setMoodInput(''); setMoodOpen(false)
   }
 
   function selectStream(next: Stream) {
-    setStream(next); setDrillType(null)
+    setStream(next); setMoodOpen(false)
     if (next === 'further' && tasteProfile && !divertLoaded && !divertLoading) fetchMode('divert')
   }
 
@@ -199,15 +210,11 @@ export function DiscoverScreen() {
     [activeResults, libraryTitleSet, savedItems, dismissedSet] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  const byType = useMemo(() => {
-    const m = new Map<TypeKey, DiscoveryResult[]>()
-    for (const t of TYPE_ORDER) m.set(t, [])
-    for (const r of displayed) {
-      const arr = m.get(r.type as TypeKey)
-      if (arr) arr.push(r)
-    }
-    return m
-  }, [displayed])
+  // One flat, numbered run. The medium switcher narrows it; "all" interleaves.
+  const shown = useMemo(
+    () => mediumFilter === 'all' ? displayed : displayed.filter(r => r.type === mediumFilter),
+    [displayed, mediumFilter]
+  )
 
   function handleAddFeed() {
     const url = normaliseFeedUrl(newFeedUrl)
@@ -220,89 +227,87 @@ export function DiscoverScreen() {
 
   const allFeeds = [...DEFAULT_FEEDS, ...customFeeds]
   const isLoadingActive = moodActive ? moodLoading : (stream === 'further' ? divertLoading : intasteLoading)
-  // Stream view always shows all four mediums (consistent structure, even when a
-  // medium is empty this round). Mood is a focused query — only show what matched.
-  const visibleTypes = drillType ? [drillType]
-    : moodActive ? TYPE_ORDER.filter(t => (byType.get(t)?.length ?? 0) > 0)
-    : TYPE_ORDER
+
+  const now = new Date()
+  const issueNo = isoWeek(now)
+  const dateLabel = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  const streamLabel = moodActive ? 'in the mood' : stream === 'further' ? 'further afield' : 'for you'
 
   return (
     <div style={{ padding: '20px 20px 100px', fontFamily: 'inherit' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>discover</h1>
-      </div>
+      {/* Masthead */}
+      <header style={{ textAlign: 'center', borderBottom: `1.5px solid ${INK}`, paddingBottom: 14, marginBottom: 12 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 600, margin: 0, color: INK, letterSpacing: '-0.5px', lineHeight: 1 }}>discover</h1>
+        <div style={{ fontSize: 10, color: MUTE, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: 9 }}>
+          {streamLabel} · no.{issueNo} · {dateLabel}
+        </div>
+      </header>
 
-      {/* Mood search bar */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-        <input
-          value={moodInput}
-          onChange={e => setMoodInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') runMoodSearch() }}
-          placeholder="in the mood for…"
-          style={{
-            flex: 1, boxSizing: 'border-box', padding: '9px 12px',
-            border: `1.5px solid ${HAIR}`, borderRadius: 8, fontSize: 14,
-            fontFamily: 'inherit', outline: 'none', color: INK,
-          }}
-        />
-        <button
-          onClick={runMoodSearch}
-          disabled={!moodInput.trim() || moodLoading}
-          style={{
-            flexShrink: 0, padding: '0 14px', borderRadius: 8, border: 'none',
-            background: moodInput.trim() && !moodLoading ? INK : HAIR,
-            color: moodInput.trim() && !moodLoading ? '#fff' : MUTE,
-            fontSize: 13, fontWeight: 600, cursor: moodInput.trim() ? 'pointer' : 'default',
-            fontFamily: 'inherit',
-          }}
-        >
-          {moodLoading ? '…' : 'go'}
-        </button>
-      </div>
+      {error && <p style={{ fontSize: 12, color: '#C0392B', textAlign: 'center', margin: '12px 0 0' }}>{error}</p>}
 
-      {error && <p style={{ fontSize: 12, color: '#C0392B', marginBottom: 16 }}>{error}</p>}
-
-      {/* Mood-results banner — overrides the stream view until cleared */}
+      {/* Nav bar: for you · further afield · in the mood — or the active-mood line */}
       {moodActive ? (
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 22 }}>
-          <span style={{ fontSize: 12, color: GRAPHITE, fontStyle: 'italic' }}>
-            in the mood for “{moodInput.trim() || '…'}”
-          </span>
-          <button onClick={clearMood} style={{ background: 'none', border: 'none', color: GRAPHITE, fontSize: 12, cursor: 'pointer', padding: 0 }}>
-            clear ✕
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 12, padding: '12px 0' }}>
+          <span style={{ fontSize: 12, color: GRAPHITE, fontStyle: 'italic' }}>in the mood for “{moodInput.trim() || '…'}”</span>
+          <button onClick={clearMood} style={{ background: 'none', border: 'none', color: MUTE, fontSize: 12, cursor: 'pointer', padding: 0 }}>clear ✕</button>
         </div>
       ) : (
-        /* Stream toggle: for you ⇄ further afield */
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 24, borderBottom: `1px solid ${HAIR}`, paddingBottom: 14 }}>
-          <StreamTab label="for you" active={stream === 'foryou'} onClick={() => selectStream('foryou')} />
-          {tasteProfile && (
-            <StreamTab label="further afield" active={stream === 'further'} onClick={() => selectStream('further')} />
-          )}
-          {hasIntaste && stream === 'foryou' && (
-            <button
-              onClick={() => fetchMode('intaste', true)}
-              disabled={intasteLoading}
-              style={{ marginLeft: 'auto', background: 'none', border: 'none', color: intasteLoading ? MUTE : GRAPHITE, fontSize: 11, cursor: 'pointer', padding: 0 }}
-            >
+        <nav style={{ display: 'flex', justifyContent: 'center', gap: 16, padding: '12px 0' }}>
+          <NavLink label="for you" active={stream === 'foryou'} onClick={() => selectStream('foryou')} />
+          <span style={{ color: MUTE, fontSize: 11 }}>·</span>
+          {tasteProfile && (<>
+            <NavLink label="further afield" active={stream === 'further'} onClick={() => selectStream('further')} />
+            <span style={{ color: MUTE, fontSize: 11 }}>·</span>
+          </>)}
+          <NavLink label="in the mood…" active={moodOpen} onClick={() => setMoodOpen(v => !v)} />
+        </nav>
+      )}
+
+      {/* Mood input — expands from the nav */}
+      {moodOpen && !moodActive && (
+        <div style={{ display: 'flex', gap: 8, margin: '4px 0 12px' }}>
+          <input
+            value={moodInput}
+            onChange={e => setMoodInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') runMoodSearch() }}
+            placeholder="something funny but smart…"
+            autoFocus
+            style={{ flex: 1, boxSizing: 'border-box', padding: '9px 12px', border: `1.5px solid ${HAIR}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', color: INK }}
+          />
+          <button
+            onClick={runMoodSearch}
+            disabled={!moodInput.trim() || moodLoading}
+            style={{ flexShrink: 0, padding: '0 14px', borderRadius: 8, border: 'none', background: moodInput.trim() && !moodLoading ? INK : HAIR, color: moodInput.trim() && !moodLoading ? '#fff' : MUTE, fontSize: 13, fontWeight: 600, cursor: moodInput.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
+          >
+            {moodLoading ? '…' : 'go'}
+          </button>
+        </div>
+      )}
+
+      {/* Medium switcher */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 14, padding: '8px 0 16px', borderBottom: `0.5px solid ${HAIR}`, marginBottom: 16 }}>
+        <MediumLink label="all" active={mediumFilter === 'all'} onClick={() => setMediumFilter('all')} />
+        {TYPE_ORDER.map(t => (
+          <MediumLink key={t} label={TYPE_LABEL[t]} active={mediumFilter === t} onClick={() => setMediumFilter(t)} />
+        ))}
+      </div>
+
+      {/* Count + refresh */}
+      {!isLoadingActive && shown.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
+          <span style={{ fontSize: 11, color: MUTE }}>{shown.length} {shown.length === 1 ? 'pick' : 'picks'}</span>
+          {!moodActive && stream === 'foryou' && hasIntaste && (
+            <button onClick={() => fetchMode('intaste', true)} disabled={intasteLoading} style={{ background: 'none', border: 'none', color: intasteLoading ? MUTE : GRAPHITE, fontSize: 11, cursor: 'pointer', padding: 0 }}>
               {intasteLoading ? 'loading…' : 'refresh ↺'}
             </button>
           )}
         </div>
       )}
 
-      {/* Drill-in back link */}
-      {drillType && (
-        <button onClick={() => setDrillType(null)} style={{ background: 'none', border: 'none', color: GRAPHITE, fontSize: 12, cursor: 'pointer', padding: 0, marginBottom: 18 }}>
-          ← all
-        </button>
-      )}
-
-      {/* Editorial explainer — only shown at true cold start (no taste profile) */}
-      {!moodActive && usingEditorial && !drillType && (
-        <div style={{ marginBottom: 28, padding: '12px 14px', background: '#FAF9F7', borderRadius: 10 }}>
+      {/* Editorial explainer — only at true cold start (no taste profile) */}
+      {!moodActive && usingEditorial && (
+        <div style={{ marginBottom: 20, padding: '12px 14px', background: '#FAF9F7', borderRadius: 10 }}>
           <p style={{ fontSize: 12, color: GRAPHITE, lineHeight: 1.6, margin: 0 }}>
             <strong style={{ color: INK, fontWeight: 600 }}>starter picks</strong> — a hand-picked shortlist of broadly loved films, music, books and tv while you get going. Not personalised.{' '}
             <span style={{ color: GRAPHITE }}>Build a taste profile on the taste page for recommendations made for you.</span>
@@ -310,52 +315,33 @@ export function DiscoverScreen() {
         </div>
       )}
 
-      {/* Loading state */}
-      {isLoadingActive && (
-        <p style={{ fontSize: 12, color: MUTE, marginBottom: 24 }}>loading…</p>
-      )}
+      {/* Loading */}
+      {isLoadingActive && <p style={{ fontSize: 12, color: MUTE, textAlign: 'center', marginBottom: 24 }}>loading…</p>}
 
-      {/* Empty (mood / divert / for-you returned nothing) */}
-      {!isLoadingActive && displayed.length === 0 && (
-        <p style={{ fontSize: 13, color: MUTE, lineHeight: 1.6, marginBottom: 24 }}>
+      {/* Empty */}
+      {!isLoadingActive && shown.length === 0 && (
+        <p style={{ fontSize: 13, color: MUTE, lineHeight: 1.6, textAlign: 'center', marginBottom: 24 }}>
           {moodActive ? 'nothing matched — try a different mood'
             : stream === 'further' ? 'nothing further afield this round — refresh to try again'
+            : mediumFilter !== 'all' ? `no ${TYPE_LABEL[mediumFilter as TypeKey]} this round`
             : 'no picks yet — refresh to pull a fresh set'}
         </p>
       )}
 
-      {/* Type-first stacked sections — strong per-medium separation + a visible
-          count on every header so the (uneven) numbers are transparent. */}
-      {!isLoadingActive && displayed.length > 0 && visibleTypes.map((t, idx) => {
-        const all = byType.get(t) ?? []
-        const shown = drillType ? all : all.slice(0, PREVIEW_COUNT)
-        const hasMore = !drillType && all.length > PREVIEW_COUNT
-        return (
-          <section key={t} style={{ marginBottom: 12, paddingTop: idx === 0 ? 0 : 24, borderTop: idx === 0 ? 'none' : `1px solid ${HAIR}`, marginTop: idx === 0 ? 0 : 12 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: INK, letterSpacing: '-0.01em' }}>{TYPE_LABEL[t]}</h2>
-                <span style={{ fontSize: 12, color: MUTE }}>{all.length}</span>
-              </div>
-              {hasMore && (
-                <button onClick={() => setDrillType(t)} style={{ background: 'none', border: 'none', color: GRAPHITE, fontSize: 12, fontWeight: 500, cursor: 'pointer', padding: 0 }}>
-                  see all {all.length} →
-                </button>
-              )}
-            </div>
-            {all.length === 0 ? (
-              <p style={{ fontSize: 12, color: MUTE, marginBottom: 8 }}>nothing this round</p>
-            ) : (
-              shown.map((r, i) => (
-                <ResultRow key={i} result={r} savedSource={savedItems.get(r.title.toLowerCase()) ?? null} onSave={() => handleSave(r)} onDismiss={() => dismissDiscoverTitle(r.title)} />
-              ))
-            )}
-          </section>
-        )
-      })}
+      {/* The numbered run */}
+      {!isLoadingActive && shown.map((r, i) => (
+        <ResultRow
+          key={r.title.toLowerCase()}
+          result={r}
+          index={i + 1}
+          savedSource={savedItems.get(r.title.toLowerCase()) ?? null}
+          onSave={() => handleSave(r)}
+          onDismiss={() => dismissDiscoverTitle(r.title)}
+        />
+      ))}
 
       {/* Sources */}
-      <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginTop: 8 }}>
+      <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginTop: 16 }}>
         <button onClick={() => setSourcesOpen(v => !v)} style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0 }}>
           {sourcesOpen ? 'sources ▴' : 'sources ▾'} · {allFeeds.length}
         </button>
@@ -406,114 +392,95 @@ export function DiscoverScreen() {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function StreamTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function NavLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-        fontSize: 13, fontWeight: active ? 600 : 400,
-        fontStyle: active ? 'italic' : 'normal',
-        color: active ? INK : MUTE,
-      }}
-    >
+    <button onClick={onClick} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal', color: active ? INK : GRAPHITE }}>
       {label}
     </button>
   )
 }
 
-function ResultRow({ result: r, savedSource, onSave, onDismiss }: {
+function MediumLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{ background: 'none', border: 'none', padding: '0 0 3px', cursor: 'pointer', fontSize: 11, letterSpacing: '0.3px', color: active ? INK : MUTE, borderBottom: active ? `1.5px solid ${INK}` : '1.5px solid transparent' }}>
+      {label}
+    </button>
+  )
+}
+
+function ResultRow({ result: r, index, savedSource, onSave, onDismiss }: {
   result: DiscoveryResult
+  index: number
   savedSource: string | null
   onSave: () => void
   onDismiss: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
-  const sourceLabel = r.sources.length === 1 ? r.sources[0] : `${r.sources[0]} +${r.sources.length - 1}`
+  const artwork = useArtwork(r.type, r.title, r.creator, r.year, null)
+  const fallbackTint = typeColor(r.type).bg
   const isSaved = savedSource !== null
+  const meta = [r.type, r.year ?? undefined, r.creator ?? undefined].filter(Boolean).join(' · ')
 
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', paddingBottom: 24, marginBottom: 24, borderBottom: `1px solid ${HAIR}` }}>
-      <DiscoverCover title={r.title} creator={r.creator} type={r.type} year={r.year} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Title + year */}
-        <div style={{ marginBottom: 2 }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{r.title}</span>
-          {r.year && <span style={{ fontSize: 12, color: MUTE, marginLeft: 6 }}>{r.year}</span>}
-        </div>
-        {/* Creator */}
-        {r.creator && (
-          <div style={{ fontSize: 12, color: GRAPHITE, marginBottom: 6 }}>{r.creator}</div>
-        )}
-        {/* Type · source */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, color: MUTE }}>{r.type} · via {sourceLabel}</span>
-          <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
-        </div>
-        {/* Why blurb — clamped to ~2 lines in the feed, full on tap */}
-        {r.why && (
-          <p
-            onClick={() => setExpanded(v => !v)}
-            style={{
-              fontSize: 13, color: GRAPHITE, lineHeight: 1.7, margin: '0 0 12px',
-              fontStyle: 'italic', cursor: 'pointer',
-              ...(expanded ? {} : {
-                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }),
-            }}
-          >
-            {r.why}
-          </p>
-        )}
-        {/* Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {isSaved ? (
-            <span style={{ fontSize: 11, color: MUTE }}>saved ✓︎</span>
-          ) : (
-            <button
-              onClick={onSave}
+    <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}>
+      {/* Ghosted cover art — blurred + faded in from the right, behind the text */}
+      {artwork ? (
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: `url(${artwork})`, backgroundSize: 'cover', backgroundPosition: 'center',
+          filter: 'blur(14px)', opacity: 0.22, transform: 'scale(1.15)',
+          WebkitMaskImage: 'linear-gradient(90deg, transparent 28%, #000 105%)',
+          maskImage: 'linear-gradient(90deg, transparent 28%, #000 105%)',
+        }} />
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent 35%, ${fallbackTint})` }} />
+      )}
+
+      <div style={{ position: 'relative', display: 'flex', gap: 14, padding: '14px 14px 16px' }}>
+        <span style={{ fontSize: 22, fontWeight: 600, color: NUMERAL, lineHeight: 1, flexShrink: 0, letterSpacing: '-0.5px' }}>{index}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.25 }}>{r.title}</div>
+          <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', margin: '3px 0 8px' }}>
+            {meta}
+          </div>
+          {r.why && (
+            <p
+              onClick={() => setExpanded(v => !v)}
               style={{
-                background: INK, color: '#fff', border: 'none', borderRadius: 6,
-                fontSize: 11, fontWeight: 600, padding: '5px 12px', cursor: 'pointer',
-                fontFamily: 'inherit',
+                fontSize: 13, color: '#4A453E', lineHeight: 1.65, margin: '0 0 10px',
+                fontStyle: 'italic', cursor: 'pointer',
+                ...(expanded ? {} : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
               }}
             >
-              + save
-            </button>
+              {r.why}
+            </p>
           )}
-          {!isSaved && (
-            <button
-              onClick={onDismiss}
-              style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
-            >
-              not interested
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {isSaved ? (
+              <span style={{ fontSize: 11, color: MUTE }}>saved ✓︎</span>
+            ) : (
+              <button onClick={onSave} style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: INK, cursor: 'pointer', fontFamily: 'inherit', borderBottom: `1px solid ${INK}`, lineHeight: 1.4 }}>
+                save to library
+              </button>
+            )}
+            {!isSaved && (
+              <button onClick={onDismiss} style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                not for me
+              </button>
+            )}
+            <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-function DiscoverCover({ title, creator, type, year }: { title: string; creator: string | null; type: string; year: number | null }) {
-  const artwork = useArtwork(type, title, creator, year, null)
-  const color = typeColor(type)
-  const isMusic = type === 'music'
-  // Same width for every type so covers share a left edge and the text column
-  // starts at the same x; music stays square (album art) instead of portrait.
-  const w = 56
-  const h = isMusic ? 56 : 84
-  return artwork
-    ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: `1px solid ${HAIR}`, flexShrink: 0 }} />
-    : <div style={{ width: w, height: h, background: color.bg, flexShrink: 0, border: `1px solid ${HAIR}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: color.border, letterSpacing: '0.3px' }}>{type}</div>
-}
-
 function DiscoverWikiLink({ title, creator, type, year }: { title: string; creator: string | null; type: string; year: number | null }) {
   const { url } = useWikipediaInfo(type, title, creator, year, null)
   if (!url) return null
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="tlink" style={{ fontSize: 11 }}>
+    <a href={url} target="_blank" rel="noopener noreferrer" className="tlink" style={{ fontSize: 11, marginLeft: 'auto' }}>
       wikipedia ↗︎
     </a>
   )
