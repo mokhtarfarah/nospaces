@@ -42,6 +42,20 @@ export async function fetchCaptures(limit = 30): Promise<EmailCapture[]> {
   return (data ?? []) as EmailCapture[]
 }
 
+/** Clear a single capture by id (RLS scopes the delete to the owner). */
+export async function clearCapture(id: string): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('email_captures')
+    .delete()
+    .eq('id', id)
+  if (error) {
+    console.error('[captures] clear-one failed:', error.message)
+    return false
+  }
+  return true
+}
+
 /** Clear the whole capture log for the signed-in user. Returns false on failure. */
 export async function clearCaptures(): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser()

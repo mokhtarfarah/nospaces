@@ -21,9 +21,10 @@ function ago(dateStr: string): string {
 
 // Read-only feed of forwarded emails that added nothing to the library — the
 // silent cases the "for review" inbox can't show (it only holds saved items).
-export function CapturesSheet({ captures, onClear, onClose }: {
+export function CapturesSheet({ captures, onClear, onClearOne, onClose }: {
   captures: EmailCapture[]
   onClear: () => void
+  onClearOne: (id: string) => void
   onClose: () => void
 }) {
   return (
@@ -40,7 +41,7 @@ export function CapturesSheet({ captures, onClear, onClose }: {
           <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', margin: 0 }}>email captures</p>
           {captures.length > 0 && (
             <button onClick={onClear} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: '#6F6B64' }}>
-              clear
+              clear all
             </button>
           )}
         </div>
@@ -54,7 +55,7 @@ export function CapturesSheet({ captures, onClear, onClose }: {
               nothing here — every forward has landed.
             </p>
           ) : (
-            captures.map(c => <CaptureRow key={c.id} capture={c} />)
+            captures.map(c => <CaptureRow key={c.id} capture={c} onClear={() => onClearOne(c.id)} />)
           )}
         </div>
       </div>
@@ -62,7 +63,7 @@ export function CapturesSheet({ captures, onClear, onClose }: {
   )
 }
 
-function CaptureRow({ capture: c }: { capture: EmailCapture }) {
+function CaptureRow({ capture: c, onClear }: { capture: EmailCapture; onClear: () => void }) {
   const failure = isFailure(c)
   return (
     <div style={{
@@ -98,6 +99,16 @@ function CaptureRow({ capture: c }: { capture: EmailCapture }) {
             </div>
           )}
         </div>
+        <button
+          onClick={onClear}
+          aria-label="clear this capture"
+          style={{
+            flexShrink: 0, alignSelf: 'flex-start', background: 'none', border: 'none',
+            padding: '0 0 0 8px', cursor: 'pointer', fontSize: 16, lineHeight: 1, color: '#C4C0B8',
+          }}
+        >
+          &#215;&#xFE0E;
+        </button>
       </div>
     </div>
   )
