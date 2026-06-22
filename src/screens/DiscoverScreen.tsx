@@ -441,8 +441,8 @@ function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }:
         {/* Oversized rank numeral — fills the row, clips top/bottom, sits behind the text */}
         <span style={{
           position: 'absolute', left: 2, top: '50%', transform: 'translateY(-50%)',
-          fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 120, fontWeight: 500,
-          color: NUMERAL, lineHeight: 1, letterSpacing: '-4px', zIndex: 0,
+          fontFamily: 'inherit', fontSize: 120, fontWeight: 600,
+          color: NUMERAL, lineHeight: 1, letterSpacing: '-6px', zIndex: 0,
           pointerEvents: 'none', userSelect: 'none',
         }}>{index}</span>
         <div style={{ position: 'relative', zIndex: 1, minWidth: 0, paddingLeft: 56 }}>
@@ -510,7 +510,7 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
 
         {/* Header — number + cover + title + meta */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
-          <span style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 56, fontWeight: 500, color: NUMERAL, lineHeight: 0.85, flexShrink: 0, letterSpacing: '-2px' }}>{index}</span>
+          <span style={{ fontFamily: 'inherit', fontSize: 56, fontWeight: 600, color: NUMERAL, lineHeight: 0.85, flexShrink: 0, letterSpacing: '-3px' }}>{index}</span>
           {artwork
             ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
             : <div style={{ width: w, height: h, background: color.bg, border: '1px solid #EEE', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: color.border }}>{r.type}</div>}
