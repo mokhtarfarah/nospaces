@@ -14,7 +14,7 @@
 
 ## Next session
 
-**▶ START WITH: security #2 (rate-limit gaps on paid endpoints).** Security #1 (email webhook spoofing) is ✅ FIXED (session 44) — shared-secret gate live + verified. While fixing it, found and fixed a **production outage**: 5 endpoints (email, genres, identify, recommend, search) were crashing on every request since the genre consolidation — ESM `"type":"module"` rejects extensionless relative imports at runtime; added `.js` extensions. See session 44 log + the new ESM gotcha note in Architecture. After security #2, work security #3–#4 and the new-user audit #3–#7 queues below.
+**▶ START WITH: security #3 (SSRF in recommend-feeds custom feed URLs).** Security #1 (email webhook spoofing) ✅ FIXED (session 44). Security #2 (rate-limit gaps) ✅ FIXED (session 45) — all 7 remaining Anthropic endpoints (`describe`, `vibes`, `genres`, `taste-profile`, `recommend-feeds`, `search`, `runtime`) now call `checkRateLimit`; cheap Haiku ones capped 60/hr, the two pricey Sonnet ones (taste-profile, recommend-feeds) 20/hr. After security #3–#4, work the new-user audit #3–#7 queues below.
 
 ### ⭐ Review next time — new-user audit (session 43, verbatim)
 
@@ -43,7 +43,7 @@ Full editorial audit done through the lens of "a new user with great taste." Two
 Per-endpoint matrix (auth / rate-limit / calls-Anthropic) checked across all 17 `api/` endpoints. Findings, ranked:
 
 1. **[HIGH] `api/email.ts` inbound webhook is spoofable + un-rate-limited.** ✅ FIXED (session 44). Now requires `EMAIL_WEBHOOK_SECRET` (constant-time compared) on every request — via Postmark HTTP Basic Auth header OR `?token=` query param — verified *before* the body is read or any Anthropic call is made. Fails closed if the secret is unset. `EMAIL_WEBHOOK_SECRET` set in Vercel + on the Postmark inbound webhook URL. Verified: no/wrong token → 401 (free, pre-Anthropic); correct token → 200. *(Original hole: trusted attacker-controlled `req.body.From` against `ALLOWED_EMAILS`; a guessed allowed address → library injection + Sonnet cost-DoS.)*
-2. **[MEDIUM] Rate limiting is inconsistent.** Only `identify` + `recommend` call `checkRateLimit`. The other Anthropic endpoints — `describe`, `vibes`, `genres`, `taste-profile`, `recommend-feeds`, `search`, `runtime` — have auth but **no** rate limit. Auth caps blast radius to the 2 trusted users, but a runaway client loop or leaked session token could rack up cost (taste-profile / recommend-feeds / search are the pricier ones). Fix: add `checkRateLimit` to each (caps already patterned in `_ratelimit.ts`).
+2. **[MEDIUM] Rate limiting is inconsistent.** ✅ FIXED (session 45). All 7 endpoints (`describe`, `vibes`, `genres`, `taste-profile`, `recommend-feeds`, `search`, `runtime`) now call `checkRateLimit` after auth. Each was switched from the local boolean `requireAuth` to the shared `getAuthUserId` + `checkRateLimit` from `_ratelimit.js` (also deleted the duplicated Supabase client boilerplate). Caps: Haiku/cheap (describe, vibes, genres, search, runtime) = 60/hr; pricey Sonnet (taste-profile, recommend-feeds) = 20/hr — in line with identify=60 / recommend=10. *(email.ts calls Anthropic but is a secret-gated webhook with no Supabase user to key on — correctly excluded.)*
 3. **[LOW-MED] SSRF in `api/recommend-feeds.ts`.** `customFeeds[].url` from the request body is fetched server-side (`fetchFeed`) with no scheme/host allowlist — an authed user can point it at internal addresses. Blind-ish (only parsed RSS titles/content reach Claude) and auth-gated to 2 users, so low urgency. Fix: require `http(s)` + reject private/loopback hosts.
 4. **[LOW] `api/lookup.ts` is an unauthenticated open proxy.** Documented decision — only hits public catalog APIs (iTunes/TMDB/OpenLibrary/GoogleBooks), no Anthropic. Burns the TMDB key quota if scraped. Acceptable; optionally add light rate-limiting.
 
@@ -281,6 +281,15 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 ---
 
 ## Recent session log
+
+### Session 45 (2026-06-22) — security #2: rate-limit gaps closed
+
+Closed security finding #2 (the MEDIUM rate-limit inconsistency).
+
+1. **Rate-limited 7 paid endpoints.** `describe`, `vibes`, `genres`, `taste-profile`, `recommend-feeds`, `search`, `runtime` previously had auth but no rate limit — a runaway client loop or leaked session token could rack up Anthropic cost. Each now calls `checkRateLimit(userId, '<endpoint>', cap)` right after auth, returning 429 on exceed. Caps: Haiku/cheap = 60/hr (describe, vibes, genres, search, runtime); pricey Sonnet = 20/hr (taste-profile, recommend-feeds).
+2. **Refactor while there.** Each endpoint had its own copy-pasted `_ce`/`_sba`/`_ac`/`requireAuth` (boolean) Supabase boilerplate. Swapped all to the shared `getAuthUserId` + `checkRateLimit` from `_ratelimit.js` — less duplication, and `getAuthUserId` returns the userId the rate-limiter needs. Removed the now-unused `createClient` import from `search.ts`.
+3. **email.ts deliberately excluded** — it calls Anthropic but is a shared-secret webhook with no Supabase user session to key a per-user limit on; its abuse vector (spoofing) was closed in session 44.
+4. **Verified:** `npm run typecheck` (src + api) clean, all 54 tests pass.
 
 ### Session 44 (2026-06-22) — email webhook secret + ESM outage fix
 

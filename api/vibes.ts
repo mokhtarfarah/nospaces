@@ -1,10 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createClient } from '@supabase/supabase-js'
-const _ce = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
-let _sba: ReturnType<typeof createClient> | null = null
-const _ac = () => { if (!_sba) _sba = createClient(_ce(process.env.SUPABASE_URL), _ce(process.env.SUPABASE_SERVICE_ROLE_KEY)); return _sba }
-async function requireAuth(req: VercelRequest): Promise<boolean> { const a = req.headers['authorization']; if (!a?.startsWith('Bearer ')) return false; try { const { error } = await _ac().auth.getUser(a.slice(7)); return !error } catch { return false } }
+import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
 
 // Vibe vocab — mirrors vibesForType() in src/lib/moods.ts (keep in sync)
 const VIBES_CORE = ['hazy','dark','melancholic','nostalgic','romantic','off-kilter','epic','playful','sexy','sharp','lush']
@@ -27,7 +23,9 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
-  if (!await requireAuth(req)) return res.status(401).end()
+  const userId = await getAuthUserId(req.headers['authorization'])
+  if (!userId) return res.status(401).end()
+  if (!await checkRateLimit(userId, 'vibes', 60)) return res.status(429).json({ error: 'Rate limit exceeded. Try again next hour.' })
 
   const { title, creator, type, year } = req.body as { title?: string; creator?: string; type?: string; year?: number | null }
   if (!title || !type) return res.status(400).json({ suggestions: [] })
