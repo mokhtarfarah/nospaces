@@ -868,7 +868,7 @@ function FilterSheet({
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#fff', borderRadius: '16px 16px 0 0',
-        padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201, maxWidth: 480, margin: '0 auto',
+        padding: '12px 20px 0', zIndex: 201, maxWidth: 480, margin: '0 auto',
         maxHeight: '80dvh', overflowY: 'auto',
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
@@ -893,6 +893,10 @@ function FilterSheet({
         {seriesRelevant && availableTags.series.length > 0 && (
           <FilterSection label="series" options={availableTags.series} selected={seriesFilter} onSelect={onToggleSeries} />
         )}
+        {/* Trailing spacer instead of container padding-bottom: mobile WebKit
+            omits a scroll container's own padding-bottom from the scrollable
+            area, clipping the last row. A real element is always scrollable to. */}
+        <div style={{ height: 'calc(28px + env(safe-area-inset-bottom))' }} />
       </div>
     </>
   )

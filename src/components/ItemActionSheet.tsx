@@ -516,7 +516,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
         background: '#fff', borderRadius: '16px 16px 0 0',
         padding: '10px 20px 0', zIndex: 201,
         maxWidth: 480, margin: '0 auto',
-        maxHeight: '96dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+        // overflowX must be explicit: a vertical `auto` promotes the unset
+        // horizontal axis to `auto` too, so any slightly-wide child (a long vibe
+        // row, an unbreakable word) made the whole sheet scroll sideways.
+        maxHeight: '96dvh', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
       }}>
         {view === 'main' && (
           <>
