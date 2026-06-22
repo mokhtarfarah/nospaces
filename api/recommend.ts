@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getAuthUserId, checkRateLimit } from './_ratelimit'
-import { GENRE_VOCAB } from './_genres'
+import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
+import { GENRE_VOCAB } from './_genres.js'
 
 // Both text queries and URL input go through web_search_20250305. Direct
 // server-side fetch doesn't work for modern editorial sites (JS-rendered, e.g.

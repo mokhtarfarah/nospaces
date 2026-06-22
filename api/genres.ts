@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { GENRE_VOCAB } from './_genres'
+import { GENRE_VOCAB } from './_genres.js'
 const _ce = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
 let _sba: ReturnType<typeof createClient> | null = null
 const _ac = () => { if (!_sba) _sba = createClient(_ce(process.env.SUPABASE_URL), _ce(process.env.SUPABASE_SERVICE_ROLE_KEY)); return _sba }

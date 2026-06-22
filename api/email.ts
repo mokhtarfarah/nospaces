@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { genreBlock } from './_genres'
+import { genreBlock } from './_genres.js'
 
 // Strip any non-ASCII chars that may have crept in via copy-paste
 const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()

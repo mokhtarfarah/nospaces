@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getAuthUserId, checkRateLimit } from './_ratelimit'
-import { GENRE_VOCAB } from './_genres'
+import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
+import { GENRE_VOCAB } from './_genres.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 

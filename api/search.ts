@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { GENRE_FLAT as GENRES } from './_genres'
+import { GENRE_FLAT as GENRES } from './_genres.js'
 
 const _ce = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
 let _sba: ReturnType<typeof createClient> | null = null
