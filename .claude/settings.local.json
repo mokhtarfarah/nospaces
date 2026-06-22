@@ -171,6 +171,10 @@
       "Bash(bash /Users/farahmokhtar/nospaces/scripts/check-handoff-staleness.sh)",
       "Bash(chmod +x /Users/farahmokhtar/nospaces/scripts/check-session-wrap.sh)",
       "Bash(bash /Users/farahmokhtar/nospaces/scripts/check-session-wrap.sh)",
+      "Bash(bash scripts/check-tests.sh)",
+      "Bash(bash scripts/check-test-coverage.sh)",
+      "Bash(bash scripts/check-roadmap.sh)",
+      "Bash(bash scripts/check-handoff-size.sh)",
       "Bash(bash -c 'SESSION_ID=$\\(jq -r \".session_id // \\\\\"unknown\\\\\"\" 2>/dev/null\\); MARKER=\"/tmp/nospaces_started_${SESSION_ID}\"; [ ! -f \"$MARKER\" ] && touch \"$MARKER\" && printf \"{\\\\\"hookSpecificOutput\\\\\": {\\\\\"hookEventName\\\\\": \\\\\"UserPromptSubmit\\\\\", \\\\\"additionalContext\\\\\": \\\\\"SESSION START: Read HANDOFF.md before responding — focus on the Next session priorities and Roadmap sections.\\\\\"}}\\\\n\" || true')",
       "mcp__visualize__read_me",
       "mcp__visualize__show_widget",
@@ -188,7 +192,11 @@
       "Bash(curl -s -o /dev/null -w \"genres GET -> %{http_code}\\\\n\" https://nospaces.vercel.app/api/genres)",
       "Bash(node /tmp/esmtest.mjs)",
       "Bash(node /tmp/esmtest2.mjs)",
-      "Bash(curl -s -X POST https://nospaces.vercel.app/api/email?token=__TRACKED_VAR__ -H 'Content-Type: application/json' -d '{\"From\":\"Farah <farahmokhtar94@gmail.com>\",\"Subject\":\"Fwd: you should watch this\",\"TextBody\":\"have you seen Portrait of a Lady on Fire? the 2019 film by Celine Sciamma. incredible.\",\"OriginalRecipient\":\"inbox@nospaces.xyz\"}' -w '\\\\nHTTP %{http_code}\\\\n')"
+      "Bash(curl -s -X POST https://nospaces.vercel.app/api/email?token=__TRACKED_VAR__ -H 'Content-Type: application/json' -d '{\"From\":\"Farah <farahmokhtar94@gmail.com>\",\"Subject\":\"Fwd: you should watch this\",\"TextBody\":\"have you seen Portrait of a Lady on Fire? the 2019 film by Celine Sciamma. incredible.\",\"OriginalRecipient\":\"inbox@nospaces.xyz\"}' -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('hooks',{}\\), indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; print\\(json.dumps\\(json.load\\(sys.stdin\\).get\\('scripts',{}\\),indent=2\\)\\)\")",
+      "Bash(chmod +x scripts/check-tests.sh scripts/check-test-coverage.sh scripts/check-roadmap.sh scripts/check-handoff-size.sh)",
+      "Bash(python3 -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\); print\\('settings.local.json: valid JSON'\\)\")"
     ]
   },
   "hooks": {
@@ -224,6 +232,22 @@
           {
             "type": "command",
             "command": "{ npx tsc --noEmit; npx tsc --noEmit -p tsconfig.api.json; } 2>&1 | grep -q 'error TS' && printf '{\"systemMessage\": \"typecheck: TypeScript errors found — run npm run typecheck to see them.\"}\\n' || true"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/check-tests.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/check-test-coverage.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/check-roadmap.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/check-handoff-size.sh"
           }
         ]
       }

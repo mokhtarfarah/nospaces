@@ -90,6 +90,8 @@ npm run typecheck    # tsc --noEmit (src) && tsc --noEmit -p tsconfig.api.json (
 ```
 54 tests across `letterboxd`, `gaps`, `spotify`, `shows`, `genres`, `review`. CI runs on every push (GitHub Actions, free). **When adding pure logic, add a test.**
 
+**Tests run automatically:** a Stop hook (`scripts/check-tests.sh`) runs Vitest after each turn and warns on failures; the pre-commit hook hard-blocks any commit where genres/typecheck/tests fail (bypass with `git commit --no-verify`). All local + free.
+
 ---
 
 ## Key files
@@ -240,10 +242,13 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 - **Move "shows near you" to discover tab** — ✅ shipped. Removed from music filter row; now a "shows near you / browse →" row above sources on the discover tab.
 - **"Not interested" dismiss on discover** — dismiss per result row, titles stored in prefs. Client-side only, no AI signal value — purely keeps feed clean.
 
-**Dev automation (next 3 to build)**
+**Dev automation**
 - **Typecheck on Stop hook** — ✅ done. Stop hook runs `tsc --noEmit` and injects a system message if any `error TS` lines are found.
 - **HANDOFF.md staleness warning** — ✅ done. `scripts/check-handoff-staleness.sh` fires on Stop; warns if screens/key components changed but HANDOFF.md wasn't updated.
 - **moods.ts → guide reminder** — ✅ done. Stop hook regex now includes `src/lib/moods.ts`.
+- **Automatic testing** — ✅ done (session 46). Two layers: (1) `scripts/check-tests.sh` runs Vitest on Stop and warns on failures (only when `.ts/.tsx` changed); (2) pre-commit hook is now a hard gate — `check-genres` + `npm run typecheck` + `vitest run` must pass to commit (`--no-verify` to bypass). `scripts/check-test-coverage.sh` nudges when `src/lib` logic changed but no test did. CI (`ci.yml`) remains the push-side backstop.
+- **Roadmap reminder** — ✅ done (session 46). `scripts/check-roadmap.sh` fires on Stop when `src/`/`api/` code shipped but the Roadmap section wasn't touched — nudges to mark items ✅ shipped AND pitch new roadmap items.
+- **HANDOFF cleanup reminder** — ✅ done (session 46). `scripts/check-handoff-size.sh` fires on Stop when the session log exceeds ~8 entries and HANDOFF was edited this session — suggests archiving oldest sessions to `docs/HANDOFF-archive.md`.
 
 ### Medium-term
 
@@ -281,6 +286,15 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 ---
 
 ## Recent session log
+
+### Session 46 (2026-06-22) — dev automation: auto-testing, roadmap + handoff-cleanup reminders
+
+Built three automation pieces on top of the existing hook scaffolding. All local + free (no Anthropic cost).
+
+1. **Automatic testing (two layers).** (a) New Stop hook `scripts/check-tests.sh` runs `vitest run` after each turn and injects a warning if tests fail (only when `.ts/.tsx` changed, so it stays quiet otherwise). (b) The `.git/hooks/pre-commit` gate — previously genres-only — now also runs `npm run typecheck` + `vitest run`; a broken commit is blocked (`--no-verify` bypass). (c) `scripts/check-test-coverage.sh` nudges when `src/lib` logic changed but no test file did.
+2. **Roadmap reminders.** `scripts/check-roadmap.sh` fires on Stop when `src/`/`api/` code shipped but the HANDOFF Roadmap region wasn't edited — nudges to (1) mark finished items ✅ shipped and (2) pitch NEW roadmap items the work surfaced.
+3. **Handoff cleanup.** `scripts/check-handoff-size.sh` fires on Stop when the session log passes ~8 entries AND HANDOFF was edited this session — suggests archiving the oldest sessions to `docs/HANDOFF-archive.md` (log is at 22 now, so this will start firing). Roadmap + Next session stay inline.
+4. **Wiring.** All four scripts registered in `.claude/settings.local.json` Stop hooks + permission allowlist. Verified: settings JSON valid, 54 tests pass, scripts stay silent on a no-app-code session.
 
 ### Session 45 (2026-06-22) — security audit queue closed (#2, #3, #4)
 
