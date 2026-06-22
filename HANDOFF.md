@@ -15,7 +15,7 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**Last session (48):** editorial polish — #4 (Discover covers now share a left edge) and #5 (labelled "the gap") shipped. **Next up: a round of input bug + workflow fixes** Farah hit while using the app this week — search not working, identify-with-AI quality, etc. Do that in a fresh session.
+**Last session (49):** input/workflow bug round — fixed notes silently not saving (data loss), library losing scroll spot on the Spotify round-trip, AI blurb describing the article instead of the item, and two mobile sheet-layout bugs (sideways card drift + clipped filter popup). All pushed to main; **none verified against the live app** (port held + login wall) — Farah to confirm on the deployed build / phone. One item left from her list: **#6, a "failed email captures" feed on the review page — a feature, deferred to its own session.**
 
 ---
 

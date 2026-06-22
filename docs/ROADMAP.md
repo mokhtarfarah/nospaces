@@ -32,6 +32,9 @@ Each has a reason it's parked and a trigger to revisit. Don't re-raise without n
 **Taste & stats**
 - The earlier 3-section stats version of the taste page (medium pills, reaction breakdown, verdict counts, effort axis) was **deliberately removed** in the `216e6ca` redesign. Current page: vibe headline → AI prose → "the gap" → "always loved" → desert island gallery. Don't assume the stats sections still exist. Revisit only if a stats section is actively wanted back.
 
+**Capture & review**
+- **Failed-capture feed (review page).** When a forwarded email/article doesn't capture properly, there's no way to see what fell through. Add a feed of failed/partial captures on the review page so nothing silently vanishes. Surfaced session 49; it's a feature (needs a small design — what "failed" means, where the data lives), not a quick fix.
+
 **Expansion beyond media (long-term)**
 - **Restaurants, museums, exhibitions, experiences** — same reaction/note/tag model; new types. Taste profile generalises naturally.
 - **Calendar integration** — surface relevant items + suggestions based on where Farah will be. "You'll be in Tokyo in March — 3 things from your want-to list."
