@@ -709,16 +709,21 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               const needsVerdict = item.status === 'done' && verdicts.length === 0
               if (!activeGenres.length && !feel.length && !verdicts.length && !unconfirmedVibes.length && !needsVerdict) return null
 
+              // flexWrap so a long line (e.g. many vibes) wraps onto multiple
+              // lines instead of overflowing. The terms are dot-separated with no
+              // whitespace between them, so an inline layout has no break
+              // opportunity and can't wrap — flex items can. Each term carries its
+              // leading middot as one unit so the separator never orphans.
               const tagLine = (terms: string[], muted: string[] = []) => (
-                <div style={{ fontSize: 13, lineHeight: 1.7, color: '#1C1B19' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', fontSize: 13, lineHeight: 1.7, color: '#1C1B19' }}>
                   {terms.map((t, i) => (
-                    <span key={t}>
+                    <span key={t} style={{ display: 'inline-flex', alignItems: 'baseline' }}>
                       {i > 0 && <span style={{ color: '#ABA69C', margin: '0 7px' }}>·</span>}
                       <span>{t}</span>
                     </span>
                   ))}
                   {muted.map((t, i) => (
-                    <span key={`m${t}`} style={{ color: '#ABA69C' }}>
+                    <span key={`m${t}`} style={{ color: '#ABA69C', display: 'inline-flex', alignItems: 'baseline' }}>
                       {(terms.length > 0 || i > 0) && <span style={{ margin: '0 7px' }}>·</span>}
                       {t}
                     </span>
