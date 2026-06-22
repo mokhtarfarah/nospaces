@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
@@ -21,6 +22,39 @@ if (!process.env.ALLOWED_EMAILS) {
 }
 const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS ?? '')
   .split(',').map(e => e.trim()).filter(Boolean)
+
+// Inbound webhook secret. Postmark authenticates the webhook by HTTP Basic Auth baked into
+// the configured URL (https://user:SECRET@host/api/email), which arrives as an
+// `Authorization: Basic base64(user:SECRET)` header. A `?token=SECRET` query param is also
+// accepted as a fallback. This gate runs before the body is read or any paid API is called,
+// closing the spoofable-`From` cost-DoS hole (a direct POST can forge `From`, but not the secret).
+const WEBHOOK_SECRET = cleanEnv(process.env.EMAIL_WEBHOOK_SECRET)
+if (!WEBHOOK_SECRET) {
+  console.error('[email] EMAIL_WEBHOOK_SECRET not set — all inbound email will be rejected (fail closed)')
+}
+
+// Constant-time compare; returns false on any length mismatch (timingSafeEqual throws on
+// unequal-length buffers) so an attacker can't learn the secret length via timing.
+function secretMatches(provided: string): boolean {
+  if (!WEBHOOK_SECRET || !provided) return false
+  const a = new Uint8Array(Buffer.from(provided))
+  const b = new Uint8Array(Buffer.from(WEBHOOK_SECRET))
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+function isAuthorized(req: VercelRequest): boolean {
+  // ?token=SECRET fallback
+  const token = (req.query?.token as string | undefined) ?? ''
+  if (secretMatches(token)) return true
+  // Authorization: Basic base64(user:SECRET) — compare the password half
+  const auth = req.headers.authorization ?? ''
+  if (auth.startsWith('Basic ')) {
+    const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8')
+    const pass = decoded.slice(decoded.indexOf(':') + 1)
+    if (secretMatches(pass)) return true
+  }
+  return false
+}
 
 // Talkback: reply to the sender with what happened (saved / nothing / error) so a silent
 // failure can never go unnoticed again. No-ops safely until POSTMARK_SERVER_TOKEN is set,
@@ -184,6 +218,14 @@ export const config = { maxDuration: 60 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
+
+  // Reject any caller that can't present the shared webhook secret BEFORE reading the body
+  // or calling Anthropic. Without this, a direct POST can forge an allowed `From` address
+  // and trigger paid Sonnet calls (cost-DoS) + inject items into a real user's library.
+  if (!isAuthorized(req)) {
+    console.warn('[email] rejected: missing or invalid webhook secret')
+    return res.status(401).json({ error: 'unauthorized' })
+  }
 
   // Postmark sends inbound emails as JSON
   const { From, Subject, TextBody, HtmlBody, Attachments, OriginalRecipient, ToFull } = req.body
