@@ -122,17 +122,6 @@ function groupByDecade(items: Item[]): Map<string, Item[]> {
   return map
 }
 
-function groupByStatus(items: Item[]): Map<string, Item[]> {
-  const wantTo     = items.filter(i => i.status === 'want_to')
-  const inProgress = items.filter(i => i.status === 'in_progress')
-  const done       = items.filter(i => i.status === 'done')
-  const map = new Map<string, Item[]>()
-  if (wantTo.length > 0)     map.set('Want to', wantTo)
-  if (inProgress.length > 0) map.set('In progress', inProgress)
-  if (done.length > 0)       map.set('Done', done)
-  return map
-}
-
 function itemSource(item: Item): string {
   return item.source_detail?.trim() || item.source.replace(/_/g, ' ')
 }
@@ -174,7 +163,12 @@ export function LibraryScreen() {
   const [genreFilter, setGenreFilter] = useState<string | null>(null)
   const [seriesFilter, setSeriesFilter] = useState<string | null>(null)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
-  const [view, setView] = useState<ViewMode>(() => loadPrefs().view ?? 'year')
+  // Guard against a view persisted before some options were removed — fall back
+  // to 'year' so an old localStorage value can't index into a missing config.
+  const [view, setView] = useState<ViewMode>(() => {
+    const v = loadPrefs().view
+    return v && v in VIEW_CONFIG ? v : 'year'
+  })
   const [dir, setDir] = useState<SortDir>(() => loadPrefs().dir ?? VIEW_CONFIG.year.defaultDir)
   const [layout, setLayout] = useState<'list' | 'grid'>(() => loadPrefs().layout ?? 'grid')
   // 3 vs 4 columns in grid view — 3 reads well on mobile, 4 is tighter for desktop.
@@ -389,7 +383,6 @@ export function LibraryScreen() {
   const grouped = useMemo(() => {
     if (view === 'year')     return groupByDecade(filtered)
     if (group === 'creator') return groupByCreator(filtered)
-    if (group === 'status')  return groupByStatus(filtered)
     if (group === 'none')    return groupNone(filtered)
     return groupByMonth(filtered)
   }, [filtered, group, view])

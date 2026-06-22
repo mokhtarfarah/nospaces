@@ -9,28 +9,25 @@ export type ReactionFilter = 'all' | ItemReaction
 
 // A "view" bundles ordering + grouping into one coherent choice, instead of two
 // separate (and conflicting) sort/group controls.
-export type ViewMode = 'recent' | 'edited' | 'status' | 'creator' | 'alpha' | 'year' | 'rating'
+export type ViewMode = 'recent' | 'year' | 'creator' | 'alpha'
 
 // `defaultDir` is the order a view opens in. `directional` views can be reversed
 // by tapping the already-selected row again (a → z becomes z → a, etc).
 export const VIEW_CONFIG: Record<ViewMode, {
   sort: SortOption
-  group: 'month' | 'creator' | 'none' | 'status'
+  group: 'month' | 'creator' | 'none'
   label: string
   hint: string
   defaultDir: SortDir
   directional?: boolean
 }> = {
-  recent:  { sort: 'date_added', group: 'month',   label: 'recent',         hint: 'by date added, grouped by month',      defaultDir: 'desc', directional: true },
-  edited:  { sort: 'updated',    group: 'none',    label: 'recently edited', hint: 'by last change',                      defaultDir: 'desc', directional: true },
-  status:  { sort: 'date_added', group: 'status',  label: 'want to / done', hint: 'your list split by status',            defaultDir: 'desc' },
-  creator: { sort: 'creator',    group: 'creator', label: 'by creator',     hint: 'grouped by director / author / artist', defaultDir: 'asc', directional: true },
-  alpha:   { sort: 'alpha',      group: 'none',    label: 'a → z',          hint: 'alphabetical',                         defaultDir: 'asc', directional: true },
-  year:    { sort: 'year',       group: 'none',    label: 'by year',        hint: 'release year',                         defaultDir: 'desc', directional: true },
-  rating:  { sort: 'reaction',   group: 'none',    label: 'by rating',      hint: 'loved it first',                       defaultDir: 'asc' },
+  recent:  { sort: 'date_added', group: 'month',   label: 'recent',     hint: 'by date added, grouped by month',       defaultDir: 'desc', directional: true },
+  year:    { sort: 'year',       group: 'none',    label: 'by year',    hint: 'release year',                          defaultDir: 'desc', directional: true },
+  creator: { sort: 'creator',    group: 'creator', label: 'by creator', hint: 'grouped by director / author / artist', defaultDir: 'asc',  directional: true },
+  alpha:   { sort: 'alpha',      group: 'none',    label: 'a → z',      hint: 'alphabetical',                          defaultDir: 'asc',  directional: true },
 }
 
-const ORDER: ViewMode[] = ['recent', 'edited', 'status', 'creator', 'alpha', 'year', 'rating']
+const ORDER: ViewMode[] = ['recent', 'year', 'creator', 'alpha']
 
 interface Props {
   current: ViewMode
