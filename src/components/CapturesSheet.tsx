@@ -21,8 +21,9 @@ function ago(dateStr: string): string {
 
 // Read-only feed of forwarded emails that added nothing to the library — the
 // silent cases the "for review" inbox can't show (it only holds saved items).
-export function CapturesSheet({ captures, onClose }: {
+export function CapturesSheet({ captures, onClear, onClose }: {
   captures: EmailCapture[]
+  onClear: () => void
   onClose: () => void
 }) {
   return (
@@ -35,7 +36,14 @@ export function CapturesSheet({ captures, onClose }: {
         maxHeight: '90dvh', display: 'flex', flexDirection: 'column',
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 16px', flexShrink: 0 }} />
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', margin: '0 0 4px' }}>email captures</p>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '0 0 4px' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', margin: 0 }}>email captures</p>
+          {captures.length > 0 && (
+            <button onClick={onClear} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: '#6F6B64' }}>
+              clear
+            </button>
+          )}
+        </div>
         <p style={{ fontSize: 12, color: '#ABA69C', margin: '0 0 14px' }}>
           forwards that didn’t add anything to your library
         </p>

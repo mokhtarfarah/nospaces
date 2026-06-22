@@ -9,7 +9,7 @@ import { ItemActionSheet } from '../components/ItemActionSheet'
 import { DuplicatesSheet } from '../components/DuplicatesSheet'
 import { GapsSheet } from '../components/GapsSheet'
 import { CapturesSheet } from '../components/CapturesSheet'
-import { fetchCaptures, isFailure, type EmailCapture } from '../lib/captures'
+import { fetchCaptures, clearCaptures, isFailure, type EmailCapture } from '../lib/captures'
 import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
@@ -844,7 +844,11 @@ export function LibraryScreen() {
 
       {/* Email-capture feed — forwards that added nothing */}
       {capturesOpen && (
-        <CapturesSheet captures={captures} onClose={() => setCapturesOpen(false)} />
+        <CapturesSheet
+          captures={captures}
+          onClear={async () => { if (await clearCaptures()) { setCaptures([]); setCapturesOpen(false) } }}
+          onClose={() => setCapturesOpen(false)}
+        />
       )}
 
       {/* Toast */}

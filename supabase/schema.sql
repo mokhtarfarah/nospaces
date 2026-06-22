@@ -146,4 +146,8 @@ create policy "Users can read own email captures"
   on public.email_captures for select
   using (auth.uid() = user_id);
 
+create policy "Users can delete own email captures"
+  on public.email_captures for delete
+  using (auth.uid() = user_id);
+
 create index email_captures_user_id_created on public.email_captures (user_id, created_at desc);
