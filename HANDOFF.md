@@ -19,7 +19,8 @@
 **Quick win — ✅ done (session 40):** `api/` now typechecked via a dedicated `tsconfig.api.json` (Node types, DOM lib to match Vercel). Wired into `npm run typecheck` and the Stop hook. Surfaces api TS errors before deploy.
 
 **Flagged / unresolved:**
-- **Discover page not in final form** — redesign shipped (bigger covers, blurb hero, ink save chip, no-repeat logic) but Farah flagged it still needs more work. Assess next session with fresh eyes.
+- **Discover page not in final form** — redesign shipped (bigger covers, blurb hero, ink save chip, no-repeat logic) but Farah flagged it still needs more work. Assess next session with fresh eyes. Two concrete code findings from the session-41 audit: (1) it's hard-gated behind the taste profile — no profile = a dead-end empty state; (2) cover sizes are inconsistent (music 72px vs others 56px) so rows don't align.
+- **Taste-page "stats" drift** — HANDOFF (sessions 30/31) describes a stats section on the taste page (medium filter pills, reaction breakdown, verdict counts, genre love-rate). That code is NOT in `TasteScreen.tsx` anymore — current page is vibe headline → AI prose → "the gap" → "always loved" → desert island. Unresolved whether it was deliberately cut or lost. **Next session: check git history (`git log -p src/screens/TasteScreen.tsx`) to find out which, then decide whether to restore.**
 - **`ALLOWED_EMAILS` env var** — ✅ set in Vercel.
 - **Email talkback** — code live, waiting on Postmark account approval for sending to Gmail (submitted 2026-06-02).
 
@@ -243,6 +244,16 @@ Read view: flat link row (edit · on my shelf/own it · about this · wikipedia 
 ---
 
 ## Recent session log
+
+### Session 41 (2026-06-21) — fresh audit + library header / view / filter overhaul
+
+Started with an open-ended editorial+tech audit, then Farah picked the library header to work on. All shipped to `main` (deployed live).
+
+0. **Fresh app audit** — flagged: library header was the heaviest surface (4 control rows before content); discover gating + uneven covers; taste-page stats drift (see Flagged above). Header chosen as the session's focus.
+1. **Library header declutter (A + D)** — *A (consolidate):* top row is now `library · [view ▾] ⌕ ⋯`. The `view ▾` sheet absorbs list/grid + column count (removed the duplicate cols toggle); new `⋯` overflow sheet holds help me decide · how to use · tidy (when gaps) · select. *D (collapse-on-scroll):* scrolling into the collection folds away the title row + view control; category + status tabs pin, with `⌕ ⋯` tucked inline. Hysteresis dead-zone (collapse >56px, expand <16px). Switching category/status resets scroll + re-expands so a short result set can't strand the header. `LibraryScreen.tsx` + `ViewSheet.tsx`.
+2. **View sheet reorder + compaction** — layout (list/grid) + columns moved to the top as primary controls; sort options became compact single-line rows (dropped the tall per-row hint descriptions + dividers); added a "tap the selected sort again to reverse" footnote.
+3. **Views trimmed 7 → 4** — kept `recent · by year · by creator · a → z`. Cut "recently edited" (no browsing use), "want to / done" (redundant with status tabs), "by rating" (overlaps reaction chips). Removed dead `groupByStatus` + its grouping branch. Guarded persisted `view` against old removed values so an old localStorage value can't index a missing config.
+4. **Multi-select filter sheet** — vibe/verdict/genre/series now accept multiple selections: OR within a group, AND across groups (faceted). State moved string|null → string[]; chips toggle on/off; `filter · N` counts total selected tags. Category + status stay single-select (top-level nav). `LibraryScreen.tsx` (FilterSheet/FilterSection).
 
 ### Session 40 (2026-06-21) — tsconfig api typecheck, TV auto-status, taste page ratings
 
