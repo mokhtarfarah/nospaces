@@ -1,23 +1,15 @@
 #!/bin/sh
-# Fires on Stop. Keeps HANDOFF.md lean. When the session log grows past the
-# threshold AND you touched HANDOFF this session (natural cleanup moment),
-# suggest archiving the oldest sessions to docs/HANDOFF-archive.md.
+# Fires on Stop. Keeps HANDOFF.md to one screen. Session logs now live in
+# docs/HANDOFF-archive.md, so HANDOFF should never carry session entries and
+# should stay short. If it grows past the line threshold, nudge to move
+# content out (history -> archive, facts -> REFERENCE, backlog -> ROADMAP).
 cd "$(dirname "$0")/.." 2>/dev/null || exit 0
 
 HANDOFF="HANDOFF.md"
 [ -f "$HANDOFF" ] || exit 0
 
-KEEP=8   # how many recent sessions to keep inline
-sessions=$(grep -c '^### Session' "$HANDOFF" 2>/dev/null)
-[ "$sessions" -le "$KEEP" ] && exit 0
+MAX=120   # one screen-ish; HANDOFF should stay around here
+lines=$(wc -l < "$HANDOFF" 2>/dev/null | tr -d ' ')
+[ "$lines" -le "$MAX" ] && exit 0
 
-# Only nudge when HANDOFF was edited this session, so it lands at the right moment.
-touched=$(
-  { git diff --name-only HEAD 2>/dev/null
-    git diff --name-only --cached 2>/dev/null
-    git show --name-only --format="" HEAD 2>/dev/null
-  } | grep -q 'HANDOFF\.md' && echo yes
-)
-[ "$touched" = "yes" ] || exit 0
-
-printf '{"systemMessage": "handoff cleanup: HANDOFF.md has %d session log entries (keep ~%d inline). Move the oldest ones to docs/HANDOFF-archive.md so the handoff stays scannable — keep the Roadmap and Next session sections intact."}\n' "$sessions" "$KEEP"
+printf '{"systemMessage": "handoff cleanup: HANDOFF.md is %d lines (aim for <%d, one screen). Move content to the right file — session history to docs/HANDOFF-archive.md, stable facts to docs/REFERENCE.md, backlog to docs/ROADMAP.md. Keep only: where we are, next session, doc upkeep, working style."}\n' "$lines" "$MAX"
