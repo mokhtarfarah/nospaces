@@ -45,6 +45,7 @@ export function DiscoverScreen() {
 
   const [stream, setStream] = useState<Stream>('foryou')
   const [mediumFilter, setMediumFilter] = useState<MediumFilter>('all')
+  const [detail, setDetail] = useState<DiscoveryResult | null>(null) // tapped pick → detail card
 
   const [intasteResults, setIntasteResults] = useState<DiscoveryResult[]>([])
   const [divertResults, setDivertResults] = useState<DiscoveryResult[]>([])
@@ -320,10 +321,22 @@ export function DiscoverScreen() {
           result={r}
           index={i + 1}
           savedSource={savedItems.get(r.title.toLowerCase()) ?? null}
+          onOpen={() => setDetail(r)}
           onSave={() => handleSave(r)}
           onDismiss={() => dismissDiscoverTitle(r.title)}
         />
       ))}
+
+      {/* Detail card — opens when a pick is tapped (Library sheet pattern) */}
+      {detail && (
+        <DetailSheet
+          result={detail}
+          savedSource={savedItems.get(detail.title.toLowerCase()) ?? null}
+          onSave={() => handleSave(detail)}
+          onDismiss={() => { dismissDiscoverTitle(detail.title); setDetail(null) }}
+          onClose={() => setDetail(null)}
+        />
+      )}
 
       {/* Sources */}
       <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginTop: 16 }}>
@@ -394,21 +407,22 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
   )
 }
 
-function ResultRow({ result: r, index, savedSource, onSave, onDismiss }: {
+function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }: {
   result: DiscoveryResult
   index: number
   savedSource: string | null
+  onOpen: () => void
   onSave: () => void
   onDismiss: () => void
 }) {
-  const [expanded, setExpanded] = useState(false)
   const artwork = useArtwork(r.type, r.title, r.creator, r.year, null)
   const fallbackTint = typeColor(r.type).bg
   const isSaved = savedSource !== null
   const meta = [r.type, r.year ?? undefined, r.creator ?? undefined].filter(Boolean).join(' · ')
+  const stop = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
-    <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}>
+    <div onClick={onOpen} style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', marginBottom: 8, cursor: 'pointer' }}>
       {/* Ghosted cover art — blurred + faded in from the right, behind the text */}
       {artwork ? (
         <div style={{
@@ -430,14 +444,10 @@ function ResultRow({ result: r, index, savedSource, onSave, onDismiss }: {
             {meta}
           </div>
           {r.why && (
-            <p
-              onClick={() => setExpanded(v => !v)}
-              style={{
-                fontSize: 13, color: '#4A453E', lineHeight: 1.65, margin: '0 0 10px',
-                fontStyle: 'italic', cursor: 'pointer',
-                ...(expanded ? {} : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
-              }}
-            >
+            <p style={{
+              fontSize: 13, color: '#4A453E', lineHeight: 1.65, margin: '0 0 10px', fontStyle: 'italic',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            }}>
               {r.why}
             </p>
           )}
@@ -445,20 +455,91 @@ function ResultRow({ result: r, index, savedSource, onSave, onDismiss }: {
             {isSaved ? (
               <span style={{ fontSize: 11, color: MUTE }}>saved ✓︎</span>
             ) : (
-              <button onClick={onSave} style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: INK, cursor: 'pointer', fontFamily: 'inherit', borderBottom: `1px solid ${INK}`, lineHeight: 1.4 }}>
+              <button onClick={e => { stop(e); onSave() }} style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: INK, cursor: 'pointer', fontFamily: 'inherit', borderBottom: `1px solid ${INK}`, lineHeight: 1.4 }}>
                 save to library
               </button>
             )}
             {!isSaved && (
-              <button onClick={onDismiss} style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+              <button onClick={e => { stop(e); onDismiss() }} style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
                 not for me
               </button>
             )}
-            <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: MUTE }}>more ›</span>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+// Tap a pick → this detail card (mirrors the Library item sheet).
+function DetailSheet({ result: r, savedSource, onSave, onDismiss, onClose }: {
+  result: DiscoveryResult
+  savedSource: string | null
+  onSave: () => void
+  onDismiss: () => void
+  onClose: () => void
+}) {
+  const artwork = useArtwork(r.type, r.title, r.creator, r.year, null)
+  const color = typeColor(r.type)
+  const isSaved = savedSource !== null
+  const w = r.type === 'music' ? 64 : 52
+  const h = r.type === 'music' ? 64 : 78
+  const sourceLabel = r.sources.length <= 1 ? (r.sources[0] ?? 'discover') : `${r.sources[0]} +${r.sources.length - 1}`
+  const meta = [typeColor(r.type).label, r.creator ?? undefined, r.year ?? undefined].filter(Boolean).join(' · ')
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderRadius: '16px 16px 0 0',
+        padding: '10px 20px 28px', zIndex: 201, maxWidth: 480, margin: '0 auto',
+        maxHeight: '92dvh', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBB', fontSize: 16, lineHeight: 1, padding: '0 0 4px' }}>✕</button>
+        </div>
+
+        {/* Header — cover + title + meta */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
+          {artwork
+            ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
+            : <div style={{ width: w, height: h, background: color.bg, border: '1px solid #EEE', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: color.border }}>{r.type}</div>}
+          <div style={{ minWidth: 0, paddingTop: 1 }}>
+            <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.25, color: INK }}>{r.title}</div>
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{meta}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: MUTE }}>via {sourceLabel}</span>
+              <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
+            </div>
+          </div>
+        </div>
+
+        {/* Why — full blurb, given room */}
+        {r.why && (
+          <div style={{ background: '#F7F7F7', borderRadius: 10, padding: '12px 14px', marginBottom: 20 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>why this</div>
+            <p style={{ fontSize: 14, color: '#3A352E', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>{r.why}</p>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {isSaved ? (
+            <span style={{ fontSize: 13, color: MUTE }}>saved to library ✓︎</span>
+          ) : (
+            <button onClick={onSave} style={{ background: INK, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, padding: '10px 18px', cursor: 'pointer', fontFamily: 'inherit' }}>
+              save to library
+            </button>
+          )}
+          {!isSaved && (
+            <button onClick={onDismiss} style={{ background: 'none', border: 'none', fontSize: 13, color: MUTE, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+              not for me
+            </button>
+          )}
+        </div>
+      </div>
+    </>
   )
 }
 
