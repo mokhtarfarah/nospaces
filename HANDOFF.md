@@ -142,6 +142,7 @@ npm run typecheck    # tsc --noEmit (src) && tsc --noEmit -p tsconfig.api.json (
 - `POSTMARK_FROM` — optional reply-from override
 - `TICKETMASTER_API_KEY` — shows near you (Ticketmaster/Live Nation only)
 - `TMDB_API_KEY` — film/TV catalog search in `/api/lookup`
+- `VITE_SENTRY_DSN` — crash reporting (frontend). **Not yet set** — until it is, Sentry is a no-op (see "Pro hardening — manual steps left" below).
 
 ---
 
@@ -242,6 +243,17 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 - **Move "shows near you" to discover tab** — ✅ shipped. Removed from music filter row; now a "shows near you / browse →" row above sources on the discover tab.
 - **"Not interested" dismiss on discover** — dismiss per result row, titles stored in prefs. Client-side only, no AI signal value — purely keeps feed clean.
 
+**Pro hardening (session 47)**
+- **Crash reporting (Sentry)** — ✅ wired (`@sentry/react` in `main.tsx` + `ErrorBoundary` reports crashes). No-op until `VITE_SENTRY_DSN` is set in Vercel — see manual steps below.
+- **Lint in CI** — ✅ done. `npm run lint` now runs in `ci.yml`. Also fixed all 30 pre-existing lint issues, incl. a **real bug**: `GapsSheet.tsx` had an early `return null` before ~24 hooks (React rules-of-hooks violation — could crash). Return moved below the hooks.
+- **Secret-leak scan (gitleaks)** — ✅ done. New `gitleaks` job in `ci.yml` scans repo + full git history for committed keys.
+- **Dependabot** — ✅ done. `.github/dependabot.yml` opens weekly grouped PRs for vulnerable/outdated npm + GitHub Actions deps.
+- **PR workflow + branch protection** — ⏸ **parked until >2 users** (pro hardening item #6). Direct pushes to `main` are still allowed (solo dev, 2 users). Memory `pr-workflow-at-3-users` will prompt to revisit when a 3rd user joins.
+
+**⚠️ Pro hardening — manual steps left (need Farah, can't be automated):**
+1. **Sentry:** create a free project at sentry.io → React → copy the DSN → add `VITE_SENTRY_DSN` in Vercel env vars (all environments) → redeploy. Until then crash reporting is silently off.
+2. **Spend alerts:** (a) Anthropic console → Billing → set a monthly usage limit + alert email. (b) Vercel → project → Usage → set spend notifications. Protects against a runaway loop billing you.
+
 **Dev automation**
 - **Typecheck on Stop hook** — ✅ done. Stop hook runs `tsc --noEmit` and injects a system message if any `error TS` lines are found.
 - **HANDOFF.md staleness warning** — ✅ done. `scripts/check-handoff-staleness.sh` fires on Stop; warns if screens/key components changed but HANDOFF.md wasn't updated.
@@ -286,6 +298,17 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 ---
 
 ## Recent session log
+
+### Session 47 (2026-06-22) — pro hardening bundle (Sentry, lint-in-CI, gitleaks, Dependabot)
+
+Added the "professional setting" protections bundle. All verified: lint + typecheck + 54 tests + production build green.
+
+1. **Crash reporting (Sentry).** `@sentry/react` installed; `Sentry.init` in `main.tsx` guarded on `VITE_SENTRY_DSN` (no-op locally / until the env var is set); `ErrorBoundary.componentDidCatch` now reports caught crashes. **Manual step left:** create Sentry project + set `VITE_SENTRY_DSN` in Vercel.
+2. **Lint in CI + cleanup to zero.** Added `npm run lint` to `ci.yml`. Fixed all 30 pre-existing lint problems to make it a real gate — including a **genuine bug**: `GapsSheet.tsx` had `if (total === 0) return null` *before* ~24 `useState`/`useRef` calls (rules-of-hooks violation that could crash the sheet). Moved the return below all hooks (behavior-identical). Other fixes: eslint config now treats `_`-prefixed vars as intentionally-unused; removed a dead eslint-disable in `AddScreen`; dropped a stable `navigate` dep + justified one intentional dep omission in `LibraryScreen`; documented the two Ticketmaster `any` shapes in `shows.ts`.
+3. **Secret-leak scan (gitleaks).** New `gitleaks` CI job scans repo + full history for committed keys. Free for personal repos.
+4. **Dependabot.** `.github/dependabot.yml` — weekly grouped PRs for vulnerable/outdated npm + Actions deps (capped to stay quiet).
+5. **Spend alerts** — documented as a manual step (Anthropic console + Vercel usage notifications); can't be automated from code.
+6. **PR workflow + branch protection** — deliberately **parked until >2 users**. Saved memory `pr-workflow-at-3-users` so a future session proactively prompts to set it up when a 3rd user joins.
 
 ### Session 46 (2026-06-22) — dev automation: auto-testing, roadmap + handoff-cleanup reminders
 

@@ -244,6 +244,9 @@ export function LibraryScreen() {
       setReviewQueue(null)
       setReviewIndex(0)
     }
+    // Intentionally keyed only on actionItem: this builds the queue once when a
+    // sheet opens. Re-running on items/sort/dir changes would rebuild mid-review.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionItem])
 
   // Advance the tidy queue to the next still-present item (skips deleted ones).
@@ -255,7 +258,7 @@ export function LibraryScreen() {
       if (next) { setTidyIndex(i); setActionItem(next); setActionEdit(true); return }
     }
     setActionItem(null); setActionEdit(false); setTidyQueue(null)
-  }, [tidyQueue, items, navigate])
+  }, [tidyQueue, items])
 
   const goToReview = useCallback((from: number) => {
     if (!reviewQueue) { setActionItem(null); return }

@@ -43,6 +43,7 @@ async function resolveAttractionId(artist: string, key: string): Promise<string 
   const url = `${BASE}/attractions.json?apikey=${encodeURIComponent(key)}` +
     `&keyword=${encodeURIComponent(artist)}&classificationName=music&size=10`
   const data = await (await fetch(url)).json()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped Ticketmaster API shape
   const attractions: Record<string, any>[] = data?._embedded?.attractions ?? []
   const want = norm(artist)
   const exact = attractions.filter(a => norm(a?.name ?? '') === want)
@@ -71,6 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       '&sort=date,asc&size=60' +
       `&startDateTime=${encodeURIComponent(startDateTime)}`
     const data = await (await fetch(url)).json()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped Ticketmaster API shape
     const events: Record<string, any>[] = data?._embedded?.events ?? []
 
     const shows: Show[] = events.map(e => {

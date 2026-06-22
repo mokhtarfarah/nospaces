@@ -155,7 +155,7 @@ export function AddScreen() {
     }
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   async function processImageFile(file: File, source: string) {
     setError('')

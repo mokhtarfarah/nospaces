@@ -1,8 +1,8 @@
 name: CI
 
-# Runs typecheck + unit tests on every push and PR. Free (GitHub Actions),
-# no Anthropic API calls. A red check here means a broken build — fix before
-# it reaches Vercel.
+# Runs lint + typecheck + unit tests, plus a secret-leak scan, on every push
+# and PR. Free (GitHub Actions), no Anthropic API calls. A red check here means
+# a broken build — fix before it reaches Vercel.
 on:
   push:
     branches: [main]
@@ -18,5 +18,16 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+
+  # Scans the repo (and full git history) for accidentally committed secrets
+  # like API keys. Free for personal/public repos.
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2

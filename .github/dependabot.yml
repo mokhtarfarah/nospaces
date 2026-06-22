@@ -1,0 +1,22 @@
+# Dependabot watches our dependencies and opens PRs when one has a known
+# security vulnerability or an available update. Grouped + capped so it stays
+# quiet (one PR batch per week, not a flood).
+version: 2
+updates:
+  # npm packages (the app's libraries)
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Bundle minor/patch bumps into a single PR to cut noise.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # GitHub Actions used in our CI workflows
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

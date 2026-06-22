@@ -196,7 +196,11 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('hooks',{}\\), indent=2\\)\\)\")",
       "Bash(python3 -c \"import sys,json; print\\(json.dumps\\(json.load\\(sys.stdin\\).get\\('scripts',{}\\),indent=2\\)\\)\")",
       "Bash(chmod +x scripts/check-tests.sh scripts/check-test-coverage.sh scripts/check-roadmap.sh scripts/check-handoff-size.sh)",
-      "Bash(python3 -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\); print\\('settings.local.json: valid JSON'\\)\")"
+      "Bash(python3 -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\); print\\('settings.local.json: valid JSON'\\)\")",
+      "Bash(echo \"=== EXIT: $? ===\")",
+      "Bash(grep -vE '^$|^>')",
+      "Bash(npm install *)",
+      "Bash(node -e \"console.log\\('@sentry/react', require\\('./package.json'\\).dependencies['@sentry/react']\\)\")"
     ]
   },
   "hooks": {

@@ -42,7 +42,6 @@ function AutoFillTools({ items, editItem }: {
     }), [items])
 
   const total = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length + needsArtRefresh.length
-  if (total === 0) return null
 
   // Genre backfill
   const [backfilling, setBackfilling] = useState(false)
@@ -79,6 +78,10 @@ function AutoFillTools({ items, editItem }: {
   const [artTotal2, setArtTotal2] = useState(0)
   const artCancel = useRef(false)
   const [artResult, setArtResult] = useState<number | null>(null)
+
+  // Nothing to tidy — render nothing. Placed AFTER all hooks so hook order
+  // stays constant across renders (React rules-of-hooks).
+  if (total === 0) return null
 
   const cost = (n: number) => `~$${(n * 0.001).toFixed(2)}`
 

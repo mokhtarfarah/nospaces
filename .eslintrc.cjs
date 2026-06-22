@@ -11,5 +11,12 @@ module.exports = {
   ignorePatterns: ['dist', 'dev-dist', 'node_modules', '.eslintrc.cjs', '*.config.ts', '*.config.js'],
   // Note: react-refresh/only-export-components (a dev-only hot-reload hint) is intentionally
   // not enabled — we co-export a few constants/types alongside components (e.g. SortOption).
-  rules: {},
+  rules: {
+    // A leading underscore marks a binding we intentionally don't use
+    // (e.g. dropping a key via destructure, or a re-exported constant).
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+    ],
+  },
 }
