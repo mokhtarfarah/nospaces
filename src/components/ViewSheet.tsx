@@ -54,39 +54,11 @@ export function ViewSheet({ current, dir, onSelect, onClose, layout, onLayout, g
         padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201, maxWidth: 480, margin: '0 auto',
         maxHeight: '90dvh', overflowY: 'auto',
       }}>
-        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 12 }}>view</p>
-        {ORDER.map(v => {
-          const cfg = VIEW_CONFIG[v]
-          const active = current === v
-          const arrow = cfg.directional ? (dir === 'asc' ? '↑' : '↓') : null
-          return (
-            <button
-              key={v}
-              onClick={() => onSelect(v)}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                width: '100%', padding: '13px 0', border: 'none', borderBottom: '1px solid #F0F0F0',
-                background: 'none', cursor: 'pointer', textAlign: 'left',
-              }}
-            >
-              <span>
-                <span style={{ fontSize: 15, color: active ? '#111111' : '#222', fontWeight: active ? 600 : 400 }}>{cfg.label}</span>
-                <span style={{ display: 'block', fontSize: 11, color: '#999', marginTop: 2 }}>
-                  {cfg.hint}{active && cfg.directional ? ' · tap to reverse' : ''}
-                </span>
-              </span>
-              {active && (
-                <span style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {arrow && <span style={{ color: '#111', fontWeight: 600 }}>{arrow}</span>}
-                  <span style={{ fontSize: 18 }}>✓</span>
-                </span>
-              )}
-            </button>
-          )
-        })}
+        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 18px' }} />
+
+        {/* Layout first — the most-toggled control sits at the top. */}
         {layout && onLayout && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <span style={{ fontSize: 13, color: '#555' }}>layout</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {(['list', 'grid'] as const).map(l => (
@@ -100,8 +72,8 @@ export function ViewSheet({ current, dir, onSelect, onClose, layout, onLayout, g
           </div>
         )}
         {layout === 'grid' && onGridCols && gridCols && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, marginTop: 4 }}>
-            <span style={{ fontSize: 13, color: '#555' }}>grid columns</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, color: '#555' }}>columns</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {([3, 4] as const).map(n => (
                 <button key={n} onClick={() => onGridCols(n)} style={{
@@ -113,6 +85,34 @@ export function ViewSheet({ current, dir, onSelect, onClose, layout, onLayout, g
             </div>
           </div>
         )}
+
+        {/* Sort — compact single-line rows (hints dropped; labels are self-explanatory). */}
+        <p style={{ fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '4px 0 6px', paddingTop: 14, borderTop: '1px solid #F0F0F0' }}>sort</p>
+        {ORDER.map(v => {
+          const cfg = VIEW_CONFIG[v]
+          const active = current === v
+          const arrow = cfg.directional ? (dir === 'asc' ? '↑' : '↓') : null
+          return (
+            <button
+              key={v}
+              onClick={() => onSelect(v)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', padding: '8px 0', border: 'none',
+                background: 'none', cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 14, color: active ? '#111' : '#444', fontWeight: active ? 600 : 400 }}>{cfg.label}</span>
+              {active && (
+                <span style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {arrow && <span style={{ color: '#111', fontWeight: 600 }}>{arrow}</span>}
+                  <span style={{ fontSize: 15 }}>✓</span>
+                </span>
+              )}
+            </button>
+          )
+        })}
+        <p style={{ fontSize: 11, color: '#BBB', margin: '6px 0 0' }}>tap the selected sort again to reverse</p>
       </div>
     </>
   )
