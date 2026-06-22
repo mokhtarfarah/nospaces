@@ -4,6 +4,27 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 54 (2026-06-22) — Discover redesign #2 (editorial rebuild) + app-wide magazine header
+
+Farah rejected the session-53 type-first stacked layout ("still do NOT like the formatting"). Explored options via mockups, then iterated **live — pushed straight to `main` each step**, deploying so she could eyeball on the real (OAuth-gated) site. Landed on an **editorial single numbered list**. **Engine untouched throughout.**
+
+**Discover (`DiscoverScreen.tsx`) — now:**
+- **One flat numbered list**, not type-sections. Mediums interleave under "all"; a left-aligned **medium chip switcher** (all/films/music/books/tv) narrows it. Killed the session-53 stacked sections + drill-in + 2-line clamp/expand.
+- **Row** = oversized **sans** rank numeral (120px, absolutely positioned, **clipped by the row**, sits behind the text as a graphic element) + **ghosted real cover art** as the row background (blur 4px, opacity 0.42, masked/faded in from the right; type-grey gradient fallback) + title + uppercase meta + 2-line italic blurb teaser + quick `save`/`not for me` + `more ›`.
+- **Tap a row → `DetailSheet`** (mirrors the Library `ItemActionSheet` look): bottom sheet w/ rank numeral + **real cover thumbnail** + title/meta + full **"why this"** blurb box + `via {source}` + wikipedia + save/not-for-me. (Replaced the underwhelming 2-line→full expand, which revealed almost nothing.)
+- **Menus left-aligned on Library's `TabChip` pattern** (fontSize 13, active dark/bold/italic). Stream row: `for you · further afield | in the mood…`; "in the mood" expands the search inline.
+
+**Shared magazine header (`src/components/PageHeader.tsx`, NEW):** small uppercase **kicker** + small **label** + **1.5px black rule**. Label kept small on purpose — editorial weight comes from kicker+rule, **not** an oversized title (Farah: keep Taste's vibe-headline bigger than the page name — "a bit subversive"). Rolled across:
+- **Library** — `N in the collection`; folded into the collapsing sticky title block (kicker+rule collapse with the title on scroll; collapse height bumped to 64).
+- **Taste** — `shaped by N ratings`; vibe-headline untouched below, still the biggest element.
+- **Discover** — `<stream> · <date>` kicker. Dropped the earlier centered masthead + the meaningless `no.NN` (was ISO week dressed as a magazine issue).
+
+**Verification:** typecheck + lint + 56 tests clean on every push. **Still UNVERIFIED signed-in** (OAuth wall — preview can't sign in). Farah reviewing on the deploy; **feedback comes next session.** Branch `discover-editorial-wash` merged + deleted.
+
+**Watch items for next session:** (1) Library scroll — confirm kicker/rule collapse cleanly + pinned chips OK; (2) the 1.5px black rule repeated on every page may read heavy — softer hairline is a one-line change in `PageHeader.tsx`; (3) ghosted cover art introduces **colour** into an otherwise mono app — judge if it reads editorial or noisy (levers: opacity, or flat type-grey tint).
+
+---
+
 ### Session 53 (2026-06-22) — BUILT the Discover redesign (session-52 spec)
 
 Built the whole locked spec in one pass. **Display/structure/labels only — recommendation engine untouched** (Farah confirmed sources + AI recs work fine).

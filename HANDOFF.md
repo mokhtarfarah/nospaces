@@ -15,24 +15,25 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (53):** **BUILT the entire Discover redesign** (session-52 locked spec, all 8 items). Discover is now type-first stacked sections (films → music → books → tv, top 3 + "more →"), a **mood search bar** (new `mood` param on `recommend-feeds` — one paid Sonnet call/search, works with no profile), a single **for you ⇄ further afield** toggle, **free static editorial cold-start** (`src/lib/editorialPicks.ts`) instead of the no-profile wall, and 2-line-clamped blurbs. "shows near you" moved into the Library music view; "decide for me" promoted to a Library status-row chip (out of the `⋯` menu). Engine untouched. typecheck + lint + 56 tests + production build all clean. **Not screenshotted — app is behind Google OAuth, the preview can't sign in, so the redesign is UNVERIFIED in a signed-in browser.**
+**This session (54):** **Rebuilt Discover again** — Farah rejected the session-53 stacked-sections layout. It's now an **editorial single numbered list**: oversized sans rank numerals (clipped by the row), **ghosted real cover art** as each row's background, left-aligned chip menus (Library's `TabChip` pattern), a medium switcher, and **tap-a-pick → detail card** (`DetailSheet`, Library-sheet style: real cover + full "why this" + source + wikipedia). Also shipped a **shared magazine `PageHeader`** (`src/components/PageHeader.tsx`: kicker + small label + 1.5px rule) across **Library / Taste / Discover** — label kept small so Taste's vibe-headline stays the biggest thing. Engine untouched. typecheck + lint + 56 tests clean. **UNVERIFIED signed-in** (OAuth wall) — Farah reviewing on deploy, **feedback next session.** Full detail + watch-items → archive.
 
-**Last session (52):** Discover redesign design conversation (spec locked, no code) + re-fixed session-49 #2/#5 (PWA-only, unverified on phone). Full detail → archive.
+**Last session (53):** Built the session-52 Discover spec (type-first sections + mood search) — the layout this session replaced. Mood search / editorial cold-start / engine all carried forward. Full detail → archive.
 
 ---
 
-## ▶ Next session — VERIFY the Discover redesign, then the small open items
+## ▶ Next session — Farah's feedback on the editorial Discover + magazine header
 
-The Discover redesign is **built but only verified up to the auth wall** (typecheck/lint/tests/build clean; no signed-in screenshot). First job:
+The whole Discover rebuild + the app-wide `PageHeader` are **built and deployed but UNVERIFIED signed-in** (OAuth wall blocks the preview). Farah is reviewing on the live site; **start by collecting her feedback.** Things to look at as a first-time user with taste:
 
-1. **Eyeball the rebuilt Discover signed-in** (deployed or local `npm run dev` with Farah's login). Check, as a first-time user with taste: type-first sections render + look right; **mood search** returns sensible picks (costs one paid Sonnet call — test 1–2 times max); **for you ⇄ further afield** toggle works (further-afield still opt-in); **cold-start editorial picks** show for a no-profile state and read as a respectable first impression (curated list is in `src/lib/editorialPicks.ts` — swap any picks that feel off); blurbs clamp to 2 lines + expand on tap. In Library: **"shows near you"** appears only in the music view; **"decide for me"** chip works and is gone from the `⋯` menu.
+1. **Editorial Discover** — the numbered list, oversized clipped numerals, and **ghosted cover art** (it brings *colour* into an otherwise mono app — does it read editorial or noisy? levers: opacity / blur / flat type-grey tint, all in `DiscoverScreen.tsx → ResultRow`). Tap a pick → **detail card** (`DetailSheet`) should show the real cover + full "why this". Mood search + medium switcher + for-you/further-afield still work.
+2. **Magazine `PageHeader`** (Library / Taste / Discover) — the **1.5px black rule** repeats on every page; if it reads heavy, softer hairline = one-line change in `src/components/PageHeader.tsx`. Confirm **Library scroll**: kicker+rule collapse cleanly with the title, pinned chips still behave. Taste's vibe-headline must stay bigger than the "taste" label.
 
-**Also still open (smaller):**
+**Also still open (smaller, carried from before):**
 - **Session-49 #2 (scroll restore) + #5 (filter clip)** — re-fixed session 52, **unverified on phone** (both PWA-only). Re-test on the deployed build.
 - **#7 — catalog-miss interstitial.** "nothing found — identify with ai?" adds a step mid-flow; kept as a cost gate (paid Sonnet). Farah's call whether to make it automatic. (`AddScreen.tsx:367`)
-- **Discover mood chips** — parked, revisit **2026-06-29** after a week of real use of the rebuilt Discover. (`docs/ROADMAP.md`)
+- **Discover mood chips** — parked, revisit **2026-06-29** after a week of real use. (`docs/ROADMAP.md`)
 
-**Don't touch (genuinely good):** library header restraint, decade grouping, the taste page's vibe-headline → prose → gap → always-loved → desert-island arc, the editorial palette, the faithful-creators logic, **the recommendation engine itself.**
+**Don't touch (genuinely good):** decade grouping, the taste page's vibe-headline → prose → gap → always-loved → desert-island arc, the editorial palette, the faithful-creators logic, **the recommendation engine itself.**
 
 Backlog beyond this queue → `docs/ROADMAP.md`.
 
