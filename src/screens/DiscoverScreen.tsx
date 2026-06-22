@@ -45,7 +45,7 @@ export function DiscoverScreen() {
 
   const [stream, setStream] = useState<Stream>('foryou')
   const [mediumFilter, setMediumFilter] = useState<MediumFilter>('all')
-  const [detail, setDetail] = useState<DiscoveryResult | null>(null) // tapped pick → detail card
+  const [detail, setDetail] = useState<{ result: DiscoveryResult; index: number } | null>(null) // tapped pick → detail card
 
   const [intasteResults, setIntasteResults] = useState<DiscoveryResult[]>([])
   const [divertResults, setDivertResults] = useState<DiscoveryResult[]>([])
@@ -321,7 +321,7 @@ export function DiscoverScreen() {
           result={r}
           index={i + 1}
           savedSource={savedItems.get(r.title.toLowerCase()) ?? null}
-          onOpen={() => setDetail(r)}
+          onOpen={() => setDetail({ result: r, index: i + 1 })}
           onSave={() => handleSave(r)}
           onDismiss={() => dismissDiscoverTitle(r.title)}
         />
@@ -330,10 +330,11 @@ export function DiscoverScreen() {
       {/* Detail card — opens when a pick is tapped (Library sheet pattern) */}
       {detail && (
         <DetailSheet
-          result={detail}
-          savedSource={savedItems.get(detail.title.toLowerCase()) ?? null}
-          onSave={() => handleSave(detail)}
-          onDismiss={() => { dismissDiscoverTitle(detail.title); setDetail(null) }}
+          result={detail.result}
+          index={detail.index}
+          savedSource={savedItems.get(detail.result.title.toLowerCase()) ?? null}
+          onSave={() => handleSave(detail.result)}
+          onDismiss={() => { dismissDiscoverTitle(detail.result.title); setDetail(null) }}
           onClose={() => setDetail(null)}
         />
       )}
@@ -473,8 +474,9 @@ function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }:
 }
 
 // Tap a pick → this detail card (mirrors the Library item sheet).
-function DetailSheet({ result: r, savedSource, onSave, onDismiss, onClose }: {
+function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose }: {
   result: DiscoveryResult
+  index: number
   savedSource: string | null
   onSave: () => void
   onDismiss: () => void
@@ -500,8 +502,9 @@ function DetailSheet({ result: r, savedSource, onSave, onDismiss, onClose }: {
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBB', fontSize: 16, lineHeight: 1, padding: '0 0 4px' }}>✕</button>
         </div>
 
-        {/* Header — cover + title + meta */}
+        {/* Header — number + cover + title + meta */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
+          <span style={{ fontSize: 22, fontWeight: 600, color: NUMERAL, lineHeight: 1, flexShrink: 0, letterSpacing: '-0.5px', paddingTop: 1 }}>{index}</span>
           {artwork
             ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
             : <div style={{ width: w, height: h, background: color.bg, border: '1px solid #EEE', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: color.border }}>{r.type}</div>}
