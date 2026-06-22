@@ -152,16 +152,20 @@ export function LibraryScreen() {
   const [reviewOnly, setReviewOnly] = useState(false)
   const selectCategory = (t: string) => {
     setReviewOnly(false)
-    setVibeFilter(null); setGenreFilter(null); setSeriesFilter(null); setFilterSheetOpen(false)
+    setVibeFilter([]); setGenreFilter([]); setSeriesFilter([]); setFilterSheetOpen(false)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   }
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => loadPrefs().statusFilter ?? 'all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>(() => loadPrefs().reactionFilter ?? 'all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
-  const [vibeFilter, setVibeFilter] = useState<string | null>(null)
-  const [verdictFilter, setVerdictFilter] = useState<string | null>(null)
-  const [genreFilter, setGenreFilter] = useState<string | null>(null)
-  const [seriesFilter, setSeriesFilter] = useState<string | null>(null)
+  // Filter-sheet selections are multi-select: OR within a group, AND across
+  // groups (faceted filtering). Empty array = that group isn't narrowing.
+  const [vibeFilter, setVibeFilter] = useState<string[]>([])
+  const [verdictFilter, setVerdictFilter] = useState<string[]>([])
+  const [genreFilter, setGenreFilter] = useState<string[]>([])
+  const [seriesFilter, setSeriesFilter] = useState<string[]>([])
+  const toggleFilter = (set: React.Dispatch<React.SetStateAction<string[]>>) => (v: string) =>
+    set(prev => (prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]))
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   // Guard against a view persisted before some options were removed — fall back
   // to 'year' so an old localStorage value can't index into a missing config.
@@ -281,11 +285,14 @@ export function LibraryScreen() {
 
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
-    || !!vibeFilter || !!verdictFilter || !!genreFilter || !!seriesFilter || reviewOnly || newMusicOnly || !!query.trim()
-  const filterCount = [vibeFilter, verdictFilter, genreFilter, seriesFilter].filter(Boolean).length
+    || vibeFilter.length > 0 || verdictFilter.length > 0 || genreFilter.length > 0 || seriesFilter.length > 0
+    || reviewOnly || newMusicOnly || !!query.trim()
+  // Badge counts every selected chip across groups, so "filter · 3" reflects how
+  // many tags are narrowing the list (not just how many groups are touched).
+  const filterCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
-    setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null)
+    setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([])
     setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setFilterSheetOpen(false)
   }
 
@@ -334,13 +341,17 @@ export function LibraryScreen() {
 
   const filtered = useMemo(() => {
     let result = baseFiltered
-    if (vibeFilter) result = result.filter(item =>
-      item.moods?.includes(vibeFilter) ||
-      (Array.isArray(item.metadata?.unconfirmedVibes) && (item.metadata.unconfirmedVibes as string[]).includes(vibeFilter))
+    // OR within each group, AND across groups: an item must match at least one
+    // selected tag in every active group.
+    if (vibeFilter.length > 0) result = result.filter(item =>
+      vibeFilter.some(v =>
+        item.moods?.includes(v) ||
+        (Array.isArray(item.metadata?.unconfirmedVibes) && (item.metadata.unconfirmedVibes as string[]).includes(v))
+      )
     )
-    if (verdictFilter) result = result.filter(item => item.moods?.includes(verdictFilter))
-    if (genreFilter) result = result.filter(item => item.tags?.includes(genreFilter))
-    if (seriesFilter) result = result.filter(item => item.metadata?.series === seriesFilter)
+    if (verdictFilter.length > 0) result = result.filter(item => verdictFilter.some(v => item.moods?.includes(v)))
+    if (genreFilter.length > 0) result = result.filter(item => genreFilter.some(g => item.tags?.includes(g)))
+    if (seriesFilter.length > 0) result = result.filter(item => seriesFilter.some(s => item.metadata?.series === s))
     return sortItems(result, sort, dir)
   }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, sort, dir])
 
@@ -375,7 +386,7 @@ export function LibraryScreen() {
   // Also scroll back to the top and expand the header — otherwise switching to a
   // short (non-scrollable) result set could leave the header stuck collapsed.
   useEffect(() => {
-    setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null)
+    setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([])
     listRef.current?.scrollTo({ top: 0 })
     setCollapsed(false)
   }, [categories, statusFilter, reactionFilter, reviewOnly])
@@ -525,10 +536,11 @@ export function LibraryScreen() {
                 <FilterSheet
                   availableTags={availableTags}
                   seriesRelevant={seriesRelevant}
-                  vibeFilter={vibeFilter} setVibeFilter={setVibeFilter}
-                  verdictFilter={verdictFilter} setVerdictFilter={setVerdictFilter}
-                  genreFilter={genreFilter} setGenreFilter={setGenreFilter}
-                  seriesFilter={seriesFilter} setSeriesFilter={setSeriesFilter}
+                  vibeFilter={vibeFilter} onToggleVibe={toggleFilter(setVibeFilter)}
+                  verdictFilter={verdictFilter} onToggleVerdict={toggleFilter(setVerdictFilter)}
+                  genreFilter={genreFilter} onToggleGenre={toggleFilter(setGenreFilter)}
+                  seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
+                  onClearGroups={() => { setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]) }}
                   onClose={() => setFilterSheetOpen(false)}
                 />
               )}
@@ -796,21 +808,22 @@ export function LibraryScreen() {
 
 function FilterSheet({
   availableTags, seriesRelevant,
-  vibeFilter, setVibeFilter,
-  verdictFilter, setVerdictFilter,
-  genreFilter, setGenreFilter,
-  seriesFilter, setSeriesFilter,
-  onClose,
+  vibeFilter, onToggleVibe,
+  verdictFilter, onToggleVerdict,
+  genreFilter, onToggleGenre,
+  seriesFilter, onToggleSeries,
+  onClearGroups, onClose,
 }: {
   availableTags: { vibes: string[]; verdicts: string[]; genres: string[]; series: string[] }
   seriesRelevant: boolean
-  vibeFilter: string | null; setVibeFilter: (v: string | null) => void
-  verdictFilter: string | null; setVerdictFilter: (v: string | null) => void
-  genreFilter: string | null; setGenreFilter: (v: string | null) => void
-  seriesFilter: string | null; setSeriesFilter: (v: string | null) => void
+  vibeFilter: string[]; onToggleVibe: (v: string) => void
+  verdictFilter: string[]; onToggleVerdict: (v: string) => void
+  genreFilter: string[]; onToggleGenre: (v: string) => void
+  seriesFilter: string[]; onToggleSeries: (v: string) => void
+  onClearGroups: () => void
   onClose: () => void
 }) {
-  const activeCount = [vibeFilter, verdictFilter, genreFilter, seriesFilter].filter(Boolean).length
+  const activeCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
@@ -825,26 +838,22 @@ function FilterSheet({
           <span style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>filter</span>
           {activeCount > 0 && (
             <button
-              onClick={() => { setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null) }}
+              onClick={onClearGroups}
               style={{ fontSize: 12, color: '#ABA69C', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
             >clear all</button>
           )}
         </div>
         {availableTags.vibes.length > 0 && (
-          <FilterSection label="vibe" options={availableTags.vibes} selected={vibeFilter}
-            onSelect={v => setVibeFilter(vibeFilter === v ? null : v)} />
+          <FilterSection label="vibe" options={availableTags.vibes} selected={vibeFilter} onSelect={onToggleVibe} />
         )}
         {availableTags.verdicts.length > 0 && (
-          <FilterSection label="verdict" options={availableTags.verdicts} selected={verdictFilter}
-            onSelect={v => setVerdictFilter(verdictFilter === v ? null : v)} />
+          <FilterSection label="verdict" options={availableTags.verdicts} selected={verdictFilter} onSelect={onToggleVerdict} />
         )}
         {availableTags.genres.length > 0 && (
-          <FilterSection label="genre" options={availableTags.genres} selected={genreFilter}
-            onSelect={v => setGenreFilter(genreFilter === v ? null : v)} />
+          <FilterSection label="genre" options={availableTags.genres} selected={genreFilter} onSelect={onToggleGenre} />
         )}
         {seriesRelevant && availableTags.series.length > 0 && (
-          <FilterSection label="series" options={availableTags.series} selected={seriesFilter}
-            onSelect={v => setSeriesFilter(seriesFilter === v ? null : v)} />
+          <FilterSection label="series" options={availableTags.series} selected={seriesFilter} onSelect={onToggleSeries} />
         )}
       </div>
     </>
@@ -852,26 +861,29 @@ function FilterSheet({
 }
 
 function FilterSection({ label, options, selected, onSelect }: {
-  label: string; options: string[]; selected: string | null; onSelect: (v: string) => void
+  label: string; options: string[]; selected: string[]; onSelect: (v: string) => void
 }) {
   return (
     <div style={{ marginBottom: 20 }}>
       <p style={{ fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{label}</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {options.map(opt => (
-          <button
-            key={opt}
-            onClick={() => onSelect(opt)}
-            style={{
-              padding: '5px 12px', borderRadius: 20,
-              border: selected === opt ? '1.5px solid #1C1B19' : '1.5px solid #ECEAE6',
-              background: selected === opt ? '#1C1B19' : '#fff',
-              color: selected === opt ? '#fff' : '#6F6B64',
-              fontSize: 12, fontWeight: selected === opt ? 600 : 400,
-              cursor: 'pointer', whiteSpace: 'nowrap',
-            }}
-          >{opt}</button>
-        ))}
+        {options.map(opt => {
+          const on = selected.includes(opt)
+          return (
+            <button
+              key={opt}
+              onClick={() => onSelect(opt)}
+              style={{
+                padding: '5px 12px', borderRadius: 20,
+                border: on ? '1.5px solid #1C1B19' : '1.5px solid #ECEAE6',
+                background: on ? '#1C1B19' : '#fff',
+                color: on ? '#fff' : '#6F6B64',
+                fontSize: 12, fontWeight: on ? 600 : 400,
+                cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >{opt}</button>
+          )
+        })}
       </div>
     </div>
   )
