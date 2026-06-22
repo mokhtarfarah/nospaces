@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { genreBlock } from './_genres.js'
+import { isSafePublicUrl } from './_ssrf.js'
 
 // Strip any non-ASCII chars that may have crept in via copy-paste
 const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
@@ -134,9 +135,14 @@ async function prepImage(att: Attachment): Promise<{ mediaType: string; data: st
   return { mediaType, data }
 }
 
-// Extract http/https URLs from text, capped to avoid abuse.
+// Extract http/https URLs from text, capped to avoid abuse. Email content is
+// attacker-controllable, so drop any URL that fails the SSRF guard (loopback /
+// private / link-local / cloud-metadata) before it can be fetched server-side.
 function extractUrls(text: string): string[] {
-  return (text.match(/https?:\/\/[^\s<>"{}|\\^[\]`\x00-\x1F]*/g) ?? []).slice(0, 3)
+  // eslint-disable-next-line no-control-regex -- intentionally exclude control chars from URLs
+  return (text.match(/https?:\/\/[^\s<>"{}|\\^[\]`\x00-\x1F]*/g) ?? [])
+    .filter(isSafePublicUrl)
+    .slice(0, 3)
 }
 
 // Fetch a URL and return a compact summary of its OpenGraph / title metadata,
