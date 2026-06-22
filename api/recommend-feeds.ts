@@ -167,6 +167,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     libraryItems = [],
     customFeeds = [],
     priorRecs = [],
+    mood,
   } = req.body as {
     mode?: 'intaste' | 'divert'
     type?: string
@@ -174,9 +175,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     libraryItems?: { title: string; type: string }[]
     customFeeds?: FeedEntry[]
     priorRecs?: string[]
+    mood?: string
   }
 
-  if (!tasteProfile) return res.status(400).json({ error: 'no taste profile — generate one on the taste page first' })
+  // Mood search is the one path that works without a taste profile — the
+  // free-text intent carries the signal. Everything else still requires one.
+  const moodText = typeof mood === 'string' ? mood.trim().slice(0, 200) : ''
+  if (!moodText && !tasteProfile) return res.status(400).json({ error: 'no taste profile — generate one on the taste page first' })
 
   // Drop any custom feed whose URL is unsafe (SSRF guard) before fetching
   const safeCustomFeeds = (customFeeds ?? []).filter(f => f?.url && isSafePublicUrl(f.url))
@@ -203,7 +208,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .map(p => `[${p.source}] ${p.title}${p.content ? ' — ' + p.content : ''}`)
     .join('\n')
 
-  const prompt = mode === 'divert'
+  const prompt = moodText
+    ? `You are a taste-matched media recommendation engine in MOOD mode.
+
+The person has typed what they're in the mood for right now. Take it seriously and literally — it is the primary signal. Their taste profile (if any) is secondary calibration.
+
+WHAT THEY'RE IN THE MOOD FOR:
+"${moodText}"
+
+${tasteProfile ? `TASTE PROFILE (for calibration only — the mood comes first):\n${tasteProfile}\n` : ''}ALREADY IN THEIR LIBRARY — do not recommend these:
+${libraryList}
+${priorRecsList ? `\nALREADY RECOMMENDED IN PAST SESSIONS — do not repeat these:\n${priorRecsList}\n` : ''}CULTURAL CONTEXT (recent posts from their trusted sources — use loosely, the mood leads):
+${feedBlock}
+
+Find 8–10 recommendations that directly answer what they're in the mood for. Any type is fine unless the mood implies one. For each, write a "why" in 1–2 sentences that ties the pick back to the specific mood they described — name the thread explicitly.
+
+In "sources" put ["nospaces"] unless the feeds genuinely surfaced the pick.
+
+Return ONLY valid JSON (no markdown, no preamble):
+{
+  "recommendations": [
+    {
+      "title": "...",
+      "creator": "...",
+      "type": "film|book|music|tv",
+      "year": 2024,
+      "why": "...",
+      "sources": ["..."]
+    }
+  ]
+}`
+    : mode === 'divert'
     ? `You are a taste-matched media recommendation engine in DIVERT mode.
 
 The feeds below show what's currently being discussed in this person's trusted sources — use them as cultural context only. Your job is NOT to recommend the obvious picks from these feeds. Instead, draw primarily from your own knowledge of the broader cultural landscape to find works that are genuinely unexpected: different eras, geographies, forms, or corners of culture they probably haven't encountered through their usual reading.

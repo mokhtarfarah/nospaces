@@ -15,39 +15,22 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**Last session (51):** (1) **bare-link email capture verified working** end-to-end (Farah forwarded a real bare link post-redeploy) — closes session 50's open item. (2) **Shipped + verified the failed-capture feed (#6):** forwarded emails that add nothing now log to the `email_captures` table (`nothing_found` / `error` / `duplicates` only — successes already show in the review inbox) and surface via an "email captures" row in the library `⋯` menu → `CapturesSheet`, with **clear all** + per-row `×`. Both Supabase migrations run; Farah confirmed it works in-app. Also: account lookup now runs before the Sonnet call, so an unmatched sender fails cheaply. #6 is fully done.
+**This session (53):** **BUILT the entire Discover redesign** (session-52 locked spec, all 8 items). Discover is now type-first stacked sections (films → music → books → tv, top 3 + "more →"), a **mood search bar** (new `mood` param on `recommend-feeds` — one paid Sonnet call/search, works with no profile), a single **for you ⇄ further afield** toggle, **free static editorial cold-start** (`src/lib/editorialPicks.ts`) instead of the no-profile wall, and 2-line-clamped blurbs. "shows near you" moved into the Library music view; "decide for me" promoted to a Library status-row chip (out of the `⋯` menu). Engine untouched. typecheck + lint + 56 tests + production build all clean. **Not screenshotted — app is behind Google OAuth, the preview can't sign in, so the redesign is UNVERIFIED in a signed-in browser.**
 
-**This session (52):** (1) Re-fixed session-49 **#2 (scroll restore)** — now retries each frame until the saved offset sticks — and **#5 (filter clip)** — spacer bumped to clear the tab bar when the sheet is short. Pushed; both PWA-only so **unverified on phone.** Session-49 #1/#3/#4 confirmed fixed by Farah; #2/#5 had failed first time. (2) **Discover redesign = full design conversation, spec now locked** (see Next session). No code written on it — next session builds.
-
-**Still open from session 49:** #2 + #5 re-fixed this session but still need a phone confirm on the deployed build.
+**Last session (52):** Discover redesign design conversation (spec locked, no code) + re-fixed session-49 #2/#5 (PWA-only, unverified on phone). Full detail → archive.
 
 ---
 
-## ▶ Next session — BUILD the Discover redesign (spec locked, session 52)
+## ▶ Next session — VERIFY the Discover redesign, then the small open items
 
-Design conversation is **done** — concept + structure decided. This is now a **build**, not a design task. Do NOT rebuild the recommendation ENGINE: Farah confirmed sources + AI recs work fine; this is purely **display / structure / labels**.
+The Discover redesign is **built but only verified up to the auth wall** (typecheck/lint/tests/build clean; no signed-in screenshot). First job:
 
-**Backbone decided — everything splits into *grounded-in-your-library* vs *new-to-you*:**
-- *Grounded* (act on what you have) → lives in **Library**: `help me decide` (exists at `/decide`, picks from backlog) + `shows near you` (concerts from loved artists).
-- *New-to-you* (find what you don't have) → lives in **Discover**.
-
-**Discover rebuild (new-to-you only) — `DiscoverScreen.tsx` is a near-total rewrite:**
-1. **Kill the "all" soup + the no-profile wall.** Land on **type-first stacked sections** (films → music → books → tv), each showing 2–3 strongest picks, with **"more →"** drilling into that single type's full list. No "all" tab. (Wall is `DiscoverScreen.tsx:84,202`.)
-2. **Mood search bar on top** — free-text "in the mood for…" pulls recs from the prompt. COST: one paid AI call per search; reuse the `recommend-feeds` path (add a prompt param), Sonnet-tier, rate-limit 20/hr like the other pricey endpoints. *(Quick-pick chips above the box were considered + PARKED → ROADMAP, revisit 2026-06-29.)*
-3. **Rename the streams off the jargon** + collapse to ONE toggle: `in taste → "for you"`, `divert → "further afield"` as a single top toggle (for you ⇄ further afield), not two stacked sections. "for you" = free/cached; tapping "further afield" fires the wander call (opt-in cost, unchanged).
-4. **Cold-start = no wall:** with no taste profile, the per-medium sections fill from **editorial picks** (same layout) instead of "make a taste profile first."
-5. **Blurbs:** show the existing AI `why`, **clamped to ~2 lines** in the feed, full on tap. Display-only, no prompt change, no cost.
-6. **Remove "shows near you"** from Discover entirely.
-
-**Library changes (the grounded side):**
-7. **Move "shows near you" into the music category view** — it's intrinsically music (no "book near you"). Slim entry at the top of the library when `music` is the active category; remove from Discover. (`LibraryScreen.tsx` type-tab row ~534; `ShowsScreen.tsx` unchanged, just re-homed.)
-8. **Promote "help me decide" out of the ⋯ menu** → a single **"decide for me" chip in the library status row** (all-media; `/decide` already exists). One chip, no new row, nothing buried. (`LibraryScreen.tsx:1300` today; OverflowSheet.)
-
-**Mockups from the design session:** type-first stacked film/music/book/tv sections + mood-search bar on top (the agreed direction; hero-pick concept was tried and rejected — Farah wants the list, not one big card).
+1. **Eyeball the rebuilt Discover signed-in** (deployed or local `npm run dev` with Farah's login). Check, as a first-time user with taste: type-first sections render + look right; **mood search** returns sensible picks (costs one paid Sonnet call — test 1–2 times max); **for you ⇄ further afield** toggle works (further-afield still opt-in); **cold-start editorial picks** show for a no-profile state and read as a respectable first impression (curated list is in `src/lib/editorialPicks.ts` — swap any picks that feel off); blurbs clamp to 2 lines + expand on tap. In Library: **"shows near you"** appears only in the music view; **"decide for me"** chip works and is gone from the `⋯` menu.
 
 **Also still open (smaller):**
-- **Session-49 #2 (scroll restore) + #5 (filter clip)** — re-fixed session 52, **unverified on phone** (both are PWA-only behaviors). Re-test on the deployed build.
+- **Session-49 #2 (scroll restore) + #5 (filter clip)** — re-fixed session 52, **unverified on phone** (both PWA-only). Re-test on the deployed build.
 - **#7 — catalog-miss interstitial.** "nothing found — identify with ai?" adds a step mid-flow; kept as a cost gate (paid Sonnet). Farah's call whether to make it automatic. (`AddScreen.tsx:367`)
+- **Discover mood chips** — parked, revisit **2026-06-29** after a week of real use of the rebuilt Discover. (`docs/ROADMAP.md`)
 
 **Don't touch (genuinely good):** library header restraint, decade grouping, the taste page's vibe-headline → prose → gap → always-loved → desert-island arc, the editorial palette, the faithful-creators logic, **the recommendation engine itself.**
 

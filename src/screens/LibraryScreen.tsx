@@ -612,7 +612,7 @@ export function LibraryScreen() {
               ))}
             </>
           )}
-          {/* New Music Tuesday toggle + shows-near-you link — only in the Music category */}
+          {/* New Music Tuesday toggle — only in the Music category */}
           {musicOnly && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
@@ -623,11 +623,41 @@ export function LibraryScreen() {
               />
             </>
           )}
+          {/* Decide for me — promoted out of the overflow menu; all-media, picks from the backlog. */}
+          {items.length > 0 && (
+            <>
+              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+              <button
+                onClick={() => navigate('/decide')}
+                style={{
+                  flexShrink: 0, padding: '4px 2px 8px', border: 'none', background: 'none',
+                  color: '#1C1B19', fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                decide for me
+              </button>
+            </>
+          )}
         </div>
       </header>
 
       {/* List */}
       <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(150px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))' }}>
+        {/* Shows near you — lives in the music view (it's intrinsically music). */}
+        {musicOnly && !reviewOnly && (
+          <button
+            onClick={() => navigate('/shows')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              width: 'calc(100% - 32px)', boxSizing: 'border-box', margin: '12px 16px 0',
+              padding: '10px 14px', background: '#1C1B19', border: 'none', borderRadius: 10,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>shows near you</span>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>browse →</span>
+          </button>
+        )}
         {dupes > 0 && !loading && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', border: '1px solid #ECEAE6', borderRadius: 4 }}>
             <span style={{ fontSize: 12, color: '#6F6B64' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>
@@ -841,13 +871,11 @@ export function LibraryScreen() {
       {/* Overflow menu — occasional actions moved out of the header */}
       {overflowOpen && (
         <OverflowSheet
-          hasItems={items.length > 0}
           gapCount={gapCount}
           captureCount={captures.length}
           captureFailures={captureFailures}
           selectMode={selectMode}
           onClose={() => setOverflowOpen(false)}
-          onDecide={() => { setOverflowOpen(false); navigate('/decide') }}
           onGuide={() => { setOverflowOpen(false); navigate('/guide') }}
           onTidy={() => { setOverflowOpen(false); setGapsOpen(true) }}
           onCaptures={() => { setOverflowOpen(false); setCapturesOpen(true) }}
@@ -1269,14 +1297,12 @@ function HeaderControls({ filtersActive, onClear, onSearch, onMore }: {
 }
 
 // Overflow bottom sheet — holds the occasional actions pulled out of the header.
-function OverflowSheet({ hasItems, gapCount, captureCount, captureFailures, selectMode, onClose, onDecide, onGuide, onTidy, onCaptures, onSelect }: {
-  hasItems: boolean
+function OverflowSheet({ gapCount, captureCount, captureFailures, selectMode, onClose, onGuide, onTidy, onCaptures, onSelect }: {
   gapCount: number
   captureCount: number
   captureFailures: number
   selectMode: boolean
   onClose: () => void
-  onDecide: () => void
   onGuide: () => void
   onTidy: () => void
   onCaptures: () => void
@@ -1297,7 +1323,6 @@ function OverflowSheet({ hasItems, gapCount, captureCount, captureFailures, sele
         padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201, maxWidth: 480, margin: '0 auto',
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 12px' }} />
-        {hasItems && <Row label="help me decide" sub="pick something for right now" onClick={onDecide} />}
         <Row label="how to use" sub="a quick tour of nospaces" onClick={onGuide} />
         {gapCount > 0 && <Row label={`tidy · ${gapCount}`} sub="fill in missing details" onClick={onTidy} />}
         {captureCount > 0 && <Row label={captureFailures > 0 ? `email captures · ${captureFailures}` : 'email captures'} sub="forwards that didn’t save" onClick={onCaptures} />}

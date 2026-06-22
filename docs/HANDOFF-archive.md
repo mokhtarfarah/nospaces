@@ -4,6 +4,32 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 53 (2026-06-22) — BUILT the Discover redesign (session-52 spec)
+
+Built the whole locked spec in one pass. **Display/structure/labels only — recommendation engine untouched** (Farah confirmed sources + AI recs work fine).
+
+**Discover (`DiscoverScreen.tsx`, near-total rewrite):**
+1. **Killed the "all" soup + no-profile wall.** Lands on **type-first stacked sections** (films → music → books → tv), each showing top 3 picks with **"more · N →"** drilling into that single type's full list (back via "← all"). No "all" tab.
+2. **Mood search bar on top** — free-text "in the mood for…" → new `mood` param on `api/recommend-feeds` (MOOD-mode prompt: typed intent is primary signal, taste profile secondary, works **without a profile**). Same Sonnet-4-5 tier + 20/hr rate limit as the existing calls — **one paid call per search, no new endpoint/billing surface.** Mood results override the stream view until "clear ✕".
+3. **Collapsed the two streams into ONE toggle** — `in taste → "for you"`, `divert → "further afield"`. "for you" = free/cached; tapping "further afield" fires the wander call (opt-in, unchanged). "further afield" tab only shows with a taste profile.
+4. **Cold-start = no wall.** New `src/lib/editorialPicks.ts` — static, hand-picked ~6/type, **free (no AI)**, source label `editorial`. No profile → per-type sections fill from these. Profile but nothing cached → slim "showing starter picks · load your picks →" nudge instead of a wall.
+5. **Blurbs clamped to ~2 lines** (`-webkit-line-clamp: 2`), full on tap. Display-only, no prompt change.
+6. **Removed "shows near you"** from Discover. Also dropped the now-dead cached-date display + `useNavigate` import.
+
+**Library (`LibraryScreen.tsx`):**
+7. **Re-homed "shows near you"** into the **music** category view — slim dark entry at the top of the list, only when `music` is active (`navigate('/shows')` unchanged).
+8. **Promoted "decide for me"** out of the `⋯` menu → a chip in the library status row (all-media, `navigate('/decide')`); removed "help me decide" + the now-unused `hasItems`/`onDecide` props from `OverflowSheet`.
+
+**Verification:** typecheck + lint clean, 56 tests pass, **production build clean.** Could NOT screenshot — app is behind Google OAuth, preview can't sign in. **The redesign is unverified in a signed-in browser** — Farah needs to eyeball the deployed/local build. (Threw away a temporary `vite-preview` launch.json entry; reverted.)
+
+---
+
+### Session 52 (2026-06-22) — Discover redesign design conversation (spec locked, no code)
+
+Full design pass on Discover. Concept + structure decided, written into HANDOFF as the locked build spec for session 53. Quick-pick mood chips considered + parked → ROADMAP (revisit 2026-06-29). Also re-fixed session-49 #2 (scroll restore — retries each frame) + #5 (filter clip — spacer clears tab bar); both PWA-only, pushed, unverified on phone.
+
+---
+
 ### Session 51 (2026-06-22) — verified bare-link email + built the failed-capture feed (#6)
 
 Picked up the two loose ends from session 50.
