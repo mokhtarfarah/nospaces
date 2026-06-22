@@ -402,8 +402,10 @@ function DiscoverCover({ title, creator, type, year }: { title: string; creator:
   const artwork = useArtwork(type, title, creator, year, null)
   const color = typeColor(type)
   const isMusic = type === 'music'
-  const w = isMusic ? 72 : 56
-  const h = isMusic ? 72 : 84
+  // Same width for every type so covers share a left edge and the text column
+  // starts at the same x; music stays square (album art) instead of portrait.
+  const w = 56
+  const h = isMusic ? 56 : 84
   return artwork
     ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: `1px solid ${HAIR}`, flexShrink: 0 }} />
     : <div style={{ width: w, height: h, background: color.bg, flexShrink: 0, border: `1px solid ${HAIR}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: color.border, letterSpacing: '0.3px' }}>{type}</div>

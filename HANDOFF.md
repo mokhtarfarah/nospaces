@@ -15,19 +15,18 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**Last session (47):** shipped the pro-hardening bundle — Sentry crash reporting (live + verified), lint-in-CI, gitleaks secret scan, Dependabot. Earlier sessions (44–45) closed the entire security audit queue. **No open security or infra work.**
+**Last session (48):** editorial polish — #4 (Discover covers now share a left edge) and #5 (labelled "the gap") shipped. **Next up: a round of input bug + workflow fixes** Farah hit while using the app this week — search not working, identify-with-AI quality, etc. Do that in a fresh session.
 
 ---
 
 ## ▶ Next session — editorial polish (new-user audit #3–#7)
 
-The work now is making the app feel right to a **first-time user with great taste**. Full audit was done in session 43; #1–#2 shipped then. These five remain, roughly in priority order:
+The work now is making the app feel right to a **first-time user with great taste**. Full audit was done in session 43; #1–#2 shipped then, #4–#5 in session 48. Remaining:
 
-- [ ] **#4 — align Discover covers.** Music covers are 72×72, everything else 56×84, so rows don't share a left edge. Mechanical fix. (`DiscoverScreen.tsx:406`) — *good warm-up.*
-- [ ] **#5 — label "the gap."** Taste page shows `adding thriller · finishing horror` with no framing. Add one line: "what you're collecting vs. what you actually finish." (`TasteScreen.tsx:317`)
 - [ ] **#3 — Discover dead-ends for new users.** No taste profile = the whole page is a wall ("go to the taste page first"), and the taste page needs rated items first. The most exciting feature is gated behind two prerequisites with no on-ramp. **The real one — needs a small design, not just a fix.** (`DiscoverScreen.tsx:84,202`)
-- [ ] **#6 — empty-library line.** "go listen to some music you loser" — inside joke, jarring to a stranger. **Farah's call** whether to keep / soften. (`LibraryScreen.tsx:899`)
-- [ ] **#7 — catalog-miss interstitial.** "nothing found — identify with ai?" adds a decision step mid-flow. Was kept deliberately as a cost gate (identify is a paid Sonnet call). **Farah's call** whether to make it automatic. (`AddScreen.tsx:367`)
+- [ ] **#7 — catalog-miss interstitial.** "nothing found — identify with ai?" adds a decision step mid-flow. Was kept deliberately as a cost gate (identify is a paid Sonnet call). **Kept for now** — Farah's call whether to make it automatic. (`AddScreen.tsx:367`)
+
+**#6 (empty-library inside joke) parked** → see `docs/ROADMAP.md`.
 
 **Don't touch (genuinely good):** library header restraint, decade grouping, the taste page's vibe-headline → prose → gap → always-loved → desert-island arc, the editorial palette, the faithful-creators logic.
 

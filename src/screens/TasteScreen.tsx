@@ -317,8 +317,11 @@ export function TasteScreen() {
       {/* The gap — per-medium where meaningful */}
       {aspirationGaps.length > 0 && (
         <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 4 }}>
             the gap
+          </div>
+          <div style={{ fontSize: 12, color: MUTE, lineHeight: 1.5, marginBottom: 10 }}>
+            what you're collecting vs. what you actually finish
           </div>
           {aspirationGaps.map((g, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: i < aspirationGaps.length - 1 ? 5 : 0 }}>
