@@ -142,7 +142,7 @@ npm run typecheck    # tsc --noEmit (src) && tsc --noEmit -p tsconfig.api.json (
 - `POSTMARK_FROM` — optional reply-from override
 - `TICKETMASTER_API_KEY` — shows near you (Ticketmaster/Live Nation only)
 - `TMDB_API_KEY` — film/TV catalog search in `/api/lookup`
-- `VITE_SENTRY_DSN` — crash reporting (frontend). **Not yet set** — until it is, Sentry is a no-op (see "Pro hardening — manual steps left" below).
+- `VITE_SENTRY_DSN` — crash reporting (frontend). ✅ set in Vercel (all envs) + verified live (test event landed in the `javascript-react` project, session 47). Note: ad-blockers/privacy extensions block the ingest request locally — Farah's own Chrome was blocking it; real user/phone crashes still report fine.
 
 ---
 
@@ -251,8 +251,8 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 - **PR workflow + branch protection** — ⏸ **parked until >2 users** (pro hardening item #6). Direct pushes to `main` are still allowed (solo dev, 2 users). Memory `pr-workflow-at-3-users` will prompt to revisit when a 3rd user joins.
 
 **⚠️ Pro hardening — manual steps left (need Farah, can't be automated):**
-1. **Sentry:** create a free project at sentry.io → React → copy the DSN → add `VITE_SENTRY_DSN` in Vercel env vars (all environments) → redeploy. Until then crash reporting is silently off.
-2. **Spend alerts:** (a) Anthropic console → Billing → set a monthly usage limit + alert email. (b) Vercel → project → Usage → set spend notifications. Protects against a runaway loop billing you.
+1. ~~**Sentry**~~ — ✅ DONE + verified live (session 47). DSN set in Vercel, test crash landed in the dashboard.
+2. **Spend alerts** — ⏳ STILL TODO. (a) Anthropic console → Billing → set a monthly usage limit + alert email. (b) Vercel → project → Usage → set spend notifications. Protects against a runaway loop billing you.
 
 **Dev automation**
 - **Typecheck on Stop hook** — ✅ done. Stop hook runs `tsc --noEmit` and injects a system message if any `error TS` lines are found.
