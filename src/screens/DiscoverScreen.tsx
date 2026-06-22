@@ -231,17 +231,14 @@ export function DiscoverScreen() {
   const now = new Date()
   const issueNo = isoWeek(now)
   const dateLabel = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-  const streamLabel = moodActive ? 'in the mood' : stream === 'further' ? 'further afield' : 'for you'
 
   return (
     <div style={{ padding: '20px 20px 100px', fontFamily: 'inherit' }}>
 
-      {/* Masthead */}
-      <header style={{ textAlign: 'center', borderBottom: `1.5px solid ${INK}`, paddingBottom: 14, marginBottom: 12 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 600, margin: 0, color: INK, letterSpacing: '-0.5px', lineHeight: 1 }}>discover</h1>
-        <div style={{ fontSize: 10, color: MUTE, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: 9 }}>
-          {streamLabel} · no.{issueNo} · {dateLabel}
-        </div>
+      {/* Header — matches the rest of the app: small, left-aligned */}
+      <header style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+        <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>discover</h1>
+        <span style={{ fontSize: 10, color: MUTE, letterSpacing: '1px', textTransform: 'uppercase' }}>no.{issueNo} · {dateLabel}</span>
       </header>
 
       {error && <p style={{ fontSize: 12, color: '#C0392B', textAlign: 'center', margin: '12px 0 0' }}>{error}</p>}
@@ -428,7 +425,7 @@ function ResultRow({ result: r, index, savedSource, onSave, onDismiss }: {
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: `url(${artwork})`, backgroundSize: 'cover', backgroundPosition: 'center',
-          filter: 'blur(12px)', opacity: 0.42, transform: 'scale(1.15)',
+          filter: 'blur(4px)', opacity: 0.42, transform: 'scale(1.08)',
           WebkitMaskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
           maskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
         }} />
