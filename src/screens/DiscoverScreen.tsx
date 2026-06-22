@@ -83,6 +83,10 @@ export function DiscoverScreen() {
       setDivertResults(normaliseSources(cachedDivert.results))
       setDivertLoaded(true)
     }
+    // "For you" is the default, not an opt-in. If there's a taste profile and no
+    // fresh cache, fetch personalised picks automatically (self-guards on the
+    // 48h cache, so this is at most one paid call per cache window, not per visit).
+    if (tasteProfile && (!cached || isStale(cached.cachedAt))) fetchMode('intaste')
   }, [prefsLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const libraryItems = useMemo(
@@ -177,13 +181,15 @@ export function DiscoverScreen() {
     })
   }
 
-  // What "for you" shows: personalised in-taste picks when loaded, else the
-  // free editorial cold-start list (no wall, no profile required).
+  // What "for you" shows: personalised in-taste picks whenever there's a taste
+  // profile (auto-loaded above). Editorial picks are a fallback ONLY for the true
+  // cold start — someone with no taste profile yet.
+  const hasProfile = !!tasteProfile
   const hasIntaste = intasteResults.length > 0
-  const usingEditorial = !hasIntaste
+  const usingEditorial = !hasProfile
   const forYouSource = useMemo(
-    () => hasIntaste ? intasteResults : TYPE_ORDER.flatMap(t => editorialPicksFor(t)),
-    [intasteResults, hasIntaste]
+    () => hasProfile ? intasteResults : TYPE_ORDER.flatMap(t => editorialPicksFor(t)),
+    [intasteResults, hasProfile]
   )
 
   // The active result set (mood overrides the stream toggle entirely).
@@ -214,7 +220,11 @@ export function DiscoverScreen() {
 
   const allFeeds = [...DEFAULT_FEEDS, ...customFeeds]
   const isLoadingActive = moodActive ? moodLoading : (stream === 'further' ? divertLoading : intasteLoading)
-  const visibleTypes = drillType ? [drillType] : TYPE_ORDER
+  // Stream view always shows all four mediums (consistent structure, even when a
+  // medium is empty this round). Mood is a focused query — only show what matched.
+  const visibleTypes = drillType ? [drillType]
+    : moodActive ? TYPE_ORDER.filter(t => (byType.get(t)?.length ?? 0) > 0)
+    : TYPE_ORDER
 
   return (
     <div style={{ padding: '20px 20px 100px', fontFamily: 'inherit' }}>
@@ -290,13 +300,13 @@ export function DiscoverScreen() {
         </button>
       )}
 
-      {/* Cold-start nudge: profile exists but personalised picks not loaded yet */}
-      {!moodActive && stream === 'foryou' && tasteProfile && usingEditorial && !intasteLoading && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 24, padding: '11px 14px', background: '#FAF9F7', borderRadius: 10 }}>
-          <span style={{ fontSize: 12, color: GRAPHITE }}>showing starter picks</span>
-          <button onClick={() => fetchMode('intaste', true)} style={{ background: 'none', border: 'none', color: INK, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-            load your picks →
-          </button>
+      {/* Editorial explainer — only shown at true cold start (no taste profile) */}
+      {!moodActive && usingEditorial && !drillType && (
+        <div style={{ marginBottom: 28, padding: '12px 14px', background: '#FAF9F7', borderRadius: 10 }}>
+          <p style={{ fontSize: 12, color: GRAPHITE, lineHeight: 1.6, margin: 0 }}>
+            <strong style={{ color: INK, fontWeight: 600 }}>starter picks</strong> — a hand-picked shortlist of broadly loved films, music, books and tv while you get going. Not personalised.{' '}
+            <span style={{ color: GRAPHITE }}>Build a taste profile on the taste page for recommendations made for you.</span>
+          </p>
         </div>
       )}
 
@@ -305,33 +315,42 @@ export function DiscoverScreen() {
         <p style={{ fontSize: 12, color: MUTE, marginBottom: 24 }}>loading…</p>
       )}
 
-      {/* Empty (mood / divert returned nothing) */}
-      {!isLoadingActive && displayed.length === 0 && (moodActive || stream === 'further') && (
+      {/* Empty (mood / divert / for-you returned nothing) */}
+      {!isLoadingActive && displayed.length === 0 && (
         <p style={{ fontSize: 13, color: MUTE, lineHeight: 1.6, marginBottom: 24 }}>
-          {moodActive ? 'nothing matched — try a different mood' : 'nothing further afield this round — refresh to try again'}
+          {moodActive ? 'nothing matched — try a different mood'
+            : stream === 'further' ? 'nothing further afield this round — refresh to try again'
+            : 'no picks yet — refresh to pull a fresh set'}
         </p>
       )}
 
-      {/* Type-first stacked sections */}
-      {!isLoadingActive && visibleTypes.map(t => {
+      {/* Type-first stacked sections — strong per-medium separation + a visible
+          count on every header so the (uneven) numbers are transparent. */}
+      {!isLoadingActive && displayed.length > 0 && visibleTypes.map((t, idx) => {
         const all = byType.get(t) ?? []
-        if (all.length === 0) return null
         const shown = drillType ? all : all.slice(0, PREVIEW_COUNT)
         const hasMore = !drillType && all.length > PREVIEW_COUNT
         return (
-          <div key={t} style={{ marginBottom: 34 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: `1px solid ${HAIR}`, paddingBottom: 8, marginBottom: 16 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{TYPE_LABEL[t]}</span>
+          <section key={t} style={{ marginBottom: 12, paddingTop: idx === 0 ? 0 : 24, borderTop: idx === 0 ? 'none' : `1px solid ${HAIR}`, marginTop: idx === 0 ? 0 : 12 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: INK, letterSpacing: '-0.01em' }}>{TYPE_LABEL[t]}</h2>
+                <span style={{ fontSize: 12, color: MUTE }}>{all.length}</span>
+              </div>
               {hasMore && (
-                <button onClick={() => setDrillType(t)} style={{ background: 'none', border: 'none', color: GRAPHITE, fontSize: 11, cursor: 'pointer', padding: 0 }}>
-                  more · {all.length} →
+                <button onClick={() => setDrillType(t)} style={{ background: 'none', border: 'none', color: GRAPHITE, fontSize: 12, fontWeight: 500, cursor: 'pointer', padding: 0 }}>
+                  see all {all.length} →
                 </button>
               )}
             </div>
-            {shown.map((r, i) => (
-              <ResultRow key={i} result={r} savedSource={savedItems.get(r.title.toLowerCase()) ?? null} onSave={() => handleSave(r)} onDismiss={() => dismissDiscoverTitle(r.title)} />
-            ))}
-          </div>
+            {all.length === 0 ? (
+              <p style={{ fontSize: 12, color: MUTE, marginBottom: 8 }}>nothing this round</p>
+            ) : (
+              shown.map((r, i) => (
+                <ResultRow key={i} result={r} savedSource={savedItems.get(r.title.toLowerCase()) ?? null} onSave={() => handleSave(r)} onDismiss={() => dismissDiscoverTitle(r.title)} />
+              ))
+            )}
+          </section>
         )
       })}
 
