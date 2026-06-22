@@ -437,14 +437,16 @@ function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }:
       )}
 
       <div style={{ position: 'relative', padding: '14px 14px 16px' }}>
-        {/* Oversized rank numeral — fills the row, clips top/bottom, sits behind the text */}
+        {/* Oversized rank numeral — full watermark: sits behind everything, the
+            text runs across it. Lighter grey than NUMERAL so the title stays
+            readable on top; left-anchored so the digit fills the row's left. */}
         <span style={{
-          position: 'absolute', left: 2, top: '50%', transform: 'translateY(-50%)',
-          fontFamily: 'inherit', fontSize: 120, fontWeight: 300,
-          color: NUMERAL, lineHeight: 1, letterSpacing: '-6px', zIndex: 0,
+          position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
+          fontFamily: 'inherit', fontSize: 104, fontWeight: 300,
+          color: '#E0DDD5', lineHeight: 1, letterSpacing: '-6px', zIndex: 0,
           pointerEvents: 'none', userSelect: 'none',
         }}>{index}</span>
-        <div style={{ position: 'relative', zIndex: 1, minWidth: 0, paddingLeft: 56 }}>
+        <div style={{ position: 'relative', zIndex: 1, minWidth: 0, paddingLeft: 14 }}>
           <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.25 }}>{r.title}</div>
           <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', margin: '3px 0 8px' }}>
             {meta}

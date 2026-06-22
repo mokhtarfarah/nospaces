@@ -147,7 +147,12 @@ function CanonGallery({ items }: { items: Item[] }) {
         <span style={{ fontSize: 11, color: MUTE }}>{items.length}</span>
         <span style={{ fontSize: 10, color: MUTE, marginLeft: 'auto', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
       </button>
-      {open && byType.map(({ type, items: typeItems }) => (
+      {open && byType.map(({ type, items: typeItems }) => {
+        // Each medium keeps its natural shape so a row of covers reads like a
+        // shelf: posters (film/book/tv) are portrait 2:3, music is square. The
+        // old uniform square hard-cropped portraits to their top third.
+        const aspect = type === 'music' ? '1' : '2 / 3'
+        return (
         <div key={type} style={{ marginBottom: multiType ? 22 : 0 }}>
           {multiType && (
             <div style={{ fontSize: 11, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>
@@ -163,7 +168,7 @@ function CanonGallery({ items }: { items: Item[] }) {
               <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <div style={{
                   width: '100%',
-                  aspectRatio: '1',
+                  aspectRatio: aspect,
                   borderRadius: 3, overflow: 'hidden',
                   border: `1px solid ${HAIR}`, background: '#f5f4f2',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -186,7 +191,8 @@ function CanonGallery({ items }: { items: Item[] }) {
             ))}
           </div>
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
