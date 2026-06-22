@@ -7,6 +7,7 @@ import { editorialPicksFor } from '../lib/editorialPicks'
 import { useArtwork } from '../lib/artwork'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { typeColor } from '../lib/colors'
+import { PageHeader } from '../components/PageHeader'
 
 // Editorial palette — matches taste + library pages
 const INK = '#1C1B19'
@@ -221,15 +222,13 @@ export function DiscoverScreen() {
   const isLoadingActive = moodActive ? moodLoading : (stream === 'further' ? divertLoading : intasteLoading)
 
   const dateLabel = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  const streamLabel = moodActive ? 'in the mood' : stream === 'further' ? 'further afield' : 'for you'
 
   return (
     <div style={{ padding: '20px 20px 100px', fontFamily: 'inherit' }}>
 
-      {/* Header — matches the rest of the app: small, left-aligned */}
-      <header style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>discover</h1>
-        <span style={{ fontSize: 10, color: MUTE, letterSpacing: '1px', textTransform: 'uppercase' }}>{dateLabel}</span>
-      </header>
+      {/* Shared magazine header */}
+      <PageHeader kicker={`${streamLabel} · ${dateLabel}`} title="discover" />
 
       {error && <p style={{ fontSize: 12, color: '#C0392B', textAlign: 'center', margin: '12px 0 0' }}>{error}</p>}
 

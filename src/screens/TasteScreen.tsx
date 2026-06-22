@@ -6,6 +6,7 @@ import { VIBES, VERDICTS as _VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { authHeaders } from '../lib/supabase'
 import { useArtwork } from '../lib/artwork'
+import { PageHeader } from '../components/PageHeader'
 
 const INK = '#1C1B19'
 const GRAPHITE = '#6F6B64'
@@ -254,7 +255,7 @@ export function TasteScreen() {
 
   if (!doneWithReaction.length) return (
     <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
-      <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 20px', color: INK }}>taste</h1>
+      <PageHeader title="taste" />
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 6 }}>nothing to show yet</div>
         <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.6 }}>mark items as done and add reactions — your taste profile builds up here.</div>
@@ -265,7 +266,7 @@ export function TasteScreen() {
   return (
     <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
       {/* "taste" as a small section label, vibe words as the headline */}
-      <h1 style={{ fontSize: 15, fontWeight: 600, margin: topVibes.length > 0 ? '0 0 8px' : '0 0 20px', color: INK }}>taste</h1>
+      <PageHeader kicker={`shaped by ${doneWithReaction.length} ${doneWithReaction.length === 1 ? 'rating' : 'ratings'}`} title="taste" />
 
       {/* Vibe words — the actual headline */}
       {topVibes.length > 0 && (

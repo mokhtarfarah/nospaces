@@ -476,26 +476,32 @@ export function LibraryScreen() {
         {/* Title row — folds away on scroll. Holds the view control, search and
             the overflow menu; the category + status rows below stay pinned. */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           overflow: 'hidden', transition: 'max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease',
-          maxHeight: collapsed ? 0 : 40, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 12,
+          maxHeight: collapsed ? 0 : 64, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 12,
         }}>
-          <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button
-              onClick={() => setViewSheetOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#333', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
-            >
-              {VIEW_CONFIG[view].label}
-              <span style={{ fontSize: 11, color: '#AAA' }}>▾</span>
-            </button>
-            <HeaderControls
-              filtersActive={filtersActive}
-              onClear={clearFilters}
-              onSearch={() => setSearchOpen(v => !v)}
-              onMore={() => setOverflowOpen(true)}
-            />
+          {/* Magazine header — small kicker + label + rule (shared treatment) */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>{items.length} in the collection</div>
+              <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingBottom: 1 }}>
+              <button
+                onClick={() => setViewSheetOpen(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#333', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
+              >
+                {VIEW_CONFIG[view].label}
+                <span style={{ fontSize: 11, color: '#AAA' }}>▾</span>
+              </button>
+              <HeaderControls
+                filtersActive={filtersActive}
+                onClear={clearFilters}
+                onSearch={() => setSearchOpen(v => !v)}
+                onMore={() => setOverflowOpen(true)}
+              />
+            </div>
           </div>
+          <div style={{ borderBottom: '1.5px solid #1C1B19' }} />
         </div>
 
         {searchOpen && (
