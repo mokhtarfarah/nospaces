@@ -371,6 +371,17 @@ export function LibraryScreen() {
   // (film / book / tv) — never on "all" or music.
   const seriesRelevant = categories.length === 1 && ['film', 'book', 'tv'].includes(categories[0])
 
+  // Kicker census — counts the medium you're actually looking at. "all" → the
+  // whole collection; a single type → just that type ("12 films", "30 books").
+  const kicker = useMemo(() => {
+    if (categories.length === 1) {
+      const type = categories[0]
+      const n = items.filter(i => i.type === type).length
+      return `${n} ${CATEGORY_LABEL[type] ?? type}`
+    }
+    return `${items.length} in the collection`
+  }, [items, categories])
+
   // Base filter: everything except the tag/vibe filter. Used to compute which
   // vibe/genre chips should be shown so they don't vanish when one is selected.
   const baseFiltered = useMemo(() => {
@@ -482,7 +493,7 @@ export function LibraryScreen() {
           {/* Magazine header — small kicker + label + rule (shared treatment) */}
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>{items.length} in the collection</div>
+              <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>{kicker}</div>
               <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingBottom: 1 }}>
