@@ -129,7 +129,9 @@ npm run typecheck    # tsc --noEmit (src) && tsc --noEmit -p tsconfig.api.json (
 - `/api/recommend` PDF upload (no web_search): ~$0.05–0.10
 - All other endpoints (blurb, art, wiki, shows): free (external APIs)
 
-**Rules:** never run more than 2–3 test API calls to verify a feature. web_search is the most expensive tool — never in loops or exploratory tests. Flag cost impact whenever suggesting a new Anthropic API feature.
+**Rules:** never run more than 2–3 test API calls to verify a feature. web_search is the most expensive *per-call* tool — never in loops or exploratory tests. Flag cost impact whenever suggesting a new Anthropic API feature.
+
+**Real-world note (June 2026, from the usage console):** the actual monthly bill (~$10) was dominated by **Sonnet token volume**, not web_search (only 42 searches all month ≈ $0.40). Spend was front-loaded into the Jun 1–6 build week (bulk seeding/identifying). Input tokens (1.68M) far outweighed output (315k), so the true cost lever is **input-heavy calls: photo vision, bulk email/Letterboxd adds, and whole-library prompts (taste-profile, recommend)** — not clicking around Discover. Routine single-item adds are pennies.
 
 ---
 
@@ -252,7 +254,7 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 
 **⚠️ Pro hardening — manual steps left (need Farah, can't be automated):**
 1. ~~**Sentry**~~ — ✅ DONE + verified live (session 47). DSN set in Vercel, test crash landed in the dashboard.
-2. **Spend alerts** — (a) Anthropic ✅ set **$20 monthly hard cap** (Farah was already ~$10 for June, so bumped from the planned $10). NOTE: it's a hard stop — if hit, all AI features (identify/vibes/recommend/email) fail silently until month reset; fix = raise the cap. June trending ~$15, likely driven by `recommend` web-search (~$0.20/call) + past-session API test calls — the lever to watch if spend climbs. (b) Vercel ⏳ skipped — Spend Management threw a "strange error" (likely the free Hobby plan, where it doesn't apply / can't be charged). Low priority. Vercel usage notifications already on. Revisit only if on/moving to Pro: Vercel → Settings → Billing → Spend Management, cap ~$30–40.
+2. **Spend alerts** — (a) Anthropic ✅ set **$20 monthly hard cap** (June was already ~$10, so bumped from the planned $10). NOTE: it's a hard stop — if hit, all AI features (identify/vibes/recommend/email) fail silently until month reset; fix = raise the cap. **Real June usage (checked in console):** ~$10, almost entirely **front-loaded into Jun 1–6** (the foundation build week); recent days ≈ $0. Driver is **Sonnet token volume**, NOT web search (only 42 searches all month ≈ $0.40). 1.68M tokens *in* vs 315k *out* → the input-heavy calls are the lever: **photos (vision), bulk email/Letterboxd adds, and whole-library prompts (taste-profile, recommend)**. Day-to-day item adds cost pennies. (b) Vercel ⏳ skipped — Spend Management threw a "strange error" (likely the free Hobby plan, where it doesn't apply / can't be charged). Low priority. Vercel usage notifications already on. Revisit only if on/moving to Pro: Vercel → Settings → Billing → Spend Management, cap ~$30–40.
 
 **Dev automation**
 - **Typecheck on Stop hook** — ✅ done. Stop hook runs `tsc --noEmit` and injects a system message if any `error TS` lines are found.
