@@ -1,45 +1,47 @@
 import type { DiscoveryResult } from './feeds'
 
 // Cold-start fallback for Discover. When someone has no taste profile yet, the
-// per-medium sections fill from this hand-picked list instead of a "make a
-// profile first" wall. Static + free (no AI call) — these are durable, broadly
-// loved works chosen to be a respectable first impression, not personalised.
-// Source label is "editorial" so the feed reads honestly.
+// per-medium sections fill from this list instead of a "make a profile first"
+// wall. Static + free (no AI call).
 //
-// Keep ~5–6 per type so each section can show 2–3 and still have a "more →".
+// IMPORTANT — these are NOT meant to reflect any one person's taste. The target
+// band is the smart middle: broadly accessible AND genuinely well-reviewed.
+// Not lowest-common-denominator crowd-pleasers, not niche critical darlings —
+// the works that are both widely loved and critically respected, the kind you'd
+// confidently hand a stranger. Keep ~6 per type so each section shows 3 + "more →".
 
 const PICKS: Omit<DiscoveryResult, 'sources'>[] = [
   // ── Film ──────────────────────────────────────────────────────────────────
-  { title: 'In the Mood for Love', creator: 'Wong Kar-wai', type: 'film', year: 2000, why: 'A near-silent love story told in glances and corridors. One of the most beautiful-looking films ever made.' },
-  { title: 'Parasite', creator: 'Bong Joon-ho', type: 'film', year: 2019, why: 'A class thriller that keeps reinventing itself — funny, then tense, then devastating.' },
-  { title: 'Portrait of a Lady on Fire', creator: 'Céline Sciamma', type: 'film', year: 2019, why: 'A painter and her subject fall in love over one quiet summer. All longing, no filler.' },
-  { title: 'The Florida Project', creator: 'Sean Baker', type: 'film', year: 2017, why: 'Childhood at the edge of a motel, seen entirely at kid height. Tender without being soft.' },
-  { title: 'Spirited Away', creator: 'Hayao Miyazaki', type: 'film', year: 2001, why: 'A girl lost in a spirit bathhouse. The gold standard for imagination on screen.' },
-  { title: 'Lady Bird', creator: 'Greta Gerwig', type: 'film', year: 2017, why: 'A senior year, a mother and daughter, a town you can\'t wait to leave. Specific and warm.' },
+  { title: 'Parasite', creator: 'Bong Joon-ho', type: 'film', year: 2019, why: 'A struggling family schemes their way into a rich household. A sharp, twisty thriller that swept the Oscars.' },
+  { title: 'Spirited Away', creator: 'Hayao Miyazaki', type: 'film', year: 2001, why: 'A young girl is trapped in a magical bathhouse for spirits. A dazzling, imaginative adventure and a modern classic.' },
+  { title: 'Eternal Sunshine of the Spotless Mind', creator: 'Michel Gondry', type: 'film', year: 2004, why: 'A couple erase each other from their memories and regret it. Inventive, funny and quietly heartbreaking.' },
+  { title: 'The Social Network', creator: 'David Fincher', type: 'film', year: 2010, why: 'The founding of Facebook told as a fast, biting drama about ambition and betrayal. Endlessly rewatchable.' },
+  { title: 'Get Out', creator: 'Jordan Peele', type: 'film', year: 2017, why: 'A young man visits his girlfriend\'s family and senses something is very wrong. A smart, gripping horror-thriller with a lot on its mind.' },
+  { title: 'The Grand Budapest Hotel', creator: 'Wes Anderson', type: 'film', year: 2014, why: 'A concierge and his protégé tangle over a stolen painting. Witty, beautifully designed, easy to fall for.' },
 
   // ── Music ─────────────────────────────────────────────────────────────────
-  { title: 'For Emma, Forever Ago', creator: 'Bon Iver', type: 'music', year: 2007, why: 'Recorded alone in a winter cabin. Hushed, layered, the sound of working something out.' },
-  { title: 'Blue', creator: 'Joni Mitchell', type: 'music', year: 1971, why: 'The benchmark for confessional songwriting. Plain words that keep getting deeper.' },
-  { title: 'To Pimp a Butterfly', creator: 'Kendrick Lamar', type: 'music', year: 2015, why: 'Jazz, funk and spoken word folded into one of the most ambitious rap records made.' },
-  { title: 'In Rainbows', creator: 'Radiohead', type: 'music', year: 2007, why: 'Their warmest album — strange and human at once. A good doorway into the band.' },
-  { title: 'Channel Orange', creator: 'Frank Ocean', type: 'music', year: 2012, why: 'Storytelling R&B that drifts and lingers. Sad, lush, full of small films.' },
-  { title: 'A Seat at the Table', creator: 'Solange', type: 'music', year: 2016, why: 'Smooth on the surface, sharp underneath. A grower that rewards the whole sitting.' },
+  { title: 'Rumours', creator: 'Fleetwood Mac', type: 'music', year: 1977, why: 'Made while the band was falling apart, and you can hear it. Gorgeous, hook-filled songs that never went out of style.' },
+  { title: 'Back to Black', creator: 'Amy Winehouse', type: 'music', year: 2006, why: 'Amy Winehouse\'s soulful, heartbroken classic. Vintage sound, modern feeling, not a wasted track.' },
+  { title: 'good kid, m.A.A.d city', creator: 'Kendrick Lamar', type: 'music', year: 2012, why: 'A coming-of-age story set in Compton, told like a film. Acclaimed and surprisingly easy to get into.' },
+  { title: 'Currents', creator: 'Tame Impala', type: 'music', year: 2015, why: 'A shimmering, synth-soaked break-up record. Dreamy and immediate at once.' },
+  { title: 'Lemonade', creator: 'Beyoncé', type: 'music', year: 2016, why: 'A bold, genre-hopping song cycle about betrayal and resilience. Ambitious and widely adored.' },
+  { title: 'Blonde', creator: 'Frank Ocean', type: 'music', year: 2016, why: 'A hazy, intimate masterpiece. Quiet and strange, and it grows on you fast.' },
 
   // ── Book ──────────────────────────────────────────────────────────────────
-  { title: 'A Little Life', creator: 'Hanya Yanagihara', type: 'book', year: 2015, why: 'A decades-long friendship and the weight one man carries. Brutal, and hard to put down.' },
-  { title: 'Klara and the Sun', creator: 'Kazuo Ishiguro', type: 'book', year: 2021, why: 'An artificial friend watches a family with total devotion. Quietly heartbreaking.' },
-  { title: 'Pachinko', creator: 'Min Jin Lee', type: 'book', year: 2017, why: 'Four generations of a Korean family in Japan. A sweeping, deeply human saga.' },
-  { title: 'Normal People', creator: 'Sally Rooney', type: 'book', year: 2018, why: 'Two people who keep finding and losing each other. Spare, exact, quietly addictive.' },
-  { title: 'The Remains of the Day', creator: 'Kazuo Ishiguro', type: 'book', year: 1989, why: 'A butler reckons, too late, with a life of dignified restraint. A masterclass in what\'s unsaid.' },
-  { title: 'Bel Canto', creator: 'Ann Patchett', type: 'book', year: 2001, why: 'A hostage standoff that turns, improbably, into something tender. Beautifully strange.' },
+  { title: 'Normal People', creator: 'Sally Rooney', type: 'book', year: 2018, why: 'Two people who keep finding and losing each other through their twenties. Spare, exact, quietly addictive.' },
+  { title: 'Never Let Me Go', creator: 'Kazuo Ishiguro', type: 'book', year: 2005, why: 'Three friends at a strange English boarding school slowly learn what their lives are for. Gentle, devastating, hard to forget.' },
+  { title: 'The Kite Runner', creator: 'Khaled Hosseini', type: 'book', year: 2003, why: 'A friendship in Afghanistan and a betrayal that echoes for decades. An emotional, hugely popular page-turner.' },
+  { title: 'Pachinko', creator: 'Min Jin Lee', type: 'book', year: 2017, why: 'Four generations of a Korean family making a life in Japan. A sweeping, deeply human saga.' },
+  { title: 'The Road', creator: 'Cormac McCarthy', type: 'book', year: 2006, why: 'A father and son walk through a ruined world, keeping each other alive. Stark, tense, and unexpectedly tender.' },
+  { title: 'Educated', creator: 'Tara Westover', type: 'book', year: 2018, why: 'A woman raised off-grid by survivalist parents fights her way to an education. A gripping, true-life story.' },
 
   // ── TV ────────────────────────────────────────────────────────────────────
-  { title: 'The Bear', creator: 'Christopher Storer', type: 'tv', year: 2022, why: 'A chef takes over his family\'s sandwich shop. Fast, anxious, and full of heart.' },
-  { title: 'Fleabag', creator: 'Phoebe Waller-Bridge', type: 'tv', year: 2016, why: 'Grief and bad decisions told straight to camera. Hilarious, then it guts you.' },
-  { title: 'The Leftovers', creator: 'Damon Lindelof', type: 'tv', year: 2014, why: 'Two percent of the world vanishes; this is about everyone left behind. Strange and profound.' },
-  { title: 'Better Call Saul', creator: 'Vince Gilligan', type: 'tv', year: 2015, why: 'A slow-burn tragedy about a good-enough man becoming a worse one. Patient and exquisite.' },
-  { title: 'Severance', creator: 'Dan Erickson', type: 'tv', year: 2022, why: 'Office workers split their memories in two. A creepy, precise puzzle box.' },
-  { title: 'Atlanta', creator: 'Donald Glover', type: 'tv', year: 2016, why: 'A music-scene hangout show that keeps turning into something dreamlike and sharp.' },
+  { title: 'Breaking Bad', creator: 'Vince Gilligan', type: 'tv', year: 2008, why: 'A mild-mannered teacher starts cooking meth and slowly transforms. Tense, addictive, widely called one of the best shows ever.' },
+  { title: 'Succession', creator: 'Jesse Armstrong', type: 'tv', year: 2018, why: 'A media dynasty\'s grown children claw at each other for control. Vicious, funny, and impossible to stop watching.' },
+  { title: 'Fleabag', creator: 'Phoebe Waller-Bridge', type: 'tv', year: 2016, why: 'Grief and bad decisions told straight to camera. Hilarious, then it quietly guts you.' },
+  { title: 'The Bear', creator: 'Christopher Storer', type: 'tv', year: 2022, why: 'A fine-dining chef takes over his late brother\'s chaotic sandwich shop. Fast, anxious, and full of heart.' },
+  { title: 'Chernobyl', creator: 'Craig Mazin', type: 'tv', year: 2019, why: 'A tense, meticulous retelling of the 1986 nuclear disaster and its cover-up. Bleak, gripping, superbly made.' },
+  { title: 'Mad Men', creator: 'Matthew Weiner', type: 'tv', year: 2007, why: 'Ad men and women navigate ambition and reinvention in 1960s New York. Stylish, sharp, slow-burning.' },
 ]
 
 const EDITORIAL_PICKS: DiscoveryResult[] = PICKS.map(p => ({ ...p, sources: ['editorial'] }))
