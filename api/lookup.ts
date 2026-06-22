@@ -6,6 +6,23 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 // No auth required: only queries public external APIs, no sensitive data or Anthropic calls.
 const TMDB = process.env.TMDB_API_KEY
 
+// Light per-IP throttle. This endpoint is intentionally unauthenticated (public
+// catalog APIs only, no Anthropic), so it can't use the Supabase-user rate limiter.
+// An in-memory sliding window slows casual scraping of the shared TMDB key quota.
+// Best-effort: serverless instances are ephemeral and may run in parallel, so this
+// is a speed bump, not a hard guarantee.
+const LOOKUP_WINDOW_MS = 60_000
+const LOOKUP_MAX = 40 // requests per IP per minute
+const _hits = new Map<string, number[]>()
+function lookupThrottled(ip: string): boolean {
+  const now = Date.now()
+  const recent = (_hits.get(ip) ?? []).filter(t => now - t < LOOKUP_WINDOW_MS)
+  recent.push(now)
+  _hits.set(ip, recent)
+  if (_hits.size > 5000) for (const [k, v] of _hits) if (!v.some(t => now - t < LOOKUP_WINDOW_MS)) _hits.delete(k) // GC stale IPs
+  return recent.length > LOOKUP_MAX
+}
+
 interface Candidate {
   title: string
   creator: string
@@ -195,6 +212,10 @@ async function bookSearch(q: string): Promise<Candidate[]> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const fwd = req.headers['x-forwarded-for']
+  const ip = (Array.isArray(fwd) ? fwd[0] : fwd ?? '').split(',')[0].trim() || 'unknown'
+  if (lookupThrottled(ip)) return res.status(429).json({ error: 'Too many requests. Slow down.' })
+
   const q = String(req.query.q ?? '')
   if (!q) return res.status(200).json({ results: [] })
   const recency = req.query.recency === '1'

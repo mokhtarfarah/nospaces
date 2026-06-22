@@ -60,6 +60,33 @@ const DEFAULT_FEEDS: FeedEntry[] = [
   { url: 'https://www.newyorker.com/feed/everything',      name: 'The New Yorker',  types: ['cross'], kind: 'rss'      },
 ]
 
+// SSRF guard for user-supplied custom feed URLs. customFeeds[].url comes from the
+// request body and is fetched server-side, so an authed user could otherwise point
+// it at internal/cloud-metadata addresses. Require http(s) and reject hosts that are
+// loopback / private / link-local / non-routable. DEFAULT_FEEDS are trusted (hardcoded)
+// and skip this check. Literal-host check only — does not resolve DNS (a 2-user app;
+// rebinding is out of scope), matching the logged fix.
+function isSafeFeedUrl(raw: string): boolean {
+  let u: URL
+  try { u = new URL(raw) } catch { return false }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false
+  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, '') // strip IPv6 brackets
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) return false
+  // IPv6 loopback / link-local (fe80::) / unique-local (fc00::/7 → fc, fd)
+  if (host === '::1' || host.startsWith('fe80:') || host.startsWith('fc') || host.startsWith('fd')) return false
+  // IPv4 literal ranges: loopback, private, link-local, "this host", multicast/reserved
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (m) {
+    const a = +m[1], b = +m[2]
+    if (a === 0 || a === 10 || a === 127) return false
+    if (a === 169 && b === 254) return false        // link-local (incl. cloud metadata 169.254.169.254)
+    if (a === 172 && b >= 16 && b <= 31) return false
+    if (a === 192 && b === 168) return false
+    if (a >= 224) return false                        // multicast / reserved
+  }
+  return true
+}
+
 function feedsForType(type: string, custom: FeedEntry[]): FeedEntry[] {
   const all = [...DEFAULT_FEEDS, ...custom]
   if (type === 'all') {
@@ -174,8 +201,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!tasteProfile) return res.status(400).json({ error: 'no taste profile — generate one on the taste page first' })
 
+  // Drop any custom feed whose URL is unsafe (SSRF guard) before fetching
+  const safeCustomFeeds = (customFeeds ?? []).filter(f => f?.url && isSafeFeedUrl(f.url))
+
   // Fetch all relevant feeds in parallel
-  const feeds = feedsForType(type, customFeeds)
+  const feeds = feedsForType(type, safeCustomFeeds)
   const results = await Promise.allSettled(feeds.map(f => fetchFeed(f)))
   const posts: Post[] = results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
 
