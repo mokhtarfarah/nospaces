@@ -39,11 +39,12 @@ interface Props {
   onSelect: (v: ViewMode) => void
   onClose: () => void
   layout?: 'list' | 'grid'
+  onLayout?: (l: 'list' | 'grid') => void
   gridCols?: 3 | 4
   onGridCols?: (c: 3 | 4) => void
 }
 
-export function ViewSheet({ current, dir, onSelect, onClose, layout, gridCols, onGridCols }: Props) {
+export function ViewSheet({ current, dir, onSelect, onClose, layout, onLayout, gridCols, onGridCols }: Props) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
@@ -84,6 +85,20 @@ export function ViewSheet({ current, dir, onSelect, onClose, layout, gridCols, o
             </button>
           )
         })}
+        {layout && onLayout && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, marginTop: 4 }}>
+            <span style={{ fontSize: 13, color: '#555' }}>layout</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['list', 'grid'] as const).map(l => (
+                <button key={l} onClick={() => onLayout(l)} style={{
+                  padding: '4px 14px', borderRadius: 6, border: layout === l ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+                  background: layout === l ? '#111' : '#fff', color: layout === l ? '#fff' : '#888',
+                  fontSize: 13, fontWeight: layout === l ? 600 : 400, cursor: 'pointer',
+                }}>{l}</button>
+              ))}
+            </div>
+          </div>
+        )}
         {layout === 'grid' && onGridCols && gridCols && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, marginTop: 4 }}>
             <span style={{ fontSize: 13, color: '#555' }}>grid columns</span>

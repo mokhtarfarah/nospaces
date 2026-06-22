@@ -186,6 +186,17 @@ export function LibraryScreen() {
   const [dupesOpen, setDupesOpen] = useState(false)
   const [gapsOpen, setGapsOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [overflowOpen, setOverflowOpen] = useState(false)
+  // Header collapse-on-scroll: the title row + view control fold away once the
+  // user scrolls into the collection, leaving the category + status tab rows
+  // pinned. Hysteresis (collapse past 56px, expand under 16px) avoids flicker
+  // from momentum/rubber-band scrolling near the threshold.
+  const [collapsed, setCollapsed] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
+  const onListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const t = e.currentTarget.scrollTop
+    setCollapsed(prev => (prev ? t > 16 : t > 56))
+  }, [])
 
   const [doneItem, setDoneItem] = useState<Item | null>(null)
   const [actionItem, setActionItem] = useState<Item | null>(null)
@@ -367,7 +378,13 @@ export function LibraryScreen() {
   }, [baseFiltered])
 
   // Reset vibe/verdict/genre filters when base filters change so they don't silently hide results.
-  useEffect(() => { setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null) }, [categories, statusFilter, reactionFilter, reviewOnly])
+  // Also scroll back to the top and expand the header — otherwise switching to a
+  // short (non-scrollable) result set could leave the header stuck collapsed.
+  useEffect(() => {
+    setVibeFilter(null); setVerdictFilter(null); setGenreFilter(null); setSeriesFilter(null)
+    listRef.current?.scrollTo({ top: 0 })
+    setCollapsed(false)
+  }, [categories, statusFilter, reactionFilter, reviewOnly])
 
   const grouped = useMemo(() => {
     if (view === 'year')     return groupByDecade(filtered)
@@ -399,94 +416,28 @@ export function LibraryScreen() {
         borderBottom: '1px solid #E8E8E8',
         position: 'sticky', top: 0, zIndex: 50,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        {/* Title row — folds away on scroll. Holds the view control, search and
+            the overflow menu; the category + status rows below stay pinned. */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          overflow: 'hidden', transition: 'max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease',
+          maxHeight: collapsed ? 0 : 40, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 12,
+        }}>
           <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            {items.length > 0 && (
-              <button
-                onClick={() => navigate('/decide')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, color: '#ABA69C', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}
-              >
-                help me decide
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
-            )}
-            <button
-              onClick={() => navigate('/guide')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, color: '#C9C6C0', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
-              title="how to use"
-            >
-              ?
-            </button>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <button
               onClick={() => setViewSheetOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#333', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#333', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
             >
               {VIEW_CONFIG[view].label}
               <span style={{ fontSize: 11, color: '#AAA' }}>▾</span>
             </button>
-            {VIEW_CONFIG[view].directional && (
-              <button
-                onClick={() => setDir(d => (d === 'asc' ? 'desc' : 'asc'))}
-                title="Reverse order"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#111', padding: '4px 4px', lineHeight: 1 }}
-              >
-                {dir === 'asc' ? '↑' : '↓'}
-              </button>
-            )}
-            {filtersActive && (
-              <button
-                onClick={clearFilters}
-                title="Clear all filters"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#999', padding: '4px 6px', marginLeft: 2, lineHeight: 1 }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <button
-              onClick={() => setLayout(l => (l === 'list' ? 'grid' : 'list'))}
-              title={layout === 'list' ? 'Grid view' : 'List view'}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: 4, display: 'flex', alignItems: 'center' }}
-            >
-              {layout === 'list' ? <GridIcon /> : <ListIcon />}
-            </button>
-            {layout === 'grid' && (
-              <button
-                onClick={() => setGridCols(c => (c === 3 ? 4 : 3))}
-                title="Toggle columns"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#888', padding: '4px 2px', lineHeight: 1 }}
-              >
-                {gridCols}
-              </button>
-            )}
-            <button
-              onClick={() => setSearchOpen(v => !v)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: 4 }}
-            >
-              <SearchIcon />
-            </button>
-            {gapCount > 0 && (
-              <button
-                onClick={() => setGapsOpen(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#6F6B64', padding: '4px 4px' }}
-              >
-                tidy · {gapCount}
-              </button>
-            )}
-            <button
-              onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: selectMode ? '#111' : '#888', fontWeight: selectMode ? 600 : 400, padding: '4px 4px' }}
-            >
-              {selectMode ? 'cancel' : 'select'}
-            </button>
+            <HeaderControls
+              filtersActive={filtersActive}
+              onClear={clearFilters}
+              onSearch={() => setSearchOpen(v => !v)}
+              onMore={() => setOverflowOpen(true)}
+            />
           </div>
         </div>
 
@@ -520,19 +471,33 @@ export function LibraryScreen() {
           </div>
         )}
 
-        {/* Filter row 1 — category tabs ordered by how much of each type is in the library */}
-        <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 0 }}>
-          {typeOrder.map(t => (
-            <TabChip
-              key={t}
-              label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
-              active={categories.includes(t) && !reviewOnly}
-              onClick={() => selectCategory(t)}
-            />
-          ))}
-          <TabChip label="all" active={categories.length === 0 && !reviewOnly} onClick={() => { setCategories([]); setReviewOnly(false) }} />
-          {hasReview && (
-            <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
+        {/* Filter row 1 — category tabs ordered by how much of each type is in the
+            library. While collapsed, the search + overflow controls pin to the
+            right of this row (the title row that normally holds them is hidden). */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 0, flex: 1, minWidth: 0 }}>
+            {typeOrder.map(t => (
+              <TabChip
+                key={t}
+                label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
+                active={categories.includes(t) && !reviewOnly}
+                onClick={() => selectCategory(t)}
+              />
+            ))}
+            <TabChip label="all" active={categories.length === 0 && !reviewOnly} onClick={() => { setCategories([]); setReviewOnly(false) }} />
+            {hasReview && (
+              <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
+            )}
+          </div>
+          {collapsed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingLeft: 12, paddingBottom: 8 }}>
+              <HeaderControls
+                filtersActive={filtersActive}
+                onClear={clearFilters}
+                onSearch={() => setSearchOpen(v => !v)}
+                onMore={() => setOverflowOpen(true)}
+              />
+            </div>
           )}
         </div>
 
@@ -604,7 +569,7 @@ export function LibraryScreen() {
       </header>
 
       {/* List */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(150px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))' }}>
+      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(150px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))' }}>
         {dupes > 0 && !loading && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '10px 16px 0', padding: '8px 12px', border: '1px solid #ECEAE6', borderRadius: 4 }}>
             <span style={{ fontSize: 12, color: '#6F6B64' }}>{dupes} duplicate{dupes > 1 ? 's' : ''} found</span>
@@ -777,6 +742,7 @@ export function LibraryScreen() {
           onSelect={selectView}
           onClose={() => setViewSheetOpen(false)}
           layout={layout}
+          onLayout={l => setLayout(l)}
           gridCols={gridCols}
           onGridCols={c => { setGridCols(c); setViewSheetOpen(false) }}
         />
@@ -804,6 +770,20 @@ export function LibraryScreen() {
           items={items}
           editItem={(id, fields) => editItem(id, fields)}
           onClose={() => setGapsOpen(false)}
+        />
+      )}
+
+      {/* Overflow menu — occasional actions moved out of the header */}
+      {overflowOpen && (
+        <OverflowSheet
+          hasItems={items.length > 0}
+          gapCount={gapCount}
+          selectMode={selectMode}
+          onClose={() => setOverflowOpen(false)}
+          onDecide={() => { setOverflowOpen(false); navigate('/decide') }}
+          onGuide={() => { setOverflowOpen(false); navigate('/guide') }}
+          onTidy={() => { setOverflowOpen(false); setGapsOpen(true) }}
+          onSelect={() => { setOverflowOpen(false); selectMode ? exitSelect() : setSelectMode(true) }}
         />
       )}
 
@@ -1181,20 +1161,68 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
   )
 }
 
-function GridIcon() {
+// Compact header control cluster — clear-filters (when active) · search · overflow.
+// Rendered in the title row, and again pinned to the category row while collapsed.
+function HeaderControls({ filtersActive, onClear, onSearch, onMore }: {
+  filtersActive: boolean
+  onClear: () => void
+  onSearch: () => void
+  onMore: () => void
+}) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
-    </svg>
+    <>
+      {filtersActive && (
+        <button onClick={onClear} title="Clear all filters" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: '#999', padding: 0, lineHeight: 1 }}>×</button>
+      )}
+      <button onClick={onSearch} title="Search" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: 0, display: 'flex', alignItems: 'center' }}>
+        <SearchIcon />
+      </button>
+      <button onClick={onMore} title="More" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: 0, display: 'flex', alignItems: 'center' }}>
+        <MoreIcon />
+      </button>
+    </>
   )
 }
 
-function ListIcon() {
+// Overflow bottom sheet — holds the occasional actions pulled out of the header.
+function OverflowSheet({ hasItems, gapCount, selectMode, onClose, onDecide, onGuide, onTidy, onSelect }: {
+  hasItems: boolean
+  gapCount: number
+  selectMode: boolean
+  onClose: () => void
+  onDecide: () => void
+  onGuide: () => void
+  onTidy: () => void
+  onSelect: () => void
+}) {
+  const Row = ({ label, sub, onClick }: { label: string; sub: string; onClick: () => void }) => (
+    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', padding: '13px 0', border: 'none', borderBottom: '1px solid #F0F0F0', background: 'none', cursor: 'pointer', textAlign: 'left' }}>
+      <span style={{ fontSize: 15, color: '#222' }}>{label}</span>
+      <span style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{sub}</span>
+    </button>
+  )
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-      <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: '#fff', borderRadius: '16px 16px 0 0',
+        padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201, maxWidth: 480, margin: '0 auto',
+      }}>
+        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 12px' }} />
+        {hasItems && <Row label="help me decide" sub="pick something for right now" onClick={onDecide} />}
+        <Row label="how to use" sub="a quick tour of nospaces" onClick={onGuide} />
+        {gapCount > 0 && <Row label={`tidy · ${gapCount}`} sub="fill in missing details" onClick={onTidy} />}
+        <Row label={selectMode ? 'cancel select' : 'select items'} sub="multi-select to bulk delete" onClick={onSelect} />
+      </div>
+    </>
+  )
+}
+
+function MoreIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
     </svg>
   )
 }
