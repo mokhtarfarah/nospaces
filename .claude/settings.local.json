@@ -171,7 +171,24 @@
       "Bash(bash /Users/farahmokhtar/nospaces/scripts/check-handoff-staleness.sh)",
       "Bash(chmod +x /Users/farahmokhtar/nospaces/scripts/check-session-wrap.sh)",
       "Bash(bash /Users/farahmokhtar/nospaces/scripts/check-session-wrap.sh)",
-      "Bash(bash -c 'SESSION_ID=$\\(jq -r \".session_id // \\\\\"unknown\\\\\"\" 2>/dev/null\\); MARKER=\"/tmp/nospaces_started_${SESSION_ID}\"; [ ! -f \"$MARKER\" ] && touch \"$MARKER\" && printf \"{\\\\\"hookSpecificOutput\\\\\": {\\\\\"hookEventName\\\\\": \\\\\"UserPromptSubmit\\\\\", \\\\\"additionalContext\\\\\": \\\\\"SESSION START: Read HANDOFF.md before responding — focus on the Next session priorities and Roadmap sections.\\\\\"}}\\\\n\" || true')"
+      "Bash(bash -c 'SESSION_ID=$\\(jq -r \".session_id // \\\\\"unknown\\\\\"\" 2>/dev/null\\); MARKER=\"/tmp/nospaces_started_${SESSION_ID}\"; [ ! -f \"$MARKER\" ] && touch \"$MARKER\" && printf \"{\\\\\"hookSpecificOutput\\\\\": {\\\\\"hookEventName\\\\\": \\\\\"UserPromptSubmit\\\\\", \\\\\"additionalContext\\\\\": \\\\\"SESSION START: Read HANDOFF.md before responding — focus on the Next session priorities and Roadmap sections.\\\\\"}}\\\\n\" || true')",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(git restore *)",
+      "Bash(gh pr create --title 'Declutter library header \\(consolidate controls + collapse-on-scroll\\)' --body ' *)",
+      "Bash(npx vitest *)",
+      "Bash(curl -s -i -X POST https://nospaces.vercel.app/api/email -H \"Content-Type: application/json\" -d '{\"From\":\"farahmokhtar94@gmail.com\",\"Subject\":\"probe\",\"TextBody\":\"\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://nospaces.vercel.app/api/email)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X POST https://nospaces.vercel.app/api/email -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://nospaces.vercel.app/api/lookup?q=test\")",
+      "Read(//private/tmp/**)",
+      "Bash(ANTHROPIC_API_KEY=dummy SUPABASE_URL=https://x.supabase.co SUPABASE_SERVICE_ROLE_KEY=dummy EMAIL_WEBHOOK_SECRET=test node -e ' *)",
+      "Bash(curl -s \"https://nospaces.vercel.app/assets/index-FzYMuzwG.js\" -o live.js)",
+      "Bash(curl -s https://nospaces.vercel.app/)",
+      "Bash(curl -s -o /dev/null -w \"genres GET -> %{http_code}\\\\n\" https://nospaces.vercel.app/api/genres)",
+      "Bash(node /tmp/esmtest.mjs)",
+      "Bash(node /tmp/esmtest2.mjs)",
+      "Bash(curl -s -X POST https://nospaces.vercel.app/api/email?token=__TRACKED_VAR__ -H 'Content-Type: application/json' -d '{\"From\":\"Farah <farahmokhtar94@gmail.com>\",\"Subject\":\"Fwd: you should watch this\",\"TextBody\":\"have you seen Portrait of a Lady on Fire? the 2019 film by Celine Sciamma. incredible.\",\"OriginalRecipient\":\"inbox@nospaces.xyz\"}' -w '\\\\nHTTP %{http_code}\\\\n')"
     ]
   },
   "hooks": {
