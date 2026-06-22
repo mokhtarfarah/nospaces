@@ -252,7 +252,7 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 
 **⚠️ Pro hardening — manual steps left (need Farah, can't be automated):**
 1. ~~**Sentry**~~ — ✅ DONE + verified live (session 47). DSN set in Vercel, test crash landed in the dashboard.
-2. **Spend alerts** — ⏳ STILL TODO. (a) Anthropic console → Billing → set a monthly usage limit + alert email. (b) Vercel → project → Usage → set spend notifications. Protects against a runaway loop billing you.
+2. **Spend alerts** — (a) Anthropic ✅ set $10 alert / $50 monthly hard cap (the part that matters — per-token money). (b) Vercel ⏳ skipped — Spend Management threw a "strange error" (likely the free Hobby plan, where it doesn't apply / can't be charged). Low priority. Vercel usage notifications already on. Revisit only if on/moving to Pro: Vercel → Settings → Billing → Spend Management, cap ~$30–40.
 
 **Dev automation**
 - **Typecheck on Stop hook** — ✅ done. Stop hook runs `tsc --noEmit` and injects a system message if any `error TS` lines are found.
