@@ -252,7 +252,7 @@ Every `api/` endpoint requires Supabase auth and is rate-limited via the shared 
 
 **⚠️ Pro hardening — manual steps left (need Farah, can't be automated):**
 1. ~~**Sentry**~~ — ✅ DONE + verified live (session 47). DSN set in Vercel, test crash landed in the dashboard.
-2. **Spend alerts** — (a) Anthropic ✅ set $10 alert / $50 monthly hard cap (the part that matters — per-token money). (b) Vercel ⏳ skipped — Spend Management threw a "strange error" (likely the free Hobby plan, where it doesn't apply / can't be charged). Low priority. Vercel usage notifications already on. Revisit only if on/moving to Pro: Vercel → Settings → Billing → Spend Management, cap ~$30–40.
+2. **Spend alerts** — (a) Anthropic ✅ set **$20 monthly hard cap** (Farah was already ~$10 for June, so bumped from the planned $10). NOTE: it's a hard stop — if hit, all AI features (identify/vibes/recommend/email) fail silently until month reset; fix = raise the cap. June trending ~$15, likely driven by `recommend` web-search (~$0.20/call) + past-session API test calls — the lever to watch if spend climbs. (b) Vercel ⏳ skipped — Spend Management threw a "strange error" (likely the free Hobby plan, where it doesn't apply / can't be charged). Low priority. Vercel usage notifications already on. Revisit only if on/moving to Pro: Vercel → Settings → Billing → Spend Management, cap ~$30–40.
 
 **Dev automation**
 - **Typecheck on Stop hook** — ✅ done. Stop hook runs `tsc --noEmit` and injects a system message if any `error TS` lines are found.
