@@ -119,3 +119,31 @@ begin
   return v_count;
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Email capture log. One row per inbound forwarded email that produced NO new
+-- library items — i.e. the silent cases the "for review" inbox can't show
+-- (successful captures already appear there as items, so they are NOT logged).
+-- Surfaced in-app via the "email captures" sheet so a forward that fell through
+-- never vanishes without a trace. Written server-side by /api/email with the
+-- service-role key (bypasses RLS); the SELECT policy lets the user read own.
+-- ---------------------------------------------------------------------------
+create table if not exists public.email_captures (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid references auth.users(id) on delete cascade,  -- null if sender matched no account
+  from_email   text,
+  subject      text,
+  outcome      text not null check (outcome in ('nothing_found', 'duplicates', 'error')),
+  saved_count  int not null default 0,
+  detail       text,                       -- error message / short note
+  snippet      text,                        -- first ~400 chars of the body, to see what was sent
+  created_at   timestamptz not null default now()
+);
+
+alter table public.email_captures enable row level security;
+
+create policy "Users can read own email captures"
+  on public.email_captures for select
+  using (auth.uid() = user_id);
+
+create index email_captures_user_id_created on public.email_captures (user_id, created_at desc);

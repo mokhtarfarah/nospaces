@@ -4,6 +4,17 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 51 (2026-06-22) — verified bare-link email + built the failed-capture feed (#6)
+
+Picked up the two loose ends from session 50.
+
+1. **Bare-link email capture — verified working end-to-end.** Farah forwarded a real bare link after the redeploy; it captured correctly. Closes the last open item from session 50.
+2. **Failed-capture feed (#6) — shipped.** When a forwarded email adds **nothing** to the library, it now leaves a trace instead of vanishing. Design decisions (with Farah): the feed logs **only no-op captures** — `nothing_found`, `error`, `duplicates` — not successes (successful captures already show as items in the "for review" inbox, so re-logging them is redundant + noisy). New `email_captures` table (`supabase/schema.sql`), RLS select-own; written server-side by `api/email.ts` (service-role, bypasses RLS) via a best-effort `logCapture()` at each no-save exit. Side refactor: moved the account lookup **before** the Anthropic call, so an allowlisted-but-unmatched sender now fails *before* spending a paid Sonnet call (was after). Frontend: `src/lib/captures.ts` (`fetchCaptures`, `isFailure`) + `CapturesSheet.tsx` bottom sheet, reached from the library `⋯` overflow menu — the row only appears when there's ≥1 capture, badged with the failure count. No new AI cost (just a DB table + one insert per no-op email). typecheck + lint + production build clean; 56 tests (added `captures.test.ts`, `isFailure`).
+
+**Manual step outstanding:** the `email_captures` migration must be run in Supabase before the feature works (parked in `docs/ROADMAP.md` → Ops). Deploy-safe until then: server insert is try/caught, frontend fetch fails closed (row just won't show). **Not verified in-browser** — needs the migration + a real no-op forward (login wall + no local capture data); verified at build/type/lint/test level only.
+
+---
+
 ### Session 50 (2026-06-22) — recovered a mobile branch + SSRF-hardened bare-link email capture
 
 Farah had run a Claude Code session **on her phone** the day before and asked if the comments "came in." They hadn't merged — the work was sitting on `origin/claude/desert-island-form-redesign-r63lw9` (committed 07:34, never merged to main). Two things on it:

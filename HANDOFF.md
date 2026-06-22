@@ -15,9 +15,9 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**Last session (50):** recovered a Claude Code branch Farah ran **on her phone** (`desert-island-form-redesign`, never merged). It added **bare-link email capture** (forward a naked URL → fetch its page metadata → identify the item; no new API cost). Before merging I **SSRF-hardened** it — the mobile code fetched attacker-controllable email-body URLs server-side with no guard — by extracting the existing feed guard into shared `api/_ssrf.ts` and routing both `email.ts` + `recommend-feeds.ts` through it. Merged to main (`61ddd55`); **bare-link path not verified end-to-end** (needs a real inbound email — Farah to forward one bare link after redeploy). The branch's "desert island display rethink" note is parked in `docs/ROADMAP.md` and folds into the Discover redesign below.
+**Last session (51):** (1) **bare-link email capture verified working** end-to-end (Farah forwarded a real bare link post-redeploy) — closes session 50's open item. (2) **Built the failed-capture feed (#6):** forwarded emails that add nothing now log to a new `email_captures` table (`nothing_found` / `error` / `duplicates` only — successes already show in the review inbox) and surface via a "email captures" row in the library `⋯` menu → `CapturesSheet`. ⚠️ **Needs the `email_captures` migration run in Supabase** before it works (`docs/ROADMAP.md` → Ops) — deploy-safe until then, but **not verified in-browser** (login wall + no local capture data). Also: account lookup now runs before the Sonnet call, so an unmatched sender fails cheaply.
 
-**Still open from session 49's list:** **#6, a "failed email captures" feed on the review page** — a feature, deferred to its own session. Plus session 49's five bug fixes are **unverified on the live app** (port held + login wall) — confirm on phone.
+**Still open from session 49:** its five bug fixes are **unverified on the live app** (port held + login wall) — confirm on phone.
 
 ---
 

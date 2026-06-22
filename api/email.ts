@@ -82,6 +82,35 @@ async function sendReply(to: string, fromAddress: string, subject: string, text:
   }
 }
 
+// Log an inbound email that produced NO new library items, so it surfaces in the
+// in-app "email captures" feed instead of vanishing. Successful captures are NOT
+// logged here — they already show up as items in the "for review" inbox. Best-effort:
+// a logging failure must never break the (already-finished) capture flow.
+async function logCapture(opts: {
+  userId: string | null
+  fromEmail: string
+  subject: string
+  outcome: 'nothing_found' | 'duplicates' | 'error'
+  savedCount?: number
+  detail?: string | null
+  snippet?: string | null
+}) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('email_captures').insert({
+      user_id: opts.userId,
+      from_email: opts.fromEmail,
+      subject: opts.subject,
+      outcome: opts.outcome,
+      saved_count: opts.savedCount ?? 0,
+      detail: opts.detail ?? null,
+      snippet: opts.snippet ?? null,
+    })
+  } catch (err) {
+    console.error('[email] failed to log capture:', err instanceof Error ? err.message : err)
+  }
+}
+
 // Anthropic only accepts these image media types.
 const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
@@ -298,6 +327,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Sanitize body — strip non-latin characters that break ByteString conversion
   const body = sanitize(TextBody ?? HtmlBody?.replace(/<[^>]+>/g, ' ') ?? '')
+  // Short body excerpt stored on a failed-capture log row so the feed can show
+  // "what did I send" without keeping the whole email.
+  const snippet = body.slice(0, 400).trim() || null
+
+  // Resolve the sender's account up front — both so a failed capture can be logged
+  // against the right user, and so an allowlisted-but-unmatched sender fails BEFORE
+  // any paid Anthropic call rather than after it.
+  const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
+  console.log('[email] users error:', usersError, 'count:', users?.users?.length)
+  const matchedUser = users?.users?.find(u =>
+    ALLOWED_EMAILS.some(e => u.email?.toLowerCase() === e.toLowerCase() &&
+      fromEmail.toLowerCase().includes(e.toLowerCase()))
+  )
+  console.log('[email] matched user:', matchedUser?.email ?? 'none')
+  if (!matchedUser) {
+    await logCapture({ userId: null, fromEmail, subject, outcome: 'error', detail: 'account not found', snippet })
+    await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
+      `I got your email but couldn't match it to your account, so nothing was saved. (Tech note: user not found.)`)
+    return res.status(200).json({ saved: 0, error: 'User not found' })
+  }
 
   // Identify media from any image attachments. Each image is normalized first (HEIC→JPEG,
   // media-type cleanup) so iPhone photos work. Errors are logged, never silently dropped.
@@ -353,6 +402,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     parsed = safeParse(txt)
   } catch (err) {
     console.error('[email] anthropic error:', err instanceof Error ? err.message : err)
+    await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'error',
+      detail: err instanceof Error ? err.message : 'ai read error', snippet })
     await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
       `I got your email but hit an error reading it — nothing was saved. Please try forwarding it again.`)
     // Return 200 so Postmark doesn't retry the webhook
@@ -368,26 +419,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (allItems.length === 0) {
     const hadPhotos = imageAttachments.length > 0
+    await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'nothing_found',
+      detail: hadPhotos ? 'no media read from photo(s)' : 'no media found in text', snippet })
     await sendReply(fromEmail, replyFrom, 'Nospaces: nothing saved',
       hadPhotos
         ? `I got your email but couldn't read any film/book/music/TV from the photo${imageAttachments.length > 1 ? 's' : ''} attached. Clear screenshots, posters, or covers work best — try sending it again.`
         : `I went through "${subject}" but didn't spot any films, books, music, or TV to save. If something's there, forward it again with the title in the note.`)
     return res.status(200).json({ saved: 0 })
-  }
-
-  // Get user_id for the sender
-  const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
-  console.log('[email] users error:', usersError, 'count:', users?.users?.length)
-  const matchedUser = users?.users?.find(u =>
-    ALLOWED_EMAILS.some(e => u.email?.toLowerCase() === e.toLowerCase() &&
-      fromEmail.toLowerCase().includes(e.toLowerCase()))
-  )
-  console.log('[email] matched user:', matchedUser?.email ?? 'none')
-
-  if (!matchedUser) {
-    await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
-      `I found ${allItems.length} item${allItems.length > 1 ? 's' : ''} but couldn't match your account, so nothing was saved. (Tech note: user not found.)`)
-    return res.status(200).json({ saved: 0, error: 'User not found' })
   }
 
   // Determine which items to save
@@ -467,6 +505,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[email] dedup: saving', dedupedRows.length, 'skipped (already in library):', skipped)
 
   if (dedupedRows.length === 0) {
+    await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'duplicates',
+      detail: `${rows.length} item${rows.length > 1 ? 's' : ''} already in library`, snippet })
     await sendReply(fromEmail, replyFrom, 'Nospaces: nothing new to save',
       `I found ${rows.length} item${rows.length > 1 ? 's' : ''} in "${subject}", but ${rows.length > 1 ? "they're" : "it's"} already in your library — nothing new to add.`)
     return res.status(200).json({ saved: 0, skipped })
@@ -478,6 +518,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Talk back with the result so failures are never silent.
   if (insertError) {
+    await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'error',
+      detail: insertError.message, snippet })
     await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
       `I found ${rows.length} item${rows.length > 1 ? 's' : ''} but hit an error saving them — nothing was added. (Tech note: ${insertError.message})`)
   } else {

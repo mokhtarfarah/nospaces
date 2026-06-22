@@ -8,6 +8,8 @@ import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption, type SortDir, t
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { DuplicatesSheet } from '../components/DuplicatesSheet'
 import { GapsSheet } from '../components/GapsSheet'
+import { CapturesSheet } from '../components/CapturesSheet'
+import { fetchCaptures, isFailure, type EmailCapture } from '../lib/captures'
 import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
@@ -189,6 +191,13 @@ export function LibraryScreen() {
   const [gapsOpen, setGapsOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [overflowOpen, setOverflowOpen] = useState(false)
+  // Email-capture feed: forwards that added nothing (failed/no-op) so they don't
+  // vanish silently. Fetched once on mount; surfaced in the overflow menu only
+  // when there's something to show.
+  const [captures, setCaptures] = useState<EmailCapture[]>([])
+  const [capturesOpen, setCapturesOpen] = useState(false)
+  useEffect(() => { fetchCaptures().then(setCaptures) }, [])
+  const captureFailures = useMemo(() => captures.filter(isFailure).length, [captures])
   // Header collapse-on-scroll: the title row + view control fold away once the
   // user scrolls into the collection, leaving the category + status tab rows
   // pinned. Hysteresis (collapse past 56px, expand under 16px) avoids flicker
@@ -821,13 +830,21 @@ export function LibraryScreen() {
         <OverflowSheet
           hasItems={items.length > 0}
           gapCount={gapCount}
+          captureCount={captures.length}
+          captureFailures={captureFailures}
           selectMode={selectMode}
           onClose={() => setOverflowOpen(false)}
           onDecide={() => { setOverflowOpen(false); navigate('/decide') }}
           onGuide={() => { setOverflowOpen(false); navigate('/guide') }}
           onTidy={() => { setOverflowOpen(false); setGapsOpen(true) }}
+          onCaptures={() => { setOverflowOpen(false); setCapturesOpen(true) }}
           onSelect={() => { setOverflowOpen(false); selectMode ? exitSelect() : setSelectMode(true) }}
         />
+      )}
+
+      {/* Email-capture feed — forwards that added nothing */}
+      {capturesOpen && (
+        <CapturesSheet captures={captures} onClose={() => setCapturesOpen(false)} />
       )}
 
       {/* Toast */}
@@ -1232,14 +1249,17 @@ function HeaderControls({ filtersActive, onClear, onSearch, onMore }: {
 }
 
 // Overflow bottom sheet — holds the occasional actions pulled out of the header.
-function OverflowSheet({ hasItems, gapCount, selectMode, onClose, onDecide, onGuide, onTidy, onSelect }: {
+function OverflowSheet({ hasItems, gapCount, captureCount, captureFailures, selectMode, onClose, onDecide, onGuide, onTidy, onCaptures, onSelect }: {
   hasItems: boolean
   gapCount: number
+  captureCount: number
+  captureFailures: number
   selectMode: boolean
   onClose: () => void
   onDecide: () => void
   onGuide: () => void
   onTidy: () => void
+  onCaptures: () => void
   onSelect: () => void
 }) {
   const Row = ({ label, sub, onClick }: { label: string; sub: string; onClick: () => void }) => (
@@ -1260,6 +1280,7 @@ function OverflowSheet({ hasItems, gapCount, selectMode, onClose, onDecide, onGu
         {hasItems && <Row label="help me decide" sub="pick something for right now" onClick={onDecide} />}
         <Row label="how to use" sub="a quick tour of nospaces" onClick={onGuide} />
         {gapCount > 0 && <Row label={`tidy · ${gapCount}`} sub="fill in missing details" onClick={onTidy} />}
+        {captureCount > 0 && <Row label={captureFailures > 0 ? `email captures · ${captureFailures}` : 'email captures'} sub="forwards that didn’t save" onClick={onCaptures} />}
         <Row label={selectMode ? 'cancel select' : 'select items'} sub="multi-select to bulk delete" onClick={onSelect} />
       </div>
     </>
