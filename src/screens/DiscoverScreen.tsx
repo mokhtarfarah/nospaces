@@ -29,15 +29,6 @@ function isStale(cachedAt: string): boolean {
   return Date.now() - new Date(cachedAt).getTime() > CACHE_TTL_MS
 }
 
-// ISO week number — drives the editorial "no.NN" so it ticks over weekly.
-function isoWeek(d: Date): number {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-  const day = date.getUTCDay() || 7
-  date.setUTCDate(date.getUTCDate() + 4 - day)
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
-  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
-}
-
 function normaliseSources(results: DiscoveryResult[]): DiscoveryResult[] {
   return results.map(r => ({
     ...r,
@@ -228,9 +219,7 @@ export function DiscoverScreen() {
   const allFeeds = [...DEFAULT_FEEDS, ...customFeeds]
   const isLoadingActive = moodActive ? moodLoading : (stream === 'further' ? divertLoading : intasteLoading)
 
-  const now = new Date()
-  const issueNo = isoWeek(now)
-  const dateLabel = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  const dateLabel = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
   return (
     <div style={{ padding: '20px 20px 100px', fontFamily: 'inherit' }}>
@@ -238,7 +227,7 @@ export function DiscoverScreen() {
       {/* Header — matches the rest of the app: small, left-aligned */}
       <header style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
         <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>discover</h1>
-        <span style={{ fontSize: 10, color: MUTE, letterSpacing: '1px', textTransform: 'uppercase' }}>no.{issueNo} · {dateLabel}</span>
+        <span style={{ fontSize: 10, color: MUTE, letterSpacing: '1px', textTransform: 'uppercase' }}>{dateLabel}</span>
       </header>
 
       {error && <p style={{ fontSize: 12, color: '#C0392B', textAlign: 'center', margin: '12px 0 0' }}>{error}</p>}
