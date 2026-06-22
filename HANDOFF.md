@@ -15,7 +15,7 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**Last session (51):** (1) **bare-link email capture verified working** end-to-end (Farah forwarded a real bare link post-redeploy) — closes session 50's open item. (2) **Built the failed-capture feed (#6):** forwarded emails that add nothing now log to a new `email_captures` table (`nothing_found` / `error` / `duplicates` only — successes already show in the review inbox) and surface via a "email captures" row in the library `⋯` menu → `CapturesSheet`. ⚠️ **Needs the `email_captures` migration run in Supabase** before it works (`docs/ROADMAP.md` → Ops) — deploy-safe until then, but **not verified in-browser** (login wall + no local capture data). Also: account lookup now runs before the Sonnet call, so an unmatched sender fails cheaply.
+**Last session (51):** (1) **bare-link email capture verified working** end-to-end (Farah forwarded a real bare link post-redeploy) — closes session 50's open item. (2) **Shipped + verified the failed-capture feed (#6):** forwarded emails that add nothing now log to the `email_captures` table (`nothing_found` / `error` / `duplicates` only — successes already show in the review inbox) and surface via an "email captures" row in the library `⋯` menu → `CapturesSheet`, with **clear all** + per-row `×`. Both Supabase migrations run; Farah confirmed it works in-app. Also: account lookup now runs before the Sonnet call, so an unmatched sender fails cheaply. #6 is fully done.
 
 **Still open from session 49:** its five bug fixes are **unverified on the live app** (port held + login wall) — confirm on phone.
 

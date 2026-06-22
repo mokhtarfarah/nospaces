@@ -22,8 +22,6 @@ Each has a reason it's parked and a trigger to revisit. Don't re-raise without n
 ## Ops / manual steps (need Farah — can't be automated)
 
 - **Anthropic spend cap** — ✅ done. $20/mo hard cap set. NOTE: hard stop — if hit, all AI features fail silently until month reset; fix = raise the cap. (Kept here as a standing reminder, not an open task.)
-- **`email_captures` table migration** — ✅ run (session 51). Kept here only as a reminder that the schema lives in `supabase/schema.sql`.
-- **`email_captures` delete policy** — ⏳ pending (session 51). The "clear" button needs the RLS delete policy from `supabase/schema.sql` run in Supabase → SQL editor. Until then clear silently no-ops (rows stay). *Remove this line once run.*
 - **Vercel spend management** — ⏳ skipped. Spend Management threw a "strange error" (likely the free Hobby plan, where it doesn't apply). Vercel usage notifications already on. *Revisit only if moving to Pro:* Settings → Billing → Spend Management, cap ~$30–40.
 
 ---
