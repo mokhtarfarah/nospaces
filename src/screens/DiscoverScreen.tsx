@@ -438,7 +438,7 @@ function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }:
       )}
 
       <div style={{ position: 'relative', display: 'flex', gap: 14, padding: '14px 14px 16px' }}>
-        <span style={{ fontSize: 22, fontWeight: 600, color: NUMERAL, lineHeight: 1, flexShrink: 0, letterSpacing: '-0.5px' }}>{index}</span>
+        <span style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 42, fontWeight: 500, color: NUMERAL, lineHeight: 0.95, flexShrink: 0, minWidth: 34, letterSpacing: '-1px' }}>{index}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.25 }}>{r.title}</div>
           <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', margin: '3px 0 8px' }}>
@@ -504,7 +504,7 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
 
         {/* Header — number + cover + title + meta */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
-          <span style={{ fontSize: 22, fontWeight: 600, color: NUMERAL, lineHeight: 1, flexShrink: 0, letterSpacing: '-0.5px', paddingTop: 1 }}>{index}</span>
+          <span style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 36, fontWeight: 500, color: NUMERAL, lineHeight: 0.95, flexShrink: 0, letterSpacing: '-1px' }}>{index}</span>
           {artwork
             ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
             : <div style={{ width: w, height: h, background: color.bg, border: '1px solid #EEE', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: color.border }}>{r.type}</div>}
