@@ -30,6 +30,7 @@ Each has a reason it's parked and a trigger to revisit. Don't re-raise without n
 
 **Taste & stats**
 - The earlier 3-section stats version of the taste page (medium pills, reaction breakdown, verdict counts, effort axis) was **deliberately removed** in the `216e6ca` redesign. Current page: vibe headline → AI prose → "the gap" → "always loved" → desert island gallery. Don't assume the stats sections still exist. Revisit only if a stats section is actively wanted back.
+- **Desert island display rethink** — current 3-column cover grid doesn't match the weight of the concept. Options discussed: (1) horizontal scroll strips by category, (2) full-width stacked cards with cover + reason text (recommended), (3) numbered editorial list style, (4) dense cover mosaic / tap-to-reveal, (5) swipeable single-item cards. Also open: delete the taste tab entirely and make library the primary entry point, with desert island as a filtered view or pinned section inside the library. *Trigger: design conversation — pick a display direction before touching code.*
 
 **Capture & review**
 - **Failed-capture feed (review page).** When a forwarded email/article doesn't capture properly, there's no way to see what fell through. Add a feed of failed/partial captures on the review page so nothing silently vanishes. Surfaced session 49; it's a feature (needs a small design — what "failed" means, where the data lives), not a quick fix.

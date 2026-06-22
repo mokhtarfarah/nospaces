@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { genreBlock } from './_genres.js'
+import { isSafePublicUrl } from './_ssrf.js'
 
 // Strip any non-ASCII chars that may have crept in via copy-paste
 const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
@@ -134,7 +135,49 @@ async function prepImage(att: Attachment): Promise<{ mediaType: string; data: st
   return { mediaType, data }
 }
 
-const EMAIL_PROMPT = (subject: string, body: string) => `
+// Extract http/https URLs from text, capped to avoid abuse. Email content is
+// attacker-controllable, so drop any URL that fails the SSRF guard (loopback /
+// private / link-local / cloud-metadata) before it can be fetched server-side.
+function extractUrls(text: string): string[] {
+  // eslint-disable-next-line no-control-regex -- intentionally exclude control chars from URLs
+  return (text.match(/https?:\/\/[^\s<>"{}|\\^[\]`\x00-\x1F]*/g) ?? [])
+    .filter(isSafePublicUrl)
+    .slice(0, 3)
+}
+
+// Fetch a URL and return a compact summary of its OpenGraph / title metadata,
+// or null if unreachable or metadata-free. Used to make bare-URL emails work.
+async function fetchPageMeta(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), 5000)
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Nospaces/1.0)' },
+    })
+    clearTimeout(t)
+    if (!response.ok) return null
+    const html = await response.text()
+    const get = (pattern: RegExp) => pattern.exec(html)?.[1]?.trim() ?? null
+    const siteName = get(/<meta[^>]+property="og:site_name"[^>]+content="([^"]+)"/i)
+      ?? get(/<meta[^>]+content="([^"]+)"[^>]+property="og:site_name"/i)
+    const ogTitle = get(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i)
+      ?? get(/<meta[^>]+content="([^"]+)"[^>]+property="og:title"/i)
+    const pageTitle = get(/<title[^>]*>([^<]+)<\/title>/i)
+    const ogDesc = get(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i)
+      ?? get(/<meta[^>]+content="([^"]+)"[^>]+property="og:description"/i)
+    const parts = [
+      siteName && `Site: ${siteName}`,
+      (ogTitle || pageTitle) && `Title: ${ogTitle ?? pageTitle}`,
+      ogDesc && `Description: ${ogDesc.slice(0, 300)}`,
+    ].filter(Boolean)
+    return parts.length > 0 ? `URL: ${url}\n${parts.join('\n')}` : null
+  } catch {
+    return null
+  }
+}
+
+const EMAIL_PROMPT = (subject: string, body: string, urlContext?: string) => `
 This is an email or newsletter that was forwarded to be saved into a media library.
 Subject: ${subject}
 
@@ -178,7 +221,11 @@ Return JSON only:
 GENRES — for each item, populate "tags" with 1–3 genres from the list for that item's type
 (use values from this list ONLY, no other words). Leave [] for type "other" or if unsure.
 ${genreBlock()}
-`
+${urlContext ? `
+LINKED PAGES — metadata fetched from URLs found in this email. Use these to identify any
+items that appear only as links, treating them the same as items mentioned by name.
+${urlContext}
+` : ''}`
 
 // Parse the model's JSON defensively. If the reply is truncated/malformed, salvage every
 // complete item object from the "items" array (string-aware brace matching) so a long
@@ -286,6 +333,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // Fetch any URLs found in the email body so bare-link emails (e.g. a forwarded
+  // Letterboxd review URL) produce useful metadata for the Claude extraction step.
+  const urls = extractUrls(body)
+  const urlMetas = (await Promise.all(urls.map(fetchPageMeta))).filter(Boolean)
+  const urlContext = urlMetas.length > 0 ? urlMetas.join('\n\n') : undefined
+  if (urlContext) console.log('[email] url context fetched for', urls.length, 'url(s)')
+
   // Parse email body for recommendations. Big notes can list dozens of items, so allow
   // a large output and parse defensively (never 500 on a malformed/truncated reply).
   let parsed: ReturnType<typeof safeParse>
@@ -293,7 +347,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 8192,
-      messages: [{ role: 'user', content: EMAIL_PROMPT(subject, body) }],
+      messages: [{ role: 'user', content: EMAIL_PROMPT(subject, body, urlContext) }],
     })
     const txt = message.content[0].type === 'text' ? message.content[0].text : ''
     parsed = safeParse(txt)
