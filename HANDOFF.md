@@ -19,12 +19,18 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 ---
 
-## ▶ Next session — editorial polish (new-user audit #3–#7)
+## ▶ Next session — Discover full redesign (START WITH A DESIGN CONVO)
 
-The work now is making the app feel right to a **first-time user with great taste**. Full audit was done in session 43; #1–#2 shipped then, #4–#5 in session 48. Remaining:
+After ~2 weeks of real use, Farah's verdict: Discover **still isn't right or compelling** — not a polish problem, a concept problem. So this is no longer the small #3 on-ramp fix; it's a **ground-up rethink of the whole Discover page.** The new-user dead-end (#3 below) is *one* symptom, but don't treat fixing it as the goal.
 
-- [ ] **#3 — Discover dead-ends for new users.** No taste profile = the whole page is a wall ("go to the taste page first"), and the taste page needs rated items first. The most exciting feature is gated behind two prerequisites with no on-ramp. **The real one — needs a small design, not just a fix.** (`DiscoverScreen.tsx:84,202`)
-- [ ] **#7 — catalog-miss interstitial.** "nothing found — identify with ai?" adds a decision step mid-flow. Was kept deliberately as a cost gate (identify is a paid Sonnet call). **Kept for now** — Farah's call whether to make it automatic. (`AddScreen.tsx:367`)
+**Do NOT open by editing code.** Start with a design conversation: what is Discover *for*, what makes it compelling enough to open unprompted, what it should show someone with no taste profile yet. Land the concept first, then build.
+
+Known symptoms to feed into that convo:
+- **#3 — dead-ends for new users.** No taste profile = the whole page is a wall ("go to the taste page first"), and the taste page needs rated items first. The most exciting feature is gated behind two prerequisites with no on-ramp. (`DiscoverScreen.tsx:84,202`)
+- The session-48 redesign (bigger covers, blurb hero, ink save chip, no-repeat) shipped but didn't make it land — so bigger/prettier isn't the answer.
+
+**Also still open (smaller, not this redesign):**
+- **#7 — catalog-miss interstitial.** "nothing found — identify with ai?" adds a decision step mid-flow. Kept deliberately as a cost gate (identify is a paid Sonnet call). Farah's call whether to make it automatic. (`AddScreen.tsx:367`)
 
 **#6 (empty-library inside joke) parked** → see `docs/ROADMAP.md`.
 

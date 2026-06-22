@@ -10,7 +10,6 @@ When you finish a roadmap item: delete it from here (don't leave a ✅ checkmark
 
 Each has a reason it's parked and a trigger to revisit. Don't re-raise without new signal.
 
-- **Discover redesign — not in final form.** Redesign shipped (bigger covers, blurb hero, ink save chip, no-repeat logic) but Farah flagged it still needs work. Cover alignment fixed in session 48. Remaining finding feeds the active editorial queue: hard-gated behind the taste profile — no profile = dead-end empty state (#3 in HANDOFF). *Trigger: the editorial polish pass.*
 - **Empty-library copy (#6)** — "go listen to some music you loser" is a music-only inside joke; jarring to a stranger and wrong on a non-music library. Parked, not killed. When revisited: rewrite as something media-agnostic (the library spans films/books/music/TV), keep a bit of warmth. (`LibraryScreen.tsx:899`) *Trigger: next editorial polish pass.*
 - **Want-to priority** — pin/tier system for backlog. Parked: adds clutter to every want-to row; help-me-decide + search already cover the acute case. *Trigger: backlog grows genuinely unwieldy.*
 - **Regions map / country filter** — filter library + taste page by creator origin / country (UK vs US vs French films etc). Data blocker: need creator nationality / `P495` (country of origin) from Wikidata, stored on items, before any filter UI is possible. Wikidata is the right source (reliable structured field). *Trigger: decide manual country field vs Wikidata batch-pull, then pull the data.*
