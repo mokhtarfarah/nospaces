@@ -232,22 +232,21 @@ export function DiscoverScreen() {
 
       {error && <p style={{ fontSize: 12, color: '#C0392B', textAlign: 'center', margin: '12px 0 0' }}>{error}</p>}
 
-      {/* Nav bar: for you · further afield · in the mood — or the active-mood line */}
+      {/* Stream row — for you · further afield | in the mood (Library chip pattern) */}
       {moodActive ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 12, padding: '12px 0' }}>
-          <span style={{ fontSize: 12, color: GRAPHITE, fontStyle: 'italic' }}>in the mood for “{moodInput.trim() || '…'}”</span>
-          <button onClick={clearMood} style={{ background: 'none', border: 'none', color: MUTE, fontSize: 12, cursor: 'pointer', padding: 0 }}>clear ✕</button>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '4px 0 10px' }}>
+          <span style={{ fontSize: 13, color: '#111', fontStyle: 'italic' }}>in the mood for “{moodInput.trim() || '…'}”</span>
+          <button onClick={clearMood} style={{ background: 'none', border: 'none', color: '#888', fontSize: 13, cursor: 'pointer', padding: 0 }}>clear ✕</button>
         </div>
       ) : (
-        <nav style={{ display: 'flex', justifyContent: 'center', gap: 16, padding: '12px 0' }}>
-          <NavLink label="for you" active={stream === 'foryou'} onClick={() => selectStream('foryou')} />
-          <span style={{ color: MUTE, fontSize: 11 }}>·</span>
-          {tasteProfile && (<>
-            <NavLink label="further afield" active={stream === 'further'} onClick={() => selectStream('further')} />
-            <span style={{ color: MUTE, fontSize: 11 }}>·</span>
-          </>)}
-          <NavLink label="in the mood…" active={moodOpen} onClick={() => setMoodOpen(v => !v)} />
-        </nav>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <Chip label="for you" active={stream === 'foryou'} onClick={() => selectStream('foryou')} />
+          {tasteProfile && (
+            <Chip label="further afield" active={stream === 'further'} onClick={() => selectStream('further')} />
+          )}
+          <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+          <Chip label="in the mood…" active={moodOpen} onClick={() => setMoodOpen(v => !v)} />
+        </div>
       )}
 
       {/* Mood input — expands from the nav */}
@@ -271,17 +270,17 @@ export function DiscoverScreen() {
         </div>
       )}
 
-      {/* Medium switcher */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 14, padding: '8px 0 16px', borderBottom: `0.5px solid ${HAIR}`, marginBottom: 16 }}>
-        <MediumLink label="all" active={mediumFilter === 'all'} onClick={() => setMediumFilter('all')} />
+      {/* Medium switcher — second chip row, same pattern as Library's status row */}
+      <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', borderBottom: `1px solid #E8E8E8`, marginBottom: 16 }}>
+        <Chip label="all" active={mediumFilter === 'all'} onClick={() => setMediumFilter('all')} />
         {TYPE_ORDER.map(t => (
-          <MediumLink key={t} label={TYPE_LABEL[t]} active={mediumFilter === t} onClick={() => setMediumFilter(t)} />
+          <Chip key={t} label={TYPE_LABEL[t]} active={mediumFilter === t} onClick={() => setMediumFilter(t)} />
         ))}
       </div>
 
       {/* Count + refresh */}
       {!isLoadingActive && shown.length > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
           <span style={{ fontSize: 11, color: MUTE }}>{shown.length} {shown.length === 1 ? 'pick' : 'picks'}</span>
           {!moodActive && stream === 'foryou' && hasIntaste && (
             <button onClick={() => fetchMode('intaste', true)} disabled={intasteLoading} style={{ background: 'none', border: 'none', color: intasteLoading ? MUTE : GRAPHITE, fontSize: 11, cursor: 'pointer', padding: 0 }}>
@@ -378,17 +377,18 @@ export function DiscoverScreen() {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function NavLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+// Same tab-chip as Library (TabChip) so the two screens read as one app.
+function Chip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal', color: active ? INK : GRAPHITE }}>
-      {label}
-    </button>
-  )
-}
-
-function MediumLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{ background: 'none', border: 'none', padding: '0 0 3px', cursor: 'pointer', fontSize: 11, letterSpacing: '0.3px', color: active ? INK : MUTE, borderBottom: active ? `1.5px solid ${INK}` : '1.5px solid transparent' }}>
+    <button
+      onClick={onClick}
+      style={{
+        flexShrink: 0, padding: '4px 2px 8px', border: 'none', background: 'none',
+        color: active ? '#111' : '#888', fontSize: 13,
+        fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal',
+        cursor: 'pointer', whiteSpace: 'nowrap',
+      }}
+    >
       {label}
     </button>
   )
