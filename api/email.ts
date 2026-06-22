@@ -3,10 +3,6 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { genreBlock } from './_genres'
-// heic-convert ships no types; esbuild bundles it for the Vercel function regardless.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import heicConvert from 'heic-convert'
 
 // Strip any non-ASCII chars that may have crept in via copy-paste
 const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
@@ -115,6 +111,12 @@ async function prepImage(att: Attachment): Promise<{ mediaType: string; data: st
   let data = att.Content
 
   if (mediaType === 'image/heic' || mediaType === 'image/heif') {
+    // Loaded lazily (not at module scope) so its WASM payload never runs at function
+    // import time — a top-level import was crashing the whole endpoint on Vercel.
+    // heic-convert ships no types.
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const heicConvert = (await import('heic-convert')).default
     const input = Buffer.from(data, 'base64')
     // Anthropic rejects images over ~5MB (base64). Start at decent quality and step down
     // for very large photos (e.g. 48MP) until the raw JPEG is comfortably under the limit.
