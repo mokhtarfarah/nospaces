@@ -15,7 +15,9 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**Last session (49):** input/workflow bug round — fixed notes silently not saving (data loss), library losing scroll spot on the Spotify round-trip, AI blurb describing the article instead of the item, and two mobile sheet-layout bugs (sideways card drift + clipped filter popup). All pushed to main; **none verified against the live app** (port held + login wall) — Farah to confirm on the deployed build / phone. One item left from her list: **#6, a "failed email captures" feed on the review page — a feature, deferred to its own session.**
+**Last session (50):** recovered a Claude Code branch Farah ran **on her phone** (`desert-island-form-redesign`, never merged). It added **bare-link email capture** (forward a naked URL → fetch its page metadata → identify the item; no new API cost). Before merging I **SSRF-hardened** it — the mobile code fetched attacker-controllable email-body URLs server-side with no guard — by extracting the existing feed guard into shared `api/_ssrf.ts` and routing both `email.ts` + `recommend-feeds.ts` through it. Merged to main (`61ddd55`); **bare-link path not verified end-to-end** (needs a real inbound email — Farah to forward one bare link after redeploy). The branch's "desert island display rethink" note is parked in `docs/ROADMAP.md` and folds into the Discover redesign below.
+
+**Still open from session 49's list:** **#6, a "failed email captures" feed on the review page** — a feature, deferred to its own session. Plus session 49's five bug fixes are **unverified on the live app** (port held + login wall) — confirm on phone.
 
 ---
 
@@ -28,6 +30,8 @@ After ~2 weeks of real use, Farah's verdict: Discover **still isn't right or com
 Known symptoms to feed into that convo:
 - **#3 — dead-ends for new users.** No taste profile = the whole page is a wall ("go to the taste page first"), and the taste page needs rated items first. The most exciting feature is gated behind two prerequisites with no on-ramp. (`DiscoverScreen.tsx:84,202`)
 - The session-48 redesign (bigger covers, blurb hero, ink save chip, no-repeat) shipped but didn't make it land — so bigger/prettier isn't the answer.
+
+**Carry in the mobile desert-island ideas (session 50, parked in `docs/ROADMAP.md`).** Farah felt the taste page's 3-column desert-island grid doesn't match the weight of the concept. Display options floated on her phone: (1) horizontal scroll strips by category, (2) **full-width stacked cards with cover + reason text — her tentative pick**, (3) numbered editorial list, (4) dense cover mosaic / tap-to-reveal, (5) swipeable single-item cards. **Bigger idea also raised: delete the taste tab entirely and make the library the primary entry point**, with desert-island as a pinned/filtered view inside it. This overlaps the Discover rethink (both ask "is the taste page even the right shape?") — treat them as one design problem, not two. Decide the *concept* before any display option.
 
 **Also still open (smaller, not this redesign):**
 - **#7 — catalog-miss interstitial.** "nothing found — identify with ai?" adds a decision step mid-flow. Kept deliberately as a cost gate (identify is a paid Sonnet call). Farah's call whether to make it automatic. (`AddScreen.tsx:367`)

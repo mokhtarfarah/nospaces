@@ -4,6 +4,21 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 50 (2026-06-22) — recovered a mobile branch + SSRF-hardened bare-link email capture
+
+Farah had run a Claude Code session **on her phone** the day before and asked if the comments "came in." They hadn't merged — the work was sitting on `origin/claude/desert-island-form-redesign-r63lw9` (committed 07:34, never merged to main). Two things on it:
+
+1. **Bare-link email capture** (`api/email.ts`) — when a forwarded email is *just a URL* (e.g. a Letterboxd review link, no text), it now extracts up to 3 URLs, fetches each page's OG/title/description metadata, and feeds that to the Sonnet extractor so the item can be identified. Same single Sonnet call as before — no new API cost, just more input context.
+2. **A roadmap note** — "desert island display rethink" (parked in `docs/ROADMAP.md`).
+
+**The fix I added before merging (security):** the mobile code fetched attacker-controllable URLs (anything in an inbound email body) server-side with **no SSRF guard** — reintroducing the exact pattern we guarded against for custom feeds in session ~43. I extracted that existing guard into a shared `api/_ssrf.ts` (`isSafePublicUrl`) and routed both `email.ts` and `recommend-feeds.ts` through it, so they can't drift. Typecheck + lint + 54 tests green; merged to main (`9337fc1`, merge `61ddd55`) and pushed; branch deleted.
+
+**Not verified end-to-end** — the bare-link path needs a real inbound email + webhook secret to exercise and isn't browser-observable. Code is typed and sound; behavior unconfirmed. Farah to forward one bare link to the capture address after Vercel redeploys.
+
+**Decision:** the desert-island display idea overlaps the big Discover redesign, so we're folding it into that — which we deferred to **its own fresh session** (cost: long sessions are expensive). No code touched on Discover this session.
+
+---
+
 ### Session 49 (2026-06-22) — input/workflow bug round (notes, scroll, blurb, sheets)
 
 Five bugs Farah hit using the app this week. Typecheck + 54 tests green throughout. Pushed to main (commits `f232526`, `6a67593`, `4113df0`, `2433f76`). Frontend-only except #3 (a prompt-only edit, no test call spent — see cost note). **Not verified against live app** — port 5173 held by the dev server + login wall — so each fix needs a quick confirm on the deployed build / phone.
