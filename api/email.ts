@@ -185,6 +185,54 @@ function extractUrls(text: string): string[] {
     .slice(0, 3)
 }
 
+// Like extractUrls but also pulls links out of HTML href="..." attributes — many
+// forwarded shop emails are HTML-only, with the product link only in the markup
+// (the visible text is "Shop now"), so tag-stripped text alone misses it.
+function extractEmailUrls(textBody: string, htmlBody: string): string[] {
+  // eslint-disable-next-line no-control-regex -- intentionally exclude control chars from URLs
+  const fromText = textBody.match(/https?:\/\/[^\s<>"{}|\\^[\]`\x00-\x1F]*/g) ?? []
+  const fromHref = [...htmlBody.matchAll(/href=["'](https?:\/\/[^"']+)["']/gi)].map(m => m[1].replace(/&amp;/g, '&'))
+  return [...new Set([...fromText, ...fromHref].map(u => u.trim()))]
+    .filter(isSafePublicUrl)
+    .slice(0, 10)
+}
+
+type ThingCapture =
+  | { kind: 'saved'; title: string; price: string | null }
+  | { kind: 'duplicate'; title: string }
+  | { kind: 'no-link' }
+  | { kind: 'unreadable' }
+  | { kind: 'error'; message: string }
+
+// Scrape the first usable product link and save it to the board as a thing.
+// `strict` (used by the auto-fallback on the media address) only saves pages that
+// look like shop pages, so a forwarded article doesn't become a board card.
+async function captureThing(userId: string, urls: string[], strict: boolean): Promise<ThingCapture> {
+  if (urls.length === 0) return { kind: 'no-link' }
+  let fields: ScrapedFields | null = null
+  for (const u of urls) {
+    const r = await scrapeProduct(u)
+    if (r.ok && (r.fields.title || r.fields.image) && (!strict || r.fields.productLike)) { fields = r.fields; break }
+  }
+  if (!fields) return { kind: 'unreadable' }
+  // Dedup by URL against the things already on the board.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase as any)
+    .from('items').select('metadata').eq('user_id', userId).eq('type', 'thing')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (((existing ?? []) as any[]).some(t => (t.metadata?.url ?? '') === fields!.url)) {
+    return { kind: 'duplicate', title: fields.title ?? 'That item' }
+  }
+  const title = fields.title ?? 'Untitled'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('items').insert({
+    user_id: userId, title, creator: fields.brand, type: 'thing', status: 'want_to', source: 'email',
+    metadata: { kind: 'product', title, image: fields.image, price: fields.price, brand: fields.brand, siteName: fields.siteName, url: fields.url },
+  })
+  if (error) return { kind: 'error', message: error.message }
+  return { kind: 'saved', title, price: fields.price ?? null }
+}
+
 // Fetch a URL and return a compact summary of its OpenGraph / title metadata,
 // or null if unreachable or metadata-free. Used to make bare-URL emails work.
 async function fetchPageMeta(url: string): Promise<string | null> {
@@ -361,60 +409,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ---- Things domain: forward a product link → save it to your board ----
   // Routed by the recipient address (things@ / shop@ / want@). Free — uses the
-  // shared scraper, no Anthropic call. Returns before the paid media pipeline.
+  // shared scraper, no Anthropic call. Lenient (any readable link), since the
+  // address signals clear intent. Returns before the paid media pipeline.
   if (isThingsAddress(replyFrom)) {
-    const urls = extractUrls(body)
-    if (urls.length === 0) {
-      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'nothing_found', detail: 'no link in things email', snippet })
-      await sendReply(fromEmail, replyFrom, 'Nospaces: no link found',
-        `I didn't find a product link in that email. Forward one with the shop link in it and I'll add it to your board.`)
-      return res.status(200).json({ saved: 0 })
+    const r = await captureThing(matchedUser.id, extractEmailUrls(body, HtmlBody ?? ''), false)
+    if (r.kind === 'saved') {
+      await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
+        `Added to your board:\n\n• ${r.title}${r.price ? ` — ${r.price}` : ''}\n\nTag it (material, palette, vibe) in the app to feed your thread.`)
+      return res.status(200).json({ saved: 1, domain: 'thing' })
     }
-    // First link that scrapes to something usable wins (forwarded shop emails
-    // can carry tracking/unsubscribe links before the real product).
-    let fields: ScrapedFields | null = null
-    for (const u of urls) {
-      const r = await scrapeProduct(u)
-      if (r.ok && (r.fields.title || r.fields.image)) { fields = r.fields; break }
-    }
-    if (!fields) {
-      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'error', detail: 'could not read product link', snippet })
-      await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t read that link',
-        `I found a link but couldn't read the product from it. Some shops block this — paste the link in the app and add it by hand, or try a different link.`)
-      return res.status(200).json({ saved: 0 })
-    }
-    // Dedup by URL against the things already on the board.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingThings } = await (supabase as any)
-      .from('items').select('metadata').eq('user_id', matchedUser.id).eq('type', 'thing')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const already = ((existingThings ?? []) as any[]).some(t => (t.metadata?.url ?? '') === fields!.url)
-    if (already) {
+    if (r.kind === 'duplicate') {
       await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'duplicates', detail: 'thing already on board', snippet })
-      await sendReply(fromEmail, replyFrom, 'Nospaces: already on your board',
-        `"${fields.title ?? 'That item'}" is already on your board — nothing new to add.`)
+      await sendReply(fromEmail, replyFrom, 'Nospaces: already on your board', `"${r.title}" is already on your board — nothing new to add.`)
       return res.status(200).json({ saved: 0 })
     }
-    const title = fields.title ?? 'Untitled'
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: thingErr } = await (supabase as any).from('items').insert({
-      user_id: matchedUser.id,
-      title,
-      creator: fields.brand,
-      type: 'thing',
-      status: 'want_to',
-      source: 'email',
-      metadata: { kind: 'product', title, image: fields.image, price: fields.price, brand: fields.brand, siteName: fields.siteName, url: fields.url },
-    })
-    if (thingErr) {
-      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'error', detail: thingErr.message, snippet })
-      await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
-        `I read "${title}" but hit an error saving it — nothing was added. (Tech note: ${thingErr.message})`)
-      return res.status(200).json({ saved: 0, error: thingErr.message })
-    }
-    await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
-      `Added to your board:\n\n• ${title}${fields.price ? ` — ${fields.price}` : ''}\n\nTag it (material, palette, vibe) in the app to feed your thread.`)
-    return res.status(200).json({ saved: 1, domain: 'thing' })
+    const detail = r.kind === 'no-link' ? 'no link in things email' : r.kind === 'error' ? r.message : 'could not read product link'
+    await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: r.kind === 'error' ? 'error' : 'nothing_found', detail, snippet })
+    await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t add that',
+      r.kind === 'no-link'
+        ? `I didn't find a product link in that email. Forward one with the shop link in it and I'll add it to your board.`
+        : `I found a link but couldn't read the product from it. Some shops block this — paste the link in the app and add it by hand, or try a different link.`)
+    return res.status(200).json({ saved: 0, error: r.kind })
   }
 
   // Identify media from any image attachments. Each image is normalized first (HEIC→JPEG,
@@ -488,6 +503,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (allItems.length === 0) {
     const hadPhotos = imageAttachments.length > 0
+    // No media found — but if there's a clear *shop* link, this was probably a
+    // product, not a newsletter. Save it to the board so the regular inbox "just
+    // works" for things too. Strict (productLike only) so an article doesn't slip in.
+    if (!hadPhotos) {
+      const t = await captureThing(matchedUser.id, extractEmailUrls(body, HtmlBody ?? ''), true)
+      if (t.kind === 'saved') {
+        await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
+          `That looked like a product, so I added it to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\nTag it (material, palette, vibe) in the app to feed your thread.`)
+        return res.status(200).json({ saved: 1, domain: 'thing' })
+      }
+      if (t.kind === 'duplicate') {
+        await sendReply(fromEmail, replyFrom, 'Nospaces: already on your board', `"${t.title}" is already on your board — nothing new to add.`)
+        return res.status(200).json({ saved: 0 })
+      }
+    }
     await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'nothing_found',
       detail: hadPhotos ? 'no media read from photo(s)' : 'no media found in text', snippet })
     await sendReply(fromEmail, replyFrom, 'Nospaces: nothing saved',

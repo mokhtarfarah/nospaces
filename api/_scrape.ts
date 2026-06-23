@@ -22,6 +22,9 @@ export type ScrapedFields = {
   description?: string | null
   /** On-page rating (from JSON-LD aggregateRating) — value + review count as strings. */
   rating?: { value: string; count: string } | null
+  /** True when the page looks like a shop page (JSON-LD Product, og:type=product,
+   *  or a readable price) — used to gate auto-capture so articles don't become things. */
+  productLike?: boolean
 }
 
 export type ScrapeResult =
@@ -226,8 +229,10 @@ export async function scrapeProduct(rawUrl: string): Promise<ScrapeResult> {
       ?? (() => { try { return new URL(finalUrl).hostname.replace(/^www\./, '') } catch { return null } })()
     const description = (ld?.description ?? metaContent(html, ['og:description', 'twitter:description', 'description']))?.slice(0, 500) ?? null
     const rating = ld?.rating ?? null
+    const ogType = metaContent(html, ['og:type'])
+    const productLike = !!ld || (ogType?.toLowerCase().includes('product') ?? false) || !!price
 
-    return { ok: true, fields: { url: finalUrl, title, image, price, brand, siteName, description, rating } }
+    return { ok: true, fields: { url: finalUrl, title, image, price, brand, siteName, description, rating, productLike } }
   } catch (err) {
     const aborted = err instanceof Error && err.name === 'AbortError'
     console.error('[scrape] error for', trimmed, ':', err instanceof Error ? err.message : err)
