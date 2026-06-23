@@ -14,6 +14,7 @@ import { WhereToWatchSheet } from './WhereToWatchSheet'
 import { SheetHero } from './SheetHero'
 import { genresForType, isGenreTag } from '../lib/genres'
 import { inReview } from '../lib/review'
+import { REGION_VERSION } from '../lib/regions'
 
 interface Props {
   item: Item
@@ -341,10 +342,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
     const pg = parseInt(pagesEdit)
     if (!isNaN(pg) && pg > 0) metadata.pages = pg
     else if (!pagesEdit.trim()) delete metadata.pages
-    // Region — store the resolved country list (empty array marks "pulled, none
-    // found" so the backfill doesn't keep retrying).
-    if (countriesEdit.length) metadata.countries = countriesEdit
-    else delete metadata.countries
+    // Region — store the resolved country list (stamped with the current
+    // resolver version so the backfill treats it as up-to-date).
+    if (countriesEdit.length) { metadata.countries = countriesEdit; metadata.regionV = REGION_VERSION }
+    else { delete metadata.countries; delete metadata.regionV }
     // Saving the edit view CONFIRMS any provisional AI vibes — they move into
     // moods (below), so drop the unconfirmed list.
     delete metadata.unconfirmedVibes

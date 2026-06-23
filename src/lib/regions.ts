@@ -9,15 +9,24 @@ import { GAP_MEDIA_TYPES } from './gaps'
 // We only persist real hits — an item with no country found is left untagged so
 // a later run (better data, or an improved resolver) retries it. Re-running is
 // free and idempotent.
+//
+// REGION_VERSION stamps each saved tag. Bump it when the resolver logic changes
+// so the next backfill re-cleans already-tagged items (e.g. v2 fixed bands +
+// over-tagging like Ulysses → France/UK/Ireland/US). Items below the current
+// version are treated as needing a re-pull.
+export const REGION_VERSION = 2
 
 export interface RegionProgress { done: number; total: number; filled: number }
 
-// True once an item carries at least one country.
+// True once an item carries at least one country from the CURRENT resolver.
 export function hasRegion(item: Item): boolean {
-  return Array.isArray(item.metadata?.countries) && (item.metadata.countries as string[]).length > 0
+  return Array.isArray(item.metadata?.countries)
+    && (item.metadata.countries as string[]).length > 0
+    && ((item.metadata?.regionV as number | undefined) ?? 0) >= REGION_VERSION
 }
 
-// Items eligible for a region pull: media types we know how to resolve, not yet tagged.
+// Items eligible for a region pull: media types we can resolve, not yet tagged
+// (or tagged by an older resolver version).
 export function itemsNeedingRegion(items: Item[]): Item[] {
   return items.filter(i => GAP_MEDIA_TYPES.includes(i.type) && !hasRegion(i))
 }
@@ -61,7 +70,7 @@ export async function pullRegions(
       const countries = await pullOne(item, headers)
       // Only persist real hits — leave misses untagged so a re-run retries them.
       if (countries && countries.length) {
-        await save(item.id, { countries })
+        await save(item.id, { countries, regionV: REGION_VERSION })
         filled++
       }
       done++

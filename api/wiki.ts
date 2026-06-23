@@ -98,6 +98,29 @@ const WD_CREATOR_PROPS: Record<string, string[]> = {
   music:['P175', 'P86'],  // performer, then composer
 }
 
+// Roll dissolved/historical states up to the modern country, so a filter chip
+// reads "France" not "French Third Republic". Wikidata lists these as distinct
+// country values; collapse the common ones that show up in media metadata.
+const HISTORICAL_COUNTRY: Record<string, string> = {
+  'French Third Republic': 'France',
+  'French Fourth Republic': 'France',
+  'French Fifth Republic': 'France',
+  'Kingdom of France': 'France',
+  'United Kingdom of Great Britain and Ireland': 'United Kingdom',
+  'Kingdom of Great Britain': 'United Kingdom',
+  'Kingdom of England': 'United Kingdom',
+  'Weimar Republic': 'Germany',
+  'Nazi Germany': 'Germany',
+  'German Reich': 'Germany',
+  'German Empire': 'Germany',
+  'West Germany': 'Germany',
+  'East Germany': 'Germany',
+  'Kingdom of Italy': 'Italy',
+  'Empire of Japan': 'Japan',
+  'Russian Empire': 'Russia',
+  'Kingdom of the Netherlands': 'Netherlands',
+}
+
 // Pull structured fields straight from Wikidata instead of parsing prose. Wikipedia
 // keeps runtime/director/author/pages in the infobox (Wikidata claims), NOT in the
 // article text — so the old Haiku-on-extract approach reliably missed them. This reads
@@ -175,11 +198,16 @@ async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFi
       (cl[pid] ?? [])
         .map(c => (c.mainsnak?.datavalue?.value as { id?: string })?.id)
         .filter((q): q is string => !!q)
-    // A person/group/work's country, broadly: citizenship (P27, humans),
-    // country (P495, works + bands), or country (P17, organisations). Bands
-    // aren't people so they have no P27 — Radiohead's country lives on P495.
-    const directCountryIds = (cl: Record<string, Snak[]>): string[] =>
-      [...claimIds(cl, 'P27'), ...claimIds(cl, 'P495'), ...claimIds(cl, 'P17')]
+    // A creator's country. A person has citizenship (P27) — take only the
+    // PRIMARY one, since multi-citizenship (Joyce: Ireland/UK/France) is noisy
+    // and a book/album's "region" is really one place. A band/org isn't a person
+    // (no P27) — its country lives on P495 (Radiohead) or P17; take all (rare to
+    // be multi). Returns [] if this entity carries no country signal.
+    const creatorCountryIds = (cl: Record<string, Snak[]>): string[] => {
+      const citizenship = claimIds(cl, 'P27')
+      if (citizenship.length) return [citizenship[0]]
+      return [...claimIds(cl, 'P495'), ...claimIds(cl, 'P17')]
+    }
 
     // creator: up to two entity ids (e.g. co-directors / co-authors). Fetch
     // labels (for the display name) + claims (for nationality) in one call.
@@ -197,17 +225,18 @@ async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFi
       for (const id of creatorIds) creatorClaims.push((d3?.entities?.[id]?.claims as Record<string, Snak[]>) ?? {})
     }
 
-    // country of origin. film/tv → the work's P495 (NOT director nationality —
-    // see ROADMAP). book/music → the creator's country. Multi-valued
-    // (co-productions / co-authors), deduped.
+    // country of origin. film/tv → the work's P495 — production countries, kept
+    // multi (co-productions are real; NOT director nationality, see ROADMAP).
+    // book/music → the creator's country (NOT the work's P495, which for books is
+    // publication-country noise like Ulysses → France/US).
     let countryIds: string[]
     if (type === 'film' || type === 'tv') {
       countryIds = claimIds(claims, 'P495')
     } else {
       // From each creator entity, then — if none resolved (e.g. the article was
       // the author's own page) — from the work entity itself.
-      countryIds = creatorClaims.flatMap(directCountryIds)
-      if (!countryIds.length && !creatorIds.length) countryIds = directCountryIds(claims)
+      countryIds = creatorClaims.flatMap(creatorCountryIds)
+      if (!countryIds.length && !creatorIds.length) countryIds = creatorCountryIds(claims)
       // Last resort for a band with no direct country: its formation location
       // (P740) → that place's country (P17). One extra lookup, only when needed.
       if (!countryIds.length) {
@@ -220,9 +249,14 @@ async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFi
         }
       }
     }
-    const uniqueCountryIds = [...new Set(countryIds)]
-    const countryLabels = await labelsFor(uniqueCountryIds)
-    const countries = uniqueCountryIds.map(id => countryLabels[id]).filter((c): c is string => !!c)
+    const countryLabels = await labelsFor([...new Set(countryIds)])
+    // Resolve → roll historical states up to modern → dedupe (preserves order).
+    const countries = [...new Set(
+      [...new Set(countryIds)]
+        .map(id => countryLabels[id])
+        .filter((c): c is string => !!c)
+        .map(c => HISTORICAL_COUNTRY[c] ?? c)
+    )]
 
     return { year, creator, runtime, pages: numPages, genres: [], countries }
   } catch {
