@@ -5,7 +5,7 @@ import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
   parseProductLink, compareCandidates, kindOf, intentMeta, productMeta, newCandidateId,
-  EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue,
+  EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS,
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet,
 } from '../lib/things'
 
@@ -27,6 +27,7 @@ export function ThingsScreen() {
     <div style={{ padding: '20px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
       <DomainSwitcher current="things" />
       <PageHeader kicker="THINGS" title="your board" />
+      <ThreadMasthead things={things} />
 
       {/* Two first-class capture paths: save a concrete product, or plan a purchase
           (an intent you'll weigh options against). */}
@@ -99,6 +100,41 @@ export function ThingsScreen() {
             }} />
         </Sheet>
       )}
+    </div>
+  )
+}
+
+/* ---------- the thread masthead (the board read back as a taste mirror) ---------- */
+
+// The whole point of Things: the *set* speaks. Once enough items are tagged, the
+// recurring attributes across the board become a short aesthetic read. Pure +
+// free (just renders readThread). Stays quiet until there's real signal so it
+// never guesses on a sparse board.
+function ThreadMasthead({ things }: { things: Item[] }) {
+  const thread = useMemo(() => readThread(things), [things])
+  const tagged = useMemo(() => things.filter(t => itemAttributes(t).length > 0).length, [things])
+
+  if (things.length === 0) return null
+
+  if (thread) {
+    return (
+      <div style={{ margin: '0 0 22px', padding: '14px 16px', borderRadius: 14, background: '#F7F5F1', border: `1px solid ${LINE}` }}>
+        <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 6 }}>your thread</div>
+        <div style={{ fontSize: 21, fontWeight: 600, color: INK, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+          {thread.tokens.join('  ·  ')}
+        </div>
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 7 }}>
+          read from {thread.basis} tagged thing{thread.basis === 1 ? '' : 's'} — it shifts as you save and tag more
+        </div>
+      </div>
+    )
+  }
+
+  // Below the threshold (or nothing recurs yet) — a gentle nudge, never a nag.
+  return (
+    <div style={{ margin: '0 0 22px', padding: '12px 14px', borderRadius: 14, border: `1px dashed ${LINE}`, fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>
+      Tag your things — material, palette, form — and your aesthetic <em>thread</em> shows up here.
+      {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} tagged.</span>}
     </div>
   )
 }
