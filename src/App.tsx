@@ -11,6 +11,7 @@ import { TasteScreen } from './screens/TasteScreen'
 import { ShowsScreen } from './screens/ShowsScreen'
 import { RecommendScreen } from './screens/RecommendScreen'
 import { DiscoverScreen } from './screens/DiscoverScreen'
+import { ThingsScreen } from './screens/ThingsScreen'
 import { HelpMeDecideScreen } from './screens/HelpMeDecideScreen'
 import { GuideScreen } from './screens/GuideScreen'
 
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/shows" element={<ShowsScreen />} />
           <Route path="/recommend" element={<RecommendScreen />} />
           <Route path="/discover" element={<DiscoverScreen />} />
+          <Route path="/things" element={<ThingsScreen />} />
           <Route path="/decide" element={<HelpMeDecideScreen />} />
           <Route path="/guide" element={<GuideScreen />} />
         </Routes>
