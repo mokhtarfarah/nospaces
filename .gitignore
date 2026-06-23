@@ -4,3 +4,6 @@ dist
 .env.local
 .DS_Store
 *.tsbuildinfo
+
+# Claude Code — personal, per-machine permission grants (not shared)
+.claude/settings.local.json
