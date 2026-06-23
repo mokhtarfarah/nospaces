@@ -163,9 +163,10 @@ function CanonLine({ item }: { item: Item }) {
   )
 }
 
+// The desert-island tab body. No own header/disclosure — the tab is the
+// disclosure now. Just the grouped picks: noted ones as full editorial rows,
+// the rest as quiet one-liners.
 function CanonGallery({ items }: { items: Item[] }) {
-  const [open, setOpen] = useState(true)
-
   const byType = useMemo(() => {
     const order = ['film', 'tv', 'book', 'music']
     const groups = new Map<string, Item[]>()
@@ -180,23 +181,8 @@ function CanonGallery({ items }: { items: Item[] }) {
   const multiType = byType.length > 1
 
   return (
-    <div style={{ marginBottom: open ? 32 : 0 }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 7, width: '100%',
-          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-          fontFamily: 'inherit', textAlign: 'left',
-          marginBottom: open ? 14 : 0,
-        }}
-      >
-        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE }}>
-          desert island
-        </span>
-        <span style={{ fontSize: 11, color: MUTE }}>{items.length}</span>
-        <span style={{ fontSize: 10, color: MUTE, marginLeft: 'auto', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
-      </button>
-      {open && byType.map(({ type, items: typeItems }) => {
+    <div>
+      {byType.map(({ type, items: typeItems }) => {
         // Picks you wrote about get the full editorial row; the rest collapse to
         // quiet one-liners underneath, so no row is ever an empty colour band.
         const noted = typeItems.filter(i => i.note?.trim())
@@ -221,10 +207,29 @@ function CanonGallery({ items }: { items: Item[] }) {
   )
 }
 
+// Tab chip — same language as Discover's stream chips (active: ink + italic),
+// so taste reads as one app with the rest.
+function TabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flexShrink: 0, padding: '4px 2px 8px', border: 'none', background: 'none',
+        color: active ? '#111' : '#888', fontSize: 13,
+        fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal',
+        cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
 export function TasteScreen() {
   const { items, loading } = useItems()
   const { tasteProfile, setTasteProfile } = usePrefs()
   const [generating, setGenerating] = useState(false)
+  const [tab, setTab] = useState<'profile' | 'island'>('profile')
   const [genError, setGenError] = useState('')
 
   const doneWithReaction = useMemo(() => items.filter(i => i.status === 'done' && i.reaction), [items])
@@ -242,6 +247,7 @@ export function TasteScreen() {
     items.filter(i => i.metadata?.canon && i.reaction === 'loved_it'),
     [items]
   )
+  const hasIsland = canonItems.length > 0
 
   async function generate() {
     if (generating) return
@@ -298,115 +304,120 @@ export function TasteScreen() {
       {/* "taste" as a small section label, vibe words as the headline */}
       <PageHeader kicker={`shaped by ${doneWithReaction.length} ${doneWithReaction.length === 1 ? 'rating' : 'ratings'}`} title="taste" />
 
-      {/* Vibe words — the actual headline */}
+      {/* Vibe words — stacked masthead, the page's hook */}
       {topVibes.length > 0 && (
-        <div style={{ marginBottom: 22 }}>
-          <h1 style={{ fontSize: 30, fontWeight: 600, color: INK, letterSpacing: '-0.9px', lineHeight: 1.12, margin: 0 }}>
-            {topVibes.map((v, i) => (
-              <span key={v.label}>
-                {i > 0 && <span style={{ color: MUTE, margin: '0 8px', fontWeight: 400 }}>·</span>}
-                {v.label}
-              </span>
-            ))}
+        <div style={{ marginBottom: 18 }}>
+          <h1 style={{ fontSize: 34, fontWeight: 600, color: INK, letterSpacing: '-1.3px', lineHeight: 1.04, margin: 0 }}>
+            {topVibes.map(v => <div key={v.label}>{v.label}</div>)}
           </h1>
         </div>
       )}
 
-      {/* AI prose */}
-      <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 16, marginBottom: 16 }}>
-        {tasteProfile ? (
-          <div>
-            {tasteProfile.split('\n\n').filter(p => p.trim()).map((para, i) => (
-              <p key={i} style={{
-                fontSize: 14, lineHeight: 1.75, color: GRAPHITE,
-                letterSpacing: '-0.1px', margin: i === 0 ? '0 0 12px' : '0',
-              }}>
-                {inlineItalics(para.replace(/^[-–]\s*/gm, '').trim())}
-              </p>
-            ))}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, color: MUTE }}>ai taste profile</span>
-            <button
-              onClick={generate}
-              disabled={generating}
-              style={{
-                padding: '7px 16px', borderRadius: 20, cursor: generating ? 'default' : 'pointer',
-                border: `1.5px solid ${INK}`, background: INK,
-                color: '#fff', fontSize: 12, fontWeight: 600,
-                opacity: generating ? 0.5 : 1, fontFamily: 'inherit',
-              }}
-            >
-              {generating ? 'generating…' : 'generate'}
-            </button>
-          </div>
-        )}
-        {genError && <div style={{ fontSize: 11, color: '#C0392B', marginTop: 6 }}>{genError}</div>}
-      </div>
+      {/* Tabs — profile (the read) vs desert island (the picks). Only when there's
+          a desert island to switch to; otherwise the page is just the profile. */}
+      {hasIsland && (
+        <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${HAIR}`, marginBottom: 18 }}>
+          <TabChip label="profile" active={tab === 'profile'} onClick={() => setTab('profile')} />
+          <TabChip label="desert island" active={tab === 'island'} onClick={() => setTab('island')} />
+        </div>
+      )}
 
-      {/* The gap — per-medium where meaningful */}
-      {aspirationGaps.length > 0 && (
-        <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 4 }}>
-            the gap
+      {/* ── Profile tab: prose + the gap + always loved ───────────────────── */}
+      {(!hasIsland || tab === 'profile') && (
+        <>
+          {/* AI prose */}
+          <div style={{ borderTop: hasIsland ? 'none' : `1px solid ${HAIR}`, paddingTop: hasIsland ? 0 : 16, marginBottom: 16 }}>
+            {tasteProfile ? (
+              <div>
+                {tasteProfile.split('\n\n').filter(p => p.trim()).map((para, i) => (
+                  <p key={i} style={{
+                    fontSize: 14, lineHeight: 1.75, color: GRAPHITE,
+                    letterSpacing: '-0.1px', margin: i === 0 ? '0 0 12px' : '0',
+                  }}>
+                    {inlineItalics(para.replace(/^[-–]\s*/gm, '').trim())}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, color: MUTE }}>ai taste profile</span>
+                <button
+                  onClick={generate}
+                  disabled={generating}
+                  style={{
+                    padding: '7px 16px', borderRadius: 20, cursor: generating ? 'default' : 'pointer',
+                    border: `1.5px solid ${INK}`, background: INK,
+                    color: '#fff', fontSize: 12, fontWeight: 600,
+                    opacity: generating ? 0.5 : 1, fontFamily: 'inherit',
+                  }}
+                >
+                  {generating ? 'generating…' : 'generate'}
+                </button>
+              </div>
+            )}
+            {genError && <div style={{ fontSize: 11, color: '#C0392B', marginTop: 6 }}>{genError}</div>}
           </div>
-          <div style={{ fontSize: 12, color: MUTE, lineHeight: 1.5, marginBottom: 10 }}>
-            what you're collecting vs. what you actually finish
-          </div>
-          {aspirationGaps.map((g, i) => (
-            <div key={i} style={{ marginBottom: i < aspirationGaps.length - 1 ? 6 : 0 }}>
-              <span style={{ fontSize: 14, color: GRAPHITE, letterSpacing: '-0.1px', lineHeight: 1.55 }}>
-                {g.medium ? `In ${g.medium}, you keep adding ` : 'You keep adding '}
-                <span style={{ color: INK, fontWeight: 600 }}>{g.adding}</span>
-                {' but finish '}
-                <span style={{ color: INK, fontWeight: 600 }}>{g.finishing}</span>.
-              </span>
+
+          {/* The gap — per-medium where meaningful */}
+          {aspirationGaps.length > 0 && (
+            <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 4 }}>
+                the gap
+              </div>
+              <div style={{ fontSize: 12, color: MUTE, lineHeight: 1.5, marginBottom: 10 }}>
+                what you're collecting vs. what you actually finish
+              </div>
+              {aspirationGaps.map((g, i) => (
+                <div key={i} style={{ marginBottom: i < aspirationGaps.length - 1 ? 6 : 0 }}>
+                  <span style={{ fontSize: 14, color: GRAPHITE, letterSpacing: '-0.1px', lineHeight: 1.55 }}>
+                    {g.medium ? `In ${g.medium}, you keep adding ` : 'You keep adding '}
+                    <span style={{ color: INK, fontWeight: 600 }}>{g.adding}</span>
+                    {' but finish '}
+                    <span style={{ color: INK, fontWeight: 600 }}>{g.finishing}</span>.
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* Creator faithfulness */}
+          {faithfulCreators.length > 0 && (
+            <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
+                always loved
+              </div>
+              <div style={{ fontSize: 14, color: GRAPHITE, lineHeight: 1.7, letterSpacing: '-0.1px' }}>
+                {faithfulCreators.map((c, i) => (
+                  <span key={c.name}>
+                    {i > 0 && <span style={{ color: MUTE }}> · </span>}
+                    {c.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Refresh profile — available but unobtrusive */}
+          {tasteProfile && (
+            <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginTop: 4 }}>
+              <button
+                onClick={generate}
+                disabled={generating}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: generating ? 'default' : 'pointer',
+                  fontSize: 11, color: MUTE, fontFamily: 'inherit',
+                  textDecoration: 'underline', textUnderlineOffset: 2,
+                }}
+              >
+                {generating ? 'generating…' : 'refresh profile'}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Creator faithfulness */}
-      {faithfulCreators.length > 0 && (
-        <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 10 }}>
-            always loved
-          </div>
-          <div style={{ fontSize: 14, color: GRAPHITE, lineHeight: 1.7, letterSpacing: '-0.1px' }}>
-            {faithfulCreators.map((c, i) => (
-              <span key={c.name}>
-                {i > 0 && <span style={{ color: MUTE }}> · </span>}
-                {c.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Desert island gallery */}
-      {canonItems.length > 0 && (
-        <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 16 }}>
-          <CanonGallery items={canonItems} />
-        </div>
-      )}
-
-      {/* Refresh profile — available but unobtrusive */}
-      {tasteProfile && (
-        <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginTop: 4 }}>
-          <button
-            onClick={generate}
-            disabled={generating}
-            style={{
-              background: 'none', border: 'none', padding: 0, cursor: generating ? 'default' : 'pointer',
-              fontSize: 11, color: MUTE, fontFamily: 'inherit',
-              textDecoration: 'underline', textUnderlineOffset: 2,
-            }}
-          >
-            {generating ? 'generating…' : 'refresh profile'}
-          </button>
-        </div>
-      )}
+      {/* ── Desert island tab ─────────────────────────────────────────────── */}
+      {hasIsland && tab === 'island' && <CanonGallery items={canonItems} />}
     </div>
   )
 }
