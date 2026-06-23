@@ -4,6 +4,30 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 55 (2026-06-22) — Editorial Discover feedback + shared detail-sheet (`SheetHero`)
+
+Farah's feedback on the session-54 editorial Discover, then a long iterative polish of the detail sheet — **pushed live to `main` each step**, deploying so she could eyeball on the OAuth-gated site (preview can't sign in, so **none of this is verified signed-in** — typecheck + lint + 56 tests clean on every push).
+
+**Discover + Library quick wins:**
+- **Rank numerals** — slimmed weight 600→300, then Farah picked the **full-watermark** treatment (mocked 3 options): big light-grey numeral (`#E0DDD5`, ~104px) left-anchored *behind* the row text, not just clipping the right edge. `DiscoverScreen.tsx` ResultRow.
+- **Library kicker now medium-aware** — `N films` / `N books` per the selected category, `N in the collection` on "all". `LibraryScreen.tsx` (`kicker` useMemo ~line 374).
+- **Taste desert-island covers** — per-medium aspect (posters 2:3, music 1:1) instead of hard-cropped squares, so each row reads like a shelf. `TasteScreen.tsx` `CanonGallery`.
+
+**Shared editorial detail sheet — `src/components/SheetHero.tsx` (NEW):** Farah's call — the old `DetailSheet`/`ItemActionSheet` read views looked "pedestrian" vs the editorial Discover *page* (grey "why this" box, chunky black pill button, postage-stamp cover). Extracted one shared hero and pointed **both** Discover's `DetailSheet` and Library's `ItemActionSheet` main view at it. Design: **ghost cover wash** bleeding to the card's rounded top + a **crisp borderless poster** + big title + uppercase meta; Discover-only **rank watermark behind the title**. Discover's "why this" lost its grey box for a **kicker + 1.5px rule + italic prose**, and its black pill became a quiet **underlined text link** (matches the row). Library's edit/reaction/seasons machinery left untouched — only the read-view header changed.
+
+**Sheet iteration (each a separate push, all in `SheetHero`):**
+1. Wash was cut off below the ✕ row → bleed it up to the card's rounded top.
+2. ✕ overlapped the cover → ✕ back in its own row, cover dropped below it (Farah: "first-iteration spacing was right").
+3. Tall cover pushed the blurb way down → shrank the poster footprint so the body starts under the menu.
+4. Unfloated the Discover **wikipedia** link (had a leftover `marginLeft:auto` pinning it to the far right).
+5. **Cover moved to the LEFT** (both pages) — Farah: covers "look awkward floating on the right." Cover + title in a **flex row, tops aligned**; rank stays a watermark behind the title (the left gutter now holds the cover). This also killed the reserved-space gap (cover is now in-flow, not absolutely positioned).
+
+**Decided against:** true CSS text-wrap around the cover (parked) — the body content lives outside `SheetHero` and `overflow:hidden` (for the rounded wash) kills wrapping; messy across all the item states (seasons grid, review inbox, no-blurb). Size-matching the cover was the pragmatic call.
+
+**Watch items for next session:** (1) verify signed-in on deploy — cover/title top alignment, Discover rank still reads (esp. double-digit "10" against the cover), Library menu links wrapping with the narrower right column, music square covers, no-art tint fallback; (2) parked: bigger cover with real text-wrap if the small cover feels like a downgrade; (3) page-level echo (Taste/Library kicker+rule section dividers from the mock) still a fast-follow if wanted.
+
+---
+
 ### Session 54 (2026-06-22) — Discover redesign #2 (editorial rebuild) + app-wide magazine header
 
 Farah rejected the session-53 type-first stacked layout ("still do NOT like the formatting"). Explored options via mockups, then iterated **live — pushed straight to `main` each step**, deploying so she could eyeball on the real (OAuth-gated) site. Landed on an **editorial single numbered list**. **Engine untouched throughout.**

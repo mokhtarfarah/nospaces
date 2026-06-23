@@ -15,21 +15,24 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (54):** **Rebuilt Discover again** — Farah rejected the session-53 stacked-sections layout. It's now an **editorial single numbered list**: oversized sans rank numerals (clipped by the row), **ghosted real cover art** as each row's background, left-aligned chip menus (Library's `TabChip` pattern), a medium switcher, and **tap-a-pick → detail card** (`DetailSheet`, Library-sheet style: real cover + full "why this" + source + wikipedia). Also shipped a **shared magazine `PageHeader`** (`src/components/PageHeader.tsx`: kicker + small label + 1.5px rule) across **Library / Taste / Discover** — label kept small so Taste's vibe-headline stays the biggest thing. Engine untouched. typecheck + lint + 56 tests clean. **UNVERIFIED signed-in** (OAuth wall) — Farah reviewing on deploy, **feedback next session.** Full detail + watch-items → archive.
+**This session (55):** Farah's **feedback on the editorial Discover**, then a long polish of the **detail sheet**. Shipped: full-watermark rank numerals (big light-grey number behind the row text), **medium-aware Library kicker** (`N films`/`N books`), and **per-medium desert-island covers** (posters 2:3, music 1:1). Biggest piece: a **shared `SheetHero`** (`src/components/SheetHero.tsx`) now drives the detail view for **both** Discover (`DetailSheet`) and Library (`ItemActionSheet` read view) — ghost cover wash to the rounded top, **cover on the LEFT** (flex row, tops aligned), rank watermark behind the title (Discover only), kicker+rule "why this", text-link actions. Killed the old grey "why" box + black pill. Engine untouched. typecheck + lint + 56 tests clean every push. **UNVERIFIED signed-in** (OAuth wall) — Farah reviewing on deploy. Full detail + watch-items → archive.
 
-**Last session (53):** Built the session-52 Discover spec (type-first sections + mood search) — the layout this session replaced. Mood search / editorial cold-start / engine all carried forward. Full detail → archive.
+**Last session (54):** Editorial single-numbered-list Discover rebuild + app-wide magazine `PageHeader` (kicker + small label + 1.5px rule across Library/Taste/Discover). Carried forward. Full detail → archive.
 
 ---
 
-## ▶ Next session — Farah's feedback on the editorial Discover + magazine header
+## ▶ Next session — verify the detail sheet + Discover signed-in
 
-The whole Discover rebuild + the app-wide `PageHeader` are **built and deployed but UNVERIFIED signed-in** (OAuth wall blocks the preview). Farah is reviewing on the live site; **start by collecting her feedback.** Things to look at as a first-time user with taste:
+The session-55 detail-sheet work is **built and deployed but UNVERIFIED signed-in** (OAuth wall blocks the preview). **Start by eyeballing it on the live site.**
 
-1. **Editorial Discover** — the numbered list, oversized clipped numerals, and **ghosted cover art** (it brings *colour* into an otherwise mono app — does it read editorial or noisy? levers: opacity / blur / flat type-grey tint, all in `DiscoverScreen.tsx → ResultRow`). Tap a pick → **detail card** (`DetailSheet`) should show the real cover + full "why this". Mood search + medium switcher + for-you/further-afield still work.
-2. **Magazine `PageHeader`** (Library / Taste / Discover) — the **1.5px black rule** repeats on every page; if it reads heavy, softer hairline = one-line change in `src/components/PageHeader.tsx`. Confirm **Library scroll**: kicker+rule collapse cleanly with the title, pinned chips still behave. Taste's vibe-headline must stay bigger than the "taste" label.
+1. **`SheetHero` (Discover pick + Library item)** — confirm: cover/title **tops align**; Discover **rank watermark** still reads behind the title (esp. double-digit "10" against the cover); **Library menu links** (`edit · about · spotify · wiki · watch · own it`) wrap tidily now the right column is narrower; **music** covers render square; **no-art** items fall back to the soft type-tint wash, not a blank gap.
+2. **Discover row watermark + medium-aware kicker + desert-island covers** — quick sanity check on deploy.
+
+**Parked from this session:** bigger cover with **real CSS text-wrap** around it (deferred — body content lives outside `SheetHero` + `overflow:hidden` for the wash kills wrapping; only worth it if the small cover feels like a downgrade). Page-level echo (Taste/Library **kicker+rule section dividers** from the mock) is a fast-follow if wanted.
 
 **Also still open (smaller, carried from before):**
 - **Session-49 #2 (scroll restore) + #5 (filter clip)** — re-fixed session 52, **unverified on phone** (both PWA-only). Re-test on the deployed build.
+- **PageHeader 1.5px rule** — if it reads heavy across pages, softer hairline = one-line change in `src/components/PageHeader.tsx`.
 - **#7 — catalog-miss interstitial.** "nothing found — identify with ai?" adds a step mid-flow; kept as a cost gate (paid Sonnet). Farah's call whether to make it automatic. (`AddScreen.tsx:367`)
 - **Discover mood chips** — parked, revisit **2026-06-29** after a week of real use. (`docs/ROADMAP.md`)
 
