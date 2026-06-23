@@ -6,14 +6,6 @@ When you finish a roadmap item: delete it from here (don't leave a ✅ checkmark
 
 ---
 
-## From session 56 — open direction
-
-Five of the six s56 observations shipped in s57 (see archive). One remains:
-
-6. **Bring the editorial feel to the rest of the app (direction).** "consider broadly how we can make the rest of the app feel as interesting / editorial aesthetically as the discover page, which i think is now a highlight." *(Discover is the benchmark. **Taste fully redesigned in s59** — tabbed, numbered desert island. **Library + Add still remain.**)*
-
----
-
 ## Standing principle — humanizer prose
 
 **Anywhere the app generates user-facing text with an LLM, it must not FEEL AI-written** — and must carry true, meaningful insight, not generic filler. Reference: `github.com/blader/humanizer` (catalogued signs of AI writing + fixes). The guardrails now live in one place — **`api/_humanizer.ts`** (`HUMANIZER_GUARDRAILS`), imported by `taste-profile.ts`, `recommend-feeds.ts`, and `recommend.ts` (s61). *Any future prose generator must import it too — don't re-paste the block.* (`api/blurb.ts` is extraction, not AI — no guardrails needed.)
@@ -25,7 +17,7 @@ Five of the six s56 observations shipped in s57 (see archive). One remains:
 Each has a reason it's parked and a trigger to revisit. Don't re-raise without new signal.
 
 - **Discover mood chips (revisit 2026-06-29)** — quick-pick vibe chips above the Discover search box, pre-filling the "in the mood for…" query. Sourced from the app's existing vibe vocab (`VIBES` in `lib/moods.ts`), personalized to the user's top taste tags + 1–2 utility chips ("short", "surprise me"). Parked because auto-picked chips felt a little arbitrary and the search box alone covers the case. *Trigger: one week of real use of the rebuilt Discover (2026-06-29) — re-raise with Farah then.*
-- **Empty-library copy (#6)** — "go listen to some music you loser" is a music-only inside joke; jarring to a stranger and wrong on a non-music library. Parked, not killed. When revisited: rewrite as something media-agnostic (the library spans films/books/music/TV), keep a bit of warmth. (`LibraryScreen.tsx:899`) *Trigger: next editorial polish pass.*
+- **Empty-library copy** — "go listen to some music you loser" is a music-only inside joke; jarring to a stranger and wrong on a non-music library. **Flagged again in s62's editorial pass; Farah chose to keep it** (charm for a 2-person app). Parked, not killed. If revisited: rewrite as something media-agnostic (the library spans films/books/music/TV), keep a bit of warmth. (`LibraryScreen.tsx:899`) *Trigger: Farah decides the joke's run its course.*
 - **Want-to priority** — pin/tier system for backlog. Parked: adds clutter to every want-to row; help-me-decide + search already cover the acute case. *Trigger: backlog grows genuinely unwieldy.*
 - **Regions map / country filter** — filter library + taste page by creator origin / country (UK vs US vs French films etc). Data blocker: need creator nationality / `P495` (country of origin) from Wikidata, stored on items, before any filter UI is possible. Wikidata is the right source (reliable structured field). *Trigger: decide manual country field vs Wikidata batch-pull, then pull the data.*
 - **Offline library cache** — full offline-first requires queuing mutations (markDone, edits, deletes) — different scope from the capture queue already shipped. *Trigger: offline usage becomes a real pattern.*

@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 62 (2026-06-23) — #6 editorial feel: Add + Library brought up to the taste/discover bar
+
+Continued **#6 (editorial feel app-wide)**. Taste + Discover were already the benchmark; this session closed the gap on the two screens that lagged. **Pushed to `main` (direct push, 2-user workflow): `b7820e8..3ee3016`.** Cost: $0 — pure UI, no `api/` touched.
+
+Shipped:
+1. **`AddScreen.tsx`** — was a plain utility form. Added the shared `PageHeader` (kicker "to your library" + "add" + rule, close × in the right slot), replaced ad-hoc debug greys (`#E4E4E4`/`#E2E2E2`/`#F7F7F7`/`#555`/`#999`/`#AAA`/`#111`/`#F4F4F4`/`#DEDAD6`) with `INK/GRAPHITE/MUTE/HAIR` tokens, warmed the "nothing found" prompt to the `#FAF9F7` editorial wash, lowercased the brand links (letterboxd / spotify).
+2. **`LibraryScreen.tsx`** — already had the inline magazine header + palette (the "don't touch" items). Light grey-cleanup: collapsed ~25 one-off greys to the four tokens **by role**, preserving the shared cross-screen vocabulary (`#111` active text, `#888` inactive chip, `#DDD` separators, `#E8E8E8` borders, `#E0E0E0` grabber — these match Discover, so they stayed). Lowercased "loading…" + the search placeholder; added palette constants at the top so future edits don't reintroduce one-off hexes.
+
+**Verified:** typecheck (UI + api) + 56 tests pass; clean dev-server compile. **NOT visually verified** — the dev preview sits behind Google OAuth, so the authenticated Add/Library screens couldn't be screenshotted. Farah to eyeball on phone.
+
+**Flagged, left as-is:** the library empty-state line "go listen to some music you loser" reads as inside-joke banter — fine for a 2-person app, Farah's call.
+
+**Spotify re-sync Q (answered, no code change):** confirmed from `src/lib/spotify.ts` how a non-first sync behaves — old albums skipped (deduped by accent-folded title+artist OR spotifyId), only genuinely-new saves added as **done** (first sync = want_to). Sync only *inserts*; it never updates an existing item, so an album already in the library as "want to" stays "want to" even if re-saved on Spotify. Edge case: meaningfully different title/artist spelling with no shared spotifyId could create a duplicate-as-done (dupes sheet catches it).
+
+---
+
 ### Session 61 (2026-06-23) — Humanizer guardrails propagated to all prose endpoints (one shared source)
 
 Acted on the s60 standing principle: *all* AI prose must not FEEL AI-written. Instead of pasting the s60 guardrail block into three more files (the drift trap the genre-vocab note warns about), extracted it to **one home**.

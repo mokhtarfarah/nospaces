@@ -15,18 +15,18 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (61):** Propagated the s60 humanizer guardrails to every prose endpoint, via **one shared source**: new `api/_humanizer.ts` exports `HUMANIZER_GUARDRAILS`, now imported by `taste-profile.ts` (replaced its inline copy), `recommend-feeds.ts` (the discovery "why" lines), and `recommend.ts` (item blurbs, web + PDF). **Correction:** `api/blurb.ts` is NOT an AI endpoint (it extracts from Open Library / Apple Books) — left untouched. Verified: both typechecks pass + one Sonnet test call (~1¢) returned genuinely human "why" prose. Full detail → archive.
+**This session (62):** Continued **#6 (editorial feel app-wide)** — closed the gap on the two screens lagging the Taste/Discover benchmark. **`AddScreen`** got the shared `PageHeader`, palette tokens replacing ad-hoc debug greys, the editorial wash on its "nothing found" prompt, lowercased brand links. **`LibraryScreen`** (already had the magazine header) got a light grey-cleanup: ~25 one-off greys collapsed to `INK/GRAPHITE/MUTE/HAIR` by role, preserving the shared vocabulary (`#111`/`#888`/`#DDD`/`#E8E8E8`). Pushed direct to `main`. Verified by typecheck + 56 tests; **NOT visually verified** (OAuth wall blocks the preview) — eyeball on phone. Full detail → archive.
 
-**Last session (60):** Acted on Farah's s59 feedback (phone-verified). Island "why" field, cover chic bump, add-confirmation, humanizer prose prompt on `taste-profile.ts`, gitleaks CI fix. Full detail → archive.
+**Last session (61):** Propagated the s60 humanizer guardrails to every prose endpoint via one shared `api/_humanizer.ts`. Full detail → archive.
 
 ---
 
-## ▶ Next session (62)
+## ▶ Next session (63)
 
-Humanizer guardrails are now propagated everywhere (s61, one shared `api/_humanizer.ts`). Taste is done (s59/s60, phone-verified). Pick a direction *before* touching code:
+**#6 (editorial feel app-wide) is now essentially done** — Taste, Discover, Add, Library are all on the same magazine bar (s62). First thing: **Farah to confirm Add + Library on phone** (s62 shipped but couldn't be visually verified — OAuth wall blocks the dev preview). Then pick a direction *before* touching code:
 
-1. **#6 — editorial feel app-wide** continues. Taste + Discover are the benchmark; **Library + Add** are what's left to bring up to that bar. *(Best candidate — the last big direction from s56.)*
-2. Continue the roadmap walk: **taste tab keep-or-fold**, regions map, expansion beyond media (`docs/ROADMAP.md`).
+1. **Taste-tab keep-or-fold** — the meatiest open question: does the taste tab earn its nav slot, or fold into another screen? Decision-heavy; good fresh-chat task. *(Recommended next.)*
+2. Continue the roadmap walk: regions map, expansion beyond media (`docs/ROADMAP.md`).
 
 **Still pending re-check (s57 follow-ups, may already be fine):** Discover blurb titles read upright/distinct; search shows "all" tab highlighted while a query is active.
 
