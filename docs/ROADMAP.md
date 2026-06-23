@@ -60,9 +60,11 @@ Design discussed in depth s63 (Farah + Claude). Decisions captured below — thi
 
 **Also shipped s66 (2nd feedback round):** switcher reverted to caps (they were fine; the lowercase gripe was about the broader UI, not the switcher); dropped the redundant "THINGS / your board" header on the board (switcher already says it); **category filter** row on the board (`categoriesOf` + chips).
 
-**Still TODO from the s66 feedback batch:**
-- **Compare cheap-reviews** — feed each candidate's own product-page text into the Haiku take (no web search, near-free). *Parked, Farah-flagged:* the **full web-search version** (Reddit/blogs) — she may decide it's worth the cost ($0.01–0.05+/compare on the capped key) since she already uses Claude/Gemini this way.
+**Compare cheap-reviews — SHIPPED s66.** Compare now reads each candidate's own product page (description + JSON-LD `aggregateRating`) for context — no web search, still Haiku (~$0.001–0.002/call). **Parked, Farah-flagged:** the **full web-search version** (Reddit/blogs) — she may decide it's worth the cost ($0.01–0.05+/compare on the capped key) since she already uses Claude/Gemini this way.
+
+**Still open (Things):**
 - **Auto-category** — the natural Slice-4 vision hook (and JSON-LD often carries category too).
+- **Slice 4** = paid Sonnet vision attribute-read (see below).
 
  **Next: Slice 4** = paid Sonnet vision attribute-read for photo/link-image capture (state exact per-call cost first; Compare proved the paid plumbing). **Open follow-up:** the masthead only lights up once items are actually tagged — Farah's existing saves are untagged, so first-run shows the nudge state until she tags them (by design). The slice details below describe the *original* full plan; the shipped pieces are done — **don't rebuild** (see s65/s66 archive).
 

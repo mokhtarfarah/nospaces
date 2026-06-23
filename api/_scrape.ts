@@ -18,6 +18,10 @@ export type ScrapedFields = {
   price: string | null
   brand: string | null
   siteName: string | null
+  /** Product copy (materials/fit/details) — for the AI Compare take. Often absent. */
+  description?: string | null
+  /** On-page rating (from JSON-LD aggregateRating) — value + review count as strings. */
+  rating?: { value: string; count: string } | null
 }
 
 export type ScrapeResult =
@@ -105,8 +109,17 @@ function ldImage(v: unknown): string | null {
   if (Array.isArray(v)) return ldImage(v[0])
   return asString(v) ?? asString(asRecord(v)?.url)
 }
+function ldRating(v: unknown): { value: string; count: string } | null {
+  const r = asRecord(v)
+  const value = asString(r?.['ratingValue'])
+  if (!value) return null
+  return { value, count: asString(r?.['reviewCount']) ?? asString(r?.['ratingCount']) ?? '' }
+}
 
-type LdProduct = { name: string | null; brand: string | null; price: string | null; currency: string | null; image: string | null }
+type LdProduct = {
+  name: string | null; brand: string | null; price: string | null; currency: string | null
+  image: string | null; description: string | null; rating: { value: string; count: string } | null
+}
 
 function jsonLdProduct(html: string): LdProduct | null {
   const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
@@ -129,6 +142,8 @@ function jsonLdProduct(html: string): LdProduct | null {
     price: asString(offer?.['price']) ?? asString(offer?.['lowPrice']),
     currency: asString(offer?.['priceCurrency']),
     image: ldImage(prod['image']),
+    description: asString(prod['description']),
+    rating: ldRating(prod['aggregateRating']),
   }
 }
 
@@ -209,8 +224,10 @@ export async function scrapeProduct(rawUrl: string): Promise<ScrapeResult> {
     const brand = ld?.brand ?? metaContent(html, ['product:brand', 'og:brand', 'twitter:data1'])
     const siteName = metaContent(html, ['og:site_name'])
       ?? (() => { try { return new URL(finalUrl).hostname.replace(/^www\./, '') } catch { return null } })()
+    const description = (ld?.description ?? metaContent(html, ['og:description', 'twitter:description', 'description']))?.slice(0, 500) ?? null
+    const rating = ld?.rating ?? null
 
-    return { ok: true, fields: { url: finalUrl, title, image, price, brand, siteName } }
+    return { ok: true, fields: { url: finalUrl, title, image, price, brand, siteName, description, rating } }
   } catch (err) {
     const aborted = err instanceof Error && err.name === 'AbortError'
     console.error('[scrape] error for', trimmed, ':', err instanceof Error ? err.message : err)
