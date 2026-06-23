@@ -19,6 +19,12 @@ import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 import { inReview, reviewCount } from '../lib/review'
 
 
+// Editorial palette — matches taste / discover / add
+const INK = '#1C1B19'
+const GRAPHITE = '#6F6B64'
+const MUTE = '#ABA69C'
+const HAIR = '#ECEAE6'
+
 type StatusFilter = 'all' | ItemStatus
 
 // Persist the main library filters/view across reloads so a refresh doesn't reset
@@ -527,10 +533,10 @@ export function LibraryScreen() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingBottom: 1 }}>
               <button
                 onClick={() => setViewSheetOpen(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#333', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: INK, padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
               >
                 {VIEW_CONFIG[view].label}
-                <span style={{ fontSize: 11, color: '#AAA' }}>▾</span>
+                <span style={{ fontSize: 11, color: MUTE }}>▾</span>
               </button>
               <HeaderControls
                 filtersActive={filtersActive}
@@ -549,11 +555,11 @@ export function LibraryScreen() {
               autoFocus
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search titles, creators..."
+              placeholder="search titles, creators…"
               style={{
                 width: '100%', boxSizing: 'border-box',
-                padding: '8px 34px 8px 12px', border: '1px solid #ddd',
-                borderRadius: 4, fontSize: 16, outline: 'none',
+                padding: '8px 34px 8px 12px', border: `1.5px solid ${HAIR}`,
+                borderRadius: 8, fontSize: 16, outline: 'none', color: INK,
               }}
             />
             {query && (
@@ -708,8 +714,8 @@ export function LibraryScreen() {
           </div>
         )}
         {loading ? (
-          <div style={{ padding: '48px 24px', textAlign: 'center', color: '#999', fontSize: 14 }}>
-            Loading...
+          <div style={{ padding: '48px 24px', textAlign: 'center', color: MUTE, fontSize: 14 }}>
+            loading…
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState hasItems={items.length > 0} onGuide={() => navigate('/guide')} />
@@ -717,7 +723,7 @@ export function LibraryScreen() {
           Array.from(grouped.entries()).map(([month, monthItems]) => (
             <div key={month || 'all'}>
               {month && (
-                <div style={{ padding: '22px 16px 8px', fontSize: 11, fontWeight: 600, color: '#AEAEAE', letterSpacing: '0.9px', textTransform: 'uppercase' }}>
+                <div style={{ padding: '22px 16px 8px', fontSize: 11, fontWeight: 600, color: MUTE, letterSpacing: '0.9px', textTransform: 'uppercase' }}>
                   {/^\d{4}s$/.test(month) ? <>{month.slice(0, -1)}<span style={{ textTransform: 'lowercase' }}>s</span></> : month}
                 </div>
               )}
@@ -768,17 +774,17 @@ export function LibraryScreen() {
             background: '#fff', borderTop: '1px solid #E8E8E8', boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
             padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 14,
           }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: n > 0 ? '#111' : '#999' }}>{n} selected</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: n > 0 ? '#111' : MUTE }}>{n} selected</span>
             <button
               onClick={() => setSelectedIds(allSelected ? new Set() : new Set(visibleIds))}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#555', textDecoration: 'underline', textUnderlineOffset: 2, padding: 0 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: GRAPHITE, textDecoration: 'underline', textUnderlineOffset: 2, padding: 0 }}
             >
               {allSelected ? 'clear' : 'select all'}
             </button>
             <div style={{ flex: 1 }} />
             {confirmBulkDelete ? (
               <>
-                <button onClick={() => setConfirmBulkDelete(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#555', padding: '6px 8px' }}>cancel</button>
+                <button onClick={() => setConfirmBulkDelete(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: GRAPHITE, padding: '6px 8px' }}>cancel</button>
                 <button
                   onClick={async () => { await deleteMany([...selectedIds]); exitSelect() }}
                   style={{ background: '#C0392B', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: '7px 16px' }}
@@ -790,7 +796,7 @@ export function LibraryScreen() {
               <button
                 disabled={n === 0}
                 onClick={() => setConfirmBulkDelete(true)}
-                style={{ background: 'none', border: `1.5px solid ${n === 0 ? '#EEE' : '#C0392B'}`, color: n === 0 ? '#CCC' : '#C0392B', borderRadius: 4, cursor: n === 0 ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, padding: '6px 16px' }}
+                style={{ background: 'none', border: `1.5px solid ${n === 0 ? HAIR : '#C0392B'}`, color: n === 0 ? MUTE : '#C0392B', borderRadius: 4, cursor: n === 0 ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, padding: '6px 16px' }}
               >
                 delete
               </button>
@@ -977,7 +983,7 @@ function FilterSheet({
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>filter</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: INK }}>filter</span>
           {activeCount > 0 && (
             <button
               onClick={onClearGroups}
@@ -1048,10 +1054,10 @@ function FilterSection({ label, options, selected, onSelect }: {
 function EmptyState({ hasItems, onGuide }: { hasItems: boolean; onGuide: () => void }) {
   return (
     <div style={{ padding: '64px 32px', textAlign: 'center' }}>
-      <div style={{ fontSize: 16, fontWeight: 600, color: '#222', marginBottom: 6 }}>
+      <div style={{ fontSize: 16, fontWeight: 600, color: INK, marginBottom: 6 }}>
         {hasItems ? 'nothing matches' : 'your library is empty'}
       </div>
-      <div style={{ fontSize: 13, color: '#999', lineHeight: 1.5 }}>
+      <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.5 }}>
         {hasItems ? 'try changing your filters' : 'go listen to some music you loser'}
       </div>
       {!hasItems && (
@@ -1059,7 +1065,7 @@ function EmptyState({ hasItems, onGuide }: { hasItems: boolean; onGuide: () => v
           onClick={onGuide}
           style={{
             marginTop: 20, background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 13, color: '#ABA69C', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 13, color: MUTE, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4,
           }}
         >
           not sure where to start? how to use
@@ -1151,12 +1157,12 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
   return (
     <div
       onClick={onTap}
-      style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #F4F4F4', padding: '4px 16px', cursor: 'pointer', background: selected ? '#FAFAF8' : 'transparent' }}
+      style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${HAIR}`, padding: '4px 16px', cursor: 'pointer', background: selected ? '#FAF9F7' : 'transparent' }}
     >
       {selectMode && (
         <div style={{
           width: 21, height: 21, borderRadius: '50%', flexShrink: 0, marginRight: 11,
-          border: selected ? '1.5px solid #111' : '1.5px solid #CCC',
+          border: selected ? '1.5px solid #111' : `1.5px solid ${MUTE}`,
           background: selected ? '#111' : '#fff', color: '#fff',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
         }}>{selected ? '✓' : ''}</div>
@@ -1165,13 +1171,13 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
       <div style={{ flex: 1, minWidth: 0, alignSelf: 'center' }}>
         <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
           <span style={{ fontWeight: 500 }}>{item.title}</span>
-          {item.creator && <span style={{ fontWeight: 400, color: '#A0A0A0' }}>{'  ·  '}{item.creator}</span>}
-          {!!item.metadata?.canon && <span title="Canon" style={{ fontWeight: 400, color: '#ABA69C', fontSize: 10 }}>{'  '}◆</span>}
-          {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: '#999', fontSize: 11 }}>{'  '}⌂</span>}
-          {!!item.metadata?.scratch && <span title="Needs identifying" style={{ fontWeight: 500, color: '#BBBBBB', fontSize: 11 }}>{'  '}?</span>}
+          {item.creator && <span style={{ fontWeight: 400, color: MUTE }}>{'  ·  '}{item.creator}</span>}
+          {!!item.metadata?.canon && <span title="Canon" style={{ fontWeight: 400, color: MUTE, fontSize: 10 }}>{'  '}◆</span>}
+          {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: MUTE, fontSize: 11 }}>{'  '}⌂</span>}
+          {!!item.metadata?.scratch && <span title="Needs identifying" style={{ fontWeight: 500, color: MUTE, fontSize: 11 }}>{'  '}?</span>}
         </div>
         {(subtitle || item.note) && (
-          <div style={{ fontSize: 11, color: '#999', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 11, color: MUTE, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {subtitle}
             {item.note && <span style={{ fontStyle: 'italic' }}>{subtitle ? ' · ' : ''}noted</span>}
           </div>
@@ -1190,7 +1196,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
           title="Open in Spotify"
           style={{
             flexShrink: 0, marginLeft: 8, width: 28, height: 28, borderRadius: '50%',
-            border: '1px solid #E6E6E6', background: '#F6F6F6', cursor: 'pointer',
+            border: `1px solid ${HAIR}`, background: '#FAF9F7', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
           }}
         >
@@ -1207,7 +1213,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
           title="Open Wikipedia page"
           style={{
             flexShrink: 0, marginLeft: 8, width: 28, height: 28, borderRadius: '50%',
-            border: '1px solid #E6E6E6', background: '#F6F6F6', cursor: 'pointer',
+            border: `1px solid ${HAIR}`, background: '#FAF9F7', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
           }}
         >
@@ -1227,7 +1233,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
           borderRadius: '50%',
           border: `1.5px solid ${item.status === 'done' ? color.border : '#DDD'}`,
           background: item.status === 'done' ? color.bg : '#fff',
-          color: item.status === 'done' ? color.border : '#CCC',
+          color: item.status === 'done' ? color.border : MUTE,
           fontSize: 14,
           cursor: 'pointer',
           display: 'flex',
@@ -1250,7 +1256,7 @@ const CATEGORY_LABEL: Record<string, string> = { film: 'films', book: 'books', m
 function Thumb({ src, type, color }: { src: string | null; type: string; color: { bg: string; border: string } }) {
   const box: React.CSSProperties = { width: 52, height: 52, borderRadius: 0, flexShrink: 0, marginRight: 14, alignSelf: 'center' }
   if (src) {
-    return <img src={src} alt="" loading="lazy" style={{ ...box, objectFit: 'cover', border: '1px solid #EEE', background: '#F4F4F4' }} />
+    return <img src={src} alt="" loading="lazy" style={{ ...box, objectFit: 'cover', border: `1px solid ${HAIR}`, background: '#FAF9F7' }} />
   }
   return (
     <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 600, letterSpacing: '0.3px', color: color.border }}>
@@ -1280,13 +1286,13 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
     item.status === 'done' && item.reaction ? REACTION_LABELS[item.reaction] : null,
   ].filter(Boolean).join(' · ')
   const reactionDot = item.status === 'done' && item.reaction === 'loved_it'
-    ? '#1A1A1A'
+    ? INK
     : item.status === 'done'
-    ? '#AAAAAA'
+    ? MUTE
     : null
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
-      <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : '1px solid #EBEBEB' }}>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : `1px solid ${HAIR}` }}>
         {artwork
           ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: square && item.type !== 'music' ? 'top' : 'center', opacity: selectMode && !selected ? 0.55 : 1 }} />
           : <div style={{ fontSize: 18, color: color.border, opacity: 0.4 }}>✦</div>}
@@ -1308,14 +1314,14 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
       </div>
       <div style={{ marginTop: 5 }}>
         <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>
-          {!!item.metadata?.canon && <span style={{ fontSize: 9, marginRight: 3, color: '#1C1B19' }}>◆</span>}
+          {!!item.metadata?.canon && <span style={{ fontSize: 9, marginRight: 3, color: INK }}>◆</span>}
           {item.title}
         </div>
         {item.creator && (
-          <div style={{ fontSize: 10, color: '#AAA', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>
+          <div style={{ fontSize: 10, color: MUTE, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>
         )}
         {(subtitle || item.note) && (
-          <div style={{ fontSize: 10, color: '#B0B0B0', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle}{item.note && <span style={{ fontStyle: 'italic' }}>{subtitle ? ' · ' : ''}noted</span>}</div>
+          <div style={{ fontSize: 10, color: MUTE, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle}{item.note && <span style={{ fontStyle: 'italic' }}>{subtitle ? ' · ' : ''}noted</span>}</div>
         )}
       </div>
     </div>
@@ -1333,12 +1339,12 @@ function HeaderControls({ filtersActive, onClear, onSearch, onMore }: {
   return (
     <>
       {filtersActive && (
-        <button onClick={onClear} title="Clear all filters" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: '#999', padding: 0, lineHeight: 1 }}>×</button>
+        <button onClick={onClear} title="Clear all filters" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: MUTE, padding: 0, lineHeight: 1 }}>×</button>
       )}
-      <button onClick={onSearch} title="Search" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: 0, display: 'flex', alignItems: 'center' }}>
+      <button onClick={onSearch} title="Search" style={{ background: 'none', border: 'none', cursor: 'pointer', color: INK, padding: 0, display: 'flex', alignItems: 'center' }}>
         <SearchIcon />
       </button>
-      <button onClick={onMore} title="More" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: 0, display: 'flex', alignItems: 'center' }}>
+      <button onClick={onMore} title="More" style={{ background: 'none', border: 'none', cursor: 'pointer', color: INK, padding: 0, display: 'flex', alignItems: 'center' }}>
         <MoreIcon />
       </button>
     </>
@@ -1358,9 +1364,9 @@ function OverflowSheet({ gapCount, captureCount, captureFailures, selectMode, on
   onSelect: () => void
 }) {
   const Row = ({ label, sub, onClick }: { label: string; sub: string; onClick: () => void }) => (
-    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', padding: '13px 0', border: 'none', borderBottom: '1px solid #F0F0F0', background: 'none', cursor: 'pointer', textAlign: 'left' }}>
-      <span style={{ fontSize: 15, color: '#222' }}>{label}</span>
-      <span style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{sub}</span>
+    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', padding: '13px 0', border: 'none', borderBottom: `1px solid ${HAIR}`, background: 'none', cursor: 'pointer', textAlign: 'left' }}>
+      <span style={{ fontSize: 15, color: INK }}>{label}</span>
+      <span style={{ fontSize: 11, color: MUTE, marginTop: 2 }}>{sub}</span>
     </button>
   )
   return (
@@ -1391,14 +1397,14 @@ function MoreIcon() {
 
 function SpotifyGlyph() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="#666" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={GRAPHITE} aria-hidden="true">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.59 14.42a.62.62 0 0 1-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.62.62 0 1 1-.28-1.21c3.82-.87 7.09-.5 9.72 1.1a.62.62 0 0 1 .21.86zm1.23-2.74a.78.78 0 0 1-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 1 1-.45-1.49c3.63-1.1 8.15-.56 11.23 1.33.37.22.49.7.26 1.07zm.11-2.85C14.81 8.98 9.5 8.8 6.44 9.73a.94.94 0 1 1-.54-1.8c3.52-1.07 9.38-.86 13.08 1.34a.94.94 0 0 1-.96 1.61z" />
     </svg>
   )
 }
 
 function WikiGlyph() {
-  return <span style={{ fontFamily: 'inherit', fontSize: 14, fontWeight: 400, color: '#888', lineHeight: 1 }}>w</span>
+  return <span style={{ fontFamily: 'inherit', fontSize: 14, fontWeight: 400, color: GRAPHITE, lineHeight: 1 }}>w</span>
 }
 
 function SearchIcon() {

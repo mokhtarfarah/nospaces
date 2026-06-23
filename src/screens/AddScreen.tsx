@@ -5,6 +5,13 @@ import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
 import { BulkConfirmSheet, type BulkItem } from '../components/BulkConfirmSheet'
 import type { ItemReaction } from '../lib/database.types'
 import { authHeaders } from '../lib/supabase'
+import { PageHeader } from '../components/PageHeader'
+
+// Editorial palette — matches taste / discover / library
+const INK = '#1C1B19'
+const GRAPHITE = '#6F6B64'
+const MUTE = '#ABA69C'
+const HAIR = '#ECEAE6'
 
 interface Candidate {
   title: string
@@ -318,16 +325,20 @@ export function AddScreen() {
   return (
     <div style={{ padding: '16px 16px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh' }}>
 
-      {/* Header row — close button only, no title */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ABA69C', padding: '4px', lineHeight: 1, fontSize: 20 }}
-          aria-label="close"
-        >
-          ×︎
-        </button>
-      </div>
+      {/* Shared magazine header — kicker + label + rule, with close in the right slot */}
+      <PageHeader
+        kicker="to your library"
+        title="add"
+        right={
+          <button
+            onClick={() => navigate(-1)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTE, padding: 0, lineHeight: 1, fontSize: 20 }}
+            aria-label="close"
+          >
+            ×︎
+          </button>
+        }
+      />
 
       <form onSubmit={handleSubmit}>
         <textarea
@@ -341,8 +352,8 @@ export function AddScreen() {
           rows={2}
           style={{
             width: '100%', boxSizing: 'border-box',
-            padding: '12px 14px', fontSize: 15,
-            border: '1px solid #E4E4E4', borderRadius: 8,
+            padding: '12px 14px', fontSize: 15, color: INK,
+            border: `1.5px solid ${HAIR}`, borderRadius: 8,
             resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
           }}
         />
@@ -352,8 +363,8 @@ export function AddScreen() {
           disabled={!title.trim() || loading}
           style={{
             width: '100%', marginTop: 10, padding: '12px',
-            background: title.trim() && !loading ? '#1C1B19' : '#E2E2E2',
-            color: '#fff', border: 'none', borderRadius: 8,
+            background: title.trim() && !loading ? INK : HAIR,
+            color: title.trim() && !loading ? '#fff' : MUTE, border: 'none', borderRadius: 8,
             fontSize: 14, fontWeight: 600, letterSpacing: '0.2px',
             cursor: title.trim() && !loading ? 'pointer' : 'default',
             transition: 'background 0.15s ease',
@@ -365,20 +376,20 @@ export function AddScreen() {
         {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
 
         {sonnetPrompt && !loading && (
-          <div style={{ marginTop: 14, padding: '12px 14px', background: '#F7F7F7', borderRadius: 8, textAlign: 'center' }}>
-            <p style={{ margin: '0 0 10px', fontSize: 13, color: '#555' }}>
+          <div style={{ marginTop: 14, padding: '14px 16px', background: '#FAF9F7', borderRadius: 10, textAlign: 'center' }}>
+            <p style={{ margin: '0 0 10px', fontSize: 13, color: GRAPHITE, lineHeight: 1.6 }}>
               nothing found in the catalog — let ai identify it instead?
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button
                 onClick={handleFallbackIdentify}
-                style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: INK, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 identify with ai
               </button>
               <button
                 onClick={() => setSonnetPrompt(false)}
-                style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid #DDD', background: 'none', color: '#888', fontSize: 13, cursor: 'pointer' }}
+                style={{ padding: '7px 16px', borderRadius: 6, border: `1px solid ${HAIR}`, background: 'none', color: MUTE, fontSize: 13, cursor: 'pointer' }}
               >
                 cancel
               </button>
@@ -397,7 +408,7 @@ export function AddScreen() {
           <CameraIcon />
           {bulkLoading ? 'identifying…' : 'add from photos'}
         </button>
-        <span style={{ color: '#DEDAD6', fontSize: 12 }}>·</span>
+        <span style={{ color: HAIR, fontSize: 12 }}>·</span>
         {!loading && (
           <button
             type="button"
@@ -410,12 +421,12 @@ export function AddScreen() {
       </div>
 
       {/* Other ways to add */}
-      <div style={{ marginTop: 28, borderTop: '1px solid #ECEAE6', paddingTop: 18 }}>
-        <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C' }}>other ways to add</p>
+      <div style={{ marginTop: 28, borderTop: `1px solid ${HAIR}`, paddingTop: 18 }}>
+        <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE }}>other ways to add</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button type="button" onClick={() => navigate('/recommend')} style={{ border: 'none', background: 'none', color: '#6F6B64', fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>find recommendations</button>
-          <button type="button" onClick={() => navigate('/import')} style={{ border: 'none', background: 'none', color: '#6F6B64', fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>import from Letterboxd</button>
-          <button type="button" onClick={() => navigate('/spotify')} style={{ border: 'none', background: 'none', color: '#6F6B64', fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>sync from Spotify</button>
+          <button type="button" onClick={() => navigate('/recommend')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>find recommendations</button>
+          <button type="button" onClick={() => navigate('/import')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>import from letterboxd</button>
+          <button type="button" onClick={() => navigate('/spotify')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>sync from spotify</button>
         </div>
       </div>
 
@@ -487,8 +498,8 @@ function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
         padding: '20px 0 calc(env(safe-area-inset-bottom) + 24px)',
         maxHeight: '70dvh', display: 'flex', flexDirection: 'column',
       }}>
-        <div style={{ padding: '0 20px 16px', borderBottom: '1px solid #ECEAE6', flexShrink: 0 }}>
-          <p style={{ margin: 0, fontSize: 11, color: '#999', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+        <div style={{ padding: '0 20px 16px', borderBottom: `1px solid ${HAIR}`, flexShrink: 0 }}>
+          <p style={{ margin: 0, fontSize: 11, color: MUTE, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             results for "{query}"
           </p>
         </div>
@@ -502,15 +513,15 @@ function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
                 display: 'flex', alignItems: 'center', gap: 12,
                 width: '100%', padding: '14px 20px',
                 background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer',
-                borderBottom: i < candidates.length - 1 ? '1px solid #F4F4F4' : 'none',
+                borderBottom: i < candidates.length - 1 ? `1px solid ${HAIR}` : 'none',
               }}
             >
-              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.3px', color: '#AAA', flexShrink: 0, width: 30 }}>{c.type === 'other' ? '' : c.type}</span>
+              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.3px', color: MUTE, flexShrink: 0, width: 30 }}>{c.type === 'other' ? '' : c.type}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 15, fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ display: 'block', fontSize: 15, fontWeight: 500, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {c.title}
                 </span>
-                <span style={{ display: 'block', fontSize: 13, color: '#888', marginTop: 1 }}>
+                <span style={{ display: 'block', fontSize: 13, color: GRAPHITE, marginTop: 1 }}>
                   {[c.creator, c.year].filter(Boolean).join(' · ')}
                 </span>
               </span>
@@ -518,10 +529,10 @@ function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
           ))}
         </div>
 
-        <div style={{ padding: '16px 20px 0', borderTop: '1px solid #ECEAE6', flexShrink: 0, textAlign: 'center' }}>
+        <div style={{ padding: '16px 20px 0', borderTop: `1px solid ${HAIR}`, flexShrink: 0, textAlign: 'center' }}>
           <button
             onClick={onFallback}
-            style={{ background: 'none', border: 'none', fontSize: 13, color: '#999', cursor: 'pointer', padding: 0 }}
+            style={{ background: 'none', border: 'none', fontSize: 13, color: MUTE, cursor: 'pointer', padding: 0 }}
           >
             none of these — let ai identify it instead
           </button>
