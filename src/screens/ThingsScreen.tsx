@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { PageHeader } from '../components/PageHeader'
 import { DomainSwitcher } from '../components/DomainSwitcher'
 import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
@@ -19,6 +18,13 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'price', label: 'price' },
   { key: 'name', label: 'a–z' },
 ]
+
+// Category values a thing carries (for the filter row). Products use their own
+// tags; resolved intents use the winner's. Untagged things match nothing but
+// still show under "all".
+function categoriesOf(item: Item): string[] {
+  return itemAttributes(item).filter(a => a.facet === 'category').map(a => normValue(a.value))
+}
 
 // The price a thing sorts by: a product's own, or an intent's front-runner
 // (winner → leaning → first candidate). Null when there's nothing to read.
@@ -54,16 +60,26 @@ export function ThingsScreen() {
   const [openIntentId, setOpenIntentId] = useState<string | null>(null)
   const [editProductId, setEditProductId] = useState<string | null>(null)
   const [sort, setSort] = useState<SortKey>('recent')
+  const [cat, setCat] = useState<string | null>(null)
 
   const things = useMemo(() => items.filter(i => kindOf(i) !== null), [items])
   const sorted = useMemo(() => sortThings(things, sort), [things, sort])
+  // Distinct categories present across the board, for the filter row.
+  const categories = useMemo(() => {
+    const set = new Set<string>()
+    things.forEach(t => categoriesOf(t).forEach(c => set.add(c)))
+    return [...set].sort()
+  }, [things])
+  const visible = useMemo(
+    () => (cat ? sorted.filter(t => categoriesOf(t).includes(cat)) : sorted),
+    [sorted, cat],
+  )
   const openIntent = things.find(i => i.id === openIntentId) ?? null
   const editProduct = things.find(i => i.id === editProductId) ?? null
 
   return (
     <div style={{ padding: '20px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
       <DomainSwitcher current="things" />
-      <PageHeader kicker="THINGS" title="your board" />
       <ThreadMasthead things={things} />
 
       {/* Two first-class capture paths: save a concrete product, or plan a purchase
@@ -86,8 +102,21 @@ export function ThingsScreen() {
         </div>
       )}
 
+      {categories.length > 0 && (
+        <div style={{ display: 'flex', gap: 14, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 14 }}>
+          <CatChip label="all" active={cat === null} onClick={() => setCat(null)} />
+          {categories.map(c => (
+            <CatChip key={c} label={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)} />
+          ))}
+        </div>
+      )}
+
       {things.length === 0 ? (
         <Empty />
+      ) : visible.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '32px 20px', color: MUTED, fontSize: 13 }}>
+          Nothing tagged “{cat}” yet.
+        </div>
       ) : (
         <div style={{
           display: 'grid',
@@ -99,7 +128,7 @@ export function ThingsScreen() {
           alignItems: 'start',
           gap: 12,
         }}>
-          {sorted.map(item => (
+          {visible.map(item => (
             kindOf(item) === 'intent'
               ? <IntentCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />
               : <ProductCard key={item.id} item={item}
@@ -747,6 +776,16 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
     <button onClick={onClick} style={{
       flex: 1, padding: '11px 8px', borderRadius: 12, border: `1px solid ${INK}`,
       background: '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+    }}>{label}</button>
+  )
+}
+
+function CatChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      border: 'none', background: 'none', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap',
+      fontSize: 12.5, color: active ? INK : MUTED, fontWeight: active ? 600 : 400,
+      borderBottom: active ? `1.5px solid ${INK}` : '1.5px solid transparent', paddingBottom: 2,
     }}>{label}</button>
   )
 }
