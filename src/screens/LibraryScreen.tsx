@@ -582,11 +582,14 @@ export function LibraryScreen() {
               <TabChip
                 key={t}
                 label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
-                active={categories.includes(t) && !reviewOnly}
+                // An active search spans all categories (see baseFiltered), so the
+                // tab row reflects "all" while searching — without mutating the
+                // stored category, so clearing the search snaps back to this tab.
+                active={categories.includes(t) && !reviewOnly && !query.trim()}
                 onClick={() => selectCategory(t)}
               />
             ))}
-            <TabChip label="all" active={categories.length === 0 && !reviewOnly} onClick={() => { setCategories([]); setReviewOnly(false) }} />
+            <TabChip label="all" active={(categories.length === 0 || !!query.trim()) && !reviewOnly} onClick={() => { setCategories([]); setReviewOnly(false) }} />
             {hasReview && (
               <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
             )}

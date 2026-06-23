@@ -19,6 +19,10 @@ Walked Farah's 6 s56 observations. Shipped 5 (all free, no API); #6 (editorial f
 
 **5. Search spans all categories (#4).** Was scoped to the active category tab. Now an active `query` **ignores the category filter** (find-this-specific-thing intent; type is labelled per row so cross-category hits aren't confusing). Status + other filters still apply. `LibraryScreen.tsx` baseFiltered ~403.
 
+**Phone-verify follow-ups (same session).** Farah verified the batch: #1 fine, Spotify scroll (#2/#3) ✅, smart-persist (#4) ✅, search-all (#5) ✅. Two tweaks:
+- **Blurb titles still read italic (#5 follow-up).** Upright alone wasn't enough — Geist has no italic face, so the blurb italic is a synthetic slant and upright-vs-faux-slant is invisible at 13px. Bumped the title spans to `fontWeight: 600` (still upright) so the distinction is unmistakable. (Taste page uses the same `*asterisk*` convention but renders fine — base prose is upright there, emphasis is `<em>`; no bug.)
+- **Search now reflects "all" in the category tab.** Searching a film while in the "books" tab showed a film result but left "books" highlighted (tab lying). Now an active query shows "all" selected in the tab row *without* mutating the stored category, so clearing the search snaps back to the original tab. Chose this over auto-switching to the result's category (jumpy; surprises on clear). `LibraryScreen.tsx` ~585.
+
 **Dev tooling:** made the dev server use an assignable port (`start-dev.sh` `${PORT:-5173}` + `launch.json` `autoPort:true`) so the preview can run alongside a dev server already on 5173. Backward compatible.
 
 ---

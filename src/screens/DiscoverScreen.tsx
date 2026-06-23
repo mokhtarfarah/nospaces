@@ -409,13 +409,15 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
 
 // Model blurbs sometimes wrap referenced titles in *markdown emphasis*. The
 // whole blurb is already italic, so the asterisks render literally and
-// italic-on-italic would be invisible anyway — render emphasized spans upright
-// instead, which reads as a deliberate title distinction inside the italic prose.
+// italic-on-italic would be invisible. Render those spans upright — but Geist
+// ships no italic face, so the blurb's italic is a *synthetic* slant and
+// upright-vs-faux-italic is too subtle to read at small sizes; a slight weight
+// bump makes the title distinction unmistakable without looking like a link.
 function renderBlurb(text: string) {
   return text.split(/(\*+[^*]+\*+)/g).map((part, i) => {
     const m = part.match(/^\*+([^*]+)\*+$/)
     return m
-      ? <span key={i} style={{ fontStyle: 'normal' }}>{m[1]}</span>
+      ? <span key={i} style={{ fontStyle: 'normal', fontWeight: 600 }}>{m[1]}</span>
       : part
   })
 }

@@ -21,18 +21,15 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 ---
 
-## ▶ Next session — verify s57 on phone, then editorial direction + roadmap walk
+## ▶ Next session — editorial direction + roadmap walk (s57 batch verified)
 
-**Verify on phone (s57 — pending deploy, unverified):**
-1. **Discover buttons** — "save to library" + "not for me" baselines now align (row card *and* the tapped-detail sheet).
-2. **Discover blurb** — referenced titles show as plain upright text, no literal `*asterisks*`.
-3. **Spotify scroll (the big one)** — Library, scroll deep → tap an album's Spotify link → save in Spotify → return to nospaces → **should stay where you were, no "Loading…" flash**. This is the warm-resume fix; different mechanism from s56.
-4. **Smart-persist filters** — set a vibe (e.g. "sexy") in want-to, flip to done → it stays on; switch to a category with no matching tag → it quietly drops (no empty-list-for-no-reason).
-5. **Search all categories** — in the film tab, search for a book/album by name → it now shows up.
+**s57 verified on phone:** Discover buttons (#1), Spotify warm-resume scroll (#2/#3), smart-persist filters (#4), search-all-categories (#5). Two follow-up tweaks shipped after verify, **pending a quick re-check on next deploy:**
+1. **Discover blurb titles** — referenced titles should now read clearly distinct (upright + weight 600), not italic-like-the-rest.
+2. **Search category tab** — searching in e.g. the "books" tab should now show **"all"** highlighted while the query is active, snapping back to "books" when you clear it.
 
-**Then:** #6 — **bring the editorial/magazine feel app-wide** (Discover is the benchmark; propose how Library/Taste/Add adopt it). And Farah wants to **walk the roadmap together** (desert-island display rethink, regions map, expansion beyond media — `docs/ROADMAP.md` "Medium/long-term"). Pick a direction *before* touching code.
+**Then the real work:** #6 — **bring the editorial/magazine feel app-wide** (Discover is the benchmark; propose how Library/Taste/Add adopt it). And Farah wants to **walk the roadmap together** (desert-island display rethink, regions map, expansion beyond media — `docs/ROADMAP.md` "Medium/long-term"). Pick a direction *before* touching code.
 
-**Verified earlier — don't re-check:** s56 scroll-restore (cold-kill case) + "new music tuesday" still need Farah's phone pass too if not yet done; detail sheet (`SheetHero`) and filter-clip bug (session-49 #5) confirmed working.
+**Verified earlier — don't re-check:** s56 scroll-restore (cold-kill case) + "new music tuesday"; detail sheet (`SheetHero`); filter-clip bug (session-49 #5).
 
 **Parked from s55:** bigger detail-sheet cover with **real CSS text-wrap** (deferred — body lives outside `SheetHero` + `overflow:hidden` kills wrapping). Page-level **kicker+rule section dividers** (Taste/Library) is a fast-follow if wanted.
 
