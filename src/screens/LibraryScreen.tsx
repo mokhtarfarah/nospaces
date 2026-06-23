@@ -400,7 +400,11 @@ export function LibraryScreen() {
     return items.filter(item => {
       if (reviewOnly) return inReview(item)
       if (inReview(item)) return false
-      if (categories.length > 0 && !categories.includes(item.type)) return false
+      // Search is a "find this specific thing" intent, so an active query spans
+      // the whole library — the category tab is ignored while searching (type is
+      // labelled on every row, so cross-category hits aren't confusing). Status
+      // and the other filters still apply.
+      if (!query && categories.length > 0 && !categories.includes(item.type)) return false
       if (statusFilter !== 'all' && item.status !== statusFilter) return false
       if (reactionFilter !== 'all' && item.reaction !== reactionFilter) return false
       if (newMusicOnly && musicOnly && !itemSource(item).toLowerCase().includes('new music tuesday')) return false
@@ -458,13 +462,25 @@ export function LibraryScreen() {
     }
   }, [baseFiltered])
 
-  // Reset vibe/verdict/genre filters when base filters change so they don't silently hide results.
+  // When base filters change, keep the vibe/verdict/genre/series selections that
+  // still apply and drop only the ones that don't exist in the new set ("smart
+  // persist"). This matches how sticky filters behave in most apps — browse the
+  // same vibe across want-to→done without re-tapping — while never leaving a
+  // selection active that would silently hide everything (e.g. a vibe with no
+  // matches after switching category). The FilterSheet only ever offers tags
+  // present in the current set, so pruning keeps the active filters consistent
+  // with what's offered. availableTags reflects the NEW base set by the time
+  // this post-render effect runs, so it's safe to prune against it here.
   // Also scroll back to the top and expand the header — otherwise switching to a
   // short (non-scrollable) result set could leave the header stuck collapsed.
   useEffect(() => {
-    setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([])
+    setVibeFilter(prev => prev.filter(v => availableTags.vibes.includes(v)))
+    setVerdictFilter(prev => prev.filter(v => availableTags.verdicts.includes(v)))
+    setGenreFilter(prev => prev.filter(v => availableTags.genres.includes(v)))
+    setSeriesFilter(prev => prev.filter(v => availableTags.series.includes(v)))
     listRef.current?.scrollTo({ top: 0 })
     setCollapsed(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- prune only on base-control change, not on every availableFilters recompute
   }, [categories, statusFilter, reactionFilter, reviewOnly])
 
   const grouped = useMemo(() => {

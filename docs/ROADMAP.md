@@ -6,15 +6,10 @@ When you finish a roadmap item: delete it from here (don't leave a ✅ checkmark
 
 ---
 
-## From session 56 — Farah's observations (address next session)
+## From session 56 — open direction
 
-Captured verbatim. Mix of bugs and "discuss" items — review each before coding.
+Five of the six s56 observations shipped in s57 (see archive). One remains:
 
-1. **Discover card — button alignment (bug).** "on discover card - save to library / not for me don't look aligned, make sure they are aligned."
-2. **Spotify round-trip resets the library scroll (bug — reassess).** "spotify thing still doesn't work. i'm not killing the app between uses, whats happening is: i click the spotify link, opening spotify automatically on my iphone - i save the relevant album - when i go BACK to nospaces (not having affirmatively closed it) it just says loading and then reverts back to the top of the page - so if i'm going through and saving a series of albums to listen to later, i keep having to scroll down to previous page. can you reassess with that lens why it still might not be working?" *(New lens: this is a resume/visibilitychange reload — NOT an OS kill — that still drops to the top. The s56 scroll fix targeted the kill case; this path may save too late, restore before content height is ready, or the reload itself re-reads a stale/zeroed value. Reassess the save+restore timing for the foreground-return case specifically.)*
-3. **Keep filters when switching categories (discuss).** "let filters stay when you switch categories - e.g. looking for a 'sexy' movie, first i look in 'want to' then i want to look at 'done' without having to switch the filter back on. lets discuss the benefits of this vs cons." *(Note: status — want-to/done — isn't a category; this is about persisting vibe/verdict/genre filters across status & category switches instead of the current reset-on-base-change behaviour at `LibraryScreen.tsx` ~452.)*
-4. **Library search scope (discuss).** "search function in library limited to the category that you're in. discuss if we want it to act that way? or search across categories even if film or whatever is currently selected."
-5. **Discover blurb — referenced titles show literal `*[TITLE]*` (bug).** "on discover card - because the blurb is italic, other referenced titles are showing up as * [TITLE] *. please fix - just underline or have them not italic, either is fine." *(Markdown emphasis in the model's blurb is rendered literally because the whole blurb is already italic; either strip/convert the `*…*` markers or render emphasis as underline / non-italic.)*
 6. **Bring the editorial feel to the rest of the app (direction).** "consider broadly how we can make the rest of the app feel as interesting / editorial aesthetically as the discover page, which i think is now a highlight." *(Discover is now the aesthetic benchmark — propose how Library/Taste/Add adopt the same magazine treatment.)*
 
 ---

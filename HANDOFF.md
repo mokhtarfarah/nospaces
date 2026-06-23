@@ -15,23 +15,24 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (56):** Two Library items. (1) **Scroll-restore root-cause fix** — the iOS-PWA scroll-restore kept failing because it stashed the position in `sessionStorage`, which iOS **wipes** when it kills + relaunches a standalone PWA (a fresh browsing session) — exactly the case it was meant to cover. Switched to `localStorage` + a 6h freshness window (`LibraryScreen.tsx` ~30, ~215, ~228). (2) **"New music tuesday" moved into the FilterSheet** as a `music` section (chip), out of the status-tab row — folded into the `filter · N` count + clear-all; filter button now reachable in the music category even with no tags. typecheck + lint + 56 tests clean. **UNVERIFIED on phone** (both PWA/signed-in only). Detail sheet (s55) **verified good** by Farah.
+**This session (57):** Cleared 5 of Farah's 6 s56 observations (all free, no API). (1) **Discover button alignment** — gave "not for me" a matching line-height + transparent bottom border so it lines up with the underlined "save". (2) **Discover blurb `*[TITLE]*`** — `renderBlurb()` strips the model's markdown asterisks and renders referenced titles upright inside the italic prose. (3) **Spotify warm-resume scroll reset** — root-caused to the auth token-refresh on focus handing `useItems` a new `user` object → non-silent refetch → list collapse → scroll-to-top; fixed by keying `fetch` + realtime on the stable `user.id`. (4) **Smart-persist filters** — keep selections that still apply across status/category switches, drop only the ones absent in the new set. (5) **Search spans all categories** — an active query ignores the category tab. typecheck + lint + 56 tests clean. **ALL UNVERIFIED on phone** (Discover auth-gated; Spotify case is iOS-resume-specific). Only #6 (editorial feel app-wide) remains from s56 → `docs/ROADMAP.md`.
 
-**Last session (55):** Detail-sheet polish — shared `SheetHero` (`src/components/SheetHero.tsx`) drives both Discover `DetailSheet` + Library read view; rank watermark, medium-aware Library kicker, per-medium desert-island covers. **Verified good.** Full detail → archive.
+**Last session (56):** Scroll-restore root-cause (sessionStorage→localStorage for the OS-kill case) + "new music tuesday" moved into the FilterSheet. Full detail → archive.
 
 ---
 
-## ▶ Next session — walk the roadmap + verify s56 on phone
+## ▶ Next session — verify s57 on phone, then editorial direction + roadmap walk
 
-**New: Farah left 6 observations at the end of s56** — 2 quick Discover bugs (button alignment; blurb `*[TITLE]*` markdown showing literally), a Spotify-return scroll-reset to reassess (foreground resume, *not* an OS kill — different path from the s56 fix), and 3 discuss/direction items (persist filters across category/status switches, library search scope, bring the editorial feel app-wide). **All captured verbatim in `docs/ROADMAP.md` → "From session 56".** Start here.
+**Verify on phone (s57 — pending deploy, unverified):**
+1. **Discover buttons** — "save to library" + "not for me" baselines now align (row card *and* the tapped-detail sheet).
+2. **Discover blurb** — referenced titles show as plain upright text, no literal `*asterisks*`.
+3. **Spotify scroll (the big one)** — Library, scroll deep → tap an album's Spotify link → save in Spotify → return to nospaces → **should stay where you were, no "Loading…" flash**. This is the warm-resume fix; different mechanism from s56.
+4. **Smart-persist filters** — set a vibe (e.g. "sexy") in want-to, flip to done → it stays on; switch to a category with no matching tag → it quietly drops (no empty-list-for-no-reason).
+5. **Search all categories** — in the film tab, search for a book/album by name → it now shows up.
 
-Farah also wants to **walk the roadmap together** (desert-island display rethink, regions map, expansion beyond media — `docs/ROADMAP.md` "Medium/long-term"). Pick a direction *before* touching code.
+**Then:** #6 — **bring the editorial/magazine feel app-wide** (Discover is the benchmark; propose how Library/Taste/Add adopt it). And Farah wants to **walk the roadmap together** (desert-island display rethink, regions map, expansion beyond media — `docs/ROADMAP.md` "Medium/long-term"). Pick a direction *before* touching code.
 
-**Verify on phone (s56 — deployed, unverified):**
-1. **Scroll restore** — open Library, scroll deep, background/kill the PWA, reopen → should land back where you were (not the top). This is the localStorage fix; the old sessionStorage version silently failed on a real OS kill.
-2. **"New music tuesday"** — in the **music** category, open `filter` → there's now a `music` section with a `new music tuesday` chip; toggling it counts toward `filter · N` and clears with "clear all". It's gone from the status-tab row.
-
-**Verified this/last session — don't re-check:** detail sheet (`SheetHero`), filter-clip bug (session-49 #5, Farah confirmed working).
+**Verified earlier — don't re-check:** s56 scroll-restore (cold-kill case) + "new music tuesday" still need Farah's phone pass too if not yet done; detail sheet (`SheetHero`) and filter-clip bug (session-49 #5) confirmed working.
 
 **Parked from s55:** bigger detail-sheet cover with **real CSS text-wrap** (deferred — body lives outside `SheetHero` + `overflow:hidden` kills wrapping). Page-level **kicker+rule section dividers** (Taste/Library) is a fast-follow if wanted.
 

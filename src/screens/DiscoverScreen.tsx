@@ -407,6 +407,19 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
   )
 }
 
+// Model blurbs sometimes wrap referenced titles in *markdown emphasis*. The
+// whole blurb is already italic, so the asterisks render literally and
+// italic-on-italic would be invisible anyway — render emphasized spans upright
+// instead, which reads as a deliberate title distinction inside the italic prose.
+function renderBlurb(text: string) {
+  return text.split(/(\*+[^*]+\*+)/g).map((part, i) => {
+    const m = part.match(/^\*+([^*]+)\*+$/)
+    return m
+      ? <span key={i} style={{ fontStyle: 'normal' }}>{m[1]}</span>
+      : part
+  })
+}
+
 function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }: {
   result: DiscoveryResult
   index: number
@@ -456,7 +469,7 @@ function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }:
               fontSize: 13, color: '#4A453E', lineHeight: 1.65, margin: '0 0 10px', fontStyle: 'italic',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
             }}>
-              {r.why}
+              {renderBlurb(r.why)}
             </p>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -468,7 +481,7 @@ function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }:
               </button>
             )}
             {!isSaved && (
-              <button onClick={e => { stop(e); onDismiss() }} style={{ background: 'none', border: 'none', fontSize: 11, color: MUTE, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+              <button onClick={e => { stop(e); onDismiss() }} style={{ background: 'none', border: 'none', borderBottom: '1px solid transparent', padding: 0, fontSize: 11, color: MUTE, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.4 }}>
                 not for me
               </button>
             )}
@@ -515,7 +528,7 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
           <div style={{ marginTop: 18, marginBottom: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 8 }}>why this</div>
             <div style={{ borderTop: `1.5px solid ${INK}`, paddingTop: 14 }}>
-              <p style={{ fontSize: 15, color: '#3A352E', lineHeight: 1.75, margin: 0, fontStyle: 'italic' }}>{r.why}</p>
+              <p style={{ fontSize: 15, color: '#3A352E', lineHeight: 1.75, margin: 0, fontStyle: 'italic' }}>{renderBlurb(r.why)}</p>
             </div>
           </div>
         )}
@@ -530,7 +543,7 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
             </button>
           )}
           {!isSaved && (
-            <button onClick={onDismiss} style={{ background: 'none', border: 'none', fontSize: 13, color: MUTE, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+            <button onClick={onDismiss} style={{ background: 'none', border: 'none', borderBottom: '1px solid transparent', padding: '0 0 2px', fontSize: 13, color: MUTE, cursor: 'pointer', fontFamily: 'inherit' }}>
               not for me
             </button>
           )}

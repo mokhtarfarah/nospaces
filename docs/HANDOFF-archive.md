@@ -4,6 +4,25 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 57 (2026-06-23) — Cleared the s56 observations: 2 Discover bugs, Spotify scroll root-cause, 2 library-filter calls
+
+Walked Farah's 6 s56 observations. Shipped 5 (all free, no API); #6 (editorial feel app-wide) left as the open direction. All five pass typecheck + lint + 56 tests; **none verified on phone yet** (Discover is auth-gated; #2 is iOS-resume-specific) — Farah verifies after deploy.
+
+**1. Discover card — button alignment (#1).** "save to library" had an underline (`border-bottom`) + `line-height` but "not for me" had neither, so their text boxes were different heights and baselines didn't line up. Gave "not for me" a matching `line-height` + a **transparent** bottom border in both the row card and the detail sheet. `DiscoverScreen.tsx`.
+
+**2. Discover blurb — literal `*[TITLE]*` (#5).** The model wraps referenced titles in `*markdown*`; the whole blurb is already italic so the asterisks rendered literally. Added `renderBlurb()` — splits on `*…*` and renders those spans **upright** (non-italic = a clean title distinction inside italic prose). Applied to row card + detail sheet. Parser logic verified against real-shaped blurbs. `DiscoverScreen.tsx`.
+
+**3. Spotify warm-resume scroll reset (#2) — root cause, NOT the s56 path.** s56 fixed the *cold reload* (sessionStorage→localStorage). This is a **warm resume**: tap Spotify link → return → Supabase auto-refreshes the auth token on focus → `onAuthStateChange` → new `session` → **new `user` object reference** (same person). `useItems` `fetch` was `useCallback(…, [user])` → new identity → mount effect re-runs → **non-silent refetch** → "Loading…" swaps the list → scroll clamps to 0 → one-shot restore guard already spent → stuck at top.
+- Fix: key `fetch` (and the realtime channel) on the **stable `user.id`**, not the whole object. Same-id refresh no longer churns → list stays mounted → DOM keeps scroll natively. Also removes a "Loading…" flicker on *every* resume. `useItems.ts` ~18-43.
+
+**4. Smart-persist filters (#3).** Was: reset vibe/verdict/genre/series on every base-control change (blunt fix for "filter valid in films, empty in books"). Now: **keep the selections that still exist in the new set, drop only those that don't** — sticky like Spotify/Letterboxd, but never a mystery-empty list (the FilterSheet only offers tags present in the set, so pruning stays consistent). Serves Farah's want-to→done same-vibe browse. `LibraryScreen.tsx` ~464 (prune against `availableTags`).
+
+**5. Search spans all categories (#4).** Was scoped to the active category tab. Now an active `query` **ignores the category filter** (find-this-specific-thing intent; type is labelled per row so cross-category hits aren't confusing). Status + other filters still apply. `LibraryScreen.tsx` baseFiltered ~403.
+
+**Dev tooling:** made the dev server use an assignable port (`start-dev.sh` `${PORT:-5173}` + `launch.json` `autoPort:true`) so the preview can run alongside a dev server already on 5173. Backward compatible.
+
+---
+
 ### Session 56 (2026-06-22) — Scroll-restore root-cause + "new music tuesday" → FilterSheet
 
 Farah confirmed the s55 detail sheet **looks good**. Then two Library items (both free, no API).

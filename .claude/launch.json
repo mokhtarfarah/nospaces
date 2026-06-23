@@ -5,7 +5,8 @@
       "name": "nospaces",
       "runtimeExecutable": "/bin/sh",
       "runtimeArgs": ["/Users/farahmokhtar/nospaces/.claude/start-dev.sh"],
-      "port": 5173
+      "port": 5173,
+      "autoPort": true
     },
     {
       "name": "preview",

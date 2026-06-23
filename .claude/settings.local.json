@@ -211,7 +211,8 @@
       "Bash(curl -s -o /dev/null -w \"email endpoint \\(no auth, expect 401\\): %{http_code}\\\\n\" -X POST https://nospaces.vercel.app/api/email)",
       "Bash(echo \"=== exit: $? ===\")",
       "Bash(npx eslint *)",
-      "Bash(ps -p 6475 -o command=)"
+      "Bash(ps -p 6475 -o command=)",
+      "Bash(node -e ' *)"
     ]
   },
   "hooks": {

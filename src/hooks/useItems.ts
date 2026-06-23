@@ -17,30 +17,41 @@ export function useItems() {
 
   // `silent` refetches (after edits) skip the loading flag so the list stays
   // mounted and keeps the user's scroll position.
+  //
+  // Depend on user?.id, NOT the whole `user` object: Supabase refreshes the
+  // auth token whenever the app regains focus (e.g. returning from the Spotify
+  // app), which emits a new `session` → a new `user` reference for the same
+  // person. Keying on the stable id keeps `fetch` identity stable across those
+  // refreshes, so the mount effect below doesn't re-run a non-silent refetch —
+  // which would flash "Loading…", collapse the list and reset scroll to the top
+  // on every app resume. Realtime keeps data fresh while away.
+  const userId = user?.id ?? null
   const fetch = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!user) { setItems([]); setLoading(false); return }
+    if (!userId) { setItems([]); setLoading(false); return }
     if (!opts?.silent) setLoading(true)
     const { data } = await db().from('items')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('date_added', { ascending: false })
     setItems(data ?? [])
     setLoading(false)
-  }, [user])
+  }, [userId])
 
   useEffect(() => { fetch() }, [fetch])
 
   // Re-fetch whenever another device (or tab) writes to this user's items.
+  // Keyed on the stable id (see fetch above) so a focus-driven token refresh
+  // doesn't needlessly tear down and re-subscribe the channel on every resume.
   useEffect(() => {
-    if (!user) return
+    if (!userId) return
     const channel = supabase
-      .channel(`items:${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: `user_id=eq.${user.id}` }, () => {
+      .channel(`items:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: `user_id=eq.${userId}` }, () => {
         fetch({ silent: true })
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [user, fetch])
+  }, [userId, fetch])
 
   async function addItem(
     title: string,
