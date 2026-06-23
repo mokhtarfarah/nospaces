@@ -6,6 +6,7 @@ import { VIBES, VERDICTS as _VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { authHeaders } from '../lib/supabase'
 import { useArtwork } from '../lib/artwork'
+import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
 
 const INK = '#1C1B19'
@@ -103,15 +104,47 @@ function computeFaithfulCreators(items: Item[]) {
     .slice(0, 8)
 }
 
-// Inner image layer — used inside a sized container so the grid handles dimensions.
-// objectPosition top keeps faces/titles in frame when a portrait cover is cropped
-// into a uniform square tile.
-function CoverTileInner({ item }: { item: Item }) {
+// One desert-island pick, rendered in the Discover row language: the cover art
+// ghosts in blurred from the right behind the text, the title sits big, an
+// uppercase meta line, and — the whole point of this section — the user's own
+// note set as the italic "why". No rank numeral: unlike Discover's countdown,
+// these picks aren't ordered, and a number would imply a ranking that isn't there.
+function CanonRow({ item }: { item: Item }) {
   const stored = (item.metadata?.coverUrl as string | null) ?? (item.metadata?.wikiThumb as string | null) ?? null
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
-  const src = artwork ?? stored
-  if (src) return <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: item.type === 'music' ? 'center' : 'top' }} />
-  return <span style={{ fontSize: 10, color: MUTE, textAlign: 'center', padding: '0 4px', lineHeight: 1.3 }}>{TYPE_LABEL[item.type] ?? item.type}</span>
+  const cover = artwork ?? stored
+  const fallbackTint = typeColor(item.type).bg
+  const meta = [TYPE_LABEL[item.type] ?? item.type, item.year ?? undefined, item.creator ?? undefined].filter(Boolean).join(' · ')
+  const note = item.note?.trim()
+
+  return (
+    <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}>
+      {/* Ghosted cover art — blurred + faded in from the right, behind the text */}
+      {cover ? (
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center',
+          filter: 'blur(4px)', opacity: 0.42, transform: 'scale(1.08)',
+          WebkitMaskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
+          maskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
+        }} />
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent 35%, ${fallbackTint})` }} />
+      )}
+
+      <div style={{ position: 'relative', padding: '14px 14px 16px' }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.25 }}>{item.title}</div>
+        <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', margin: note ? '3px 0 8px' : '3px 0 0' }}>
+          {meta}
+        </div>
+        {note && (
+          <p style={{ fontSize: 13, color: '#4A453E', lineHeight: 1.65, margin: 0, fontStyle: 'italic' }}>
+            {inlineItalics(note)}
+          </p>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function CanonGallery({ items }: { items: Item[] }) {
@@ -147,52 +180,16 @@ function CanonGallery({ items }: { items: Item[] }) {
         <span style={{ fontSize: 11, color: MUTE }}>{items.length}</span>
         <span style={{ fontSize: 10, color: MUTE, marginLeft: 'auto', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
       </button>
-      {open && byType.map(({ type, items: typeItems }) => {
-        // Each medium keeps its natural shape so a row of covers reads like a
-        // shelf: posters (film/book/tv) are portrait 2:3, music is square. The
-        // old uniform square hard-cropped portraits to their top third.
-        const aspect = type === 'music' ? '1' : '2 / 3'
-        return (
-        <div key={type} style={{ marginBottom: multiType ? 22 : 0 }}>
+      {open && byType.map(({ type, items: typeItems }) => (
+        <div key={type} style={{ marginBottom: multiType ? 20 : 0 }}>
           {multiType && (
             <div style={{ fontSize: 11, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>
               {TYPE_LABEL[type] ?? type}
             </div>
           )}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 10,
-          }}>
-            {typeItems.map(item => (
-              <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <div style={{
-                  width: '100%',
-                  aspectRatio: aspect,
-                  borderRadius: 3, overflow: 'hidden',
-                  border: `1px solid ${HAIR}`, background: '#f5f4f2',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <CoverTileInner item={item} />
-                </div>
-                <div style={{
-                  fontSize: 11, color: GRAPHITE, lineHeight: 1.3,
-                  display: '-webkit-box', WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                }}>
-                  {item.title}
-                </div>
-                {item.creator && (
-                  <div style={{ fontSize: 10, color: MUTE, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.creator}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          {typeItems.map(item => <CanonRow key={item.id} item={item} />)}
         </div>
-        )
-      })}
+      ))}
     </div>
   )
 }

@@ -4,6 +4,23 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 58 (2026-06-23) — Desert-island display rethink: Discover-row treatment, surfaces the note
+
+Walked the roadmap with Farah; she picked the **desert-island display rethink** (was in `ROADMAP.md` → Medium/long-term). Showed three directions as a mockup (current grid / stacked cards / numbered list); she chose the stacked-card direction **"but matching the Discover rows."**
+
+**What shipped (free — pure UI, no API).** Replaced `CanonGallery`'s 3-column cover grid in `TasteScreen.tsx` with the Discover `ResultRow` language:
+- Cover art **ghosts in blurred from the right** behind the text (the Discover signature wash; reuses `useArtwork` + `metadata.coverUrl`/`wikiThumb`, falls back to `typeColor(type).bg`).
+- Title 16/600, uppercase meta line (`film · 2000 · Wong Kar-wai`).
+- **`item.note` rendered as the italic "why"** — the core insight: the note was *completely invisible* in the old grid, and it's the most personal data on these picks. Graceful fallback when a pick has no note (title + meta only, no italic line).
+- **No rank numeral** (Discover has one): desert-island picks aren't ordered, so a number would imply a ranking that doesn't exist. This also ruled out the "numbered list" option.
+- Kept the collapsible header + per-medium grouping; deleted the now-dead `CoverTileInner`.
+
+New component `CanonRow`; `inlineItalics` (existing) handles any `*…*` in a note. typecheck + lint clean. **Unverified on phone** — taste page is auth-gated and needs Farah's real canon picks + notes; preview only reaches the Google login wall. Farah verifies after deploy.
+
+Watch-for next session: notes written as quick reminders ("standout track: X") now show in a prominent italic reason slot — may need content cleanup, not code.
+
+---
+
 ### Session 57 (2026-06-23) — Cleared the s56 observations: 2 Discover bugs, Spotify scroll root-cause, 2 library-filter calls
 
 Walked Farah's 6 s56 observations. Shipped 5 (all free, no API); #6 (editorial feel app-wide) left as the open direction. All five pass typecheck + lint + 56 tests; **none verified on phone yet** (Discover is auth-gated; #2 is iOS-resume-specific) — Farah verifies after deploy.

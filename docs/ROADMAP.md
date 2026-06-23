@@ -39,7 +39,7 @@ Each has a reason it's parked and a trigger to revisit. Don't re-raise without n
 
 **Taste & stats**
 - The earlier 3-section stats version of the taste page (medium pills, reaction breakdown, verdict counts, effort axis) was **deliberately removed** in the `216e6ca` redesign. Current page: vibe headline → AI prose → "the gap" → "always loved" → desert island gallery. Don't assume the stats sections still exist. Revisit only if a stats section is actively wanted back.
-- **Desert island display rethink** — current 3-column cover grid doesn't match the weight of the concept. Options discussed: (1) horizontal scroll strips by category, (2) full-width stacked cards with cover + reason text (recommended), (3) numbered editorial list style, (4) dense cover mosaic / tap-to-reveal, (5) swipeable single-item cards. Also open: delete the taste tab entirely and make library the primary entry point, with desert island as a filtered view or pinned section inside the library. *Trigger: design conversation — pick a display direction before touching code.*
+- **Taste tab: keep or fold into Library** — still open. Option discussed but not decided: delete the taste tab and make library the primary entry point, with desert island as a filtered view or pinned section inside it. *Trigger: navigation conversation with Farah.* (The desert-island *display* itself was reworked in s58 — now Discover-style rows surfacing the note.)
 
 **Expansion beyond media (long-term)**
 - **Restaurants, museums, exhibitions, experiences** — same reaction/note/tag model; new types. Taste profile generalises naturally.
