@@ -1068,31 +1068,49 @@ function FilterSheet({
   )
 }
 
+// Collapsible group. Collapsed by default so the sheet is a short menu of
+// headers, not a wall of chips — opens on tap, and starts open if it already
+// has a selection (so active filters stay visible). The header shows the
+// selected count when collapsed.
 function FilterSection({ label, options, selected, onSelect }: {
   label: string; options: string[]; selected: string[]; onSelect: (v: string) => void
 }) {
+  const [open, setOpen] = useState(selected.length > 0)
   return (
-    <div style={{ marginBottom: 20 }}>
-      <p style={{ fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{label}</p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {options.map(opt => {
-          const on = selected.includes(opt)
-          return (
-            <button
-              key={opt}
-              onClick={() => onSelect(opt)}
-              style={{
-                padding: '5px 12px', borderRadius: 20,
-                border: on ? '1.5px solid #1C1B19' : '1.5px solid #ECEAE6',
-                background: on ? '#1C1B19' : '#fff',
-                color: on ? '#fff' : '#6F6B64',
-                fontSize: 12, fontWeight: on ? 600 : 400,
-                cursor: 'pointer', whiteSpace: 'nowrap',
-              }}
-            >{opt}</button>
-          )
-        })}
-      </div>
+    <div style={{ borderBottom: '1px solid #F0EEEA' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+          padding: '13px 0', border: 'none', background: 'none', cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {label}{selected.length > 0 && <span style={{ color: '#1C1B19' }}> · {selected.length}</span>}
+        </span>
+        <span style={{ fontSize: 10, color: '#ABA69C', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '2px 0 14px' }}>
+          {options.map(opt => {
+            const on = selected.includes(opt)
+            return (
+              <button
+                key={opt}
+                onClick={() => onSelect(opt)}
+                style={{
+                  padding: '5px 12px', borderRadius: 20,
+                  border: on ? '1.5px solid #1C1B19' : '1.5px solid #ECEAE6',
+                  background: on ? '#1C1B19' : '#fff',
+                  color: on ? '#fff' : '#6F6B64',
+                  fontSize: 12, fontWeight: on ? 600 : 400,
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >{opt}</button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
