@@ -11,6 +11,7 @@ import { useArtwork, clearArtworkCache } from '../lib/artwork'
 import { useBookBlurb, clearBlurbCache } from '../lib/blurb'
 import { getSeasons, useSeasonCount, type Season } from '../lib/seasons'
 import { WhereToWatchSheet } from './WhereToWatchSheet'
+import { SheetHero } from './SheetHero'
 import { genresForType, isGenreTag } from '../lib/genres'
 import { inReview } from '../lib/review'
 
@@ -526,58 +527,50 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
               <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 16, lineHeight: 1, padding: '0 0 4px' }}>✕</button>
             </div>
-            {/* Item preview — square cover for albums, poster (2:3) for everything else */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
-              {(() => {
-                const w = item.type === 'music' ? 64 : 52
-                const h = item.type === 'music' ? 64 : 78
-                const box: React.CSSProperties = { width: w, height: h, borderRadius: 0, flexShrink: 0, objectFit: 'cover', border: '1px solid #EEE' }
-                return cover
-                  ? <img src={cover} alt="" style={box} />
-                  : <div style={{ ...box, background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, letterSpacing: '0.5px', color: color.border }}>{item.type === 'other' ? '' : item.type}</div>
-              })()}
-              <div style={{ minWidth: 0, paddingTop: 1 }}>
-                <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.25 }}>{item.title}</div>
-                <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
-                  {[TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item)].filter(Boolean).join(' · ')}
-                  {item.reaction && ` · ${REACTION_LABELS[item.reaction]}`}
-                </div>
-                {typeof item.metadata?.series === 'string' && item.metadata.series.trim() && (
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>↳ {item.metadata.series}</div>
-                )}
-                {/* One flat row: edit · own it · about this · wikipedia · watch.
-                    No hierarchy between actions and links — they all sit equal. */}
-                {!item.metadata?.scratch && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
-                    <button onClick={() => { setEditOpenGroups({}); setView('edit') }} className="tlink" style={{ flexShrink: 0 }}>edit</button>
-                    {blurb && (
-                      <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
-                        <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource.length > 20 ? blurbSource.slice(0, 19) + '…' : blurbSource}` : 'about this'}</span>
-                        <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
-                      </button>
-                    )}
-                    {spotifyUrl && (
-                      <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" className="tlink" style={{ flexShrink: 0 }}>
-                        <SpotifyIcon /> spotify
-                      </a>
-                    )}
-                    {wikiUrl && (
-                      <a href={wikiUrl} target="_blank" rel="noopener noreferrer" className="tlink" style={{ flexShrink: 0 }}>
-                        {`${refLinkLabel(wikiUrl)} ↗︎`}
-                      </a>
-                    )}
-                    {(item.type === 'film' || item.type === 'tv') && (
-                      <button onClick={() => setWatchOpen(true)} className="tlink" style={{ flexShrink: 0 }}>▶︎ watch</button>
-                    )}
-                    <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
-                      {item.type === 'book'
-                        ? (item.metadata?.owned ? 'on my shelf ✓︎' : 'on my shelf')
-                        : (item.metadata?.owned ? 'own it ✓︎' : 'own it')}
+            {/* Item preview — shared editorial hero (ghost wash + crisp poster) */}
+            <SheetHero
+              type={item.type}
+              title={item.title}
+              cover={cover}
+              meta={[
+                [TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item)].filter(Boolean).join(' · '),
+                item.reaction ? REACTION_LABELS[item.reaction] : null,
+                typeof item.metadata?.series === 'string' && item.metadata.series.trim() ? `↳ ${item.metadata.series}` : null,
+              ].filter(Boolean).join(' · ')}
+            >
+              {/* One flat row: edit · own it · about this · wikipedia · watch.
+                  No hierarchy between actions and links — they all sit equal. */}
+              {!item.metadata?.scratch && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <button onClick={() => { setEditOpenGroups({}); setView('edit') }} className="tlink" style={{ flexShrink: 0 }}>edit</button>
+                  {blurb && (
+                    <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
+                      <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource.length > 20 ? blurbSource.slice(0, 19) + '…' : blurbSource}` : 'about this'}</span>
+                      <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
                     </button>
-                  </div>
-                )}
-              </div>
-            </div>
+                  )}
+                  {spotifyUrl && (
+                    <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" className="tlink" style={{ flexShrink: 0 }}>
+                      <SpotifyIcon /> spotify
+                    </a>
+                  )}
+                  {wikiUrl && (
+                    <a href={wikiUrl} target="_blank" rel="noopener noreferrer" className="tlink" style={{ flexShrink: 0 }}>
+                      {`${refLinkLabel(wikiUrl)} ↗︎`}
+                    </a>
+                  )}
+                  {(item.type === 'film' || item.type === 'tv') && (
+                    <button onClick={() => setWatchOpen(true)} className="tlink" style={{ flexShrink: 0 }}>▶︎ watch</button>
+                  )}
+                  <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
+                    {item.type === 'book'
+                      ? (item.metadata?.owned ? 'on my shelf ✓︎' : 'on my shelf')
+                      : (item.metadata?.owned ? 'own it ✓︎' : 'own it')}
+                  </button>
+                </div>
+              )}
+            </SheetHero>
+            <div style={{ height: 18 }} />
 
             {/* Blurb expansion — below the flat link row */}
             {showBlurb && blurb && (

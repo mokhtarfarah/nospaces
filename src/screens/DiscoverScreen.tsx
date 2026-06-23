@@ -8,13 +8,13 @@ import { useArtwork } from '../lib/artwork'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
+import { SheetHero } from '../components/SheetHero'
 
 // Editorial palette — matches taste + library pages
 const INK = '#1C1B19'
 const GRAPHITE = '#6F6B64'
 const MUTE = '#ABA69C'
 const HAIR = '#ECEAE6'
-const NUMERAL = '#CFCBC2' // light grey for the masthead-list numerals
 
 type TypeKey = 'film' | 'music' | 'book' | 'tv'
 // Section order: film → music → book → tv (locked in session-52 spec)
@@ -438,7 +438,7 @@ function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }:
 
       <div style={{ position: 'relative', padding: '14px 14px 16px' }}>
         {/* Oversized rank numeral — full watermark: sits behind everything, the
-            text runs across it. Lighter grey than NUMERAL so the title stays
+            text runs across it. Light grey so the title stays
             readable on top; left-anchored so the digit fills the row's left. */}
         <span style={{
           position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
@@ -490,10 +490,7 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
   onClose: () => void
 }) {
   const artwork = useArtwork(r.type, r.title, r.creator, r.year, null)
-  const color = typeColor(r.type)
   const isSaved = savedSource !== null
-  const w = r.type === 'music' ? 64 : 52
-  const h = r.type === 'music' ? 64 : 78
   const sourceLabel = r.sources.length <= 1 ? (r.sources[0] ?? 'discover') : `${r.sources[0]} +${r.sources.length - 1}`
   const meta = [typeColor(r.type).label, r.creator ?? undefined, r.year ?? undefined].filter(Boolean).join(' · ')
 
@@ -509,36 +506,30 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBB', fontSize: 16, lineHeight: 1, padding: '0 0 4px' }}>✕</button>
         </div>
 
-        {/* Header — number + cover + title + meta */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
-          <span style={{ fontFamily: 'inherit', fontSize: 56, fontWeight: 300, color: NUMERAL, lineHeight: 0.85, flexShrink: 0, letterSpacing: '-3px' }}>{index}</span>
-          {artwork
-            ? <img src={artwork} alt="" style={{ width: w, height: h, objectFit: 'cover', border: '1px solid #EEE', flexShrink: 0 }} />
-            : <div style={{ width: w, height: h, background: color.bg, border: '1px solid #EEE', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: color.border }}>{r.type}</div>}
-          <div style={{ minWidth: 0, paddingTop: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.25, color: INK }}>{r.title}</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{meta}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, color: MUTE }}>via {sourceLabel}</span>
-              <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
-            </div>
+        {/* Header — ghost wash + rank watermark + crisp poster + title (shared) */}
+        <SheetHero type={r.type} title={r.title} meta={meta} cover={artwork} numeral={index}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: MUTE }}>via {sourceLabel}</span>
+            <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
           </div>
-        </div>
+        </SheetHero>
 
-        {/* Why — full blurb, given room */}
+        {/* Why — kicker + rule + flowing prose, flat on white (no box) */}
         {r.why && (
-          <div style={{ background: '#F7F7F7', borderRadius: 10, padding: '12px 14px', marginBottom: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>why this</div>
-            <p style={{ fontSize: 14, color: '#3A352E', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>{r.why}</p>
+          <div style={{ marginTop: 18, marginBottom: 24 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 8 }}>why this</div>
+            <div style={{ borderTop: `1.5px solid ${INK}`, paddingTop: 14 }}>
+              <p style={{ fontSize: 15, color: '#3A352E', lineHeight: 1.75, margin: 0, fontStyle: 'italic' }}>{r.why}</p>
+            </div>
           </div>
         )}
 
-        {/* Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {/* Actions — quiet text links, matching the row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           {isSaved ? (
             <span style={{ fontSize: 13, color: MUTE }}>saved to library ✓︎</span>
           ) : (
-            <button onClick={onSave} style={{ background: INK, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, padding: '10px 18px', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button onClick={onSave} style={{ background: 'none', border: 'none', padding: '0 0 2px', fontSize: 13, color: INK, cursor: 'pointer', fontFamily: 'inherit', borderBottom: `1px solid ${INK}` }}>
               save to library
             </button>
           )}
