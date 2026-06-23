@@ -106,3 +106,32 @@ export async function parseProductLink(
     },
   }
 }
+
+export type Comparison = { notes: string[]; lean: number | null; verdict: string }
+
+/**
+ * Opt-in AI weigh-up of the candidates in a plan-a-purchase (Haiku, ~$0.001/call).
+ * Sends text only — names, brands, prices — never images.
+ */
+export async function compareCandidates(
+  intent: string,
+  candidates: Candidate[],
+): Promise<{ ok: true; result: Comparison } | { ok: false; reason: string }> {
+  let resp: Response
+  try {
+    resp = await fetch('/api/things-compare', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        intent,
+        candidates: candidates.map(c => ({ title: c.title, brand: c.brand, price: c.price, wasPrice: c.wasPrice })),
+      }),
+    })
+  } catch {
+    return { ok: false, reason: "Couldn't reach the comparison. Check your connection." }
+  }
+  if (resp.status === 429) return { ok: false, reason: 'That’s a lot of comparing — try again next hour.' }
+  if (!resp.ok) return { ok: false, reason: 'Could not compare those right now.' }
+  const data = await resp.json()
+  return { ok: true, result: { notes: data.notes ?? [], lean: data.lean ?? null, verdict: data.verdict ?? '' } }
+}

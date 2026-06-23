@@ -3,8 +3,8 @@ import { PageHeader } from '../components/PageHeader'
 import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
-  parseProductLink, kindOf, intentMeta, productMeta, newCandidateId,
-  type Candidate, type ProductFields,
+  parseProductLink, compareCandidates, kindOf, intentMeta, productMeta, newCandidateId,
+  type Candidate, type ProductFields, type Comparison,
 } from '../lib/things'
 
 const INK = '#1C1B19'
@@ -180,6 +180,18 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
   const [link, setLink] = useState('')
   const [manual, setManual] = useState(false)        // fell back to manual entry for a new option
   const [editingId, setEditingId] = useState<string | null>(null) // candidate being edited
+  const [comparing, setComparing] = useState(false)
+  const [compare, setCompare] = useState<Comparison | null>(null)
+  const [compareErr, setCompareErr] = useState<string | null>(null)
+
+  async function runCompare() {
+    if (comparing) return
+    setComparing(true); setCompareErr(null)
+    const r = await compareCandidates(item.title, m.candidates)
+    setComparing(false)
+    if (!r.ok) { setCompareErr(r.reason); return }
+    setCompare(r.result)
+  }
 
   async function addCandidate() {
     const url = link.trim()
@@ -224,10 +236,12 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '16px 0' }}>
-        {m.candidates.map(c => {
+        {m.candidates.map((c, idx) => {
           const isWinner = resolved && m.winner === c.id
           const isLean = !resolved && m.leaning === c.id
           const dim = resolved && !isWinner
+          const aiNote = compare?.notes[idx]
+          const aiLeans = compare?.lean === idx + 1
           if (editingId === c.id) {
             return (
               <FieldsForm key={c.id} saveLabel="Save"
@@ -255,6 +269,11 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
                   {(c.brand || c.siteName) && <span>{c.brand || c.siteName}</span>}
                 </div>
                 {isWinner && <div style={{ fontSize: 11, color: INK, fontWeight: 600, marginTop: 4 }}>✓ chose this</div>}
+                {aiNote && (
+                  <div style={{ fontSize: 11.5, color: aiLeans ? INK : MUTED, marginTop: 5, lineHeight: 1.4 }}>
+                    {aiLeans && <span style={{ fontWeight: 600 }}>✨ leans here · </span>}{aiNote}
+                  </div>
+                )}
               </div>
               {!resolved && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
@@ -284,6 +303,23 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
           </p>
         )}
       </div>
+
+      {/* Opt-in AI weigh-up — only fires on tap. */}
+      {!resolved && m.candidates.length >= 2 && (
+        <div style={{ marginBottom: 16 }}>
+          <button onClick={runCompare} disabled={comparing}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: `1px solid ${LINE}`, background: '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: comparing ? 'default' : 'pointer' }}>
+            ✨ {comparing ? 'thinking…' : compare ? 'Compare again' : 'Compare these'}
+          </button>
+          {compareErr && <div style={{ fontSize: 12, color: '#B4413C', marginTop: 8 }}>{compareErr}</div>}
+          {compare?.verdict && (
+            <div style={{ marginTop: 10, padding: 12, borderRadius: 12, background: '#F7F5F1', fontSize: 12.5, lineHeight: 1.5, color: INK }}>
+              {compare.verdict}
+              <div style={{ fontSize: 10, color: MUTED, marginTop: 8, letterSpacing: '0.03em' }}>a quick AI take — your call</div>
+            </div>
+          )}
+        </div>
+      )}
 
       {!resolved && (
         manual ? (
