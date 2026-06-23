@@ -8,6 +8,7 @@ import { authHeaders } from '../lib/supabase'
 import { useArtwork } from '../lib/artwork'
 import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
+import { SheetHero } from '../components/SheetHero'
 
 const INK = '#1C1B19'
 const GRAPHITE = '#6F6B64'
@@ -104,27 +105,35 @@ function computeFaithfulCreators(items: Item[]) {
     .slice(0, 8)
 }
 
-// A desert-island pick you wrote about: rendered in the Discover row language —
-// the cover art ghosts in blurred from the right behind the text, the title sits
-// big, an uppercase meta line, and — the whole point — your own note as the
-// italic "why". No rank numeral: unlike Discover's countdown these aren't ordered.
-// Note-less picks DON'T use this row (a big empty colour band reads as a loading
-// placeholder); they collapse to CanonLine below instead. The annotation earns
-// the spread.
-function CanonRow({ item }: { item: Item }) {
-  const stored = (item.metadata?.coverUrl as string | null) ?? (item.metadata?.wikiThumb as string | null) ?? null
+// Most you can have per medium. The point of a desert island is scarcity — a
+// top-5 is a stronger statement than a long favourites shelf.
+const CANON_CAP = 5
+
+const coverFor = (item: Item) =>
+  (item.metadata?.coverUrl as string | null) ?? (item.metadata?.wikiThumb as string | null) ?? null
+
+// A numbered desert-island pick. Discover's countdown language — oversized rank
+// watermark, ghosted cover wash, title + meta — but the note is NOT in the row;
+// it's revealed on tap (a uniform row keeps the list clean, the reveal makes the
+// note feel like a reward). In edit mode the row swaps its tap target for
+// reorder arrows + remove instead of opening the sheet.
+function CanonRow({ item, index, editing, isFirst, isLast, onUp, onDown, onRemove, onOpen }: {
+  item: Item; index: number; editing: boolean
+  isFirst: boolean; isLast: boolean
+  onUp: () => void; onDown: () => void; onRemove: () => void; onOpen: () => void
+}) {
+  const stored = coverFor(item)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const cover = artwork ?? stored
   const fallbackTint = typeColor(item.type).bg
-  const meta = [TYPE_LABEL[item.type] ?? item.type, item.year ?? undefined, item.creator ?? undefined].filter(Boolean).join(' · ')
-  const note = item.note!.trim()
+  const meta = [item.year ?? undefined, item.creator ?? undefined].filter(Boolean).join(' · ')
+  const stop = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
-    <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}>
-      {/* Ghosted cover art — blurred + faded in from the right, behind the text.
-          Softer than Discover's (0.32 vs 0.42): these rows carry less content,
-          so more colour shows — kept quiet so the page doesn't lurch into a
-          pastel mood-board below the essay. */}
+    <div
+      onClick={editing ? undefined : onOpen}
+      style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', marginBottom: 8, cursor: editing ? 'default' : 'pointer' }}
+    >
       {cover ? (
         <div style={{
           position: 'absolute', inset: 0,
@@ -137,72 +146,181 @@ function CanonRow({ item }: { item: Item }) {
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent 42%, ${fallbackTint})`, opacity: 0.7 }} />
       )}
 
-      <div style={{ position: 'relative', padding: '14px 14px 16px' }}>
-        <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.25 }}>{item.title}</div>
-        <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', margin: '3px 0 8px' }}>
-          {meta}
+      <div style={{ position: 'relative', padding: '16px 14px' }}>
+        {/* Oversized rank numeral — faint watermark, text runs across it */}
+        <span style={{
+          position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)',
+          fontFamily: 'inherit', fontSize: 88, fontWeight: 300,
+          color: '#E0DDD5', lineHeight: 1, letterSpacing: '-5px', zIndex: 0,
+          pointerEvents: 'none', userSelect: 'none',
+        }}>{index}</span>
+
+        <div style={{ position: 'relative', zIndex: 1, paddingLeft: 28, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.25 }}>{item.title}</div>
+            <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', marginTop: 3 }}>{meta}</div>
+          </div>
+
+          {editing ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+              <ArrowBtn dir="up" disabled={isFirst} onClick={e => { stop(e); onUp() }} />
+              <ArrowBtn dir="down" disabled={isLast} onClick={e => { stop(e); onDown() }} />
+              <button onClick={e => { stop(e); onRemove() }} aria-label="remove" style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTE, fontSize: 16, padding: '4px 4px 4px 8px', lineHeight: 1 }}>✕</button>
+            </div>
+          ) : (
+            <span style={{ flexShrink: 0, fontSize: 15, color: MUTE }}>›</span>
+          )}
         </div>
-        <p style={{ fontSize: 13, color: '#4A453E', lineHeight: 1.65, margin: 0, fontStyle: 'italic' }}>
-          {inlineItalics(note)}
-        </p>
       </div>
     </div>
   )
 }
 
-// A desert-island pick with no note: a quiet one-line entry instead of a full
-// row, so it doesn't read as an empty colour band. Title leads, year · creator
-// trails muted — the "also on the list" register.
-function CanonLine({ item }: { item: Item }) {
-  const meta = [item.year ?? undefined, item.creator ?? undefined].filter(Boolean).join(' · ')
+function ArrowBtn({ dir, disabled, onClick }: { dir: 'up' | 'down'; disabled: boolean; onClick: (e: React.MouseEvent) => void }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 0' }}>
-      <span style={{ fontSize: 15, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{item.title}</span>
-      {meta && <span style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase' }}>{meta}</span>}
-    </div>
+    <button
+      onClick={disabled ? undefined : onClick}
+      aria-label={dir === 'up' ? 'move up' : 'move down'}
+      style={{
+        background: 'none', border: 'none', cursor: disabled ? 'default' : 'pointer',
+        color: disabled ? '#DBD8D1' : GRAPHITE, fontSize: 13, padding: '4px 5px', lineHeight: 1,
+      }}
+    >
+      {dir === 'up' ? '▲' : '▼'}
+    </button>
   )
 }
 
-// The desert-island tab body. No own header/disclosure — the tab is the
-// disclosure now. Just the grouped picks: noted ones as full editorial rows,
-// the rest as quiet one-liners.
-function CanonGallery({ items }: { items: Item[] }) {
-  const byType = useMemo(() => {
-    const order = ['film', 'tv', 'book', 'music']
-    const groups = new Map<string, Item[]>()
-    for (const item of items) {
-      const g = groups.get(item.type) ?? []
-      g.push(item)
-      groups.set(item.type, g)
-    }
-    return order.filter(t => groups.has(t)).map(t => ({ type: t, items: groups.get(t)! }))
-  }, [items])
+// Tap a pick → detail sheet (same language as Discover): SheetHero with the rank
+// watermark + crisp poster, then the user's note as the "why".
+function CanonDetailSheet({ item, index, onClose }: { item: Item; index: number; onClose: () => void }) {
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
+  const cover = artwork ?? coverFor(item)
+  const meta = [typeColor(item.type).label, item.creator ?? undefined, item.year ?? undefined].filter(Boolean).join(' · ')
+  const note = item.note?.trim()
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderRadius: '16px 16px 0 0',
+        padding: '10px 20px 28px', zIndex: 201, maxWidth: 480, margin: '0 auto',
+        maxHeight: '92dvh', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
+      }}>
+        <SheetHero type={item.type} title={item.title} meta={meta} cover={cover} numeral={index} onClose={onClose} />
+        {note ? (
+          <div style={{ marginTop: 18 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 8 }}>your note</div>
+            <div style={{ borderTop: `1.5px solid ${INK}`, paddingTop: 14 }}>
+              <p style={{ fontSize: 15, color: '#3A352E', lineHeight: 1.75, margin: 0, fontStyle: 'italic' }}>{inlineItalics(note)}</p>
+            </div>
+          </div>
+        ) : (
+          <p style={{ marginTop: 18, fontSize: 13, color: MUTE, fontStyle: 'italic' }}>no note yet — add one from the library.</p>
+        )}
+      </div>
+    </>
+  )
+}
 
+// Add picker — your loved items not already on the island. Tapping adds; a medium
+// at the cap is shown full and can't take more until you remove one.
+function CanonAddSheet({ candidates, fullTypes, onAdd, onClose }: {
+  candidates: Item[]; fullTypes: Set<string>; onAdd: (item: Item) => void; onClose: () => void
+}) {
+  const [q, setQ] = useState('')
+  const query = q.trim().toLowerCase()
+  const list = query
+    ? candidates.filter(i => i.title.toLowerCase().includes(query) || (i.creator ?? '').toLowerCase().includes(query))
+    : candidates
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderRadius: '16px 16px 0 0',
+        padding: '18px 20px 28px', zIndex: 201, maxWidth: 480, margin: '0 auto',
+        height: '72dvh', display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: INK }}>add to desert island</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6F6B64', fontSize: 16, padding: 0 }}>✕</button>
+        </div>
+        <input
+          value={q} onChange={e => setQ(e.target.value)} placeholder="search your loved items…" autoFocus
+          style={{ boxSizing: 'border-box', width: '100%', padding: '9px 12px', border: `1.5px solid ${HAIR}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', color: INK, marginBottom: 12 }}
+        />
+        <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {list.length === 0 ? (
+            <p style={{ fontSize: 13, color: MUTE, textAlign: 'center', marginTop: 24 }}>
+              {candidates.length === 0 ? 'no loved items left to add' : 'nothing matched'}
+            </p>
+          ) : list.map(item => {
+            const full = fullTypes.has(item.type)
+            const meta = [TYPE_LABEL[item.type] ?? item.type, item.year ?? undefined, item.creator ?? undefined].filter(Boolean).join(' · ')
+            return (
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: `1px solid ${HAIR}` }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: INK, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                  <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', marginTop: 2 }}>{meta}</div>
+                </div>
+                {full ? (
+                  <span style={{ fontSize: 11, color: MUTE, flexShrink: 0 }}>{TYPE_LABEL[item.type] ?? item.type} full</span>
+                ) : (
+                  <button onClick={() => onAdd(item)} style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, fontSize: 12, color: INK, cursor: 'pointer', fontFamily: 'inherit', borderBottom: `1px solid ${INK}`, lineHeight: 1.4 }}>add</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// The desert-island tab body: numbered picks grouped by medium, an edit mode for
+// reorder/remove, and an add picker.
+function DesertIsland({ byType, total, candidates, fullTypes, onMove, onRemove, onAdd }: {
+  byType: { type: string; items: Item[] }[]
+  total: number
+  candidates: Item[]
+  fullTypes: Set<string>
+  onMove: (type: string, idx: number, dir: -1 | 1) => void
+  onRemove: (item: Item) => void
+  onAdd: (item: Item) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [detail, setDetail] = useState<{ item: Item; index: number } | null>(null)
+  const [adding, setAdding] = useState(false)
   const multiType = byType.length > 1
+  const linkBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', cursor: 'pointer', fontSize: 12, color: GRAPHITE }
 
   return (
     <div>
-      {byType.map(({ type, items: typeItems }) => {
-        // Picks you wrote about get the full editorial row; the rest collapse to
-        // quiet one-liners underneath, so no row is ever an empty colour band.
-        const noted = typeItems.filter(i => i.note?.trim())
-        const bare = typeItems.filter(i => !i.note?.trim())
-        return (
-          <div key={type} style={{ marginBottom: multiType ? 20 : 0 }}>
-            {multiType && (
-              <div style={{ fontSize: 11, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>
-                {TYPE_LABEL[type] ?? type}
-              </div>
-            )}
-            {noted.map(item => <CanonRow key={item.id} item={item} />)}
-            {bare.length > 0 && (
-              <div style={{ padding: noted.length ? '4px 14px 0' : '0 14px' }}>
-                {bare.map(item => <CanonLine key={item.id} item={item} />)}
-              </div>
-            )}
-          </div>
-        )
-      })}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+        <span style={{ fontSize: 11, color: MUTE }}>{total} {total === 1 ? 'pick' : 'picks'}</span>
+        <button onClick={() => setAdding(true)} style={linkBtn}>+ add</button>
+        <button onClick={() => setEditing(e => !e)} style={{ ...linkBtn, marginLeft: 'auto', color: editing ? INK : GRAPHITE, fontWeight: editing ? 600 : 400 }}>
+          {editing ? 'done' : 'edit'}
+        </button>
+      </div>
+
+      {byType.map(({ type, items }) => (
+        <div key={type} style={{ marginBottom: multiType ? 22 : 0 }}>
+          {multiType && (
+            <div style={{ fontSize: 11, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>{TYPE_LABEL[type] ?? type}</div>
+          )}
+          {items.map((it, i) => (
+            <CanonRow
+              key={it.id} item={it} index={i + 1} editing={editing}
+              isFirst={i === 0} isLast={i === items.length - 1}
+              onUp={() => onMove(type, i, -1)} onDown={() => onMove(type, i, 1)}
+              onRemove={() => onRemove(it)} onOpen={() => setDetail({ item: it, index: i + 1 })}
+            />
+          ))}
+        </div>
+      ))}
+
+      {detail && <CanonDetailSheet item={detail.item} index={detail.index} onClose={() => setDetail(null)} />}
+      {adding && <CanonAddSheet candidates={candidates} fullTypes={fullTypes} onAdd={onAdd} onClose={() => setAdding(false)} />}
     </div>
   )
 }
@@ -226,7 +344,7 @@ function TabChip({ label, active, onClick }: { label: string; active: boolean; o
 }
 
 export function TasteScreen() {
-  const { items, loading } = useItems()
+  const { items, loading, patchMetadata, toggleCanon } = useItems()
   const { tasteProfile, setTasteProfile } = usePrefs()
   const [generating, setGenerating] = useState(false)
   const [tab, setTab] = useState<'profile' | 'island'>('profile')
@@ -248,6 +366,59 @@ export function TasteScreen() {
     [items]
   )
   const hasIsland = canonItems.length > 0
+
+  // Desert island grouped by medium and ordered by the stored rank. Picks with no
+  // rank yet (everything, until first reorder) fall back to add-date so the order
+  // is at least stable; reordering then writes real ranks.
+  const islandByType = useMemo(() => {
+    const order = ['film', 'tv', 'book', 'music']
+    const rank = (i: Item) => (i.metadata?.canonRank as number | undefined) ?? Number.POSITIVE_INFINITY
+    const groups = new Map<string, Item[]>()
+    for (const item of canonItems) {
+      const g = groups.get(item.type) ?? []
+      g.push(item)
+      groups.set(item.type, g)
+    }
+    return order.filter(t => groups.has(t)).map(t => ({
+      type: t,
+      items: groups.get(t)!.sort((a, b) => rank(a) - rank(b) || new Date(a.date_added).getTime() - new Date(b.date_added).getTime()),
+    }))
+  }, [canonItems])
+
+  const fullTypes = useMemo(
+    () => new Set(islandByType.filter(g => g.items.length >= CANON_CAP).map(g => g.type)),
+    [islandByType]
+  )
+
+  // Loved items not yet on the island — the add picker's candidates.
+  const canonCandidates = useMemo(
+    () => items.filter(i => i.reaction === 'loved_it' && !i.metadata?.canon),
+    [items]
+  )
+
+  // Reorder within a medium: swap two adjacent picks, then write every pick's
+  // position as its rank so the numbers are concrete from here on.
+  function moveCanon(type: string, idx: number, dir: -1 | 1) {
+    const group = islandByType.find(g => g.type === type)?.items
+    if (!group) return
+    const j = idx + dir
+    if (j < 0 || j >= group.length) return
+    const arr = [...group]
+    ;[arr[idx], arr[j]] = [arr[j], arr[idx]]
+    arr.forEach((it, i) => { void patchMetadata(it.id, { canonRank: i }) })
+  }
+
+  function removeCanon(item: Item) {
+    void toggleCanon(item.id, false)
+  }
+
+  // Add → append to the bottom of its medium (rank = current count). One metadata
+  // write sets both the canon flag and the rank.
+  function addCanon(item: Item) {
+    if (fullTypes.has(item.type)) return
+    const count = islandByType.find(g => g.type === item.type)?.items.length ?? 0
+    void patchMetadata(item.id, { canon: true, canonRank: count })
+  }
 
   async function generate() {
     if (generating) return
@@ -426,7 +597,17 @@ export function TasteScreen() {
       )}
 
       {/* ── Desert island tab ─────────────────────────────────────────────── */}
-      {hasIsland && tab === 'island' && <CanonGallery items={canonItems} />}
+      {hasIsland && tab === 'island' && (
+        <DesertIsland
+          byType={islandByType}
+          total={canonItems.length}
+          candidates={canonCandidates}
+          fullTypes={fullTypes}
+          onMove={moveCanon}
+          onRemove={removeCanon}
+          onAdd={addCanon}
+        />
+      )}
     </div>
   )
 }
