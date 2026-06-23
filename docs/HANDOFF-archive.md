@@ -4,6 +4,21 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 66 (2026-06-23) — "Things" Slice 1: attribute model + the pure "thread" reader (free)
+
+Built on `things-slice-1` off freshly-synced `main` (Slice 0 / PR #16 was merged; local main was stale — checkout + pull first). **Cost: $0** — no `api/` touch, no Anthropic call. The reader is a pure local function.
+
+**What shipped:**
+- **Attribute model** (`src/lib/things.ts`) — `Attribute = {facet, value}` on thing items, facets `material | palette | form | category | priceTier`. Deliberately **flat free-text tags, not a frozen enum** — honoring "vocab waits for real saved items" (couldn't query the live DB from the session, so built the machinery, not the taxonomy). `SUGGESTED` chips are starter convenience only. `attributes` lives on `ProductFields` so products + candidates carry it; `itemAttributes(item)` reads a product's own tags, a *resolved* intent's winner's tags, and nothing from unresolved intents.
+- **The thread reader** — `readThread(items): Thread | null`. Pure: counts items-per-value (not occurrences) per facet, takes the dominant *recurring* value (≥2 items) in each aesthetic facet (palette → material → form → category), caps at 4 tokens → `['muted','wool','structured']`. Returns `null` below 4 tagged items so the masthead stays quiet on a sparse board. **14 Vitest cases** (threshold, recurrence, dedupe-within-item, case-insensitivity, 4-cap, winner-fold). Full suite 70/70 green; typecheck clean.
+- **Capture UI** — `AttributesEditor` in `FieldsForm` (facet picker + suggested chips + free text), so every product/candidate add+edit can be tagged. Tiny muted attribute read under each product-card name so tagging is visibly doing something.
+
+**Deliberately deferred:** the **live masthead** (rendering `readThread`'s output on the board) is **Slice 2** as planned — Slice 1 is model + reader + capture only. The **comparison table along attribute axes** (Farah's s65 ask) now has its columns and can land in Slice 2.
+
+**Verification honesty:** typecheck + 70 tests + Vite serves the transformed component (HTTP 200, no error overlay, app boots). Could **not** click through the Things tab live — preview sits behind Google auth. The core deliverable (the reader) is fully unit-tested; the editor is plain typechecked JSX, eyeball it on the live preview once merged + Supabase preview-auth is fixed.
+
+---
+
 ### Session 64 (2026-06-23) — "Things" design reworked around composition-over-reaction (design only, no app code)
 
 Pure design session. Pressure-tested the s63 "Things"/shopping design before building.

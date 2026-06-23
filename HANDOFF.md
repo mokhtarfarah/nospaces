@@ -15,18 +15,26 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (64) — design only, no app code:** Stress-tested the s63 "Things" design and found the core flaw — **reaction collapses for objects** (you self-select for love before rating), so the react→profile loop barely fires in the domain it's meant to power. **Reworked the whole design around _composition over reaction_:** the taste signal is the *set*, attributes (material/palette/form) are the engine, the aesthetic surfaces as a live board masthead from day one. Brand demoted to one facet; "own" shrinks to a "got it" accent; vision call reads *attributes* not identity. **Intent/candidates kept first-class + in v1** (Farah's make-or-break) with a light no-archive resolve. ROADMAP rewritten + re-sliced (Slice 0 = free gut-check incl. the deliberation flow). Cost $0. Pushed to `main` (`6816e01`).
+**This session (66) — built "Things" Slice 1: the attribute model + the pure "thread" reader (free).** On branch **`things-slice-1`** off freshly-synced `main`. **$0** — no `api/` touch, no Anthropic call. Shipped: `Attribute = {facet, value}` tags (material/palette/form/category/priceTier) as **flat free-text, not a frozen enum** (vocab grows from real saves — couldn't query the live DB, so built the machinery not the taxonomy); `readThread(items)` pure reader → recurring-attribute read like `muted · wool · structured`, returns null below 4 tagged items (**14 Vitest cases, full suite 70/70 green**, typecheck clean); `AttributesEditor` capture UI in `FieldsForm` + a tiny per-card read so tagging is visible. **Live masthead deliberately deferred to Slice 2.** Not yet committed/pushed — Farah's call on PR. Full detail → archive (s66).
 
-**Last session (63):** Shipped the **regions / country filter** (browser-direct backfill), trimmed the filter sheet to collapsible sections, designed the first "Things" expansion (since superseded by s64). Full detail → archive.
+**Last session (65):** Built "Things" Slice 0 — gut-check PASSED, merged to `main` via PR #16. Free `api/og-parse.ts` reader · board with both capture paths · intent→candidates→★→pick deliberation loop · edit/manual `FieldsForm` · sale price · opt-in AI Compare (`api/things-compare.ts`, Haiku ~$0.001/tap) + plan brief. ⚠️ **The s65 archive log + HANDOFF prose (commit `6f203b1`) was never merged** — PR #16 cut at `fbbadb9`, one commit short. Cherry-pick `6f203b1` into a docs branch if you want the full s65 archive entry back; the s66 entry below reconstructs the essentials.
 
 ---
 
-## ▶ Next session (65)
+## ▶ Next session (67)
 
-**Main job: start BUILDING the "Things" domain — begin with Slice 0 (free).** The design was reworked in s64 around **composition-over-reaction** (full design → `docs/ROADMAP.md` → "Expansion beyond media"; the *why* → s64 archive entry). Don't re-plan it — it's settled. Build order:
-- **Slice 0 (free, do first): vertical gut-check.** `api/og-parse.ts` (free, reuse `api/_ssrf.ts`) → paste product link → card on a plain grid. **Must include the intent/candidates flow** (create intent "black clogs" → attach 2–3 candidates → mark a leaning → "pick this one") — it's Farah's make-or-break feature, so a gut-check without it proves nothing. No vocab/switcher yet. Decision gate: does the deliberation flow feel good?
-- Then: Slice 1 attribute model + the pure "thread" composition reader (+Vitest, vocab waits for real items) · Slice 2 board + live masthead · Slice 3 domain switcher · **Slice 4 = first PAID surface** (Sonnet vision call that reads *attributes*, not identity — state exact per-call cost before building).
-- Key model facts: all on existing `Item`; `type:'thing'`; `metadata.attributes[]` is the engine; `reaction` stays null for things; intent/candidates resolve is light (done + winner flag, **no archive** — losers persist as signal).
+**First: get Slice 1 onto `main`** — branch `things-slice-1` (commit + PR, Farah merges). Then **Supabase preview-auth fix** must be applied once (`https://*.vercel.app/**` in Redirect URLs) or preview testing stays broken — see memory `preview-auth-redirect`. Optional: cherry-pick lost s65 docs commit `6f203b1`.
+
+**Main job: Slice 2 — the board + live "thread" masthead.** This is where Slice 1's `readThread()` finally surfaces — the board shows your aesthetic read from ~6 tagged items, refreshing as you add. Build:
+- **Masthead**: call `readThread(things)` (in `src/lib/things.ts`), render the tokens as the board header when non-null; stay quiet (or a gentle "tag a few to see your thread") below the 4-item threshold. Plays the role the "your thread: muted · natural · structured" sketch describes.
+- **Comparison table along attribute axes** (Farah's s65 ask, deferred to here because it needs Slice 1's columns) — candidates × facets grid inside the intent sheet.
+- Then **Slice 3** = domain switcher (replaces the temp 4th nav tab) · **Slice 4 = first PAID surface** (Sonnet **vision** attribute-read for photo/link-image capture — state exact per-call cost before building; Compare already proved the paid plumbing).
+
+**Carried from s66 (Slice 1 — check on live preview, don't rebuild):** the `AttributesEditor` (facet chips + free text) in product/candidate add+edit, and the per-card attribute read. The reader is fully unit-tested but the **editor UI was never clicked through live** (preview behind Google auth) — eyeball it once merged + preview-auth fixed. Watch: is `FieldsForm` getting crowded now that it carries fields + sale price + taste tags?
+
+**Carried from s65 (Slice 0 — check, don't rebuild):** board, deliberation loop, edit/manual fallback, sale price, AI Compare voice + plan brief. Slice 0 passed the gut check. Watch: does Compare still read human on real items? Is the plan sheet busy?
+
+**Key model facts:** all on existing `Item`; `type:'thing'`; `metadata.kind` = `product`|`intent`; `metadata.attributes[]` (`{facet,value}`) is the composition engine; `reaction` stays null; resolve = `done` + winner flag, **no archive** (losers persist).
 
 **Carried from s63 (check, don't rebuild):**
 - **Regions** — shipped, browser-direct backfill. Coverage was still filling in via repeated ⋯ → "pull regions". If it's plateaued with a stubborn `failed` count, slow the pull down (lower concurrency / add pacing in `src/lib/regions.ts`). Language axis `P364` parked in ROADMAP.

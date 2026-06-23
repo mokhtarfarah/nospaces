@@ -13,6 +13,44 @@
 import { authHeaders } from './supabase'
 import type { Item } from './database.types'
 
+// ---- Attributes (Slice 1): the composition engine ----
+//
+// A thing's taste signal isn't its brand or its category — it's the recurring
+// *attributes* across the whole set. We store them as flat {facet, value} tags
+// rather than a frozen enum, on purpose: the vocab should grow from what's
+// actually saved, not a taxonomy invented in a vacuum. `value` is free text; the
+// suggestions below are just starter chips, never a closed list.
+
+export type Facet = 'material' | 'palette' | 'form' | 'category' | 'priceTier'
+
+/** A single taste tag, e.g. {facet:'palette', value:'muted'}. */
+export type Attribute = { facet: Facet; value: string }
+
+/** Aesthetic facets that feed the "thread" read, in the order they're shown. */
+export const READ_FACETS: Facet[] = ['palette', 'material', 'form', 'category']
+
+/** Facets exposed in the tag editor (priceTier is reserved for later, derived). */
+export const EDIT_FACETS: Facet[] = ['material', 'palette', 'form', 'category']
+
+export const FACET_LABEL: Record<Facet, string> = {
+  material: 'Material', palette: 'Palette', form: 'Form', category: 'Category', priceTier: 'Price',
+}
+
+// Light starter chips — tap-to-add convenience, not a closed vocabulary. Real
+// saved items will pull the vocab in whatever direction Farah's taste runs.
+export const SUGGESTED: Record<Facet, string[]> = {
+  material: ['wool', 'leather', 'linen', 'cotton', 'silk', 'denim', 'knit', 'suede'],
+  palette: ['muted', 'earth', 'monochrome', 'neutral', 'warm', 'bold', 'pastel'],
+  form: ['oversized', 'tailored', 'structured', 'relaxed', 'fitted', 'draped', 'minimal'],
+  category: ['coat', 'knitwear', 'boots', 'bag', 'dress', 'trousers'],
+  priceTier: ['steal', 'mid', 'splurge'],
+}
+
+/** Canonical form of a tag value — trimmed, lowercased — for comparing/counting. */
+export function normValue(v: string): string {
+  return v.trim().toLowerCase()
+}
+
 export type ProductFields = {
   title: string
   image: string | null
@@ -23,6 +61,8 @@ export type ProductFields = {
   siteName: string | null
   /** The page we read this from — the buy link. */
   url: string | null
+  /** Taste tags. Empty/undefined until the user (or, later, vision) adds them. */
+  attributes?: Attribute[]
 }
 
 /** A weighed option inside an intent. Flat object stored in metadata.candidates[]. */
@@ -66,7 +106,77 @@ export function productMeta(item: Item): ProductMeta {
     brand: m.brand ?? null,
     siteName: m.siteName ?? null,
     url: m.url ?? null,
+    attributes: m.attributes ?? [],
   }
+}
+
+/**
+ * The taste tags a thing contributes to the board's thread.
+ * - a product → its own attributes
+ * - a *resolved* intent → the winning candidate's attributes (the committed choice)
+ * - an unresolved intent → nothing (not yet a settled signal)
+ */
+export function itemAttributes(item: Item): Attribute[] {
+  const k = kindOf(item)
+  if (k === 'product') return productMeta(item).attributes ?? []
+  if (k === 'intent' && item.status === 'done') {
+    const m = intentMeta(item)
+    if (m.winner) return m.candidates.find(c => c.id === m.winner)?.attributes ?? []
+  }
+  return []
+}
+
+export type Thread = {
+  /** Recurring-attribute tokens, e.g. ['muted','natural','structured']. */
+  tokens: string[]
+  /** How many attributed items fed the read (its evidence base). */
+  basis: number
+}
+
+/** Need at least this many tagged items before a read means anything. */
+export const THREAD_MIN_ITEMS = 4
+/** A value must show up in at least this many items to count as "recurring". */
+const RECUR_MIN = 2
+
+/**
+ * The board's aesthetic read — pure function over the set. Finds the dominant
+ * recurring value in each aesthetic facet and stitches them into a short thread
+ * ("muted · natural · structured"). Returns null until there's enough signal, so
+ * the masthead stays quiet on an empty/sparse board instead of guessing.
+ */
+export function readThread(items: Item[]): Thread | null {
+  const sets = items.map(itemAttributes).filter(a => a.length > 0)
+  if (sets.length < THREAD_MIN_ITEMS) return null
+
+  // Count items-per-value (not occurrences) so one item can't inflate a tag.
+  const counts: Partial<Record<Facet, Map<string, number>>> = {}
+  for (const attrs of sets) {
+    const seen = new Set<string>()
+    for (const a of attrs) {
+      const v = normValue(a.value)
+      if (!v) continue
+      const key = `${a.facet}:${v}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const m = (counts[a.facet] ??= new Map())
+      m.set(v, (m.get(v) ?? 0) + 1)
+    }
+  }
+
+  const tokens: string[] = []
+  for (const facet of READ_FACETS) {
+    const m = counts[facet]
+    if (!m) continue
+    let best: string | null = null
+    let bestN = 0
+    for (const [val, n] of m) {
+      if (n >= RECUR_MIN && n > bestN) { best = val; bestN = n }
+    }
+    if (best) tokens.push(best)
+    if (tokens.length >= 4) break
+  }
+
+  return tokens.length ? { tokens, basis: sets.length } : null
 }
 
 export function newCandidateId(): string {

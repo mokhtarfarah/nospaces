@@ -4,7 +4,8 @@ import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
   parseProductLink, compareCandidates, kindOf, intentMeta, productMeta, newCandidateId,
-  type Candidate, type ProductFields, type Comparison,
+  EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue,
+  type Candidate, type ProductFields, type Comparison, type Attribute, type Facet,
 } from '../lib/things'
 
 const INK = '#1C1B19'
@@ -119,6 +120,11 @@ function ProductCard({ item, onGotIt, onDelete, onEdit }: { item: Item; onGotIt:
             <PriceLine price={p.price} wasPrice={p.wasPrice} />
             {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
           </div>
+          {p.attributes && p.attributes.length > 0 && (
+            <div style={{ fontSize: 10.5, color: MUTED, marginTop: 3, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {p.attributes.map(a => a.value).join(' · ')}
+            </div>
+          )}
         </div>
       </a>
       {got && <Tag label="got it" filled />}
@@ -494,6 +500,7 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
       brand: norm(f.brand),
       siteName: f.siteName ?? null,
       url: norm(f.url),
+      attributes: f.attributes ?? [],
     })
     setSaving(false)
   }
@@ -513,10 +520,85 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
       </div>
       <input value={f.brand ?? ''} onChange={e => set({ brand: e.target.value })} placeholder="Brand" style={inputStyle} />
       <input value={f.url ?? ''} onChange={e => set({ url: e.target.value })} placeholder="Buy link (kept even if it doesn't preview)" style={inputStyle} />
+      <AttributesEditor value={f.attributes ?? []} onChange={attributes => set({ attributes })} />
       <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 2 }}>
         <button onClick={onCancel} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>
         <button disabled={saving || !f.title.trim()} onClick={save}
           style={primaryBtn(saving || !f.title.trim())}>{saveLabel}</button>
+      </div>
+    </div>
+  )
+}
+
+// Taste-tag editor — the data that feeds the board's "thread" read. Suggested
+// chips are tap-to-add convenience; the text box accepts anything, so the vocab
+// grows from real saves rather than a fixed list.
+function AttributesEditor({ value, onChange }: { value: Attribute[]; onChange: (a: Attribute[]) => void }) {
+  const [open, setOpen] = useState(value.length > 0)
+  const [facet, setFacet] = useState<Facet>(EDIT_FACETS[0])
+  const [draft, setDraft] = useState('')
+
+  const has = (f: Facet, v: string) => value.some(a => a.facet === f && normValue(a.value) === normValue(v))
+  const add = (f: Facet, raw: string) => {
+    const v = raw.trim()
+    if (!v || has(f, v)) return
+    onChange([...value, { facet: f, value: v }])
+  }
+  const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i))
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        style={{ alignSelf: 'flex-start', border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+        + Add taste tags
+      </button>
+    )
+  }
+
+  const suggestions = SUGGESTED[facet].filter(s => !has(facet, s))
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: `1px solid ${LINE}`, paddingTop: 10 }}>
+      <span style={{ fontSize: 10, color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase' }}>taste tags</span>
+
+      {value.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {value.map((a, i) => (
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: INK, background: '#F4F2EE', borderRadius: 999, padding: '4px 8px' }}>
+              <span style={{ color: MUTED }}>{FACET_LABEL[a.facet].toLowerCase()}</span>{a.value}
+              <button type="button" onClick={() => remove(i)} aria-label="remove tag"
+                style={{ border: 'none', background: 'none', color: MUTED, cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {EDIT_FACETS.map(fc => (
+          <button key={fc} type="button" onClick={() => setFacet(fc)}
+            style={{ fontSize: 11, fontWeight: 600, padding: '4px 9px', borderRadius: 999, cursor: 'pointer',
+              border: `1px solid ${facet === fc ? INK : LINE}`, background: facet === fc ? INK : '#fff', color: facet === fc ? '#fff' : INK }}>
+            {FACET_LABEL[fc]}
+          </button>
+        ))}
+      </div>
+
+      {suggestions.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {suggestions.map(s => (
+            <button key={s} type="button" onClick={() => add(facet, s)}
+              style={{ fontSize: 11.5, padding: '4px 9px', borderRadius: 999, border: `1px dashed ${MUTED}`, background: 'none', color: INK, cursor: 'pointer' }}>
+              + {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input value={draft} onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(facet, draft); setDraft('') } }}
+          placeholder={`Add ${FACET_LABEL[facet].toLowerCase()}…`} style={inputStyle} />
+        <button type="button" onClick={() => { add(facet, draft); setDraft('') }} disabled={!draft.trim()}
+          style={primaryBtn(!draft.trim())}>add</button>
       </div>
     </div>
   )
