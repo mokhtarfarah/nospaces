@@ -17,6 +17,8 @@ export type ProductFields = {
   title: string
   image: string | null
   price: string | null
+  /** Original price, set only when the item is on sale (current price = `price`). */
+  wasPrice?: string | null
   brand: string | null
   siteName: string | null
   /** The page we read this from — the buy link. */
@@ -58,6 +60,7 @@ export function productMeta(item: Item): ProductMeta {
     title: m.title ?? item.title,
     image: m.image ?? null,
     price: m.price ?? null,
+    wasPrice: m.wasPrice ?? null,
     brand: m.brand ?? null,
     siteName: m.siteName ?? null,
     url: m.url ?? null,

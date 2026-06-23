@@ -15,9 +15,11 @@ export function ThingsScreen() {
   const { items, addItem, editItem, deleteItem } = useItems()
   const [composer, setComposer] = useState<null | 'product' | 'intent'>(null)
   const [openIntentId, setOpenIntentId] = useState<string | null>(null)
+  const [editProductId, setEditProductId] = useState<string | null>(null)
 
   const things = useMemo(() => items.filter(i => kindOf(i) !== null), [items])
   const openIntent = things.find(i => i.id === openIntentId) ?? null
+  const editProduct = things.find(i => i.id === editProductId) ?? null
 
   return (
     <div style={{ padding: '20px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
@@ -43,7 +45,8 @@ export function ThingsScreen() {
               ? <IntentCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />
               : <ProductCard key={item.id} item={item}
                   onGotIt={() => editItem(item.id, { status: item.status === 'done' ? 'want_to' : 'done' })}
-                  onDelete={() => deleteItem(item.id)} />
+                  onDelete={() => deleteItem(item.id)}
+                  onEdit={() => setEditProductId(item.id)} />
           ))}
         </div>
       )}
@@ -80,13 +83,26 @@ export function ThingsScreen() {
           onDelete={async () => { await deleteItem(openIntent.id); setOpenIntentId(null) }}
         />
       )}
+
+      {editProduct && (
+        <Sheet onClose={() => setEditProductId(null)}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 16px', color: INK }}>Edit product</h2>
+          <FieldsForm saveLabel="Save"
+            initial={productMeta(editProduct)}
+            onCancel={() => setEditProductId(null)}
+            onSave={async (f) => {
+              await editItem(editProduct.id, { title: f.title || 'Untitled', creator: f.brand, metadata: { kind: 'product', ...f } })
+              setEditProductId(null)
+            }} />
+        </Sheet>
+      )}
     </div>
   )
 }
 
 /* ---------- cards ---------- */
 
-function ProductCard({ item, onGotIt, onDelete }: { item: Item; onGotIt: () => void; onDelete: () => void }) {
+function ProductCard({ item, onGotIt, onDelete, onEdit }: { item: Item; onGotIt: () => void; onDelete: () => void; onEdit: () => void }) {
   const p = productMeta(item)
   const got = item.status === 'done'
   const [menu, setMenu] = useState(false)
@@ -99,8 +115,8 @@ function ProductCard({ item, onGotIt, onDelete }: { item: Item; onGotIt: () => v
           <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {p.title}
           </div>
-          <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6 }}>
-            {p.price && <span style={{ color: INK }}>{p.price}</span>}
+          <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
+            <PriceLine price={p.price} wasPrice={p.wasPrice} />
             {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
           </div>
         </div>
@@ -110,6 +126,7 @@ function ProductCard({ item, onGotIt, onDelete }: { item: Item; onGotIt: () => v
         style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: 13, border: 'none', background: 'rgba(0,0,0,0.45)', color: '#fff', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⋯</button>
       {menu && (
         <div style={{ position: 'absolute', top: 34, right: 6, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 8, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', zIndex: 5, overflow: 'hidden' }}>
+          <MenuItem label="Edit" onClick={() => { onEdit(); setMenu(false) }} />
           <MenuItem label={got ? 'Mark as not owned' : 'Got it'} onClick={() => { onGotIt(); setMenu(false) }} />
           <MenuItem label="Remove" danger onClick={() => { onDelete(); setMenu(false) }} />
         </div>
@@ -233,8 +250,8 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
               </a>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: INK, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.title || 'Untitled'}</div>
-                <div style={{ fontSize: 11.5, color: MUTED, marginTop: 3, display: 'flex', gap: 6 }}>
-                  {c.price && <span style={{ color: INK }}>{c.price}</span>}
+                <div style={{ fontSize: 11.5, color: MUTED, marginTop: 3, display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                  <PriceLine price={c.price} wasPrice={c.wasPrice} />
                   {(c.brand || c.siteName) && <span>{c.brand || c.siteName}</span>}
                 </div>
                 {isWinner && <div style={{ fontSize: 11, color: INK, fontWeight: 600, marginTop: 4 }}>✓ chose this</div>}
@@ -393,29 +410,61 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
   onSave: (f: ProductFields) => void | Promise<void>
   onCancel: () => void
 }) {
+  // Keep raw input in state (don't trim per keystroke — that ate spaces, so "Max
+  // Mara" was untypable). Trim once on save instead.
   const [f, setF] = useState<ProductFields>(initial)
   const [saving, setSaving] = useState(false)
   const set = (patch: Partial<ProductFields>) => setF(prev => ({ ...prev, ...patch }))
+  const norm = (s: string | null | undefined) => { const t = (s ?? '').trim(); return t || null }
+
+  async function save() {
+    setSaving(true)
+    await onSave({
+      title: f.title.trim(),
+      image: norm(f.image),
+      price: norm(f.price),
+      wasPrice: norm(f.wasPrice),
+      brand: norm(f.brand),
+      siteName: f.siteName ?? null,
+      url: norm(f.url),
+    })
+    setSaving(false)
+  }
+
   return (
     <div style={{ border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 12 }}>
         <Thumb src={f.image} size={72} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <input value={f.title} onChange={e => set({ title: e.target.value })} placeholder="Name" style={{ ...inputStyle, fontWeight: 500 }} />
-          <input value={f.image ?? ''} onChange={e => set({ image: e.target.value.trim() || null })} placeholder="Image URL — paste to change the photo" style={inputStyle} />
+          <input value={f.image ?? ''} onChange={e => set({ image: e.target.value })} placeholder="Image URL — paste to change the photo" style={inputStyle} />
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <input value={f.price ?? ''} onChange={e => set({ price: e.target.value.trim() || null })} placeholder="Price" style={inputStyle} />
-        <input value={f.brand ?? ''} onChange={e => set({ brand: e.target.value.trim() || null })} placeholder="Brand" style={inputStyle} />
+        <input value={f.price ?? ''} onChange={e => set({ price: e.target.value })} placeholder="Price" style={inputStyle} />
+        <input value={f.wasPrice ?? ''} onChange={e => set({ wasPrice: e.target.value })} placeholder="Was (if on sale)" style={inputStyle} />
       </div>
-      <input value={f.url ?? ''} onChange={e => set({ url: e.target.value.trim() || null })} placeholder="Buy link" style={inputStyle} />
+      <input value={f.brand ?? ''} onChange={e => set({ brand: e.target.value })} placeholder="Brand" style={inputStyle} />
+      <input value={f.url ?? ''} onChange={e => set({ url: e.target.value })} placeholder="Buy link (kept even if it doesn't preview)" style={inputStyle} />
       <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 2 }}>
         <button onClick={onCancel} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>
-        <button disabled={saving || !f.title.trim()} onClick={async () => { setSaving(true); await onSave(f); setSaving(false) }}
+        <button disabled={saving || !f.title.trim()} onClick={save}
           style={primaryBtn(saving || !f.title.trim())}>{saveLabel}</button>
       </div>
     </div>
+  )
+}
+
+// Price line that shows a struck-through original + a "sale" tag when on sale.
+function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: string | null }) {
+  if (!price && !wasPrice) return null
+  const onSale = !!(wasPrice && price)
+  return (
+    <span style={{ display: 'inline-flex', gap: 5, alignItems: 'baseline', flexWrap: 'wrap' }}>
+      {price && <span style={{ color: INK }}>{price}</span>}
+      {wasPrice && <span style={{ textDecoration: 'line-through', color: MUTED, fontSize: '0.92em' }}>{wasPrice}</span>}
+      {onSale && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', color: '#B4413C', border: '1px solid #E3C3C1', borderRadius: 4, padding: '0 4px', textTransform: 'uppercase' }}>sale</span>}
+    </span>
   )
 }
 
