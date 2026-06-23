@@ -524,14 +524,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       }}>
         {view === 'main' && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-              <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 16, lineHeight: 1, padding: '0 0 4px' }}>✕</button>
-            </div>
             {/* Item preview — shared editorial hero (ghost wash + crisp poster) */}
             <SheetHero
               type={item.type}
               title={item.title}
               cover={cover}
+              onClose={onClose}
               meta={[
                 [TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item)].filter(Boolean).join(' · '),
                 item.reaction ? REACTION_LABELS[item.reaction] : null,

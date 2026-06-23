@@ -502,12 +502,8 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
         padding: '10px 20px 28px', zIndex: 201, maxWidth: 480, margin: '0 auto',
         maxHeight: '92dvh', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBB', fontSize: 16, lineHeight: 1, padding: '0 0 4px' }}>✕</button>
-        </div>
-
         {/* Header — ghost wash + rank watermark + crisp poster + title (shared) */}
-        <SheetHero type={r.type} title={r.title} meta={meta} cover={artwork} numeral={index}>
+        <SheetHero type={r.type} title={r.title} meta={meta} cover={artwork} numeral={index} onClose={onClose}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11, color: MUTE }}>via {sourceLabel}</span>
             <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
