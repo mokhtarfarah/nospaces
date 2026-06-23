@@ -304,17 +304,10 @@ export function TasteScreen() {
       {/* "taste" as a small section label, vibe words as the headline */}
       <PageHeader kicker={`shaped by ${doneWithReaction.length} ${doneWithReaction.length === 1 ? 'rating' : 'ratings'}`} title="taste" />
 
-      {/* Vibe words — stacked masthead, the page's hook */}
-      {topVibes.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <h1 style={{ fontSize: 34, fontWeight: 600, color: INK, letterSpacing: '-1.3px', lineHeight: 1.04, margin: 0 }}>
-            {topVibes.map(v => <div key={v.label}>{v.label}</div>)}
-          </h1>
-        </div>
-      )}
-
-      {/* Tabs — profile (the read) vs desert island (the picks). Only when there's
-          a desert island to switch to; otherwise the page is just the profile. */}
+      {/* Tabs — profile (the read) vs desert island (the picks). Sit directly
+          under the header so they stay anchored when you switch; the vibe words
+          live inside the profile tab (they describe the profile, not the picks).
+          Only shown when there's a desert island; otherwise it's just the profile. */}
       {hasIsland && (
         <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${HAIR}`, marginBottom: 18 }}>
           <TabChip label="profile" active={tab === 'profile'} onClick={() => setTab('profile')} />
@@ -322,11 +315,27 @@ export function TasteScreen() {
         </div>
       )}
 
-      {/* ── Profile tab: prose + the gap + always loved ───────────────────── */}
+      {/* ── Profile tab: vibe headline + prose + the gap + always loved ────── */}
       {(!hasIsland || tab === 'profile') && (
         <>
+          {/* Vibe words — the profile's headline. Inline with middots so it reads
+              as one identity, not a list; each word is non-breaking so it wraps
+              only at a separator, never mid-word. */}
+          {topVibes.length > 0 && (
+            <div style={{ marginBottom: 18 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 600, color: INK, letterSpacing: '-0.5px', lineHeight: 1.25, margin: 0 }}>
+                {topVibes.map((v, i) => (
+                  <span key={v.label}>
+                    <span style={{ whiteSpace: 'nowrap' }}>{v.label}</span>
+                    {i < topVibes.length - 1 && <span style={{ color: MUTE, margin: '0 7px', fontWeight: 400 }}>·</span>}
+                  </span>
+                ))}
+              </h1>
+            </div>
+          )}
+
           {/* AI prose */}
-          <div style={{ borderTop: hasIsland ? 'none' : `1px solid ${HAIR}`, paddingTop: hasIsland ? 0 : 16, marginBottom: 16 }}>
+          <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 16, marginBottom: 16 }}>
             {tasteProfile ? (
               <div>
                 {tasteProfile.split('\n\n').filter(p => p.trim()).map((para, i) => (
