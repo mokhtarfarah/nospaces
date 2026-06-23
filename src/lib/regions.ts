@@ -31,45 +31,42 @@ export function itemsNeedingRegion(items: Item[]): Item[] {
   return items.filter(i => GAP_MEDIA_TYPES.includes(i.type) && !hasRegion(i))
 }
 
-interface ParsedRegion { countries?: string[] }
-
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
-// One item's outcome:
-//   string[]  — resolved (may be empty: article found but no country)
-//   null      — the request kept failing (timeout / rate-limit / network)
-// At 835 items the title-search path makes several Wikipedia calls each and gets
-// throttled in bursts, so a single failure is common — retry with backoff before
-// giving up. Failures stay untagged so a re-run picks them up.
-async function pullOne(item: Item, headers: HeadersInit): Promise<string[] | null> {
-  const wikiUrl = (item.metadata?.wikiUrl as string | undefined)?.trim()
-  // Prefer a stored article (reliable); otherwise resolve by title/type search.
-  const url = wikiUrl
-    ? `/api/wiki?url=${encodeURIComponent(wikiUrl)}&type=${encodeURIComponent(item.type)}&parse=1`
-    : `/api/wiki?type=${encodeURIComponent(item.type)}&title=${encodeURIComponent(item.title)}` +
-      `${item.creator ? `&creator=${encodeURIComponent(item.creator)}` : ''}` +
-      `${item.year ? `&year=${item.year}` : ''}&parse=1`
+const CHUNK = 12        // items resolved per server request
+const CONCURRENCY = 3   // chunks in flight at once
+
+interface BatchResult { id: string; countries: string[] }
+
+// Resolve one chunk server-side (/api/wiki POST). Returns the per-item results,
+// or null if the request kept failing. Retried with backoff — but failures are
+// now rare because we make ~70 requests total instead of 835+.
+async function pullChunk(chunk: Item[], headers: HeadersInit): Promise<BatchResult[] | null> {
+  const body = JSON.stringify({
+    items: chunk.map(i => ({
+      id: i.id, type: i.type, title: i.title,
+      creator: i.creator ?? '', year: i.year ?? '',
+      wikiUrl: (i.metadata?.wikiUrl as string | undefined) ?? '',
+    })),
+  })
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(url, { headers })
+      const res = await fetch('/api/wiki', { method: 'POST', headers, body })
       if (res.ok) {
-        const data = await res.json() as { parsed?: ParsedRegion | null }
-        return Array.isArray(data.parsed?.countries) ? data.parsed.countries : []
+        const data = await res.json() as { results?: BatchResult[] }
+        return Array.isArray(data.results) ? data.results : []
       }
-      // 5xx / 429 → back off and retry; other 4xx won't improve on retry.
       if (res.status < 500 && res.status !== 429) return null
-    } catch {
-      // network error — retry
-    }
-    await sleep(400 * (attempt + 1))
+    } catch { /* network — retry */ }
+    await sleep(500 * (attempt + 1))
   }
   return null
 }
 
-// Run the backfill over the whole library. Light concurrency + per-item retry to
-// stay gentle on Wikidata while still covering the long tail. Saves via the
-// caller's patchMetadata. Only real hits are persisted; misses and failures are
-// left untagged so re-running mops them up.
+// Run the backfill over the whole library in server-side batches. Each request
+// resolves a chunk of items, so the browser makes few calls (no per-item
+// fan-out that overran Vercel's function limits). Only real hits are persisted;
+// misses and failures stay untagged so re-running mops them up.
 export async function pullRegions(
   items: Item[],
   headers: HeadersInit,
@@ -81,26 +78,30 @@ export async function pullRegions(
   let done = 0
   let filled = 0
   let failed = 0
-  const CONCURRENCY = 3
 
-  async function worker(slice: Item[]) {
-    for (const item of slice) {
-      const countries = await pullOne(item, headers)
-      if (countries === null) {
-        failed++  // couldn't reach it — leave untagged, re-run will retry
-      } else if (countries.length) {
-        await save(item.id, { countries, regionV: REGION_VERSION })
-        filled++
+  const chunks: Item[][] = []
+  for (let i = 0; i < queue.length; i += CHUNK) chunks.push(queue.slice(i, i + CHUNK))
+
+  let next = 0
+  const worker = async () => {
+    while (next < chunks.length) {
+      const chunk = chunks[next++]
+      const results = await pullChunk(chunk, headers)
+      if (results === null) {
+        failed += chunk.length  // whole chunk couldn't be reached — re-run retries
+      } else {
+        const byId = new Map(results.map(r => [r.id, r.countries]))
+        for (const item of chunk) {
+          const countries = byId.get(item.id)
+          if (countries === undefined) { failed++; continue }
+          if (countries.length) { await save(item.id, { countries, regionV: REGION_VERSION }); filled++ }
+        }
       }
-      done++
+      done += chunk.length
       onProgress?.({ done, total, filled, failed })
     }
   }
 
-  // Round-robin items into N worker slices.
-  const slices: Item[][] = Array.from({ length: CONCURRENCY }, () => [])
-  queue.forEach((item, i) => slices[i % CONCURRENCY].push(item))
-  await Promise.all(slices.map(worker))
-
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, chunks.length) }, worker))
   return { done, total, filled, failed }
 }
