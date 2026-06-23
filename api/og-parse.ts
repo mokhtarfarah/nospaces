@@ -63,6 +63,69 @@ function cleanPrice(raw: string | null, currency: string | null): string | null 
   return `${sym}${num[0]}`.trim()
 }
 
+// ---- JSON-LD (schema.org/Product) ----
+// Many shops put generic OG tags ("Woman") but the real product in a
+// <script type="application/ld+json"> Product node. Read that when present —
+// it's the most reliable source for name / brand / price.
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
+}
+function asString(v: unknown): string | null {
+  if (typeof v === 'string') return v.trim() || null
+  if (typeof v === 'number') return String(v)
+  return null
+}
+
+// Flatten JSON-LD into a list of nodes, descending arrays and @graph wrappers.
+function collectLdNodes(v: unknown, out: Record<string, unknown>[]): void {
+  if (Array.isArray(v)) { for (const x of v) collectLdNodes(x, out); return }
+  const rec = asRecord(v)
+  if (!rec) return
+  out.push(rec)
+  if ('@graph' in rec) collectLdNodes(rec['@graph'], out)
+}
+
+function isProductNode(node: Record<string, unknown>): boolean {
+  const t = node['@type']
+  const types = Array.isArray(t) ? t : [t]
+  return types.some(x => typeof x === 'string' && x.toLowerCase().includes('product'))
+}
+
+function ldBrand(v: unknown): string | null {
+  return asString(v) ?? asString(asRecord(v)?.name)
+}
+function ldImage(v: unknown): string | null {
+  if (Array.isArray(v)) return ldImage(v[0])
+  return asString(v) ?? asString(asRecord(v)?.url)
+}
+
+type LdProduct = { name: string | null; brand: string | null; price: string | null; currency: string | null; image: string | null }
+
+function jsonLdProduct(html: string): LdProduct | null {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  const nodes: Record<string, unknown>[] = []
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html))) {
+    const raw = m[1].trim()
+    if (!raw) continue
+    let data: unknown
+    try { data = JSON.parse(raw) } catch { try { data = JSON.parse(decodeEntities(raw)) } catch { continue } }
+    collectLdNodes(data, nodes)
+  }
+  const prod = nodes.find(isProductNode)
+  if (!prod) return null
+  const offersRaw = prod['offers']
+  const offer = asRecord(Array.isArray(offersRaw) ? offersRaw[0] : offersRaw)
+  return {
+    name: asString(prod['name']),
+    brand: ldBrand(prod['brand']),
+    price: asString(offer?.['price']) ?? asString(offer?.['lowPrice']),
+    currency: asString(offer?.['priceCurrency']),
+    image: ldImage(prod['image']),
+  }
+}
+
 // Resolve a possibly-relative image URL against the page URL.
 function absoluteUrl(maybe: string | null, base: string): string | null {
   if (!maybe) return null
@@ -114,7 +177,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (done) break
         total += value.length
         html += decoder.decode(value, { stream: true })
-        if (/<\/head>/i.test(html)) break // got the head; stop early
+        // Stop once we have the <head> — but keep reading into the body if we
+        // haven't yet seen a JSON-LD block, since many shops put their real
+        // Product data (name/brand/price) in a <script> lower down the page.
+        if (/<\/head>/i.test(html) && /application\/ld\+json/i.test(html)) break
       }
       try { await reader.cancel() } catch { /* ignore */ }
     } else {
@@ -122,19 +188,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const finalUrl = resp.url || trimmed
+    // JSON-LD Product wins for name/brand/price (most reliable); OG/meta is the
+    // fallback. The packshot stays OG-first for a consistent board, JSON-LD last.
+    const ld = jsonLdProduct(html)
     const title =
+      ld?.name ??
       metaContent(html, ['og:title', 'twitter:title']) ??
       titleTag(html)
     const image = absoluteUrl(
-      metaContent(html, ['og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src']),
+      metaContent(html, ['og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src']) ?? ld?.image ?? null,
       finalUrl,
     )
-    const currency = metaContent(html, ['product:price:currency', 'og:price:currency'])
+    const currency = ld?.currency ?? metaContent(html, ['product:price:currency', 'og:price:currency'])
     const price = cleanPrice(
-      metaContent(html, ['product:price:amount', 'og:price:amount', 'product:price', 'price']),
+      ld?.price ?? metaContent(html, ['product:price:amount', 'og:price:amount', 'product:price', 'price']),
       currency,
     )
-    const brand = metaContent(html, ['product:brand', 'og:brand', 'twitter:data1'])
+    const brand = ld?.brand ?? metaContent(html, ['product:brand', 'og:brand', 'twitter:data1'])
     const siteName = metaContent(html, ['og:site_name'])
       ?? (() => { try { return new URL(finalUrl).hostname.replace(/^www\./, '') } catch { return null } })()
 

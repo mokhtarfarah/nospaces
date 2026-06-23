@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readThread, itemAttributes, normValue, type Attribute } from './things'
+import { readThread, itemAttributes, normValue, priceValue, type Attribute } from './things'
 import type { Item } from './database.types'
 
 // Minimal thing factory — only the fields the thread logic reads matter.
@@ -23,6 +23,21 @@ describe('normValue', () => {
   it('trims and lowercases', () => {
     expect(normValue('  Wool ')).toBe('wool')
     expect(normValue('MUTED')).toBe('muted')
+  })
+})
+
+describe('priceValue', () => {
+  it('reads common formats', () => {
+    expect(priceValue('$630.00')).toBe(630)
+    expect(priceValue('416')).toBe(416)
+    expect(priceValue('£1,299.00')).toBe(1299)
+    expect(priceValue('1.299,00 €')).toBe(1299)
+    expect(priceValue('$1,250')).toBe(1250)
+  })
+  it('returns null when there is no number', () => {
+    expect(priceValue(null)).toBeNull()
+    expect(priceValue('')).toBeNull()
+    expect(priceValue('Price on request')).toBeNull()
   })
 })
 
@@ -76,10 +91,10 @@ describe('readThread', () => {
 
   it('surfaces the dominant value per facet, one token each', () => {
     const items = [
-      product([a('palette', 'muted'), a('material', 'wool'), a('form', 'structured')]),
-      product([a('palette', 'muted'), a('material', 'wool'), a('form', 'structured')]),
-      product([a('palette', 'muted'), a('material', 'linen'), a('form', 'relaxed')]),
-      product([a('palette', 'muted'), a('material', 'wool'), a('form', 'structured')]),
+      product([a('palette', 'muted'), a('material', 'wool'), a('vibe', 'structured')]),
+      product([a('palette', 'muted'), a('material', 'wool'), a('vibe', 'structured')]),
+      product([a('palette', 'muted'), a('material', 'linen'), a('vibe', 'relaxed')]),
+      product([a('palette', 'muted'), a('material', 'wool'), a('vibe', 'structured')]),
     ]
     const t = readThread(items)
     // facet order is palette, material, form, category
@@ -119,7 +134,7 @@ describe('readThread', () => {
 
   it('reads one token per aesthetic facet and leaves category/price out of the thread', () => {
     const all: Attribute[] = [
-      a('palette', 'muted'), a('material', 'wool'), a('form', 'structured'), a('category', 'coat'), a('priceTier', 'splurge'),
+      a('palette', 'muted'), a('material', 'wool'), a('vibe', 'structured'), a('category', 'coat'), a('priceTier', 'splurge'),
     ]
     const items = [product(all), product(all), product(all), product(all)]
     const t = readThread(items)
@@ -136,6 +151,19 @@ describe('readThread', () => {
       product([a('palette', 'pastel')]),
     ]
     expect(readThread(items)).toBeNull()
+  })
+
+  it('maps legacy "form" tags forward to "vibe" so nothing saved before the rename is lost', () => {
+    // attributes saved under the old 'form' facet key (pre-s66 rename)
+    const legacy = { facet: 'form', value: 'structured' } as unknown as Attribute
+    const items = [
+      product([a('palette', 'muted'), legacy]),
+      product([a('palette', 'muted'), legacy]),
+      product([a('palette', 'muted')]),
+      product([a('palette', 'muted')]),
+    ]
+    // 'structured' should count under vibe and land in the thread
+    expect(readThread(items)?.tokens).toEqual(['muted', 'structured'])
   })
 
   it('folds a resolved intent’s winner into the read', () => {

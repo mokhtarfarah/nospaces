@@ -5,7 +5,7 @@ import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
   parseProductLink, compareCandidates, kindOf, intentMeta, productMeta, newCandidateId,
-  EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS,
+  EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS, priceValue,
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet,
 } from '../lib/things'
 
@@ -13,13 +13,50 @@ const INK = '#1C1B19'
 const MUTED = '#ABA69C'
 const LINE = '#E8E8E8'
 
+type SortKey = 'recent' | 'price' | 'name'
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'recent', label: 'recent' },
+  { key: 'price', label: 'price' },
+  { key: 'name', label: 'a–z' },
+]
+
+// The price a thing sorts by: a product's own, or an intent's front-runner
+// (winner → leaning → first candidate). Null when there's nothing to read.
+function thingPrice(item: Item): number | null {
+  if (kindOf(item) === 'product') return priceValue(productMeta(item).price)
+  const m = intentMeta(item)
+  const cover = m.candidates.find(c => c.id === m.winner) ?? m.candidates.find(c => c.id === m.leaning) ?? m.candidates[0]
+  return priceValue(cover?.price ?? null)
+}
+
+function sortThings(things: Item[], sort: SortKey): Item[] {
+  const arr = [...things]
+  if (sort === 'name') {
+    return arr.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }))
+  }
+  if (sort === 'price') {
+    // Cheapest first; things with no readable price sink to the bottom.
+    return arr.sort((a, b) => {
+      const pa = thingPrice(a), pb = thingPrice(b)
+      if (pa == null && pb == null) return 0
+      if (pa == null) return 1
+      if (pb == null) return -1
+      return pa - pb
+    })
+  }
+  // recent: newest first by date_added (fallback to created_at).
+  return arr.sort((a, b) => (b.date_added ?? b.created_at ?? '').localeCompare(a.date_added ?? a.created_at ?? ''))
+}
+
 export function ThingsScreen() {
   const { items, addItem, editItem, deleteItem } = useItems()
   const [composer, setComposer] = useState<null | 'product' | 'intent'>(null)
   const [openIntentId, setOpenIntentId] = useState<string | null>(null)
   const [editProductId, setEditProductId] = useState<string | null>(null)
+  const [sort, setSort] = useState<SortKey>('recent')
 
   const things = useMemo(() => items.filter(i => kindOf(i) !== null), [items])
+  const sorted = useMemo(() => sortThings(things, sort), [things, sort])
   const openIntent = things.find(i => i.id === openIntentId) ?? null
   const editProduct = things.find(i => i.id === editProductId) ?? null
 
@@ -36,6 +73,19 @@ export function ThingsScreen() {
         <AddButton label="Plan a purchase" onClick={() => setComposer('intent')} />
       </div>
 
+      {things.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <span style={{ fontSize: 11, color: MUTED, letterSpacing: '0.04em' }}>sort</span>
+          {SORTS.map(s => (
+            <button key={s.key} onClick={() => setSort(s.key)}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: 12,
+                color: sort === s.key ? INK : MUTED, fontWeight: sort === s.key ? 600 : 400 }}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {things.length === 0 ? (
         <Empty />
       ) : (
@@ -49,7 +99,7 @@ export function ThingsScreen() {
           alignItems: 'start',
           gap: 12,
         }}>
-          {things.map(item => (
+          {sorted.map(item => (
             kindOf(item) === 'intent'
               ? <IntentCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />
               : <ProductCard key={item.id} item={item}
@@ -322,7 +372,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
           if (editingId === c.id) {
             return (
               <FieldsForm key={c.id} saveLabel="Save"
-                initial={{ title: c.title, image: c.image, price: c.price, brand: c.brand, siteName: c.siteName, url: c.url }}
+                initial={{ title: c.title, image: c.image, price: c.price, brand: c.brand, siteName: c.siteName, url: c.url, attributes: c.attributes }}
                 onCancel={() => setEditingId(null)}
                 onSave={async (f) => {
                   await onPatch({ ...m, candidates: m.candidates.map(x => x.id === c.id ? { ...x, ...f } : x) })

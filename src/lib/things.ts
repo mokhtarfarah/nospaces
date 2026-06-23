@@ -21,7 +21,11 @@ import type { Item } from './database.types'
 // actually saved, not a taxonomy invented in a vacuum. `value` is free text; the
 // suggestions below are just starter chips, never a closed list.
 
-export type Facet = 'material' | 'palette' | 'form' | 'category' | 'priceTier'
+// 'vibe' covers both silhouette/shape AND attitude (oversized, structured, bold,
+// statement, chunky) — one facet for "how it carries itself". Renamed from the
+// original 'form' (s66); legacy 'form' tags are mapped forward on read so nothing
+// already saved is lost (see legacyFacet).
+export type Facet = 'material' | 'palette' | 'vibe' | 'category' | 'priceTier'
 
 /** A single taste tag, e.g. {facet:'palette', value:'muted'}. */
 export type Attribute = { facet: Facet; value: string }
@@ -29,15 +33,15 @@ export type Attribute = { facet: Facet; value: string }
 // Facets that feed the "thread" read, in display order. Category is deliberately
 // EXCLUDED — it's a *what* (bag, coat), not a *vibe*, so "neutral · leather ·
 // relaxed · bag" reads odd. The thread is the aesthetic, not the inventory.
-export const READ_FACETS: Facet[] = ['palette', 'material', 'form']
+export const READ_FACETS: Facet[] = ['palette', 'material', 'vibe']
 
 // Facets exposed in the tag editor (priceTier is reserved for later, derived).
 // Category leads — it's the most concrete thing to pin first (and the natural
 // hook for auto-tagging later, via the Slice 4 vision read).
-export const EDIT_FACETS: Facet[] = ['category', 'material', 'palette', 'form']
+export const EDIT_FACETS: Facet[] = ['category', 'material', 'palette', 'vibe']
 
 export const FACET_LABEL: Record<Facet, string> = {
-  material: 'Material', palette: 'Palette', form: 'Form', category: 'Category', priceTier: 'Price',
+  material: 'Material', palette: 'Palette', vibe: 'Vibe', category: 'Category', priceTier: 'Price',
 }
 
 // Light starter chips — tap-to-add convenience, not a closed vocabulary. Real
@@ -45,14 +49,44 @@ export const FACET_LABEL: Record<Facet, string> = {
 export const SUGGESTED: Record<Facet, string[]> = {
   material: ['wool', 'leather', 'linen', 'cotton', 'silk', 'denim', 'knit', 'suede'],
   palette: ['muted', 'earth', 'monochrome', 'neutral', 'warm', 'bold', 'pastel'],
-  form: ['oversized', 'tailored', 'structured', 'relaxed', 'fitted', 'draped', 'minimal'],
+  vibe: ['structured', 'oversized', 'tailored', 'relaxed', 'minimal', 'statement', 'bold', 'chunky', 'sleek'],
   category: ['coat', 'knitwear', 'boots', 'bag', 'dress', 'trousers'],
   priceTier: ['steal', 'mid', 'splurge'],
+}
+
+// Map legacy facet keys forward so attributes saved before a rename still count
+// and label correctly. Currently just 'form' → 'vibe' (s66).
+const LEGACY_FACET: Record<string, Facet> = { form: 'vibe' }
+function legacyFacet(a: Attribute): Attribute {
+  const mapped = LEGACY_FACET[a.facet as string]
+  return mapped ? { ...a, facet: mapped } : a
+}
+export function normAttributes(attrs: Attribute[] | undefined): Attribute[] {
+  return (attrs ?? []).map(legacyFacet)
 }
 
 /** Canonical form of a tag value — trimmed, lowercased — for comparing/counting. */
 export function normValue(v: string): string {
   return v.trim().toLowerCase()
+}
+
+/**
+ * Best-effort numeric value of a price string ("$630.00", "416", "1.299,00 €",
+ * "$1,250") for sorting. Returns null when there's no number to read. Handles the
+ * US/EU separator ambiguity: a final separator followed by exactly 2 digits is a
+ * decimal point; anything else (e.g. "1,250") is a thousands separator.
+ */
+export function priceValue(p: string | null | undefined): number | null {
+  if (!p) return null
+  const digits = p.replace(/[^0-9.,]/g, '')
+  if (!digits) return null
+  const lastSep = Math.max(digits.lastIndexOf('.'), digits.lastIndexOf(','))
+  const decimal = lastSep !== -1 && digits.length - lastSep - 1 === 2
+  const cleaned = decimal
+    ? digits.slice(0, lastSep).replace(/[.,]/g, '') + '.' + digits.slice(lastSep + 1)
+    : digits.replace(/[.,]/g, '')
+  const n = parseFloat(cleaned)
+  return Number.isFinite(n) ? n : null
 }
 
 export type ProductFields = {
@@ -110,7 +144,7 @@ export function productMeta(item: Item): ProductMeta {
     brand: m.brand ?? null,
     siteName: m.siteName ?? null,
     url: m.url ?? null,
-    attributes: m.attributes ?? [],
+    attributes: normAttributes(m.attributes),
   }
 }
 
@@ -125,7 +159,7 @@ export function itemAttributes(item: Item): Attribute[] {
   if (k === 'product') return productMeta(item).attributes ?? []
   if (k === 'intent' && item.status === 'done') {
     const m = intentMeta(item)
-    if (m.winner) return m.candidates.find(c => c.id === m.winner)?.attributes ?? []
+    if (m.winner) return normAttributes(m.candidates.find(c => c.id === m.winner)?.attributes)
   }
   return []
 }
