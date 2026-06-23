@@ -4,6 +4,32 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 65 (2026-06-23) — Built "Things" Slice 0; gut-check PASSED
+
+First real build of the Things domain (the s64 composition-over-reaction design). All on branch `things-slice-0` (PR open; not yet merged to `main` as of session end). Everything rides on the existing `Item` model — `type:'thing'`, shape in `metadata.kind` (`'product'` | `'intent'`) — **no DB migration**.
+
+**Shipped (6 commits):**
+- **`api/og-parse.ts`** — free product-link reader: paste URL → server reads OG/product meta tags → `{title,image,price,brand,siteName}`. SSRF-guarded (reuses `_ssrf`), auth + rate-limited, reads only `<head>` (512KB cap). Timeout 13s + `maxDuration:20` (some luxury sites — Max Mara — sit behind bot protection and won't yield to a server fetch; the manual-add fallback is the answer, not a longer timeout). **No Anthropic call.**
+- **`src/screens/ThingsScreen.tsx` + `src/lib/things.ts`** — the board. Two capture paths: **Save a product** (paste → preview → save) and **Plan a purchase** (intent → add candidate links → ★ leaning → "pick this one"; losers persist as signal, no archive). `reaction` stays null; "got it" = a `status:'done'` accent. Temp **4th nav tab** to reach `/things` (real domain switcher = Slice 3).
+- **Edit + manual fallback** — shared `FieldsForm`: edit any product/candidate (swap photo via image URL, fix junky OG titles, price/brand/buy-link); failed scrape offers "add it manually" so it's never a dead end. Edit products from the board via the card ⋯ menu.
+- **On-sale** — optional "Was" price → card shows struck-through original + a "sale" tag (UI-only).
+- **AI Compare (first PAID surface in Things)** — `api/things-compare.ts`, **opt-in only** ("Compare these" button at 2+ candidates). Haiku, text-only (names/brands/prices, no images), **~$0.001/tap**, 30/hr cap, uses `HUMANIZER_GUARDRAILS`. Returns a one-line take per option + a ✨-leaning marker + a short verdict ("a quick AI take — your call").
+- **Plan brief** — a plan carries free-text context (budget/occasion/must-haves/dealbreakers), set at create or edited later in the sheet; fed into Compare so it weighs what actually matters.
+
+**Bugs fixed mid-session:** inputs trimmed on every keystroke → spaces eaten ("Max Mara" untypable) → now trim on save only. `useItems.addItem` now returns the new id (so the intent flow auto-opens).
+
+**Verdict:** Farah — "slice 0 passes the gut check, this is definitely useful to me." The Compare voice reads right (humanizer working on a tiny payload).
+
+**Decisions:**
+- **Comparison table along axes** — DEFERRED to Slice 1. A good table needs consistent axes (material/fit/palette) = the attribute model. A hand-rolled table now would be half AI-guesses. Build the real one once attributes exist.
+- **Image policy** — keep the reliable `og:image` packshot by default (consistent board); photo-edit lets Farah swap in a worn/model shot by choice. No flaky auto gallery-scraping.
+
+**Infra fix (recurring blocker, now solved):** Vercel **preview** deploys bounced login back to prod (`nospaces.vercel.app/library`) regardless of start URL → previews were untestable behind auth. Root cause: Supabase only honors redirect targets on its allow-list; preview subdomains weren't listed, so it fell back to Site URL. Code (`redirectTo: window.location.origin`) was already correct. **Fix: Supabase → Auth → URL Configuration → Redirect URLs → add `https://*.vercel.app/**`.** (Farah to apply.) Saved as memory `preview-auth-redirect`.
+
+**Cost this session:** $0 spent (og-parse free; Compare couldn't be exercised locally — `api/` only runs on Vercel — so no test tokens burned). Compare's live cost is ~$0.001/tap once used on the deploy.
+
+---
+
 ### Session 64 (2026-06-23) — "Things" design reworked around composition-over-reaction (design only, no app code)
 
 Pure design session. Pressure-tested the s63 "Things"/shopping design before building.

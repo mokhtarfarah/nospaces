@@ -15,18 +15,25 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (64) — design only, no app code:** Stress-tested the s63 "Things" design and found the core flaw — **reaction collapses for objects** (you self-select for love before rating), so the react→profile loop barely fires in the domain it's meant to power. **Reworked the whole design around _composition over reaction_:** the taste signal is the *set*, attributes (material/palette/form) are the engine, the aesthetic surfaces as a live board masthead from day one. Brand demoted to one facet; "own" shrinks to a "got it" accent; vision call reads *attributes* not identity. **Intent/candidates kept first-class + in v1** (Farah's make-or-break) with a light no-archive resolve. ROADMAP rewritten + re-sliced (Slice 0 = free gut-check incl. the deliberation flow). Cost $0. Pushed to `main` (`6816e01`).
+**This session (65) — built "Things" Slice 0; gut-check PASSED.** First real build of the Things domain (s64 composition-over-reaction design). On branch **`things-slice-0`** (PR open, **not yet merged to `main`**). All on the existing `Item` model — `type:'thing'`, `metadata.kind` (`'product'`|`'intent'`) — **no migration**. Shipped: free `api/og-parse.ts` link reader · the board with both capture paths (save a product / plan a purchase → candidates → ★ leaning → pick) · edit + manual-add fallback (`FieldsForm`) · on-sale "Was" price · **opt-in AI Compare** (`api/things-compare.ts`, Haiku, ~$0.001/tap, first paid surface in Things) · plan **brief** fed into Compare. Farah: "slice 0 passes the gut check — definitely useful." Full detail + decisions → archive (s65).
 
-**Last session (63):** Shipped the **regions / country filter** (browser-direct backfill), trimmed the filter sheet to collapsible sections, designed the first "Things" expansion (since superseded by s64). Full detail → archive.
+**Last session (64):** Design-only. Reworked Things around composition-over-reaction (the set is the signal, attributes are the engine), kept intent/candidates first-class. Full detail → archive.
 
 ---
 
-## ▶ Next session (65)
+## ▶ Next session (66)
 
-**Main job: start BUILDING the "Things" domain — begin with Slice 0 (free).** The design was reworked in s64 around **composition-over-reaction** (full design → `docs/ROADMAP.md` → "Expansion beyond media"; the *why* → s64 archive entry). Don't re-plan it — it's settled. Build order:
-- **Slice 0 (free, do first): vertical gut-check.** `api/og-parse.ts` (free, reuse `api/_ssrf.ts`) → paste product link → card on a plain grid. **Must include the intent/candidates flow** (create intent "black clogs" → attach 2–3 candidates → mark a leaning → "pick this one") — it's Farah's make-or-break feature, so a gut-check without it proves nothing. No vocab/switcher yet. Decision gate: does the deliberation flow feel good?
-- Then: Slice 1 attribute model + the pure "thread" composition reader (+Vitest, vocab waits for real items) · Slice 2 board + live masthead · Slice 3 domain switcher · **Slice 4 = first PAID surface** (Sonnet vision call that reads *attributes*, not identity — state exact per-call cost before building).
-- Key model facts: all on existing `Item`; `type:'thing'`; `metadata.attributes[]` is the engine; `reaction` stays null for things; intent/candidates resolve is light (done + winner flag, **no archive** — losers persist as signal).
+**First: merge `things-slice-0` → `main`** if not already done (PR is open; Farah merges). Then **Supabase preview-auth fix** must be applied once (`https://*.vercel.app/**` in Redirect URLs) or preview testing stays broken — see memory `preview-auth-redirect` / s65 archive.
+
+**Main job: Slice 1 — the attribute model + the pure "thread" composition reader.** This is what turns the board from a save-list into a *taste mirror* (the whole point). The design is settled (`docs/ROADMAP.md` → "Expansion beyond media"). Build:
+- **`metadata.attributes[]`** on `thing` items: **material** (wool/leather/linen…), **palette** (muted/earth/monochrome…), **form** (oversized/tailored/structured…), price-tier, category. **Vocab waits for real saved items** — don't invent the taxonomy in a vacuum (same lesson as letting the profile wait for real data). Look at what Farah's actually saved on the board first.
+- **The "thread" reader** — pure function: recurring attributes across the set → a short aesthetic read ("muted · natural · structured"). +Vitest (free CI gate).
+- Then **Slice 2** = board + live masthead (the thread shown from ~6 items) · **Slice 3** = domain switcher (replaces the temp 4th nav tab) · **Slice 4** = the second paid surface (Sonnet **vision** attribute-read for photo/link-image capture — state exact per-call cost before building; Compare already proved the paid-surface plumbing).
+- **Deferred to Slice 1:** the **comparison table along axes** Farah asked about — it needs the attribute columns this slice builds. (s65 decision.)
+
+**Carried from s65 (Slice 0 — check on the live preview, don't rebuild):**
+- The board, deliberation loop, edit/manual-fallback, sale price, **AI Compare** voice + the plan **brief**. Slice 0 passed the gut check. Watch: does Compare still read human on real items? Is the plan sheet getting busy now that edit/sale/compare/brief all live in it?
+- **Key model facts:** all on existing `Item`; `type:'thing'`; `metadata.kind` = `product`|`intent`; products carry `{image,price,wasPrice?,brand,siteName,url}`; intents carry `{candidates[],leaning,winner,brief}`; `reaction` stays null; resolve = `done` + winner flag, **no archive** (losers persist).
 
 **Carried from s63 (check, don't rebuild):**
 - **Regions** — shipped, browser-direct backfill. Coverage was still filling in via repeated ⋯ → "pull regions". If it's plateaued with a stubborn `failed` count, slow the pull down (lower concurrency / add pacing in `src/lib/regions.ts`). Language axis `P364` parked in ROADMAP.
