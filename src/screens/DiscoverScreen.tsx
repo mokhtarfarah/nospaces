@@ -544,7 +544,7 @@ function DiscoverWikiLink({ title, creator, type, year }: { title: string; creat
   const { url } = useWikipediaInfo(type, title, creator, year, null)
   if (!url) return null
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="tlink" style={{ fontSize: 11, marginLeft: 'auto' }}>
+    <a href={url} target="_blank" rel="noopener noreferrer" className="tlink" style={{ fontSize: 11 }}>
       wikipedia ↗︎
     </a>
   )
