@@ -15,18 +15,24 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (62):** Continued **#6 (editorial feel app-wide)** — closed the gap on the two screens lagging the Taste/Discover benchmark. **`AddScreen`** got the shared `PageHeader`, palette tokens replacing ad-hoc debug greys, the editorial wash on its "nothing found" prompt, lowercased brand links. **`LibraryScreen`** (already had the magazine header) got a light grey-cleanup: ~25 one-off greys collapsed to `INK/GRAPHITE/MUTE/HAIR` by role, preserving the shared vocabulary (`#111`/`#888`/`#DDD`/`#E8E8E8`). Pushed direct to `main`. Verified by typecheck + 56 tests; **NOT visually verified** (OAuth wall blocks the preview) — eyeball on phone. Full detail → archive.
+**This session (63):** Built the **regions / country filter** end-to-end (country-only, per the decided plan). `api/wiki.ts` now pulls country of origin (film/TV → work's `P495`; book/music → creator's `P27`) and the title-search branch honours `parse=1`. New `src/lib/regions.ts` one-shot backfill; `LibraryScreen` gets a **"region"** filter group + a **"pull regions"** action in the ⋯ menu; auto-fill captures region for new items. Cost $0 (Wikidata reads). Verified: typecheck + 56 tests + live pull (*Drops of God* → France·Japan·US). **NOT visually verified** (OAuth wall) — eyeball on phone: ⋯ → pull regions. **Not yet pushed.** Full detail → archive.
 
-**Last session (61):** Propagated the s60 humanizer guardrails to every prose endpoint via one shared `api/_humanizer.ts`. Full detail → archive.
+**Last session (62):** Brought `AddScreen` + `LibraryScreen` up to the Taste/Discover editorial bar (#6 done). Full detail → archive.
 
 ---
 
-## ▶ Next session (63)
+## ▶ Next session (64)
 
-**#6 (editorial feel app-wide) is now essentially done** — Taste, Discover, Add, Library are all on the same magazine bar (s62). First thing: **Farah to confirm Add + Library on phone** (s62 shipped but couldn't be visually verified — OAuth wall blocks the dev preview). Then pick a direction *before* touching code:
+**First thing: push s63.** The regions feature is built + verified (typecheck/tests/live pull) but **not pushed**. Confirm it eyeballs right on phone (⋯ → pull regions → check the "region" filter populates), then push to `main`.
 
-1. **Taste-tab keep-or-fold** — the meatiest open question: does the taste tab earn its nav slot, or fold into another screen? Decision-heavy; good fresh-chat task. *(Recommended next.)*
-2. Continue the roadmap walk: regions map, expansion beyond media (`docs/ROADMAP.md`).
+**#6 done.** **Regions shipped s63** (country-only). If country alone feels wrong in real use, the language axis (`P364`) is a parked fast-follow → `docs/ROADMAP.md`.
+
+**📅 ~2026-07-14 checkpoint — held decision:**
+1. **Taste-tab keep-or-fold** — DECIDED s63: *keep the tab*; revisit after real desert-island use. (Reasoning + profile-as-masthead fold sketch → `docs/ROADMAP.md`.)
+
+Otherwise pick a direction now:
+- **Expansion beyond media** (restaurants/places, calendar, the "life index") — bigger/longer-term.
+- Smaller carried item (softer PageHeader rule, catalog-miss interstitial decision, the s57 re-checks below).
 
 **Still pending re-check (s57 follow-ups, may already be fine):** Discover blurb titles read upright/distinct; search shows "all" tab highlighted while a query is active.
 

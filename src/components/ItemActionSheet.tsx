@@ -164,6 +164,11 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [runtimeEdit, setRuntimeEdit] = useState(String((item.metadata?.runtime as number | null) ?? ''))
   const [pagesEdit, setPagesEdit] = useState(String((item.metadata?.pages as number | null) ?? ''))
   const [wikiUrlEdit, setWikiUrlEdit] = useState(String((item.metadata?.wikiUrl as string | null) ?? ''))
+  // Region/country of origin — pulled from Wikidata on auto-fill, not hand-edited.
+  // Held in state so a Save persists what the fill resolved.
+  const [countriesEdit, setCountriesEdit] = useState<string[]>(
+    Array.isArray(item.metadata?.countries) ? (item.metadata.countries as string[]) : []
+  )
   const [genrePickerOpen, setGenrePickerOpen] = useState(false)
   const [autoFilling, setAutoFilling] = useState(false)
   const [autoFillInfo, setAutoFillInfo] = useState<AutoFillInfo | null>(null)
@@ -336,6 +341,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
     const pg = parseInt(pagesEdit)
     if (!isNaN(pg) && pg > 0) metadata.pages = pg
     else if (!pagesEdit.trim()) delete metadata.pages
+    // Region — store the resolved country list (empty array marks "pulled, none
+    // found" so the backfill doesn't keep retrying).
+    if (countriesEdit.length) metadata.countries = countriesEdit
+    else delete metadata.countries
     // Saving the edit view CONFIRMS any provisional AI vibes — they move into
     // moods (below), so drop the unconfirmed list.
     delete metadata.unconfirmedVibes
@@ -389,7 +398,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
         { headers }
       )
       if (!res.ok) return
-      const data = await res.json() as { parsed?: { year?: number | null; creator?: string | null; runtime?: number | null; pages?: number | null; genres?: string[] } | null }
+      const data = await res.json() as { parsed?: { year?: number | null; creator?: string | null; runtime?: number | null; pages?: number | null; genres?: string[]; countries?: string[] } | null }
       const p = data.parsed
       if (!p) { setAutoFillInfo({ article: wikiArticleName(wikiUrlEdit), filled: [], viaWiki: true }); return }
       const filled: string[] = []
@@ -397,6 +406,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       if (p.creator && !creator.trim()) { setCreator(p.creator); filled.push('creator') }
       if (p.runtime && !runtimeEdit) { setRuntimeEdit(String(p.runtime)); filled.push('runtime') }
       if (p.pages && !pagesEdit) { setPagesEdit(String(p.pages)); filled.push('pages') }
+      if (p.countries?.length && !countriesEdit.length) { setCountriesEdit(p.countries); filled.push('region') }
       // Genre: only if none set yet. The wiki parse is unreliable for genre, so
       // ask /api/genres (infers from the model's knowledge); fall back to the
       // wiki-parse genres if that returns none.

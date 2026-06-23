@@ -83,7 +83,7 @@ async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: st
   }
 }
 
-interface ParsedFields { year: number | null; creator: string | null; runtime: number | null; pages: number | null; genres: string[] }
+interface ParsedFields { year: number | null; creator: string | null; runtime: number | null; pages: number | null; genres: string[]; countries: string[] }
 
 const WIKI_UA = 'Nospaces/1.0 (https://nospaces.vercel.app; farahmokhtar94@gmail.com) node-fetch'
 const wbFetch = async (url: string) =>
@@ -105,7 +105,7 @@ const WD_CREATOR_PROPS: Record<string, string[]> = {
 // client's /api/genres call (title-knowledge), which handles our vocab better than
 // Wikidata's genre entities.
 async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFields> {
-  const empty: ParsedFields = { year: null, creator: null, runtime: null, pages: null, genres: [] }
+  const empty: ParsedFields = { year: null, creator: null, runtime: null, pages: null, genres: [], countries: [] }
   try {
     // 1. page title → Wikidata Q-id (follow redirects)
     const d1 = await wbFetch(
@@ -156,20 +156,54 @@ async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFi
     const pageCounts = type === 'book' ? amounts('P1104') : []
     const numPages = pageCounts.length ? Math.round(pageCounts[0]) : null
 
-    // creator: up to two entity ids (e.g. co-directors) → resolve to names.
+    // Resolve a list of Q-ids to English labels (one batched call).
+    const labelsFor = async (ids: string[]): Promise<Record<string, string>> => {
+      if (!ids.length) return {}
+      const d = await wbFetch(
+        `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=labels&languages=en&ids=${ids.join('|')}`
+      )
+      const out: Record<string, string> = {}
+      for (const id of ids) {
+        const label = d?.entities?.[id]?.labels?.en?.value as string | undefined
+        if (label) out[id] = label
+      }
+      return out
+    }
+
+    // creator: up to two entity ids (e.g. co-directors). For book/music we also
+    // read each creator's nationality (P27) to derive country of origin, so we
+    // pull labels+claims for them in one call.
     let creator: string | null = null
+    let creatorNatIds: string[] = []
     const creatorIds = entityIds(WD_CREATOR_PROPS[type] ?? []).slice(0, 2)
     if (creatorIds.length) {
       const d3 = await wbFetch(
-        `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=labels&languages=en&ids=${creatorIds.join('|')}`
+        `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=labels|claims&languages=en&ids=${creatorIds.join('|')}`
       )
       const names = creatorIds
         .map(id => (d3?.entities?.[id]?.labels?.en?.value as string | undefined))
         .filter((n): n is string => !!n)
       if (names.length) creator = names.join(' & ')
+      creatorNatIds = creatorIds.flatMap(id =>
+        ((d3?.entities?.[id]?.claims?.P27 ?? []) as Snak[])
+          .map(c => (c.mainsnak?.datavalue?.value as { id?: string })?.id)
+          .filter((q): q is string => !!q)
+      )
     }
 
-    return { year, creator, runtime, pages: numPages, genres: [] }
+    // country of origin. film/tv → the work's P495 (NOT director nationality —
+    // see ROADMAP). book/music → the creator's nationality (P27, gathered above).
+    // Both multi-valued (co-productions), deduped, in source order.
+    const countryIds = (type === 'film' || type === 'tv')
+      ? (claims['P495'] ?? [])
+          .map(c => (c.mainsnak?.datavalue?.value as { id?: string })?.id)
+          .filter((q): q is string => !!q)
+      : creatorNatIds
+    const uniqueCountryIds = [...new Set(countryIds)]
+    const countryLabels = await labelsFor(uniqueCountryIds)
+    const countries = uniqueCountryIds.map(id => countryLabels[id]).filter((c): c is string => !!c)
+
+    return { year, creator, runtime, pages: numPages, genres: [], countries }
   } catch {
     return empty
   }
@@ -218,8 +252,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const b = normalize(found.title)
         if (!b.includes(a) && !a.includes(b)) continue
       }
+      // Opt-in structured parse (same as the URL branch) — lets the region
+      // backfill resolve article + pull fields in a single request.
+      const parsed = req.query.parse === '1' ? await wikidataFields(found.title, type) : null
       res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate')
-      return res.json({ url: found.url, thumbnail: found.thumbnail, summary: found.summary })
+      return res.json({ url: found.url, thumbnail: found.thumbnail, summary: found.summary, parsed })
     } catch {
       // try next query
     }

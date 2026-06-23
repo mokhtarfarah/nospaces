@@ -17,6 +17,8 @@ import { VIBES, VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 import { inReview, reviewCount } from '../lib/review'
+import { pullRegions, itemsNeedingRegion } from '../lib/regions'
+import { authHeaders } from '../lib/supabase'
 
 
 // Editorial palette — matches taste / discover / add
@@ -169,7 +171,7 @@ export function LibraryScreen() {
   const [reviewOnly, setReviewOnly] = useState(false)
   const selectCategory = (t: string) => {
     setReviewOnly(false)
-    setVibeFilter([]); setGenreFilter([]); setSeriesFilter([]); setFilterSheetOpen(false)
+    setVibeFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([]); setFilterSheetOpen(false)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   }
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => loadPrefs().statusFilter ?? 'all')
@@ -181,6 +183,7 @@ export function LibraryScreen() {
   const [verdictFilter, setVerdictFilter] = useState<string[]>([])
   const [genreFilter, setGenreFilter] = useState<string[]>([])
   const [seriesFilter, setSeriesFilter] = useState<string[]>([])
+  const [countryFilter, setCountryFilter] = useState<string[]>([])
   const toggleFilter = (set: React.Dispatch<React.SetStateAction<string[]>>) => (v: string) =>
     set(prev => (prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]))
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
@@ -202,6 +205,7 @@ export function LibraryScreen() {
   const [gapsOpen, setGapsOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [overflowOpen, setOverflowOpen] = useState(false)
+  const [regionBusy, setRegionBusy] = useState(false)
   // Email-capture feed: forwards that added nothing (failed/no-op) so they don't
   // vanish silently. Fetched once on mount; surfaced in the overflow menu only
   // when there's something to show.
@@ -361,12 +365,32 @@ export function LibraryScreen() {
     || reviewOnly || newMusicOnly || !!query.trim()
   // Badge counts every selected chip across groups, so "filter · 3" reflects how
   // many tags are narrowing the list (not just how many groups are touched).
-  const filterCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length
+  const filterCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length + countryFilter.length
     + (newMusicOnly && musicOnly ? 1 : 0)
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
-    setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([])
+    setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([])
     setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setFilterSheetOpen(false)
+  }
+
+  // Region backfill — one-shot Wikidata pull (free) for media items not yet
+  // attempted. Updates rows in place via patchMetadata; progress shown as a toast.
+  const regionPending = useMemo(() => itemsNeedingRegion(items).length, [items])
+  async function handlePullRegions() {
+    if (regionBusy) return
+    setRegionBusy(true)
+    setOverflowOpen(false)
+    setToast('pulling regions…')
+    try {
+      const headers = await authHeaders()
+      const result = await pullRegions(items, headers, patchMetadata, p => setToast(`pulling regions… ${p.done}/${p.total}`))
+      setToast(result.filled > 0 ? `region added to ${result.filled} item${result.filled === 1 ? '' : 's'}` : 'no regions found')
+    } catch {
+      setToast("couldn't pull regions — check your connection")
+    } finally {
+      setRegionBusy(false)
+      setTimeout(() => setToast(null), 3000)
+    }
   }
 
   const sort: SortOption = VIEW_CONFIG[view].sort
@@ -438,8 +462,12 @@ export function LibraryScreen() {
     if (verdictFilter.length > 0) result = result.filter(item => verdictFilter.some(v => item.moods?.includes(v)))
     if (genreFilter.length > 0) result = result.filter(item => genreFilter.some(g => item.tags?.includes(g)))
     if (seriesFilter.length > 0) result = result.filter(item => seriesFilter.some(s => item.metadata?.series === s))
+    if (countryFilter.length > 0) result = result.filter(item =>
+      Array.isArray(item.metadata?.countries) &&
+      countryFilter.some(c => (item.metadata.countries as string[]).includes(c))
+    )
     return sortItems(result, sort, dir)
-  }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, sort, dir])
+  }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, sort, dir])
 
   // Vibes and genres present in the current base-filtered set, for filter chips.
   const availableTags = useMemo(() => {
@@ -447,6 +475,7 @@ export function LibraryScreen() {
     const verdictSet = new Set<string>()
     const genreSet = new Set<string>()
     const seriesSet = new Set<string>()
+    const countrySet = new Set<string>()
     baseFiltered.forEach(i => {
       i.moods?.forEach(m => {
         if (VIBES.includes(m)) vibeSet.add(m)
@@ -459,12 +488,16 @@ export function LibraryScreen() {
       i.tags?.forEach(t => genreSet.add(t))
       const s = i.metadata?.series
       if (typeof s === 'string' && s.trim()) seriesSet.add(s)
+      if (Array.isArray(i.metadata?.countries)) {
+        (i.metadata.countries as string[]).forEach(c => { if (c.trim()) countrySet.add(c) })
+      }
     })
     return {
       vibes:    VIBES.filter(v => vibeSet.has(v)),        // canonical order, vibes only
       verdicts: VERDICTS.filter(v => verdictSet.has(v)),  // canonical order, verdicts only
       genres:   [...genreSet].filter(isGenreTag).sort(),
       series:   [...seriesSet].sort(),
+      countries:[...countrySet].sort(),
     }
   }, [baseFiltered])
 
@@ -484,6 +517,7 @@ export function LibraryScreen() {
     setVerdictFilter(prev => prev.filter(v => availableTags.verdicts.includes(v)))
     setGenreFilter(prev => prev.filter(v => availableTags.genres.includes(v)))
     setSeriesFilter(prev => prev.filter(v => availableTags.series.includes(v)))
+    setCountryFilter(prev => prev.filter(v => availableTags.countries.includes(v)))
     listRef.current?.scrollTo({ top: 0 })
     setCollapsed(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prune only on base-control change, not on every availableFilters recompute
@@ -622,7 +656,7 @@ export function LibraryScreen() {
               onClick={() => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
             />
           ))}
-          {(availableTags.vibes.length > 0 || availableTags.verdicts.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || musicOnly) && (
+          {(availableTags.vibes.length > 0 || availableTags.verdicts.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0 || musicOnly) && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
               <button
@@ -647,8 +681,9 @@ export function LibraryScreen() {
                   verdictFilter={verdictFilter} onToggleVerdict={toggleFilter(setVerdictFilter)}
                   genreFilter={genreFilter} onToggleGenre={toggleFilter(setGenreFilter)}
                   seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
+                  countryFilter={countryFilter} onToggleCountry={toggleFilter(setCountryFilter)}
                   showNewMusic={musicOnly} newMusicOnly={newMusicOnly} onToggleNewMusic={() => setNewMusicOnly(v => !v)}
-                  onClearGroups={() => { setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setNewMusicOnly(false) }}
+                  onClearGroups={() => { setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([]); setNewMusicOnly(false) }}
                   onClose={() => setFilterSheetOpen(false)}
                 />
               )}
@@ -918,11 +953,14 @@ export function LibraryScreen() {
           gapCount={gapCount}
           captureCount={captures.length}
           captureFailures={captureFailures}
+          regionPending={regionPending}
+          regionBusy={regionBusy}
           selectMode={selectMode}
           onClose={() => setOverflowOpen(false)}
           onGuide={() => { setOverflowOpen(false); navigate('/guide') }}
           onTidy={() => { setOverflowOpen(false); setGapsOpen(true) }}
           onCaptures={() => { setOverflowOpen(false); setCapturesOpen(true) }}
+          onPullRegions={handlePullRegions}
           onSelect={() => { setOverflowOpen(false); selectMode ? exitSelect() : setSelectMode(true) }}
         />
       )}
@@ -957,20 +995,22 @@ function FilterSheet({
   verdictFilter, onToggleVerdict,
   genreFilter, onToggleGenre,
   seriesFilter, onToggleSeries,
+  countryFilter, onToggleCountry,
   showNewMusic, newMusicOnly, onToggleNewMusic,
   onClearGroups, onClose,
 }: {
-  availableTags: { vibes: string[]; verdicts: string[]; genres: string[]; series: string[] }
+  availableTags: { vibes: string[]; verdicts: string[]; genres: string[]; series: string[]; countries: string[] }
   seriesRelevant: boolean
   vibeFilter: string[]; onToggleVibe: (v: string) => void
   verdictFilter: string[]; onToggleVerdict: (v: string) => void
   genreFilter: string[]; onToggleGenre: (v: string) => void
   seriesFilter: string[]; onToggleSeries: (v: string) => void
+  countryFilter: string[]; onToggleCountry: (v: string) => void
   showNewMusic: boolean; newMusicOnly: boolean; onToggleNewMusic: () => void
   onClearGroups: () => void
   onClose: () => void
 }) {
-  const activeCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length
+  const activeCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length + countryFilter.length
     + (showNewMusic && newMusicOnly ? 1 : 0)
   return (
     <>
@@ -1010,6 +1050,9 @@ function FilterSheet({
         )}
         {seriesRelevant && availableTags.series.length > 0 && (
           <FilterSection label="series" options={availableTags.series} selected={seriesFilter} onSelect={onToggleSeries} />
+        )}
+        {availableTags.countries.length > 0 && (
+          <FilterSection label="region" options={availableTags.countries} selected={countryFilter} onSelect={onToggleCountry} />
         )}
         {/* Trailing spacer instead of container padding-bottom: mobile WebKit
             omits a scroll container's own padding-bottom from the scrollable
@@ -1352,15 +1395,18 @@ function HeaderControls({ filtersActive, onClear, onSearch, onMore }: {
 }
 
 // Overflow bottom sheet — holds the occasional actions pulled out of the header.
-function OverflowSheet({ gapCount, captureCount, captureFailures, selectMode, onClose, onGuide, onTidy, onCaptures, onSelect }: {
+function OverflowSheet({ gapCount, captureCount, captureFailures, regionPending, regionBusy, selectMode, onClose, onGuide, onTidy, onCaptures, onPullRegions, onSelect }: {
   gapCount: number
   captureCount: number
   captureFailures: number
+  regionPending: number
+  regionBusy: boolean
   selectMode: boolean
   onClose: () => void
   onGuide: () => void
   onTidy: () => void
   onCaptures: () => void
+  onPullRegions: () => void
   onSelect: () => void
 }) {
   const Row = ({ label, sub, onClick }: { label: string; sub: string; onClick: () => void }) => (
@@ -1381,6 +1427,7 @@ function OverflowSheet({ gapCount, captureCount, captureFailures, selectMode, on
         <Row label="how to use" sub="a quick tour of nospaces" onClick={onGuide} />
         {gapCount > 0 && <Row label={`tidy · ${gapCount}`} sub="fill in missing details" onClick={onTidy} />}
         {captureCount > 0 && <Row label={captureFailures > 0 ? `email captures · ${captureFailures}` : 'email captures'} sub="forwards that didn’t save" onClick={onCaptures} />}
+        {regionPending > 0 && <Row label={regionBusy ? 'pulling regions…' : `pull regions · ${regionPending}`} sub="tag films, books & music by country" onClick={regionBusy ? () => {} : onPullRegions} />}
         <Row label={selectMode ? 'cancel select' : 'select items'} sub="multi-select to bulk delete" onClick={onSelect} />
       </div>
     </>

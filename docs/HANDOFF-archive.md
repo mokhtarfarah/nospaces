@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 63 (2026-06-23) — Regions / country filter built (country-only, per the decided plan)
+
+Built the **regions feature** end-to-end on the s63-decided plan: country-only, film/TV = the *work's* country, books/music = creator nationality, language (`P364`) deferred. Cost: **$0** — all Wikidata reads, no Anthropic.
+
+Shipped:
+1. **`api/wiki.ts`** — `wikidataFields` now returns `countries: string[]`. film/tv → the work's country of origin (`P495`); book/music → the creator's nationality (`P27`, read from the creator entity we already fetch — combined into the existing labels call as `props=labels|claims`). Q-ids resolved to English labels, multi-valued + deduped for co-productions. The **title-search branch** now also honours `parse=1`, so the backfill can resolve-article-and-pull-fields in one request even for items with no stored `wikiUrl`.
+2. **`api/wiki.ts` / `ItemActionSheet.tsx`** — auto-fill captures region too (only when empty, like year/creator/runtime/pages) → saved to `metadata.countries`. New `countriesEdit` state holds it across a Save; empty array = "pulled, none found".
+3. **New `src/lib/regions.ts`** — `pullRegions()` one-shot backfill (light concurrency, 3-wide) + `itemsNeedingRegion()` / `regionPulled()` helpers. Prefers a stored `wikiUrl`, else title/type/creator/year search; saves via `patchMetadata` (in-place, no refetch fan-out).
+4. **`LibraryScreen.tsx`** — new **"region"** filter group in the FilterSheet (mirrors the `series` group exactly: OR-within/AND-across, smart-persist, filterCount, clear-all). Reads `metadata.countries`. Plus a **"pull regions · N"** row in the ⋯ overflow menu that runs the backfill with a live progress toast (`pulling regions… 12/47` → `region added to N items`).
+
+**Decisions baked in:** no manual region-edit field (use-before-you-build — add only if Wikidata mis-tags often in real use); empty-countries marks attempted so re-runs skip it; items whose article can't be resolved stay un-attempted so a later run with better data can retry.
+
+**Verified:** typecheck clean (UI + api), 56/56 tests pass, no dev-server console errors. **Live Wikidata pull proven** via the exact code path — *Drops of God* returns `France · Japan · United States` (the co-production case the plan flagged). **NOT visually verified** — the region filter only appears once items carry countries, which needs login + a backfill run, and the preview is behind the Google OAuth wall (same constraint as s62). Farah to eyeball on phone: ⋯ → pull regions → confirm the filter populates.
+
+---
+
 ### Session 62 (2026-06-23) — #6 editorial feel: Add + Library brought up to the taste/discover bar
 
 Continued **#6 (editorial feel app-wide)**. Taste + Discover were already the benchmark; this session closed the gap on the two screens that lagged. **Pushed to `main` (direct push, 2-user workflow): `b7820e8..3ee3016`.** Cost: $0 — pure UI, no `api/` touched.
