@@ -16,7 +16,7 @@ Five of the six s56 observations shipped in s57 (see archive). One remains:
 
 ## Standing principle — humanizer prose
 
-**Anywhere the app generates user-facing text with an LLM, it must not FEEL AI-written** — and must carry true, meaningful insight, not generic filler. Reference: `github.com/blader/humanizer` (catalogued signs of AI writing + fixes). The taste profile is the standout (it can only be AI-generated, so it especially can't feel that way). **Done:** `api/taste-profile.ts` system prompt has the full anti-AI-writing guardrail block (s60). **To do:** propagate the same block to the other prose endpoints — `api/blurb.ts`, `api/recommend.ts`, `api/recommend-feeds.ts` (and any future generator). *Trigger: next time we touch any of those endpoints, or a dedicated pass.*
+**Anywhere the app generates user-facing text with an LLM, it must not FEEL AI-written** — and must carry true, meaningful insight, not generic filler. Reference: `github.com/blader/humanizer` (catalogued signs of AI writing + fixes). The guardrails now live in one place — **`api/_humanizer.ts`** (`HUMANIZER_GUARDRAILS`), imported by `taste-profile.ts`, `recommend-feeds.ts`, and `recommend.ts` (s61). *Any future prose generator must import it too — don't re-paste the block.* (`api/blurb.ts` is extraction, not AI — no guardrails needed.)
 
 ---
 

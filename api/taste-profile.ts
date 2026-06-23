@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
+import { HUMANIZER_GUARDRAILS } from './_humanizer.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -37,22 +38,9 @@ Substance rules:
 - The vibe words shown on the page are anchors — deepen them with something specific; do not restate or list them.
 - Private notes are evidence for you to reason from, not for publication. Never quote or echo a note's wording.
 
-Sound like a person, not an AI. These are tells of machine writing — avoid them:
-- Puffery and inflated significance: "pivotal," "testament," "marks a turning point," "indelible mark," "deeply rooted," "rich tapestry," "speaks to something broader." Don't announce that something is meaningful — show the pattern and let it land.
-- The connective filler AI leans on: "moreover," "furthermore," "additionally," "delve," "underscore," "highlight," "showcase," "boasts," "intricate," "landscape," "vibrant," "enduring," "interplay," "nuanced," "layered," "resonant," "compelling," "evocative," "cinematic," "complex," "thoughtful," "journey."
-- The rule of three: stacking adjectives or clauses in threes ("bold, strange, and tender"). Vary the rhythm instead.
-- Negative parallelism: "not just X, but Y" / "it's not X, it's Y." Use it at most once, and only if it's genuinely the sharpest way to say something.
-- Trailing "-ing" clauses that bolt on fake analysis: "...creating a sense of," "...highlighting their range," "...reflecting a deeper." End sentences cleanly.
-- Dressed-up copulas: prefer plain "is/are" over "serves as," "stands as," "represents."
-- Vague attribution: no "critics say," "many would argue," "it's often noted."
-- Synonym cycling: don't rename the same thing three different ways to dodge repetition ("the protagonist... the central figure... our hero"). Just repeat the plain word.
-- False ranges: don't fake scope with sweeping "from X to Y" constructions ("from quiet heartbreak to grand spectacle").
-- Manufactured punchlines and staccato drama: don't stack clipped fragments for fake weight ("No plot. No comfort. No apology."). A short sentence is fine; a drumroll of them is a tell.
-- Aphorism formulas: don't land on a quotable-sounding maxim ("restraint is its own kind of risk"). Make the real point instead.
-- Conversational rhetorical openers: don't start with fake-candid hooks ("Honestly?", "Here's the thing."). Just begin.
-- Passive or subjectless constructions where a person would name who's doing what.
+${HUMANIZER_GUARDRAILS}
 
-Write with contractions, plain words, and sentences of varied length. Em-dashes are fine where they read naturally; don't lean on them. No hedging, no preamble, no bullet points, no summary sentence at the end. Just the two paragraphs.`
+No hedging, no preamble, no bullet points, no summary sentence at the end. Just the two paragraphs.`
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()

@@ -4,6 +4,24 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 61 (2026-06-23) — Humanizer guardrails propagated to all prose endpoints (one shared source)
+
+Acted on the s60 standing principle: *all* AI prose must not FEEL AI-written. Instead of pasting the s60 guardrail block into three more files (the drift trap the genre-vocab note warns about), extracted it to **one home**.
+
+Shipped:
+1. **New `api/_humanizer.ts`** — exports `HUMANIZER_GUARDRAILS` (the full anti-AI-writing block from s60). Edit the voice here, it propagates to every importer.
+2. **`api/taste-profile.ts`** — now imports the shared block instead of its own inline copy (no behavior change; just no longer the only copy).
+3. **`api/recommend-feeds.ts`** — discovery **"why"** lines now carry the guardrails (the most-read AI prose in the app). Appended after the per-mode prompt as a "someone will read this" note.
+4. **`api/recommend.ts`** — item **blurbs** get them too (both web + PDF prompts), scoped to "when you write from your own knowledge rather than quoting the source" since blurbs are mostly extractive.
+
+**Correction to the s60 handoff:** `api/blurb.ts` is NOT an AI endpoint — it extracts summaries from Open Library / Apple Books, no Anthropic call. It was listed for propagation by mistake; left untouched. (Noted in memory `humanizer-prose-guidelines`.)
+
+**Verified:** both typechecks pass (UI + api). Ran **one** Sonnet test call (~1¢, well under cap) mirroring the in-taste "why" prompt — prose came back genuinely human ("Robinson writes domestic life like weather passing through a room"; "the architecture is all negative space"). No puffery, filler, or rule-of-three. Temp test script deleted after.
+
+Cost: $0 for the edits; ~1¢ for the single verification call.
+
+---
+
 ### Session 60 (2026-06-23) — Farah's s59 feedback: island "why" field, humanizer prose prompt, add-confirmation, gitleaks CI fix
 
 Discussion-led session on the s59 redesign, then shipped. **Pushed to `main` (direct push, 2-user workflow); Farah verified the detail sheet on phone — looks good.** Costs: only the taste-profile regen costs (1 Sonnet call); ran **one** test gen (~1¢) to demo the new voice. Everything else free (UI + freeform metadata + CI config).

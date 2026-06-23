@@ -15,19 +15,18 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (60):** Acted on Farah's s59 feedback (verified on phone — good). Shipped: (1) **island "why" field** (`metadata.canonNote`) — separate from the library note, reads as prose + `edit` link in the detail sheet, surfaced as the italic line in each pick row (the Discover touch that was missing); library note hides once a why exists; (2) **covers bumped to match Discover** (opacity .42, mask 30%, numeral 96) — the "not as chic" fix; (3) add picker now shows **"added ✓"**; (4) removed the ◇ glyph by the desert-island chip; (5) **humanizer prose prompt** — anti-AI-writing guardrails (`github.com/blader/humanizer`) + "sharp friend" voice, model → **sonnet-4-6**; (6) **gitleaks CI fix** (free CLI, no license gate). Standing principle logged: all AI prose must not *feel* AI-written. Commits `7281535`, `eb07fa4`. Full detail → archive.
+**This session (61):** Propagated the s60 humanizer guardrails to every prose endpoint, via **one shared source**: new `api/_humanizer.ts` exports `HUMANIZER_GUARDRAILS`, now imported by `taste-profile.ts` (replaced its inline copy), `recommend-feeds.ts` (the discovery "why" lines), and `recommend.ts` (item blurbs, web + PDF). **Correction:** `api/blurb.ts` is NOT an AI endpoint (it extracts from Open Library / Apple Books) — left untouched. Verified: both typechecks pass + one Sonnet test call (~1¢) returned genuinely human "why" prose. Full detail → archive.
 
-**Last session (59):** Full taste-page redesign — tabbed (profile / desert island) + numbered, curatable desert island. Full detail → archive.
+**Last session (60):** Acted on Farah's s59 feedback (phone-verified). Island "why" field, cover chic bump, add-confirmation, humanizer prose prompt on `taste-profile.ts`, gitleaks CI fix. Full detail → archive.
 
 ---
 
-## ▶ Next session (61)
+## ▶ Next session (62)
 
-Taste is now done (redesigned s59, polished s60 + phone-verified). Pick a direction *before* touching code:
+Humanizer guardrails are now propagated everywhere (s61, one shared `api/_humanizer.ts`). Taste is done (s59/s60, phone-verified). Pick a direction *before* touching code:
 
-1. **#6 — editorial feel app-wide** continues. Taste + Discover are the benchmark; **Library + Add** are what's left to bring up to that bar.
-2. **Propagate the humanizer guardrails** (new s60) to the other prose endpoints — `api/blurb.ts`, `api/recommend.ts`, `api/recommend-feeds.ts`. The block in `api/taste-profile.ts` is the template. *Standing principle: all AI prose must not feel AI-written.* (`docs/ROADMAP.md`)
-3. Or continue the roadmap walk: **taste tab keep-or-fold**, regions map, expansion beyond media (`docs/ROADMAP.md`).
+1. **#6 — editorial feel app-wide** continues. Taste + Discover are the benchmark; **Library + Add** are what's left to bring up to that bar. *(Best candidate — the last big direction from s56.)*
+2. Continue the roadmap walk: **taste tab keep-or-fold**, regions map, expansion beyond media (`docs/ROADMAP.md`).
 
 **Still pending re-check (s57 follow-ups, may already be fine):** Discover blurb titles read upright/distinct; search shows "all" tab highlighted while a query is active.
 

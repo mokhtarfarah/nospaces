@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
 import { isSafePublicUrl } from './_ssrf.js'
+import { HUMANIZER_GUARDRAILS } from './_humanizer.js'
 
 export const config = { maxDuration: 60 }
 
@@ -304,11 +305,18 @@ Return ONLY valid JSON (no markdown, no preamble):
   ]
 }`
 
+  // The "why" lines are prose a person reads, so hold them to the same
+  // anti-AI-writing bar as the taste profile (see api/_humanizer.ts).
+  const fullPrompt = `${prompt}
+
+A note on the "why" field — someone will actually read these, so they have to sound human:
+${HUMANIZER_GUARDRAILS}`
+
   try {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: fullPrompt }],
     })
 
     const text = message.content[0].type === 'text' ? message.content[0].text.trim() : '{}'
