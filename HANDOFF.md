@@ -15,7 +15,9 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (66) — Things Slices 1–3 + masthead + two feedback rounds. All on `main` (no branches now).** Slice 1 = attribute model + pure `readThread`. Slice 3 = `DomainSwitcher` (Media/Things toggle) + stop things leaking into the media Library. Slice 2 = `ThreadMasthead` (≥4 tagged → "muted · wool · structured", else a nudge). Then Farah's feedback: **Form facet → Vibe** (holds bold/statement/chunky; legacy tags mapped forward), category out of the thread, board **sorting** + **category filter**, dismissable Compare, JSON-LD scraper fix (the "Woman"/no-price misses), **email-in** (`things@nospaces.xyz` → free scrape → board, via shared `api/_scrape.ts`), and **Compare cheap-reviews** (reads each product page's description + on-page rating, still Haiku ~$0.001–0.002, no web search). Comparison-table dropped. 73 Vitest green. Full detail + decisions → archive (s66).
+**This session (66) — Things Slices 1–3 + masthead + two feedback rounds. All on `main` (no branches now).** Slice 1 = attribute model + pure `readThread`. Slice 3 = `DomainSwitcher` (Media/Things toggle) + stop things leaking into the media Library. Slice 2 = `ThreadMasthead` (≥4 tagged → "muted · wool · structured", else a nudge). Then Farah's feedback: **Form facet → Vibe** (holds bold/statement/chunky; legacy tags mapped forward), category out of the thread, board **sorting** + **category filter**, dismissable Compare, JSON-LD scraper fix (the "Woman"/no-price misses), **email-in**, and **Compare cheap-reviews** (reads each product page's description + on-page rating, still Haiku ~$0.001–0.002, no web search). Comparison-table dropped. 73 Vitest green. Full detail + decisions → archive (s66).
+
+**⏸ Stopped mid-verification of email-in.** Farah tested it → nothing landed. Cause: she emailed her **normal media inbox**, not `things@` — so it ran the media flow and gave up (and no reply came back: talkback is gated on Postmark approval, so the **board is the only signal**). Fix shipped: the **normal inbox now auto-saves a thing** when an email has no media but a *product-like* link (`captureThing` + strict `productLike` gate so articles don't slip in); also reads links from HTML `href`s. Both `things@` and the normal inbox now work. **Last push `3f9f08d` — VERIFY ON DEPLOY (see Next session).**
 
 **Last session (65):** Built "Things" Slice 0 — gut-check PASSED, merged via PR #16. Free `og-parse` reader · board + both capture paths · deliberation loop · sale price · opt-in AI Compare + plan brief. (s65 archive entry was recovered after PR #16 cut one commit short.)
 
@@ -23,11 +25,16 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 ## ▶ Next session (67)
 
-**First — verify on the live deploy (s66 shipped a lot that couldn't be tested locally):**
-- **`api/` paths only run on Vercel**, so these are unverified until deployed: **email-in** (send `things@nospaces.xyz` a product link → check it lands; also confirm Postmark inbound is domain-wide so `things@` reaches the webhook), the **JSON-LD scraper** (re-add a link that failed before, e.g. the "Woman" one — name/price should fill now), and **Compare cheap-reviews** (run Compare on 2+ linked candidates — it should reference details/ratings).
-- **Behind Google auth (eyeball on live):** the masthead, Vibe rename, sorting, category filter, switcher-in-caps, no-redundant-header.
-- **Supabase preview-auth fix** still pending (`https://*.vercel.app/**` in Redirect URLs) — see memory `preview-auth-redirect`.
-- **Tag the 3 existing saves** — the masthead shows the "tag a few (0/4)" nudge until ≥4 are tagged (by design). Tagging them is the real gut-check that the thread reads true.
+**PICK UP HERE — verify email-in on the live deploy (push `3f9f08d`).** This is exactly where we stopped.
+1. **Retest email-in:** forward/send a product link to Farah's **normal Nospaces inbox** (the auto-fallback path we just shipped) → wait ~2 min for the Vercel build → check it lands on the **board** (NO confirmation email — talkback is gated). Also worth a test to **`things@nospaces.xyz`** directly.
+2. **If it fails:** the in-app **email-captures feed** (in Library) logs failures with a reason — read that to trace. Common culprits: sender not in `ALLOWED_EMAILS`; Postmark inbound not domain-wide (only matters for the `things@` path — the normal-inbox fallback sidesteps it); link only reachable behind bot-protection (scrape fails).
+3. Talkback replies are still gated on Postmark approval — until then, **no confirmation email** comes back on success OR failure. Worth chasing the Postmark approval so capture isn't silent.
+
+**Then — the rest of s66 still needs an eyeball on the live app** (`api/` + auth don't run locally):
+- **JSON-LD scraper** (re-add the link that returned "Woman" — name/price should fill now) · **Compare cheap-reviews** (run Compare on 2+ linked candidates — should cite details/ratings).
+- **Behind auth (eyeball):** masthead, Vibe rename, sorting, category filter, switcher-in-caps, no redundant header.
+- **Supabase preview-auth fix** still pending (`https://*.vercel.app/**` in Redirect URLs) — memory `preview-auth-redirect`.
+- **Tag the 3 existing saves** — masthead shows "tag a few (0/4)" until ≥4 tagged (by design); tagging them is the real thread gut-check.
 
 **Main job: Slice 4 — first PAID surface in Things.** Sonnet **vision** attribute-read for photo/link-image capture (reads material/palette/vibe/category off an image, not identity). **State exact per-call cost before building** — Compare proved the paid plumbing. The natural unlock: vision fills the tags the masthead reads, so the board mirrors you without manual tagging (also covers Farah's "auto-category" ask).
 
