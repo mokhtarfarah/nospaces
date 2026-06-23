@@ -2,14 +2,14 @@ import type { ReactNode } from 'react'
 import { typeColor } from '../lib/colors'
 
 // Shared editorial header for the bottom-sheet detail views (Discover pick +
-// Library item). One language everywhere: a ghosted cover wash that bleeds up
-// behind the close-button row to the rounded top of the card, an oversized
-// rank watermark (Discover only), a crisp borderless poster, then a big title
-// + uppercase meta. No filled boxes. The ✕ keeps its own row (it never sits on
-// the art); the wash simply starts further up, behind it.
+// Library item). One language everywhere: a ghosted cover wash bleeding to the
+// rounded top of the card, then a crisp borderless poster on the LEFT with the
+// title beside it (tops aligned), and — Discover only — an oversized rank
+// numeral as a faint watermark behind the title. No filled boxes. The ✕ keeps
+// its own row up top, clear of the cover.
 const INK = '#1C1B19'
 const MUTE = '#ABA69C'
-const NUMERAL = '#E0DDD5'
+const NUMERAL = '#E4E1D9'
 
 export function SheetHero({
   type,
@@ -30,15 +30,12 @@ export function SheetHero({
 }) {
   const tint = typeColor(type).bg
   const square = type === 'music'
-  // Poster footprint is kept close to the title+meta+links block's height so
-  // the content below (blurb, genres…) starts right under the menu instead of
-  // being pushed past the bottom of a tall cover.
-  const posterW = 62
-  const posterH = square ? 62 : 92
+  const posterW = 66
+  const posterH = square ? 66 : 98
 
   return (
     <div style={{
-      position: 'relative', overflow: 'hidden', minHeight: 140,
+      position: 'relative', overflow: 'hidden',
       // Pull up over the sheet's 10px top padding + out over its 20px side
       // padding so the wash reaches the rounded top corners of the card.
       margin: '-10px -20px 4px', padding: '0 20px 16px',
@@ -62,36 +59,38 @@ export function SheetHero({
         }} />
       )}
 
-      {/* Oversized rank watermark — Discover only; sits behind the title, below ✕ */}
-      {numeral != null && (
-        <span style={{
-          position: 'absolute', left: 8, top: 46,
-          fontSize: 138, fontWeight: 300, color: NUMERAL, lineHeight: 1, letterSpacing: '-8px',
-          zIndex: 0, pointerEvents: 'none', userSelect: 'none',
-        }}>{numeral}</span>
-      )}
-
-      {/* Crisp poster — the one sharp look at the real art; sits below the ✕ row */}
-      {cover && (
-        <img src={cover} alt="" style={{
-          position: 'absolute', top: 44, right: 20, width: posterW, height: posterH,
-          objectFit: 'cover', objectPosition: square ? 'center' : 'top', borderRadius: 2,
-          boxShadow: '0 3px 12px rgba(0,0,0,0.22)', zIndex: 2,
-        }} />
-      )}
-
       <div style={{ position: 'relative', zIndex: 1 }}>
-        {/* ✕ in its own row, as before — never over the cover art */}
+        {/* ✕ in its own row, as before — clear of the cover */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10, height: 24, boxSizing: 'content-box' }}>
           {onClose && (
             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6F6B64', fontSize: 16, lineHeight: 1, padding: '0 0 4px' }}>✕</button>
           )}
         </div>
 
-        <div style={{ paddingTop: numeral != null ? 52 : 6, paddingRight: cover ? 88 : 32 }}>
-          <div style={{ fontSize: 24, fontWeight: 600, color: INK, lineHeight: 1.18, letterSpacing: '-0.4px' }}>{title}</div>
-          <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 7 }}>{meta}</div>
-          {children && <div style={{ marginTop: 10 }}>{children}</div>}
+        {/* Cover on the left, title block beside it — tops aligned via flex-start */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          {cover && (
+            <img src={cover} alt="" style={{
+              width: posterW, height: posterH, flexShrink: 0,
+              objectFit: 'cover', objectPosition: square ? 'center' : 'top', borderRadius: 2,
+              boxShadow: '0 3px 12px rgba(0,0,0,0.22)',
+            }} />
+          )}
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            {/* Rank watermark — Discover only; faint, behind the title */}
+            {numeral != null && (
+              <span style={{
+                position: 'absolute', left: -2, top: -10, zIndex: 0,
+                fontSize: 116, fontWeight: 300, color: NUMERAL, lineHeight: 1, letterSpacing: '-7px',
+                pointerEvents: 'none', userSelect: 'none',
+              }}>{numeral}</span>
+            )}
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ fontSize: 23, fontWeight: 600, color: INK, lineHeight: 1.16, letterSpacing: '-0.4px' }}>{title}</div>
+              <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 7 }}>{meta}</div>
+              {children && <div style={{ marginTop: 10 }}>{children}</div>}
+            </div>
+          </div>
         </div>
       </div>
     </div>
