@@ -2,21 +2,24 @@ import type { Item } from './database.types'
 import { GAP_MEDIA_TYPES } from './gaps'
 
 // Country-of-origin backfill. Pulls each media item's region from Wikidata
-// (free — no Anthropic) and stores it on metadata.countries. An empty array
-// means "pulled, none found" so re-runs skip it. film/tv use the work's country
-// (P495); book/music use the creator's nationality (P27) — resolved server-side
-// in /api/wiki. See ROADMAP "Regions map / country filter".
+// (free — no Anthropic) and stores it on metadata.countries. film/tv use the
+// work's country (P495); book/music use the creator's country (P27/P495/P17) —
+// resolved server-side in /api/wiki. See ROADMAP "Regions map / country filter".
+//
+// We only persist real hits — an item with no country found is left untagged so
+// a later run (better data, or an improved resolver) retries it. Re-running is
+// free and idempotent.
 
 export interface RegionProgress { done: number; total: number; filled: number }
 
-// True once a region pull has been attempted (countries present, even if empty).
-export function regionPulled(item: Item): boolean {
-  return Array.isArray(item.metadata?.countries)
+// True once an item carries at least one country.
+export function hasRegion(item: Item): boolean {
+  return Array.isArray(item.metadata?.countries) && (item.metadata.countries as string[]).length > 0
 }
 
-// Items eligible for a region pull: media types we know how to resolve, not yet attempted.
+// Items eligible for a region pull: media types we know how to resolve, not yet tagged.
 export function itemsNeedingRegion(items: Item[]): Item[] {
-  return items.filter(i => GAP_MEDIA_TYPES.includes(i.type) && !regionPulled(i))
+  return items.filter(i => GAP_MEDIA_TYPES.includes(i.type) && !hasRegion(i))
 }
 
 interface ParsedRegion { countries?: string[] }
@@ -33,10 +36,7 @@ async function pullOne(item: Item, headers: HeadersInit): Promise<string[] | nul
     const res = await fetch(url, { headers })
     if (!res.ok) return null
     const data = await res.json() as { parsed?: ParsedRegion | null }
-    // No parse object at all → article couldn't be resolved; leave unattempted
-    // so a later run (with better data) can retry. Empty countries → attempted.
-    if (!data.parsed) return null
-    return Array.isArray(data.parsed.countries) ? data.parsed.countries : []
+    return Array.isArray(data.parsed?.countries) ? data.parsed.countries : null
   } catch {
     return null
   }
@@ -59,9 +59,10 @@ export async function pullRegions(
   async function worker(slice: Item[]) {
     for (const item of slice) {
       const countries = await pullOne(item, headers)
-      if (countries) {
+      // Only persist real hits — leave misses untagged so a re-run retries them.
+      if (countries && countries.length) {
         await save(item.id, { countries })
-        if (countries.length) filled++
+        filled++
       }
       done++
       onProgress?.({ done, total, filled })

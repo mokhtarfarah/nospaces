@@ -170,11 +170,21 @@ async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFi
       return out
     }
 
-    // creator: up to two entity ids (e.g. co-directors). For book/music we also
-    // read each creator's nationality (P27) to derive country of origin, so we
-    // pull labels+claims for them in one call.
+    // Pull entity-id values for a property out of any claims object.
+    const claimIds = (cl: Record<string, Snak[]>, pid: string): string[] =>
+      (cl[pid] ?? [])
+        .map(c => (c.mainsnak?.datavalue?.value as { id?: string })?.id)
+        .filter((q): q is string => !!q)
+    // A person/group/work's country, broadly: citizenship (P27, humans),
+    // country (P495, works + bands), or country (P17, organisations). Bands
+    // aren't people so they have no P27 — Radiohead's country lives on P495.
+    const directCountryIds = (cl: Record<string, Snak[]>): string[] =>
+      [...claimIds(cl, 'P27'), ...claimIds(cl, 'P495'), ...claimIds(cl, 'P17')]
+
+    // creator: up to two entity ids (e.g. co-directors / co-authors). Fetch
+    // labels (for the display name) + claims (for nationality) in one call.
     let creator: string | null = null
-    let creatorNatIds: string[] = []
+    const creatorClaims: Record<string, Snak[]>[] = []
     const creatorIds = entityIds(WD_CREATOR_PROPS[type] ?? []).slice(0, 2)
     if (creatorIds.length) {
       const d3 = await wbFetch(
@@ -184,21 +194,32 @@ async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFi
         .map(id => (d3?.entities?.[id]?.labels?.en?.value as string | undefined))
         .filter((n): n is string => !!n)
       if (names.length) creator = names.join(' & ')
-      creatorNatIds = creatorIds.flatMap(id =>
-        ((d3?.entities?.[id]?.claims?.P27 ?? []) as Snak[])
-          .map(c => (c.mainsnak?.datavalue?.value as { id?: string })?.id)
-          .filter((q): q is string => !!q)
-      )
+      for (const id of creatorIds) creatorClaims.push((d3?.entities?.[id]?.claims as Record<string, Snak[]>) ?? {})
     }
 
     // country of origin. film/tv → the work's P495 (NOT director nationality —
-    // see ROADMAP). book/music → the creator's nationality (P27, gathered above).
-    // Both multi-valued (co-productions), deduped, in source order.
-    const countryIds = (type === 'film' || type === 'tv')
-      ? (claims['P495'] ?? [])
-          .map(c => (c.mainsnak?.datavalue?.value as { id?: string })?.id)
-          .filter((q): q is string => !!q)
-      : creatorNatIds
+    // see ROADMAP). book/music → the creator's country. Multi-valued
+    // (co-productions / co-authors), deduped.
+    let countryIds: string[]
+    if (type === 'film' || type === 'tv') {
+      countryIds = claimIds(claims, 'P495')
+    } else {
+      // From each creator entity, then — if none resolved (e.g. the article was
+      // the author's own page) — from the work entity itself.
+      countryIds = creatorClaims.flatMap(directCountryIds)
+      if (!countryIds.length && !creatorIds.length) countryIds = directCountryIds(claims)
+      // Last resort for a band with no direct country: its formation location
+      // (P740) → that place's country (P17). One extra lookup, only when needed.
+      if (!countryIds.length) {
+        const placeIds = creatorClaims.flatMap(cl => claimIds(cl, 'P740'))
+        if (placeIds.length) {
+          const dp = await wbFetch(
+            `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=claims&ids=${[...new Set(placeIds)].join('|')}`
+          )
+          countryIds = placeIds.flatMap(pid => claimIds((dp?.entities?.[pid]?.claims as Record<string, Snak[]>) ?? {}, 'P17'))
+        }
+      }
+    }
     const uniqueCountryIds = [...new Set(countryIds)]
     const countryLabels = await labelsFor(uniqueCountryIds)
     const countries = uniqueCountryIds.map(id => countryLabels[id]).filter((c): c is string => !!c)
