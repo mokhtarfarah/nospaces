@@ -7,10 +7,6 @@ async function requireAuth(req: VercelRequest): Promise<boolean> { const a = req
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? ''
 
-// The region backfill POSTs chunks of items here; resolving each does several
-// sequential Wikipedia/Wikidata calls, so give the function generous headroom.
-export const config = { maxDuration: 60 }
-
 function wikiQueries(type: string, title: string, creator: string, year: string): string[] {
   const bare = title.replace(/^(the|a|an)\s+/i, '').trim()
   switch (type) {
@@ -268,54 +264,8 @@ async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFi
   }
 }
 
-// Resolve just the country list for one item — by stored article if we have a
-// good one, else by title/type search (same query order + guard as the GET
-// branch). Used by the batch backfill. Never throws.
-async function resolveCountries(type: string, title: string, creator: string, year: string, wikiUrl: string): Promise<string[]> {
-  try {
-    if (wikiUrl && /^https?:\/\/([a-z]{2}\.)?wikipedia\.org\//.test(wikiUrl)) {
-      const info = await fetchInfoByUrl(wikiUrl)
-      if (info) return (await wikidataFields(info.title, type)).countries
-    }
-    const a = normalize(title)
-    for (const query of wikiQueries(type, title, creator, year)) {
-      const found = await fetchInfo(query)
-      if (!found) continue
-      const b = normalize(found.title)
-      if (!b.includes(a) && !a.includes(b)) continue
-      return (await wikidataFields(found.title, type)).countries
-    }
-  } catch { /* fall through to [] */ }
-  return []
-}
-
-interface BatchItem { id?: string; type?: string; title?: string; creator?: string; year?: number | string; wikiUrl?: string }
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!await requireAuth(req)) return res.status(401).end()
-
-  // --- Batch branch: POST { items: [...] } → [{ id, countries }] ---
-  // One request resolves up to ~20 items server-side (small fan-out, gentle on
-  // Wikipedia), so the client makes ~70 calls for an 835-item library instead of
-  // 835+ — well under Vercel's concurrent-function limits.
-  if (req.method === 'POST') {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body ?? {})
-    const items: BatchItem[] = Array.isArray(body?.items) ? body.items.slice(0, 20) : []
-    const results: { id: string; countries: string[] }[] = []
-    let idx = 0
-    const worker = async () => {
-      while (idx < items.length) {
-        const it = items[idx++]
-        const countries = await resolveCountries(
-          String(it.type ?? ''), String(it.title ?? ''), String(it.creator ?? ''),
-          it.year != null ? String(it.year) : '', String(it.wikiUrl ?? ''),
-        )
-        results.push({ id: String(it.id ?? ''), countries })
-      }
-    }
-    await Promise.all(Array.from({ length: Math.min(5, items.length) }, worker))
-    return res.json({ results })
-  }
 
   // --- New branch: fetch by URL + optionally parse fields ---
   const rawUrl = one(req.query.url)
