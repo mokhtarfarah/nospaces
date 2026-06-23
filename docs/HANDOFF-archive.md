@@ -4,6 +4,30 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 64 (2026-06-23) — "Things" design reworked around composition-over-reaction (design only, no app code)
+
+Pure design session. Pressure-tested the s63 "Things"/shopping design before building.
+
+**The flaw found.** The app's soul is the react→profile loop. But for objects it doesn't fire: you *want* a thing (no reaction yet), then you log only *standout-loved* owned pieces — so you've self-selected for love before any rating. `loved_it/eh/not_for_me` is foregone and carries no signal. The differentiator was thinnest exactly where s63 bet most.
+
+**The repivot — composition over reaction.** The taste signal is the **set**, not the verdict. Saving a thing *is* the taste act (moodboard pin); the aesthetic emerges from **recurring attributes** across saves and works with **zero owned items**. Knock-on fixes:
+- **Attributes** (material/palette/form/price-tier/category) replace reaction as the engine; profile = the recurring pattern ("warm minimalism · natural materials · muted palette").
+- **Mirror is immediate:** a live "your thread" masthead on the board from ~6 items — not a deferred phase-2 page. Kills the "empty room" risk.
+- **Capture precision fixed for free:** the vision call's job flips from *identify the product* (hard, low-confidence, wrong-brand poison) to *describe attributes* (what vision is good at + what the profile needs).
+- **Brand** demoted from `creator`-spine to one optional facet (vintage/no-brand = peak signal).
+- **"Own"** shrinks to a "got it" accent (no mark-done sheet, no inventory lifecycle); `reaction` stays null for things.
+- **Scope** admitted clothing-first (tech/beauty/other = bucket, not promised a profile).
+
+**Intent/candidates — corrected back to first-class.** Initially demoted it as a possible edge case; Farah corrected — she's a deliberative comparison shopper, it's her make-or-break feature and must be in v1 + the Slice-0 gut-check (kept *opt-in* so wishlist-only users skip it). Composition makes it *easier*: losers are still signal, so we **never archive** them — resolve is just `done` + winner flag, winner optionally graduates to its own board item. No new lifecycle state.
+
+**Re-sliced build plan** (in HANDOFF "Next session"): Slice 0 free gut-check incl. the deliberation flow → 1 attribute model + pure "thread" reader (+test, vocab waits for real items) → 2 board+masthead → 3 domain switcher → **4 = first paid surface** (Sonnet vision attribute read, state cost first).
+
+**Process note:** caught my own over-eager demotion of intent/candidates — the user's actual shopping behavior overrides the "probably an edge case" heuristic.
+
+Cost $0 (no API calls, no app code). `docs/ROADMAP.md` rewritten (s63 react-loop version replaced). Pushed to `main` (`6816e01`).
+
+---
+
 ### Session 63 (2026-06-23) — Regions / country filter shipped (5 iterations to get the backfill right) · filter sheet trimmed · shopping expansion designed
 
 Big session. Cost: **$0** (all Wikidata/Wikipedia reads, no Anthropic). Commits `a526d56..6e1d56a` on `main`.

@@ -15,15 +15,18 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (63):** Shipped the **regions / country filter** (country-only). The build was easy; making the backfill work on Farah's real 835-item library took five iterations — final answer pulls Wikipedia/Wikidata **directly from the browser** (`origin=*`, her IP) because routing through Vercel's shared IP got rate-limited. Resolution handles bands, co-productions, and historical-state rollups; a `REGION_VERSION` stamp auto-recleans on re-pull. **Coverage fills in progressively across re-runs** of ⋯ → "pull regions". Also: **trimmed the filter sheet** to collapsible sections (was a wall), and **designed the shopping / "Things" expansion** (→ ROADMAP, no code). Cost $0. Pushed to `main` (`a526d56..6e1d56a`). Full detail → archive.
+**This session (64) — design only, no app code:** Stress-tested the s63 "Things" design and found the core flaw — **reaction collapses for objects** (you self-select for love before rating), so the react→profile loop barely fires in the domain it's meant to power. **Reworked the whole design around _composition over reaction_:** the taste signal is the *set*, attributes (material/palette/form) are the engine, the aesthetic surfaces as a live board masthead from day one. Brand demoted to one facet; "own" shrinks to a "got it" accent; vision call reads *attributes* not identity. **Intent/candidates kept first-class + in v1** (Farah's make-or-break) with a light no-archive resolve. ROADMAP rewritten + re-sliced (Slice 0 = free gut-check incl. the deliberation flow). Cost $0. Pushed to `main` (`6816e01`).
 
-**Last session (62):** Brought `AddScreen` + `LibraryScreen` up to the Taste/Discover editorial bar (#6 done). Full detail → archive.
+**Last session (63):** Shipped the **regions / country filter** (browser-direct backfill), trimmed the filter sheet to collapsible sections, designed the first "Things" expansion (since superseded by s64). Full detail → archive.
 
 ---
 
-## ▶ Next session (64)
+## ▶ Next session (65)
 
-**Main job: flesh out the shopping / "Things" expansion → start building.** The full v1 design is in `docs/ROADMAP.md` → "Expansion beyond media" (domain-switcher IA, want/own-not-a-closet, the intent + candidates model, capture via link/photo/AI-suggest, category + subcategory vocab, aesthetic profile = phase 2). Next step is to turn that into a concrete build plan — likely start with the data model (`thing` type + intent/candidates shape), the domain switcher, and the link-paste OG-capture endpoint. **This will be the first paid-API surface for the new domain (photo + AI-suggest) — state costs before building.**
+**Main job: start BUILDING the "Things" domain — begin with Slice 0 (free).** The design was reworked in s64 around **composition-over-reaction** (full design → `docs/ROADMAP.md` → "Expansion beyond media"; the *why* → s64 archive entry). Don't re-plan it — it's settled. Build order:
+- **Slice 0 (free, do first): vertical gut-check.** `api/og-parse.ts` (free, reuse `api/_ssrf.ts`) → paste product link → card on a plain grid. **Must include the intent/candidates flow** (create intent "black clogs" → attach 2–3 candidates → mark a leaning → "pick this one") — it's Farah's make-or-break feature, so a gut-check without it proves nothing. No vocab/switcher yet. Decision gate: does the deliberation flow feel good?
+- Then: Slice 1 attribute model + the pure "thread" composition reader (+Vitest, vocab waits for real items) · Slice 2 board + live masthead · Slice 3 domain switcher · **Slice 4 = first PAID surface** (Sonnet vision call that reads *attributes*, not identity — state exact per-call cost before building).
+- Key model facts: all on existing `Item`; `type:'thing'`; `metadata.attributes[]` is the engine; `reaction` stays null for things; intent/candidates resolve is light (done + winner flag, **no archive** — losers persist as signal).
 
 **Carried from s63 (check, don't rebuild):**
 - **Regions** — shipped, browser-direct backfill. Coverage was still filling in via repeated ⋯ → "pull regions". If it's plateaued with a stubborn `failed` count, slow the pull down (lower concurrency / add pacing in `src/lib/regions.ts`). Language axis `P364` parked in ROADMAP.
