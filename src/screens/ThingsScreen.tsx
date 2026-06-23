@@ -161,6 +161,8 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [link, setLink] = useState('')
+  const [manual, setManual] = useState(false)        // fell back to manual entry for a new option
+  const [editingId, setEditingId] = useState<string | null>(null) // candidate being edited
 
   async function addCandidate() {
     const url = link.trim()
@@ -169,10 +171,15 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
     const r = await parseProductLink(url)
     setBusy(false)
     if (!r.ok) { setError(r.reason); return }
-    const cand: Candidate = { id: newCandidateId(), ...r.fields }
-    await onPatch({ ...m, candidates: [...m.candidates, cand] })
-    setLink(''); setAdding(false)
+    await saveNewCandidate(r.fields)
   }
+
+  async function saveNewCandidate(fields: ProductFields) {
+    const cand: Candidate = { id: newCandidateId(), ...fields }
+    await onPatch({ ...m, candidates: [...m.candidates, cand] })
+    resetAdd()
+  }
+  function resetAdd() { setLink(''); setAdding(false); setManual(false); setError(null) }
 
   const setLeaning = (id: string) =>
     onPatch({ ...m, leaning: m.leaning === id ? null : id })
@@ -204,6 +211,17 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
           const isWinner = resolved && m.winner === c.id
           const isLean = !resolved && m.leaning === c.id
           const dim = resolved && !isWinner
+          if (editingId === c.id) {
+            return (
+              <FieldsForm key={c.id} saveLabel="Save"
+                initial={{ title: c.title, image: c.image, price: c.price, brand: c.brand, siteName: c.siteName, url: c.url }}
+                onCancel={() => setEditingId(null)}
+                onSave={async (f) => {
+                  await onPatch({ ...m, candidates: m.candidates.map(x => x.id === c.id ? { ...x, ...f } : x) })
+                  setEditingId(null)
+                }} />
+            )
+          }
           return (
             <div key={c.id} style={{
               display: 'flex', gap: 12, padding: 10, borderRadius: 12,
@@ -231,8 +249,12 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
                     style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: INK, border: 'none', borderRadius: 999, padding: '5px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     pick this
                   </button>
-                  <button onClick={() => removeCandidate(c.id)} aria-label="remove"
-                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11, color: MUTED }}>remove</button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setEditingId(c.id)} aria-label="edit"
+                      style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11, color: MUTED }}>edit</button>
+                    <button onClick={() => removeCandidate(c.id)} aria-label="remove"
+                      style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11, color: MUTED }}>remove</button>
+                  </div>
                 </div>
               )}
             </div>
@@ -247,7 +269,12 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
       </div>
 
       {!resolved && (
-        adding ? (
+        manual ? (
+          <FieldsForm saveLabel="Add option"
+            initial={{ title: '', image: null, price: null, brand: null, siteName: null, url: link.trim() || null }}
+            onCancel={resetAdd}
+            onSave={saveNewCandidate} />
+        ) : adding ? (
           <div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
@@ -260,8 +287,14 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
                 {busy ? 'reading…' : 'add'}
               </button>
             </div>
-            {error && <div style={{ fontSize: 12, color: '#B4413C', marginTop: 8 }}>{error}</div>}
-            <button onClick={() => { setAdding(false); setError(null); setLink('') }}
+            {error && (
+              <div style={{ marginTop: 8 }}>
+                <span style={{ fontSize: 12, color: '#B4413C' }}>{error}</span>
+                <button onClick={() => setManual(true)}
+                  style={{ marginLeft: 8, border: 'none', background: 'none', color: INK, fontSize: 12, fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>add it manually</button>
+              </div>
+            )}
+            <button onClick={resetAdd}
               style={{ marginTop: 8, border: 'none', background: 'none', color: MUTED, fontSize: 12, cursor: 'pointer' }}>cancel</button>
           </div>
         ) : (
@@ -287,6 +320,7 @@ function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f:
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fields, setFields] = useState<ProductFields | null>(null)
+  const [manual, setManual] = useState(false)
 
   async function read() {
     const url = link.trim()
@@ -298,12 +332,13 @@ function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f:
     setFields(r.fields)
   }
 
+  const editing = fields || manual
   return (
     <Sheet onClose={onClose}>
       <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>Save a product</h2>
-      <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>Paste a link — we'll pull the image, name and price.</p>
+      <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>Paste a link — we'll pull the image, name and price. You can tweak anything before saving.</p>
 
-      {!fields ? (
+      {!editing ? (
         <>
           <div style={{ display: 'flex', gap: 8 }}>
             <input autoFocus value={link} onChange={e => setLink(e.target.value)}
@@ -313,25 +348,19 @@ function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f:
               {busy ? 'reading…' : 'read'}
             </button>
           </div>
-          {error && <div style={{ fontSize: 12, color: '#B4413C', marginTop: 8 }}>{error}</div>}
+          {error && (
+            <div style={{ marginTop: 8 }}>
+              <span style={{ fontSize: 12, color: '#B4413C' }}>{error}</span>
+              <button onClick={() => setManual(true)}
+                style={{ marginLeft: 8, border: 'none', background: 'none', color: INK, fontSize: 12, fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>add it manually</button>
+            </div>
+          )}
         </>
       ) : (
-        <>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-            <Thumb src={fields.image} size={88} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <input value={fields.title} onChange={e => setFields({ ...fields, title: e.target.value })}
-                style={{ ...inputStyle, fontWeight: 500 }} />
-              <div style={{ fontSize: 12, color: MUTED, marginTop: 6, display: 'flex', gap: 8 }}>
-                {fields.price && <span style={{ color: INK }}>{fields.price}</span>}
-                {(fields.brand || fields.siteName) && <span>{fields.brand || fields.siteName}</span>}
-              </div>
-            </div>
-          </div>
-          <button onClick={() => onSave(fields)} style={{ ...primaryBtn(false), width: '100%', padding: '12px' }}>Save to board</button>
-          <button onClick={() => { setFields(null); setError(null) }}
-            style={{ marginTop: 8, width: '100%', border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>try a different link</button>
-        </>
+        <FieldsForm saveLabel="Save to board"
+          initial={fields ?? { title: '', image: null, price: null, brand: null, siteName: null, url: link.trim() || null }}
+          onCancel={() => { setFields(null); setManual(false); setError(null) }}
+          onSave={onSave} />
       )}
     </Sheet>
   )
@@ -354,6 +383,41 @@ function IntentComposer({ onClose, onCreate }: { onClose: () => void; onCreate: 
 }
 
 /* ---------- shared bits ---------- */
+
+// Editable product fields — used to tweak a scraped result, fix a junky title,
+// swap the photo (paste any image URL), or enter something by hand when a shop's
+// link won't read (luxury sites behind bot protection, slow pages, etc.).
+function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
+  initial: ProductFields
+  saveLabel: string
+  onSave: (f: ProductFields) => void | Promise<void>
+  onCancel: () => void
+}) {
+  const [f, setF] = useState<ProductFields>(initial)
+  const [saving, setSaving] = useState(false)
+  const set = (patch: Partial<ProductFields>) => setF(prev => ({ ...prev, ...patch }))
+  return (
+    <div style={{ border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <Thumb src={f.image} size={72} />
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input value={f.title} onChange={e => set({ title: e.target.value })} placeholder="Name" style={{ ...inputStyle, fontWeight: 500 }} />
+          <input value={f.image ?? ''} onChange={e => set({ image: e.target.value.trim() || null })} placeholder="Image URL — paste to change the photo" style={inputStyle} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input value={f.price ?? ''} onChange={e => set({ price: e.target.value.trim() || null })} placeholder="Price" style={inputStyle} />
+        <input value={f.brand ?? ''} onChange={e => set({ brand: e.target.value.trim() || null })} placeholder="Brand" style={inputStyle} />
+      </div>
+      <input value={f.url ?? ''} onChange={e => set({ url: e.target.value.trim() || null })} placeholder="Buy link" style={inputStyle} />
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 2 }}>
+        <button onClick={onCancel} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>
+        <button disabled={saving || !f.title.trim()} onClick={async () => { setSaving(true); await onSave(f); setSaving(false) }}
+          style={primaryBtn(saving || !f.title.trim())}>{saveLabel}</button>
+      </div>
+    </div>
+  )
+}
 
 function Thumb({ src, size, dashed }: { src: string | null; size?: number; dashed?: boolean }) {
   const dim = size ? { width: size, height: size } : { width: '100%', aspectRatio: '1 / 1' }

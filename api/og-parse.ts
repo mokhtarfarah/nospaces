@@ -11,7 +11,11 @@ import { isSafePublicUrl } from './_ssrf.js'
 // it from being used as an open proxy.
 
 const MAX_BYTES = 512 * 1024 // only need the <head>; cap the read so a huge page can't blow memory
-const FETCH_TIMEOUT_MS = 8000
+const FETCH_TIMEOUT_MS = 13000
+
+// Give the serverless function headroom over the fetch timeout so a slow shop
+// surfaces our friendly "took too long" message instead of a raw 504.
+export const config = { maxDuration: 20 }
 
 // Pull <meta property="og:title" content="..."> / <meta name="..." content="..."> values.
 // Order-agnostic: content can come before or after the property/name attribute.
