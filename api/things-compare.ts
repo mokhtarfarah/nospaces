@@ -16,10 +16,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return res.status(401).end()
   if (!await checkRateLimit(userId, 'things-compare', 30)) return res.status(429).json({ error: 'That’s a lot of comparing — try again next hour.' })
 
-  const { intent, candidates } = req.body as { intent?: string; candidates?: InCandidate[] }
+  const { intent, brief, candidates } = req.body as { intent?: string; brief?: string; candidates?: InCandidate[] }
   if (!intent || !Array.isArray(candidates) || candidates.length < 2) {
     return res.status(400).json({ error: 'Need a goal and at least two options.' })
   }
+  const context = typeof brief === 'string' ? brief.trim().slice(0, 600) : ''
   // Cap to keep the payload (and cost) tiny.
   const list = candidates.slice(0, 8)
 
@@ -29,11 +30,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }).join('\n')
 
   const prompt = `Someone is choosing between options they're weighing for: "${intent}".
-
+${context ? `\nWhat matters to them: ${context}\n` : ''}
 Options:
 ${lines}
 
-For each option, write ONE short, honest line on what stands out — value, price, what you're paying for, whether the sale is real. Then a brief verdict: which you'd lean toward and why, in 1–2 sentences. You only have names and prices, so if it's genuinely a toss-up or you can't really tell them apart from this, say that plainly instead of inventing differences.
+For each option, write ONE short, honest line on what stands out — value, price, what you're paying for, whether the sale is real${context ? ', and how well it fits what they said matters' : ''}. Then a brief verdict: which you'd lean toward and why, in 1–2 sentences${context ? ', weighing what they told you matters' : ''}. You only have names and prices, so if it's genuinely a toss-up or you can't really tell them apart from this, say that plainly instead of inventing differences.
 
 ${HUMANIZER_GUARDRAILS}
 

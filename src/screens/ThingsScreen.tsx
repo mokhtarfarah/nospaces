@@ -64,8 +64,8 @@ export function ThingsScreen() {
       {composer === 'intent' && (
         <IntentComposer
           onClose={() => setComposer(null)}
-          onCreate={async (need) => {
-            const id = await addItem(need, 'thing', null, null, { kind: 'intent', candidates: [], leaning: null })
+          onCreate={async (need, brief) => {
+            const id = await addItem(need, 'thing', null, null, { kind: 'intent', candidates: [], leaning: null, brief: brief || null })
             setComposer(null)
             // Drop straight into the new intent so the user can weigh options right away.
             if (id) setOpenIntentId(id)
@@ -183,11 +183,13 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
   const [comparing, setComparing] = useState(false)
   const [compare, setCompare] = useState<Comparison | null>(null)
   const [compareErr, setCompareErr] = useState<string | null>(null)
+  const [editingBrief, setEditingBrief] = useState(false)
+  const [briefDraft, setBriefDraft] = useState(m.brief ?? '')
 
   async function runCompare() {
     if (comparing) return
     setComparing(true); setCompareErr(null)
-    const r = await compareCandidates(item.title, m.candidates)
+    const r = await compareCandidates(item.title, m.candidates, m.brief)
     setComparing(false)
     if (!r.ok) { setCompareErr(r.reason); return }
     setCompare(r.result)
@@ -227,6 +229,32 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
         </div>
         <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1 }}>×</button>
       </div>
+
+      {/* The brief: what matters for this purchase. Feeds Compare. */}
+      {editingBrief ? (
+        <div style={{ marginTop: 12 }}>
+          <textarea autoFocus value={briefDraft} onChange={e => setBriefDraft(e.target.value)}
+            placeholder="Budget, occasion, must-haves, dealbreakers…"
+            rows={3} style={{ ...inputStyle, width: '100%', resize: 'vertical', fontFamily: 'inherit' }} />
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
+            <button onClick={() => { setBriefDraft(m.brief ?? ''); setEditingBrief(false) }}
+              style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>
+            <button onClick={async () => { await onPatch({ ...m, brief: briefDraft.trim() || null }); setEditingBrief(false) }}
+              style={primaryBtn(false)}>Save context</button>
+          </div>
+        </div>
+      ) : m.brief ? (
+        <div onClick={() => !resolved && setEditingBrief(true)}
+          style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: '#F7F5F1', fontSize: 12.5, lineHeight: 1.5, color: INK, cursor: resolved ? 'default' : 'pointer' }}>
+          <span style={{ fontSize: 10, color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase' }}>what matters{!resolved && ' · tap to edit'}</span>
+          <div style={{ marginTop: 3, whiteSpace: 'pre-wrap' }}>{m.brief}</div>
+        </div>
+      ) : !resolved && (
+        <button onClick={() => setEditingBrief(true)}
+          style={{ marginTop: 10, border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+          + Add context (budget, occasion, must-haves)
+        </button>
+      )}
 
       {!resolved && m.candidates.length > 0 && (
         <p style={{ fontSize: 12, color: MUTED, margin: '10px 0 0' }}>
@@ -419,18 +447,21 @@ function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f:
   )
 }
 
-function IntentComposer({ onClose, onCreate }: { onClose: () => void; onCreate: (need: string) => void | Promise<void> }) {
+function IntentComposer({ onClose, onCreate }: { onClose: () => void; onCreate: (need: string, brief: string) => void | Promise<void> }) {
   const [need, setNeed] = useState('')
+  const [brief, setBrief] = useState('')
   return (
     <Sheet onClose={onClose}>
       <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>Plan a purchase</h2>
       <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>Name what you're after. You'll add options to weigh, then pick one when you're ready.</p>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input autoFocus value={need} onChange={e => setNeed(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && need.trim()) onCreate(need.trim()) }}
-          placeholder="e.g. black clogs" style={inputStyle} />
-        <button onClick={() => need.trim() && onCreate(need.trim())} disabled={!need.trim()} style={primaryBtn(!need.trim())}>start</button>
-      </div>
+      <input autoFocus value={need} onChange={e => setNeed(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter' && need.trim()) onCreate(need.trim(), brief.trim()) }}
+        placeholder="e.g. black clogs" style={{ ...inputStyle, width: '100%' }} />
+      <textarea value={brief} onChange={e => setBrief(e.target.value)}
+        placeholder="What matters? Budget, occasion, must-haves, dealbreakers… (optional — helps Compare)"
+        rows={3} style={{ ...inputStyle, width: '100%', marginTop: 8, resize: 'vertical', fontFamily: 'inherit' }} />
+      <button onClick={() => need.trim() && onCreate(need.trim(), brief.trim())} disabled={!need.trim()}
+        style={{ ...primaryBtn(!need.trim()), width: '100%', padding: 12, marginTop: 10 }}>start</button>
     </Sheet>
   )
 }

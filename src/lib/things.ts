@@ -36,6 +36,8 @@ export type IntentMeta = {
   leaning?: string | null
   /** id of the candidate finally chosen — set when the intent is resolved. */
   winner?: string | null
+  /** Free-text context: budget, occasion, must-haves, dealbreakers. Feeds compare. */
+  brief?: string | null
 }
 
 export function kindOf(item: Item): 'product' | 'intent' | null {
@@ -50,7 +52,7 @@ export function isThing(item: Item): boolean {
 
 export function intentMeta(item: Item): IntentMeta {
   const m = (item.metadata ?? {}) as Partial<IntentMeta>
-  return { kind: 'intent', candidates: m.candidates ?? [], leaning: m.leaning ?? null, winner: m.winner ?? null }
+  return { kind: 'intent', candidates: m.candidates ?? [], leaning: m.leaning ?? null, winner: m.winner ?? null, brief: m.brief ?? null }
 }
 
 export function productMeta(item: Item): ProductMeta {
@@ -116,6 +118,7 @@ export type Comparison = { notes: string[]; lean: number | null; verdict: string
 export async function compareCandidates(
   intent: string,
   candidates: Candidate[],
+  brief?: string | null,
 ): Promise<{ ok: true; result: Comparison } | { ok: false; reason: string }> {
   let resp: Response
   try {
@@ -124,6 +127,7 @@ export async function compareCandidates(
       headers: await authHeaders(),
       body: JSON.stringify({
         intent,
+        brief: brief || undefined,
         candidates: candidates.map(c => ({ title: c.title, brand: c.brand, price: c.price, wasPrice: c.wasPrice })),
       }),
     })
