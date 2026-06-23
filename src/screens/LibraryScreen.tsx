@@ -24,10 +24,15 @@ type StatusFilter = 'all' | ItemStatus
 // Persist the main library filters/view across reloads so a refresh doesn't reset
 // everything back to "all / recent". Stored in localStorage (per device).
 const PREFS_KEY = 'nospaces.libraryPrefs'
-// Scroll position is stashed per-session so an iOS PWA reload (e.g. tapping
-// through to Spotify and back kills + reloads the standalone app) returns you
-// to where you were instead of the top of the list.
+// Scroll position is stashed so an iOS PWA reload (e.g. tapping through to
+// Spotify and back, or the OS killing the standalone app) returns you to where
+// you were instead of the top of the list. Must be localStorage, NOT
+// sessionStorage: when iOS terminates and relaunches an installed PWA it starts
+// a fresh browsing session, which wipes sessionStorage — so the saved position
+// would always read back empty exactly in the case we care about. A freshness
+// window keeps us from restoring a stale position on a much-later cold open.
 const SCROLL_KEY = 'nospaces.libraryScroll'
+const SCROLL_MAX_AGE_MS = 6 * 60 * 60 * 1000 // 6h — long enough for a kill/reopen, short enough to feel intentional
 type LibraryPrefs = {
   categories: string[]; statusFilter: StatusFilter; reactionFilter: ReactionFilter
   view: ViewMode; dir: SortDir; layout: 'list' | 'grid'; gridCols: 3 | 4
@@ -214,7 +219,7 @@ export function LibraryScreen() {
   // and restore it once the list has loaded after the resulting reload.
   useEffect(() => {
     const save = () => {
-      try { sessionStorage.setItem(SCROLL_KEY, String(lastScrollRef.current)) } catch { /* ignore quota/private-mode */ }
+      try { localStorage.setItem(SCROLL_KEY, JSON.stringify({ top: lastScrollRef.current, t: Date.now() })) } catch { /* ignore quota/private-mode */ }
     }
     const onVisibility = () => { if (document.visibilityState === 'hidden') save() }
     window.addEventListener('pagehide', save)
@@ -229,7 +234,13 @@ export function LibraryScreen() {
     if (loading || scrollRestoredRef.current) return
     scrollRestoredRef.current = true
     let saved = 0
-    try { saved = Number(sessionStorage.getItem(SCROLL_KEY)) || 0 } catch { /* ignore */ }
+    try {
+      const raw = localStorage.getItem(SCROLL_KEY)
+      if (raw) {
+        const { top, t } = JSON.parse(raw)
+        if (Date.now() - t <= SCROLL_MAX_AGE_MS) saved = Number(top) || 0
+      }
+    } catch { /* ignore parse/quota/private-mode */ }
     if (saved <= 0) return
     // The list keeps growing for a few frames after load (decade groups + cover
     // images mount), so a single scrollTo clamps to a too-short max and lands at
@@ -336,6 +347,8 @@ export function LibraryScreen() {
     try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* ignore quota/private-mode */ }
   }, [categories, statusFilter, reactionFilter, view, dir, layout, gridCols])
 
+  // "New Music Tuesday" toggle only applies while viewing the Music category alone.
+  const musicOnly = categories.length === 1 && categories[0] === 'music'
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
     || vibeFilter.length > 0 || verdictFilter.length > 0 || genreFilter.length > 0 || seriesFilter.length > 0
@@ -343,6 +356,7 @@ export function LibraryScreen() {
   // Badge counts every selected chip across groups, so "filter · 3" reflects how
   // many tags are narrowing the list (not just how many groups are touched).
   const filterCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length
+    + (newMusicOnly && musicOnly ? 1 : 0)
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([])
@@ -365,8 +379,6 @@ export function LibraryScreen() {
     }
   }
 
-  // "New Music Tuesday" toggle only applies while viewing the Music category alone.
-  const musicOnly = categories.length === 1 && categories[0] === 'music'
   // Series only makes sense inside a single medium that actually has series
   // (film / book / tv) — never on "all" or music.
   const seriesRelevant = categories.length === 1 && ['film', 'book', 'tv'].includes(categories[0])
@@ -585,7 +597,7 @@ export function LibraryScreen() {
               onClick={() => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
             />
           ))}
-          {(availableTags.vibes.length > 0 || availableTags.verdicts.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0)) && (
+          {(availableTags.vibes.length > 0 || availableTags.verdicts.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || musicOnly) && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
               <button
@@ -610,7 +622,8 @@ export function LibraryScreen() {
                   verdictFilter={verdictFilter} onToggleVerdict={toggleFilter(setVerdictFilter)}
                   genreFilter={genreFilter} onToggleGenre={toggleFilter(setGenreFilter)}
                   seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
-                  onClearGroups={() => { setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]) }}
+                  showNewMusic={musicOnly} newMusicOnly={newMusicOnly} onToggleNewMusic={() => setNewMusicOnly(v => !v)}
+                  onClearGroups={() => { setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setNewMusicOnly(false) }}
                   onClose={() => setFilterSheetOpen(false)}
                 />
               )}
@@ -627,17 +640,6 @@ export function LibraryScreen() {
                   onClick={() => setReactionFilter(reactionFilter === r ? 'all' : r)}
                 />
               ))}
-            </>
-          )}
-          {/* New Music Tuesday toggle — only in the Music category */}
-          {musicOnly && (
-            <>
-              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-              <TabChip
-                label="new music tuesday"
-                active={newMusicOnly}
-                onClick={() => setNewMusicOnly(v => !v)}
-              />
             </>
           )}
           {/* Decide for me — promoted out of the overflow menu; all-media, picks from the backlog. */}
@@ -930,6 +932,7 @@ function FilterSheet({
   verdictFilter, onToggleVerdict,
   genreFilter, onToggleGenre,
   seriesFilter, onToggleSeries,
+  showNewMusic, newMusicOnly, onToggleNewMusic,
   onClearGroups, onClose,
 }: {
   availableTags: { vibes: string[]; verdicts: string[]; genres: string[]; series: string[] }
@@ -938,10 +941,12 @@ function FilterSheet({
   verdictFilter: string[]; onToggleVerdict: (v: string) => void
   genreFilter: string[]; onToggleGenre: (v: string) => void
   seriesFilter: string[]; onToggleSeries: (v: string) => void
+  showNewMusic: boolean; newMusicOnly: boolean; onToggleNewMusic: () => void
   onClearGroups: () => void
   onClose: () => void
 }) {
   const activeCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length
+    + (showNewMusic && newMusicOnly ? 1 : 0)
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
@@ -961,6 +966,14 @@ function FilterSheet({
             >clear all</button>
           )}
         </div>
+        {showNewMusic && (
+          <FilterSection
+            label="music"
+            options={['new music tuesday']}
+            selected={newMusicOnly ? ['new music tuesday'] : []}
+            onSelect={onToggleNewMusic}
+          />
+        )}
         {availableTags.vibes.length > 0 && (
           <FilterSection label="vibe" options={availableTags.vibes} selected={vibeFilter} onSelect={onToggleVibe} />
         )}

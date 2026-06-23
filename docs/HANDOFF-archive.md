@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 56 (2026-06-22) — Scroll-restore root-cause + "new music tuesday" → FilterSheet
+
+Farah confirmed the s55 detail sheet **looks good**. Then two Library items (both free, no API).
+
+**1. Scroll-restore root cause (session-49 #2).** The iOS-PWA scroll-restore had been "re-fixed" twice and kept failing. Actual cause: it stashed the position in **`sessionStorage`**, but when iOS terminates and relaunches an installed PWA it starts a **fresh browsing session** — which wipes `sessionStorage`. So in the exact scenario it was built for (OS kill → reopen), `saved` always read back empty and restore bailed. Everything *looked* correct, which is why it kept slipping past review.
+- Fix: store to **`localStorage`** as `{ top, t }` + a **6h freshness window** (`SCROLL_MAX_AGE_MS`) so a much-later cold open doesn't restore a stale position. The retry-until-stuck rAF loop (content grows as covers mount) is unchanged. `LibraryScreen.tsx` ~30 (constant + comment), ~215 (save), ~228 (restore).
+- Still **unverified on phone** — only reproducible by actually killing the standalone PWA.
+
+**2. "New music tuesday" moved into the FilterSheet.** Was a `TabChip` toggle in the status-tab row, music-category only. Now a `music` section (single `new music tuesday` chip) inside the filter sheet, reusing `FilterSection`.
+- Folded into the `filter · N` badge + sheet `activeCount` + "clear all" (`setNewMusicOnly(false)`); filter button now shows in the music category even with no tags (`|| musicOnly`). Moved the `musicOnly` const up above `filterCount` (was a temporal-dead-zone ref otherwise). `LibraryScreen.tsx`.
+- Roadmap item deleted.
+
+typecheck + lint + 56 tests clean. Not committed (left for Farah to push).
+
+---
+
 ### Session 55 (2026-06-22) — Editorial Discover feedback + shared detail-sheet (`SheetHero`)
 
 Farah's feedback on the session-54 editorial Discover, then a long iterative polish of the detail sheet — **pushed live to `main` each step**, deploying so she could eyeball on the OAuth-gated site (preview can't sign in, so **none of this is verified signed-in** — typecheck + lint + 56 tests clean on every push).
