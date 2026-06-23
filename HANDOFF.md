@@ -17,14 +17,13 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 **This session (66) — built "Things" Slice 1: the attribute model + the pure "thread" reader (free).** On branch **`things-slice-1`** off freshly-synced `main`. **$0** — no `api/` touch, no Anthropic call. Shipped: `Attribute = {facet, value}` tags (material/palette/form/category/priceTier) as **flat free-text, not a frozen enum** (vocab grows from real saves — couldn't query the live DB, so built the machinery not the taxonomy); `readThread(items)` pure reader → recurring-attribute read like `muted · wool · structured`, returns null below 4 tagged items (**14 Vitest cases, full suite 70/70 green**, typecheck clean); `AttributesEditor` capture UI in `FieldsForm` + a tiny per-card read so tagging is visible. **Live masthead deliberately deferred to Slice 2.** Not yet committed/pushed — Farah's call on PR. Full detail → archive (s66).
 
-**Last session (65):** Built "Things" Slice 0 — gut-check PASSED, merged to `main` via PR #16. Free `api/og-parse.ts` reader · board with both capture paths · intent→candidates→★→pick deliberation loop · edit/manual `FieldsForm` · sale price · opt-in AI Compare (`api/things-compare.ts`, Haiku ~$0.001/tap) + plan brief. ⚠️ **The s65 archive log + HANDOFF prose (commit `6f203b1`) was never merged** — PR #16 cut at `fbbadb9`, one commit short. Cherry-pick `6f203b1` into a docs branch if you want the full s65 archive entry back; the s66 entry below reconstructs the essentials.
+**Last session (65):** Built "Things" Slice 0 — gut-check PASSED, merged to `main` via PR #16. Free `api/og-parse.ts` reader · board with both capture paths · intent→candidates→★→pick deliberation loop · edit/manual `FieldsForm` · sale price · opt-in AI Compare (`api/things-compare.ts`, Haiku ~$0.001/tap) + plan brief. _(The s65 archive entry was lost when PR #16 cut one commit short at `fbbadb9`; recovered into `main` afterward — see archive s65.)_
 
 ---
 
 ## ▶ Next session (67)
 
-**First: get Slice 1 onto `main`** — branch `things-slice-1` (commit + PR, Farah merges). Then **Supabase preview-auth fix** must be applied once (`https://*.vercel.app/**` in Redirect URLs) or preview testing stays broken — see memory `preview-auth-redirect`. Optional: cherry-pick lost s65 docs commit `6f203b1`.
-
+**First: get Slice 1 onto `main`** — branch `things-slice-1` (commit + PR, Farah merges). Then **Supabase preview-auth fix** must be applied once (`https://*.vercel.app/**` in Redirect URLs) or preview testing stays broken — see memory `preview-auth-redirect`.
 **Main job: Slice 2 — the board + live "thread" masthead.** This is where Slice 1's `readThread()` finally surfaces — the board shows your aesthetic read from ~6 tagged items, refreshing as you add. Build:
 - **Masthead**: call `readThread(things)` (in `src/lib/things.ts`), render the tokens as the board header when non-null; stay quiet (or a gentle "tag a few to see your thread") below the 4-item threshold. Plays the role the "your thread: muted · natural · structured" sketch describes.
 - **Comparison table along attribute axes** (Farah's s65 ask, deferred to here because it needs Slice 1's columns) — candidates × facets grid inside the intent sheet.
