@@ -117,12 +117,15 @@ describe('readThread', () => {
     expect(readThread(items)?.tokens).toEqual(['muted'])
   })
 
-  it('caps the read at four tokens', () => {
-    const five: Attribute[] = [
+  it('reads one token per aesthetic facet and leaves category/price out of the thread', () => {
+    const all: Attribute[] = [
       a('palette', 'muted'), a('material', 'wool'), a('form', 'structured'), a('category', 'coat'), a('priceTier', 'splurge'),
     ]
-    const items = [product(five), product(five), product(five), product(five)]
-    expect(readThread(items)?.tokens).toHaveLength(4)
+    const items = [product(all), product(all), product(all), product(all)]
+    const t = readThread(items)
+    expect(t?.tokens).toEqual(['muted', 'wool', 'structured'])
+    expect(t?.tokens).not.toContain('coat')
+    expect(t?.tokens).not.toContain('splurge')
   })
 
   it('returns null when nothing recurs even with enough items', () => {

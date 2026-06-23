@@ -26,11 +26,15 @@ export type Facet = 'material' | 'palette' | 'form' | 'category' | 'priceTier'
 /** A single taste tag, e.g. {facet:'palette', value:'muted'}. */
 export type Attribute = { facet: Facet; value: string }
 
-/** Aesthetic facets that feed the "thread" read, in the order they're shown. */
-export const READ_FACETS: Facet[] = ['palette', 'material', 'form', 'category']
+// Facets that feed the "thread" read, in display order. Category is deliberately
+// EXCLUDED — it's a *what* (bag, coat), not a *vibe*, so "neutral · leather ·
+// relaxed · bag" reads odd. The thread is the aesthetic, not the inventory.
+export const READ_FACETS: Facet[] = ['palette', 'material', 'form']
 
-/** Facets exposed in the tag editor (priceTier is reserved for later, derived). */
-export const EDIT_FACETS: Facet[] = ['material', 'palette', 'form', 'category']
+// Facets exposed in the tag editor (priceTier is reserved for later, derived).
+// Category leads — it's the most concrete thing to pin first (and the natural
+// hook for auto-tagging later, via the Slice 4 vision read).
+export const EDIT_FACETS: Facet[] = ['category', 'material', 'palette', 'form']
 
 export const FACET_LABEL: Record<Facet, string> = {
   material: 'Material', palette: 'Palette', form: 'Form', category: 'Category', priceTier: 'Price',

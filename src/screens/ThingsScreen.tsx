@@ -41,7 +41,12 @@ export function ThingsScreen() {
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
+          // minmax(0,1fr) — without the 0 floor, a card's no-wrap attribute line
+          // forces its column wider and squashes the neighbour (the "one grew,
+          // one shrank" bug). align-items:start so a taller card doesn't stretch
+          // its row-mate.
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          alignItems: 'start',
           gap: 12,
         }}>
           {things.map(item => (
@@ -383,6 +388,12 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: `1px solid ${LINE}`, background: '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: comparing ? 'default' : 'pointer' }}>
             ✨ {comparing ? 'thinking…' : compare ? 'Compare again' : 'Compare these'}
           </button>
+          {compare && (
+            <button onClick={() => { setCompare(null); setCompareErr(null) }}
+              style={{ marginLeft: 10, border: 'none', background: 'none', color: MUTED, fontSize: 12, cursor: 'pointer' }}>
+              dismiss
+            </button>
+          )}
           {compareErr && <div style={{ fontSize: 12, color: '#B4413C', marginTop: 8 }}>{compareErr}</div>}
           {compare?.verdict && (
             <div style={{ marginTop: 10, padding: 12, borderRadius: 12, background: '#F7F5F1', fontSize: 12.5, lineHeight: 1.5, color: INK }}>

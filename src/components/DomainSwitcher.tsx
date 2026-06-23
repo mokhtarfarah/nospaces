@@ -17,8 +17,8 @@ export function DomainSwitcher({ current }: { current: Domain }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 14px' }}>
       <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: '#F4F2EE', border: '1px solid #E8E8E8' }}>
-        <Segment label="Media" active={current === 'media'} onClick={() => go('media')} />
-        <Segment label="Things" active={current === 'things'} onClick={() => go('things')} />
+        <Segment label="media" active={current === 'media'} onClick={() => go('media')} />
+        <Segment label="things" active={current === 'things'} onClick={() => go('things')} />
       </div>
     </div>
   )
@@ -29,7 +29,7 @@ function Segment({ label, active, onClick }: { label: string; active: boolean; o
     <button onClick={onClick} aria-pressed={active} style={{
       border: 'none', cursor: active ? 'default' : 'pointer',
       padding: '6px 18px', borderRadius: 999,
-      fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+      fontSize: 13, fontWeight: 600, letterSpacing: '0.01em',
       background: active ? '#fff' : 'transparent',
       color: active ? INK : MUTED,
       boxShadow: active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
