@@ -66,10 +66,10 @@ export function useItems() {
     // Optional: override the default 'quick_add' source label shown on the action card.
     source_detail?: string,
   ) {
-    if (!user) return
+    if (!user) return null
     if (!navigator.onLine) {
       await enqueueCapture({ title, type, creator, year, metadata, tags, done, source_detail })
-      return
+      return null
     }
     const { data: inserted } = await db().from('items').insert({
       user_id: user.id,
@@ -102,6 +102,7 @@ export function useItems() {
     if (inserted?.id && GENRE_TYPES.includes(type) && title) {
       void fillVibes(inserted.id, title, creator, type, year)
     }
+    return (inserted?.id as string | undefined) ?? null
   }
 
   // Ask /api/vibes (Haiku, ~$0.001) for 1–3 provisional vibes and stash them on
