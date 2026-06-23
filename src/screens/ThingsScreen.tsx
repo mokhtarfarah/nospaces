@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
+import { DomainSwitcher } from '../components/DomainSwitcher'
 import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
@@ -24,6 +25,7 @@ export function ThingsScreen() {
 
   return (
     <div style={{ padding: '20px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
+      <DomainSwitcher current="things" />
       <PageHeader kicker="THINGS" title="your board" />
 
       {/* Two first-class capture paths: save a concrete product, or plan a purchase

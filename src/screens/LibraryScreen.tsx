@@ -4,6 +4,7 @@ import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
+import { DomainSwitcher } from '../components/DomainSwitcher'
 import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption, type SortDir, type ReactionFilter } from '../components/ViewSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { DuplicatesSheet } from '../components/DuplicatesSheet'
@@ -146,7 +147,10 @@ function itemSource(item: Item): string {
 }
 
 export function LibraryScreen() {
-  const { items, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
+  const { items: allItems, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
+  // Things live in their own domain (the board), never in the media library — so
+  // they don't leak in as broken cover-art cards or spawn a stray "Thing" tab.
+  const items = useMemo(() => allItems.filter(i => i.type !== 'thing'), [allItems])
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const handleSaveWiki = useCallback((id: string, wiki: WikiInfo) => {
@@ -559,8 +563,9 @@ export function LibraryScreen() {
             the overflow menu; the category + status rows below stay pinned. */}
         <div style={{
           overflow: 'hidden', transition: 'max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease',
-          maxHeight: collapsed ? 0 : 64, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 12,
+          maxHeight: collapsed ? 0 : 110, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 12,
         }}>
+          <DomainSwitcher current="media" />
           {/* Magazine header — small kicker + label + rule (shared treatment) */}
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ minWidth: 0 }}>

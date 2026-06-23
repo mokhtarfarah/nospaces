@@ -8,6 +8,7 @@ import { authHeaders } from '../lib/supabase'
 import { useArtwork } from '../lib/artwork'
 import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
+import { DomainSwitcher } from '../components/DomainSwitcher'
 import { SheetHero } from '../components/SheetHero'
 
 const INK = '#1C1B19'
@@ -431,7 +432,9 @@ function TabChip({ label, active, onClick }: { label: string; active: boolean; o
 }
 
 export function TasteScreen() {
-  const { items, loading, patchMetadata, toggleCanon } = useItems()
+  const { items: allItems, loading, patchMetadata, toggleCanon } = useItems()
+  // The taste profile reads media; things have their own (composition-based) read.
+  const items = useMemo(() => allItems.filter(i => i.type !== 'thing'), [allItems])
   const { tasteProfile, setTasteProfile } = usePrefs()
   const [generating, setGenerating] = useState(false)
   const [tab, setTab] = useState<'profile' | 'island'>('profile')
@@ -564,6 +567,7 @@ export function TasteScreen() {
 
   return (
     <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
+      <DomainSwitcher current="media" />
       {/* "taste" as a small section label, vibe words as the headline */}
       <PageHeader kicker={`shaped by ${doneWithReaction.length} ${doneWithReaction.length === 1 ? 'rating' : 'ratings'}`} title="taste" />
 

@@ -8,6 +8,7 @@ import { useArtwork } from '../lib/artwork'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
+import { DomainSwitcher } from '../components/DomainSwitcher'
 import { SheetHero } from '../components/SheetHero'
 
 // Editorial palette — matches taste + library pages
@@ -41,7 +42,9 @@ function normaliseSources(results: DiscoveryResult[]): DiscoveryResult[] {
 }
 
 export function DiscoverScreen() {
-  const { items, addItem } = useItems()
+  const { items: allItems, addItem } = useItems()
+  // Discovery is a media engine — things belong to their own domain.
+  const items = useMemo(() => allItems.filter(i => i.type !== 'thing'), [allItems])
   const { tasteProfile, discoveryCache, setDiscoveryCache, customFeeds, setCustomFeeds, dismissedDiscoverTitles, dismissDiscoverTitle, seenDiscoverTitles, addSeenDiscoverTitles, prefsLoaded } = usePrefs()
 
   const [stream, setStream] = useState<Stream>('foryou')
@@ -226,6 +229,7 @@ export function DiscoverScreen() {
 
   return (
     <div style={{ padding: '20px 20px 100px', fontFamily: 'inherit' }}>
+      <DomainSwitcher current="media" />
 
       {/* Shared magazine header */}
       <PageHeader kicker={`${streamLabel} · ${dateLabel}`} title="discover" />

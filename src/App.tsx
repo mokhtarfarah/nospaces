@@ -51,7 +51,9 @@ export default function App() {
           <Route path="/guide" element={<GuideScreen />} />
         </Routes>
       </div>
-      <BottomNav />
+      {/* Things is its own domain — the board carries its own capture buttons and
+          the DomainSwitcher gets you back, so the media nav + FAB step aside. */}
+      {location.pathname !== '/things' && <BottomNav />}
       {(pendingCount > 0 || syncStatus !== 'idle') && (
         <div style={{
           position: 'fixed',
