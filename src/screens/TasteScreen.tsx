@@ -210,25 +210,36 @@ function ArrowBtn({ dir, disabled, onClick }: { dir: 'up' | 'down'; disabled: bo
 }
 
 // Tap a pick → detail sheet (same language as Discover): SheetHero with the rank
-// watermark + crisp poster, then an editable "why it's on your island" — its own
-// love-note, separate from the working library note (which shows muted below).
+// watermark + crisp poster, then the "why it's on your island" — its own love-note.
+// Reads as prose by default (like the library note); an `edit` link swaps in the
+// editor. The library note only surfaces here as a fallback when no why is written
+// yet — once a why exists, it's the statement for this surface.
 function CanonDetailSheet({ item, index, onSaveWhy, onClose }: {
   item: Item; index: number; onSaveWhy: (text: string) => void; onClose: () => void
 }) {
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const cover = artwork ?? coverFor(item)
   const meta = [typeColor(item.type).label, item.creator ?? undefined, item.year ?? undefined].filter(Boolean).join(' · ')
-  const savedWhy = ((item.metadata?.canonNote as string | undefined) ?? '').trim()
-  const [why, setWhy] = useState(savedWhy)
+  const initialWhy = ((item.metadata?.canonNote as string | undefined) ?? '').trim()
+  // `why` is the committed/displayed value; `draft` is the edit buffer (so cancel
+  // can revert). Tracking locally also survives the stale snapshot prop after save.
+  const [why, setWhy] = useState(initialWhy)
+  const [draft, setDraft] = useState(initialWhy)
+  const [editing, setEditing] = useState(false)
   const [saved, setSaved] = useState(false)
   const libNote = item.note?.trim()
-  const dirty = why.trim() !== savedWhy
 
+  const label = { fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase' as const }
+  const link = { background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', cursor: 'pointer', fontSize: 12, lineHeight: 1.4 }
+
+  function startEdit() { setDraft(why); setEditing(true) }
+  function cancel() { setDraft(why); setEditing(false) }
   function save() {
-    if (!dirty) return
-    onSaveWhy(why.trim())
-    setSaved(true)
-    setTimeout(() => setSaved(false), 1600)
+    const next = draft.trim()
+    setWhy(next)
+    onSaveWhy(next)
+    setEditing(false)
+    if (next) { setSaved(true); setTimeout(() => setSaved(false), 1600) }
   }
 
   return (
@@ -243,31 +254,44 @@ function CanonDetailSheet({ item, index, onSaveWhy, onClose }: {
 
         <div style={{ marginTop: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase' }}>why it's on your island</span>
-            {saved && <span style={{ fontSize: 11, color: MUTE }}>saved ✓</span>}
+            <span style={label}>why it's on your island</span>
+            {!editing && (saved ? <span style={{ fontSize: 11, color: MUTE }}>saved ✓</span>
+              : why ? <button onClick={startEdit} style={{ ...link, color: GRAPHITE }}>edit</button> : null)}
           </div>
-          <textarea
-            value={why}
-            onChange={e => setWhy(e.target.value)}
-            onBlur={save}
-            placeholder="what makes this one a keeper, out of everything?"
-            rows={3}
-            style={{
-              width: '100%', boxSizing: 'border-box', padding: '12px 14px',
-              border: `1.5px solid ${HAIR}`, borderRadius: 10, fontSize: 15, fontFamily: 'inherit',
-              lineHeight: 1.7, color: '#3A352E', fontStyle: 'italic', resize: 'none', outline: 'none',
-            }}
-          />
-          {dirty && (
-            <div style={{ textAlign: 'right', marginTop: 8 }}>
-              <button onClick={save} style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: INK, cursor: 'pointer', fontFamily: 'inherit', borderBottom: `1px solid ${INK}`, lineHeight: 1.4 }}>save</button>
+
+          {editing ? (
+            <>
+              <textarea
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                placeholder="what makes this one a keeper, out of everything?"
+                rows={3}
+                autoFocus
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '12px 14px',
+                  border: `1.5px solid ${HAIR}`, borderRadius: 10, fontSize: 15, fontFamily: 'inherit',
+                  lineHeight: 1.7, color: '#3A352E', fontStyle: 'italic', resize: 'none', outline: 'none',
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, marginTop: 8 }}>
+                <button onClick={cancel} style={{ ...link, color: MUTE }}>cancel</button>
+                <button onClick={save} style={{ ...link, color: INK, borderBottom: `1px solid ${INK}` }}>save</button>
+              </div>
+            </>
+          ) : why ? (
+            <div style={{ borderTop: `1.5px solid ${INK}`, paddingTop: 14 }}>
+              <p style={{ fontSize: 15, color: '#3A352E', lineHeight: 1.75, margin: 0, fontStyle: 'italic' }}>{inlineItalics(why)}</p>
             </div>
+          ) : (
+            <button onClick={startEdit} style={{ ...link, color: GRAPHITE, borderBottom: `1px solid ${HAIR}` }}>+ add why it's on your island</button>
           )}
         </div>
 
-        {libNote && (
+        {/* Library note — only as a fallback when there's no why yet, so you've got
+            something to draw from. Hidden once the why is the statement here. */}
+        {!why && libNote && (
           <div style={{ marginTop: 18, borderTop: `1px solid ${HAIR}`, paddingTop: 12 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 6 }}>library note</div>
+            <div style={{ ...label, marginBottom: 6 }}>library note</div>
             <p style={{ fontSize: 13, color: MUTE, lineHeight: 1.6, margin: 0 }}>{inlineItalics(libNote)}</p>
           </div>
         )}
