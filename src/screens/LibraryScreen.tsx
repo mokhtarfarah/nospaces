@@ -384,12 +384,15 @@ export function LibraryScreen() {
     try {
       const headers = await authHeaders()
       const result = await pullRegions(items, headers, patchMetadata, p => setToast(`pulling regions… ${p.done}/${p.total}`))
-      setToast(result.filled > 0 ? `region added to ${result.filled} item${result.filled === 1 ? '' : 's'}` : 'no regions found')
+      const msg = result.filled > 0 ? `region added to ${result.filled} item${result.filled === 1 ? '' : 's'}` : 'no regions found'
+      // Surface failures so a partial run is visible — they stay untagged and a
+      // re-run retries them (e.g. Wikipedia throttled some at this scale).
+      setToast(result.failed > 0 ? `${msg} · ${result.failed} failed, run again` : msg)
     } catch {
       setToast("couldn't pull regions — check your connection")
     } finally {
       setRegionBusy(false)
-      setTimeout(() => setToast(null), 3000)
+      setTimeout(() => setToast(null), 4000)
     }
   }
 

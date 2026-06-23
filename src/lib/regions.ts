@@ -16,7 +16,7 @@ import { GAP_MEDIA_TYPES } from './gaps'
 // version are treated as needing a re-pull.
 export const REGION_VERSION = 2
 
-export interface RegionProgress { done: number; total: number; filled: number }
+export interface RegionProgress { done: number; total: number; filled: number; failed: number }
 
 // True once an item carries at least one country from the CURRENT resolver.
 export function hasRegion(item: Item): boolean {
@@ -33,6 +33,14 @@ export function itemsNeedingRegion(items: Item[]): Item[] {
 
 interface ParsedRegion { countries?: string[] }
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+// One item's outcome:
+//   string[]  — resolved (may be empty: article found but no country)
+//   null      — the request kept failing (timeout / rate-limit / network)
+// At 835 items the title-search path makes several Wikipedia calls each and gets
+// throttled in bursts, so a single failure is common — retry with backoff before
+// giving up. Failures stay untagged so a re-run picks them up.
 async function pullOne(item: Item, headers: HeadersInit): Promise<string[] | null> {
   const wikiUrl = (item.metadata?.wikiUrl as string | undefined)?.trim()
   // Prefer a stored article (reliable); otherwise resolve by title/type search.
@@ -41,18 +49,27 @@ async function pullOne(item: Item, headers: HeadersInit): Promise<string[] | nul
     : `/api/wiki?type=${encodeURIComponent(item.type)}&title=${encodeURIComponent(item.title)}` +
       `${item.creator ? `&creator=${encodeURIComponent(item.creator)}` : ''}` +
       `${item.year ? `&year=${item.year}` : ''}&parse=1`
-  try {
-    const res = await fetch(url, { headers })
-    if (!res.ok) return null
-    const data = await res.json() as { parsed?: ParsedRegion | null }
-    return Array.isArray(data.parsed?.countries) ? data.parsed.countries : null
-  } catch {
-    return null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, { headers })
+      if (res.ok) {
+        const data = await res.json() as { parsed?: ParsedRegion | null }
+        return Array.isArray(data.parsed?.countries) ? data.parsed.countries : []
+      }
+      // 5xx / 429 → back off and retry; other 4xx won't improve on retry.
+      if (res.status < 500 && res.status !== 429) return null
+    } catch {
+      // network error — retry
+    }
+    await sleep(400 * (attempt + 1))
   }
+  return null
 }
 
-// Run the backfill over the whole library. Sequential-ish with light concurrency
-// to stay gentle on Wikidata. Saves via the caller's patchMetadata.
+// Run the backfill over the whole library. Light concurrency + per-item retry to
+// stay gentle on Wikidata while still covering the long tail. Saves via the
+// caller's patchMetadata. Only real hits are persisted; misses and failures are
+// left untagged so re-running mops them up.
 export async function pullRegions(
   items: Item[],
   headers: HeadersInit,
@@ -63,18 +80,20 @@ export async function pullRegions(
   const total = queue.length
   let done = 0
   let filled = 0
+  let failed = 0
   const CONCURRENCY = 3
 
   async function worker(slice: Item[]) {
     for (const item of slice) {
       const countries = await pullOne(item, headers)
-      // Only persist real hits — leave misses untagged so a re-run retries them.
-      if (countries && countries.length) {
+      if (countries === null) {
+        failed++  // couldn't reach it — leave untagged, re-run will retry
+      } else if (countries.length) {
         await save(item.id, { countries, regionV: REGION_VERSION })
         filled++
       }
       done++
-      onProgress?.({ done, total, filled })
+      onProgress?.({ done, total, filled, failed })
     }
   }
 
@@ -83,5 +102,5 @@ export async function pullRegions(
   queue.forEach((item, i) => slices[i % CONCURRENCY].push(item))
   await Promise.all(slices.map(worker))
 
-  return { done, total, filled }
+  return { done, total, filled, failed }
 }
