@@ -23,7 +23,9 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 ## ▶ Next session — walk the roadmap + verify s56 on phone
 
-Farah wants to **walk the roadmap together next session** (desert-island display rethink, regions map, expansion beyond media — see `docs/ROADMAP.md` "Medium/long-term"). Pick a direction *before* touching code.
+**New: Farah left 6 observations at the end of s56** — 2 quick Discover bugs (button alignment; blurb `*[TITLE]*` markdown showing literally), a Spotify-return scroll-reset to reassess (foreground resume, *not* an OS kill — different path from the s56 fix), and 3 discuss/direction items (persist filters across category/status switches, library search scope, bring the editorial feel app-wide). **All captured verbatim in `docs/ROADMAP.md` → "From session 56".** Start here.
+
+Farah also wants to **walk the roadmap together** (desert-island display rethink, regions map, expansion beyond media — `docs/ROADMAP.md` "Medium/long-term"). Pick a direction *before* touching code.
 
 **Verify on phone (s56 — deployed, unverified):**
 1. **Scroll restore** — open Library, scroll deep, background/kill the PWA, reopen → should land back where you were (not the top). This is the localStorage fix; the old sessionStorage version silently failed on a real OS kill.
