@@ -568,7 +568,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 </div>
               )}
             </SheetHero>
-            <div style={{ height: 18 }} />
+            <div style={{ height: 10 }} />
 
             {/* Blurb expansion — below the flat link row */}
             {showBlurb && blurb && (

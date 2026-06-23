@@ -30,12 +30,15 @@ export function SheetHero({
 }) {
   const tint = typeColor(type).bg
   const square = type === 'music'
-  const posterW = 74
-  const posterH = square ? 74 : 108
+  // Poster footprint is kept close to the title+meta+links block's height so
+  // the content below (blurb, genres…) starts right under the menu instead of
+  // being pushed past the bottom of a tall cover.
+  const posterW = 62
+  const posterH = square ? 62 : 92
 
   return (
     <div style={{
-      position: 'relative', overflow: 'hidden', minHeight: 152,
+      position: 'relative', overflow: 'hidden', minHeight: 128,
       // Pull up over the sheet's 10px top padding + out over its 20px side
       // padding so the wash reaches the rounded top corners of the card.
       margin: '-10px -20px 4px', padding: '0 20px 16px',
@@ -71,7 +74,7 @@ export function SheetHero({
       {/* Crisp poster — the one sharp look at the real art; sits below the ✕ row */}
       {cover && (
         <img src={cover} alt="" style={{
-          position: 'absolute', top: 40, right: 20, width: posterW, height: posterH,
+          position: 'absolute', top: 30, right: 20, width: posterW, height: posterH,
           objectFit: 'cover', objectPosition: square ? 'center' : 'top', borderRadius: 2,
           boxShadow: '0 3px 12px rgba(0,0,0,0.22)', zIndex: 2,
         }} />
