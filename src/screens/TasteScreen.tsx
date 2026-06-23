@@ -104,45 +104,61 @@ function computeFaithfulCreators(items: Item[]) {
     .slice(0, 8)
 }
 
-// One desert-island pick, rendered in the Discover row language: the cover art
-// ghosts in blurred from the right behind the text, the title sits big, an
-// uppercase meta line, and — the whole point of this section — the user's own
-// note set as the italic "why". No rank numeral: unlike Discover's countdown,
-// these picks aren't ordered, and a number would imply a ranking that isn't there.
+// A desert-island pick you wrote about: rendered in the Discover row language —
+// the cover art ghosts in blurred from the right behind the text, the title sits
+// big, an uppercase meta line, and — the whole point — your own note as the
+// italic "why". No rank numeral: unlike Discover's countdown these aren't ordered.
+// Note-less picks DON'T use this row (a big empty colour band reads as a loading
+// placeholder); they collapse to CanonLine below instead. The annotation earns
+// the spread.
 function CanonRow({ item }: { item: Item }) {
   const stored = (item.metadata?.coverUrl as string | null) ?? (item.metadata?.wikiThumb as string | null) ?? null
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const cover = artwork ?? stored
   const fallbackTint = typeColor(item.type).bg
   const meta = [TYPE_LABEL[item.type] ?? item.type, item.year ?? undefined, item.creator ?? undefined].filter(Boolean).join(' · ')
-  const note = item.note?.trim()
+  const note = item.note!.trim()
 
   return (
     <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}>
-      {/* Ghosted cover art — blurred + faded in from the right, behind the text */}
+      {/* Ghosted cover art — blurred + faded in from the right, behind the text.
+          Softer than Discover's (0.32 vs 0.42): these rows carry less content,
+          so more colour shows — kept quiet so the page doesn't lurch into a
+          pastel mood-board below the essay. */}
       {cover ? (
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center',
-          filter: 'blur(4px)', opacity: 0.42, transform: 'scale(1.08)',
-          WebkitMaskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
-          maskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
+          filter: 'blur(4px)', opacity: 0.32, transform: 'scale(1.08)',
+          WebkitMaskImage: 'linear-gradient(90deg, transparent 38%, #000 100%)',
+          maskImage: 'linear-gradient(90deg, transparent 38%, #000 100%)',
         }} />
       ) : (
-        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent 35%, ${fallbackTint})` }} />
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent 42%, ${fallbackTint})`, opacity: 0.7 }} />
       )}
 
       <div style={{ position: 'relative', padding: '14px 14px 16px' }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.25 }}>{item.title}</div>
-        <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', margin: note ? '3px 0 8px' : '3px 0 0' }}>
+        <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', margin: '3px 0 8px' }}>
           {meta}
         </div>
-        {note && (
-          <p style={{ fontSize: 13, color: '#4A453E', lineHeight: 1.65, margin: 0, fontStyle: 'italic' }}>
-            {inlineItalics(note)}
-          </p>
-        )}
+        <p style={{ fontSize: 13, color: '#4A453E', lineHeight: 1.65, margin: 0, fontStyle: 'italic' }}>
+          {inlineItalics(note)}
+        </p>
       </div>
+    </div>
+  )
+}
+
+// A desert-island pick with no note: a quiet one-line entry instead of a full
+// row, so it doesn't read as an empty colour band. Title leads, year · creator
+// trails muted — the "also on the list" register.
+function CanonLine({ item }: { item: Item }) {
+  const meta = [item.year ?? undefined, item.creator ?? undefined].filter(Boolean).join(' · ')
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 0' }}>
+      <span style={{ fontSize: 15, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{item.title}</span>
+      {meta && <span style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase' }}>{meta}</span>}
     </div>
   )
 }
@@ -180,16 +196,27 @@ function CanonGallery({ items }: { items: Item[] }) {
         <span style={{ fontSize: 11, color: MUTE }}>{items.length}</span>
         <span style={{ fontSize: 10, color: MUTE, marginLeft: 'auto', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
       </button>
-      {open && byType.map(({ type, items: typeItems }) => (
-        <div key={type} style={{ marginBottom: multiType ? 20 : 0 }}>
-          {multiType && (
-            <div style={{ fontSize: 11, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>
-              {TYPE_LABEL[type] ?? type}
-            </div>
-          )}
-          {typeItems.map(item => <CanonRow key={item.id} item={item} />)}
-        </div>
-      ))}
+      {open && byType.map(({ type, items: typeItems }) => {
+        // Picks you wrote about get the full editorial row; the rest collapse to
+        // quiet one-liners underneath, so no row is ever an empty colour band.
+        const noted = typeItems.filter(i => i.note?.trim())
+        const bare = typeItems.filter(i => !i.note?.trim())
+        return (
+          <div key={type} style={{ marginBottom: multiType ? 20 : 0 }}>
+            {multiType && (
+              <div style={{ fontSize: 11, color: MUTE, marginBottom: 10, letterSpacing: '0.3px' }}>
+                {TYPE_LABEL[type] ?? type}
+              </div>
+            )}
+            {noted.map(item => <CanonRow key={item.id} item={item} />)}
+            {bare.length > 0 && (
+              <div style={{ padding: noted.length ? '4px 14px 0' : '0 14px' }}>
+                {bare.map(item => <CanonLine key={item.id} item={item} />)}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -273,15 +300,15 @@ export function TasteScreen() {
 
       {/* Vibe words — the actual headline */}
       {topVibes.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 22, fontWeight: 600, color: INK, letterSpacing: '-0.5px', lineHeight: 1.2 }}>
+        <div style={{ marginBottom: 22 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 600, color: INK, letterSpacing: '-0.9px', lineHeight: 1.12, margin: 0 }}>
             {topVibes.map((v, i) => (
               <span key={v.label}>
-                {i > 0 && <span style={{ color: MUTE, margin: '0 7px', fontWeight: 400 }}>·</span>}
+                {i > 0 && <span style={{ color: MUTE, margin: '0 8px', fontWeight: 400 }}>·</span>}
                 {v.label}
               </span>
             ))}
-          </div>
+          </h1>
         </div>
       )}
 
@@ -328,13 +355,13 @@ export function TasteScreen() {
             what you're collecting vs. what you actually finish
           </div>
           {aspirationGaps.map((g, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: i < aspirationGaps.length - 1 ? 5 : 0 }}>
-              <span style={{ fontSize: 14, color: GRAPHITE, letterSpacing: '-0.1px' }}>
-                adding {g.adding} · finishing {g.finishing}
+            <div key={i} style={{ marginBottom: i < aspirationGaps.length - 1 ? 6 : 0 }}>
+              <span style={{ fontSize: 14, color: GRAPHITE, letterSpacing: '-0.1px', lineHeight: 1.55 }}>
+                {g.medium ? `In ${g.medium}, you keep adding ` : 'You keep adding '}
+                <span style={{ color: INK, fontWeight: 600 }}>{g.adding}</span>
+                {' but finish '}
+                <span style={{ color: INK, fontWeight: 600 }}>{g.finishing}</span>.
               </span>
-              {g.medium && (
-                <span style={{ fontSize: 11, color: MUTE }}>{g.medium}</span>
-              )}
             </div>
           ))}
         </div>
