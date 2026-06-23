@@ -334,8 +334,8 @@ export function TasteScreen() {
             </div>
           )}
 
-          {/* AI prose */}
-          <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 16, marginBottom: 16 }}>
+          {/* AI prose — no rule above; the vibe words read as its headline */}
+          <div style={{ marginBottom: 16 }}>
             {tasteProfile ? (
               <div>
                 {tasteProfile.split('\n\n').filter(p => p.trim()).map((para, i) => (
