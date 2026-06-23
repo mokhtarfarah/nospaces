@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { genreBlock } from './_genres.js'
 import { isSafePublicUrl } from './_ssrf.js'
+import { scrapeProduct, type ScrapedFields } from './_scrape.js'
 
 // Strip any non-ASCII chars that may have crept in via copy-paste
 const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
@@ -109,6 +110,16 @@ async function logCapture(opts: {
   } catch (err) {
     console.error('[email] failed to log capture:', err instanceof Error ? err.message : err)
   }
+}
+
+// Things-domain routing. An email sent to one of these address local-parts
+// (e.g. things@nospaces.xyz) is a product link for the board, NOT media — it's
+// handled by the free scraper, no Anthropic call. Everything else is media.
+const THINGS_LOCALPARTS = (cleanEnv(process.env.THINGS_EMAIL_LOCALPARTS) || 'things,shop,want')
+  .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+function isThingsAddress(addr: string): boolean {
+  const local = (addr.split('@')[0] ?? '').toLowerCase()
+  return THINGS_LOCALPARTS.some(p => local.includes(p))
 }
 
 // Anthropic only accepts these image media types.
@@ -346,6 +357,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
       `I got your email but couldn't match it to your account, so nothing was saved. (Tech note: user not found.)`)
     return res.status(200).json({ saved: 0, error: 'User not found' })
+  }
+
+  // ---- Things domain: forward a product link → save it to your board ----
+  // Routed by the recipient address (things@ / shop@ / want@). Free — uses the
+  // shared scraper, no Anthropic call. Returns before the paid media pipeline.
+  if (isThingsAddress(replyFrom)) {
+    const urls = extractUrls(body)
+    if (urls.length === 0) {
+      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'nothing_found', detail: 'no link in things email', snippet })
+      await sendReply(fromEmail, replyFrom, 'Nospaces: no link found',
+        `I didn't find a product link in that email. Forward one with the shop link in it and I'll add it to your board.`)
+      return res.status(200).json({ saved: 0 })
+    }
+    // First link that scrapes to something usable wins (forwarded shop emails
+    // can carry tracking/unsubscribe links before the real product).
+    let fields: ScrapedFields | null = null
+    for (const u of urls) {
+      const r = await scrapeProduct(u)
+      if (r.ok && (r.fields.title || r.fields.image)) { fields = r.fields; break }
+    }
+    if (!fields) {
+      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'error', detail: 'could not read product link', snippet })
+      await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t read that link',
+        `I found a link but couldn't read the product from it. Some shops block this — paste the link in the app and add it by hand, or try a different link.`)
+      return res.status(200).json({ saved: 0 })
+    }
+    // Dedup by URL against the things already on the board.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingThings } = await (supabase as any)
+      .from('items').select('metadata').eq('user_id', matchedUser.id).eq('type', 'thing')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const already = ((existingThings ?? []) as any[]).some(t => (t.metadata?.url ?? '') === fields!.url)
+    if (already) {
+      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'duplicates', detail: 'thing already on board', snippet })
+      await sendReply(fromEmail, replyFrom, 'Nospaces: already on your board',
+        `"${fields.title ?? 'That item'}" is already on your board — nothing new to add.`)
+      return res.status(200).json({ saved: 0 })
+    }
+    const title = fields.title ?? 'Untitled'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: thingErr } = await (supabase as any).from('items').insert({
+      user_id: matchedUser.id,
+      title,
+      creator: fields.brand,
+      type: 'thing',
+      status: 'want_to',
+      source: 'email',
+      metadata: { kind: 'product', title, image: fields.image, price: fields.price, brand: fields.brand, siteName: fields.siteName, url: fields.url },
+    })
+    if (thingErr) {
+      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'error', detail: thingErr.message, snippet })
+      await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
+        `I read "${title}" but hit an error saving it — nothing was added. (Tech note: ${thingErr.message})`)
+      return res.status(200).json({ saved: 0, error: thingErr.message })
+    }
+    await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
+      `Added to your board:\n\n• ${title}${fields.price ? ` — ${fields.price}` : ''}\n\nTag it (material, palette, vibe) in the app to feed your thread.`)
+    return res.status(200).json({ saved: 1, domain: 'thing' })
   }
 
   // Identify media from any image attachments. Each image is normalized first (HEIC→JPEG,

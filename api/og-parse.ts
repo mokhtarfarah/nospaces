@@ -1,136 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
 import { isSafePublicUrl } from './_ssrf.js'
+import { scrapeProduct } from './_scrape.js'
 
 // Free product-link reader for the "Things" domain. Given a product URL, fetch the
-// page server-side and pull image/title/price/brand out of its OpenGraph + product
-// meta tags. No Anthropic call — this just reads a public page, so it costs nothing.
+// page server-side (via the shared scrapeProduct) and pull image/title/price/brand
+// out of its OpenGraph + product meta tags + JSON-LD. No Anthropic call — this just
+// reads a public page, so it costs nothing.
 //
-// SSRF-guarded (reuses _ssrf): the URL comes from user input, so we refuse loopback /
-// private / link-local hosts before fetching. Auth + a light per-user rate limit keep
-// it from being used as an open proxy.
-
-const MAX_BYTES = 512 * 1024 // only need the <head>; cap the read so a huge page can't blow memory
-const FETCH_TIMEOUT_MS = 13000
+// SSRF-guarded inside scrapeProduct (reuses _ssrf). Auth + a light per-user rate
+// limit here keep it from being used as an open proxy.
 
 // Give the serverless function headroom over the fetch timeout so a slow shop
 // surfaces our friendly "took too long" message instead of a raw 504.
 export const config = { maxDuration: 20 }
-
-// Pull <meta property="og:title" content="..."> / <meta name="..." content="..."> values.
-// Order-agnostic: content can come before or after the property/name attribute.
-function metaContent(html: string, keys: string[]): string | null {
-  for (const key of keys) {
-    const esc = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const patterns = [
-      new RegExp(`<meta[^>]+(?:property|name|itemprop)=["']${esc}["'][^>]+content=["']([^"']*)["']`, 'i'),
-      new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name|itemprop)=["']${esc}["']`, 'i'),
-    ]
-    for (const re of patterns) {
-      const m = html.match(re)
-      if (m && m[1].trim()) return decodeEntities(m[1].trim())
-    }
-  }
-  return null
-}
-
-function titleTag(html: string): string | null {
-  const m = html.match(/<title[^>]*>([^<]*)<\/title>/i)
-  return m && m[1].trim() ? decodeEntities(m[1].trim()) : null
-}
-
-// Minimal HTML entity decode — meta content is often entity-encoded (&amp; &#39; …).
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;|&#x27;/gi, "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
-}
-
-// Normalise a price string to a clean display value. We don't try to be a currency
-// engine — just keep a leading symbol/code + the number, drop trailing junk.
-function cleanPrice(raw: string | null, currency: string | null): string | null {
-  if (!raw) return null
-  const num = raw.match(/\d[\d.,]*/)
-  if (!num) return null
-  const sym = currency
-    ? ({ USD: '$', GBP: '£', EUR: '€', CAD: '$', AUD: '$' }[currency.toUpperCase()] ?? `${currency.toUpperCase()} `)
-    : (raw.match(/[$£€]/)?.[0] ?? '')
-  return `${sym}${num[0]}`.trim()
-}
-
-// ---- JSON-LD (schema.org/Product) ----
-// Many shops put generic OG tags ("Woman") but the real product in a
-// <script type="application/ld+json"> Product node. Read that when present —
-// it's the most reliable source for name / brand / price.
-
-function asRecord(v: unknown): Record<string, unknown> | null {
-  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
-}
-function asString(v: unknown): string | null {
-  if (typeof v === 'string') return v.trim() || null
-  if (typeof v === 'number') return String(v)
-  return null
-}
-
-// Flatten JSON-LD into a list of nodes, descending arrays and @graph wrappers.
-function collectLdNodes(v: unknown, out: Record<string, unknown>[]): void {
-  if (Array.isArray(v)) { for (const x of v) collectLdNodes(x, out); return }
-  const rec = asRecord(v)
-  if (!rec) return
-  out.push(rec)
-  if ('@graph' in rec) collectLdNodes(rec['@graph'], out)
-}
-
-function isProductNode(node: Record<string, unknown>): boolean {
-  const t = node['@type']
-  const types = Array.isArray(t) ? t : [t]
-  return types.some(x => typeof x === 'string' && x.toLowerCase().includes('product'))
-}
-
-function ldBrand(v: unknown): string | null {
-  return asString(v) ?? asString(asRecord(v)?.name)
-}
-function ldImage(v: unknown): string | null {
-  if (Array.isArray(v)) return ldImage(v[0])
-  return asString(v) ?? asString(asRecord(v)?.url)
-}
-
-type LdProduct = { name: string | null; brand: string | null; price: string | null; currency: string | null; image: string | null }
-
-function jsonLdProduct(html: string): LdProduct | null {
-  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
-  const nodes: Record<string, unknown>[] = []
-  let m: RegExpExecArray | null
-  while ((m = re.exec(html))) {
-    const raw = m[1].trim()
-    if (!raw) continue
-    let data: unknown
-    try { data = JSON.parse(raw) } catch { try { data = JSON.parse(decodeEntities(raw)) } catch { continue } }
-    collectLdNodes(data, nodes)
-  }
-  const prod = nodes.find(isProductNode)
-  if (!prod) return null
-  const offersRaw = prod['offers']
-  const offer = asRecord(Array.isArray(offersRaw) ? offersRaw[0] : offersRaw)
-  return {
-    name: asString(prod['name']),
-    brand: ldBrand(prod['brand']),
-    price: asString(offer?.['price']) ?? asString(offer?.['lowPrice']),
-    currency: asString(offer?.['priceCurrency']),
-    image: ldImage(prod['image']),
-  }
-}
-
-// Resolve a possibly-relative image URL against the page URL.
-function absoluteUrl(maybe: string | null, base: string): string | null {
-  if (!maybe) return null
-  try { return new URL(maybe, base).href } catch { return null }
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -144,74 +27,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const trimmed = url.trim()
   if (!isSafePublicUrl(trimmed)) return res.status(400).json({ error: "That doesn't look like a valid product link." })
 
-  try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-    let resp: Response
-    try {
-      resp = await fetch(trimmed, {
-        signal: controller.signal,
-        redirect: 'follow',
-        headers: {
-          // Some shops gate bot UAs; present as a normal browser to get the OG-tagged HTML.
-          'User-Agent': 'Mozilla/5.0 (compatible; Nospaces/1.0; +https://nospaces.vercel.app)',
-          'Accept': 'text/html,application/xhtml+xml',
-        },
-      })
-    } finally {
-      clearTimeout(timer)
-    }
-
-    if (!resp.ok) return res.status(200).json({ ok: false, reason: `The page returned ${resp.status}.` })
-    const ctype = resp.headers.get('content-type') ?? ''
-    if (!ctype.includes('html')) return res.status(200).json({ ok: false, reason: 'That link is not a web page.' })
-
-    // Read only enough bytes to cover the <head>.
-    const reader = resp.body?.getReader()
-    let html = ''
-    if (reader) {
-      const decoder = new TextDecoder()
-      let total = 0
-      while (total < MAX_BYTES) {
-        const { done, value } = await reader.read()
-        if (done) break
-        total += value.length
-        html += decoder.decode(value, { stream: true })
-        // Stop once we have the <head> — but keep reading into the body if we
-        // haven't yet seen a JSON-LD block, since many shops put their real
-        // Product data (name/brand/price) in a <script> lower down the page.
-        if (/<\/head>/i.test(html) && /application\/ld\+json/i.test(html)) break
-      }
-      try { await reader.cancel() } catch { /* ignore */ }
-    } else {
-      html = (await resp.text()).slice(0, MAX_BYTES)
-    }
-
-    const finalUrl = resp.url || trimmed
-    // JSON-LD Product wins for name/brand/price (most reliable); OG/meta is the
-    // fallback. The packshot stays OG-first for a consistent board, JSON-LD last.
-    const ld = jsonLdProduct(html)
-    const title =
-      ld?.name ??
-      metaContent(html, ['og:title', 'twitter:title']) ??
-      titleTag(html)
-    const image = absoluteUrl(
-      metaContent(html, ['og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src']) ?? ld?.image ?? null,
-      finalUrl,
-    )
-    const currency = ld?.currency ?? metaContent(html, ['product:price:currency', 'og:price:currency'])
-    const price = cleanPrice(
-      ld?.price ?? metaContent(html, ['product:price:amount', 'og:price:amount', 'product:price', 'price']),
-      currency,
-    )
-    const brand = ld?.brand ?? metaContent(html, ['product:brand', 'og:brand', 'twitter:data1'])
-    const siteName = metaContent(html, ['og:site_name'])
-      ?? (() => { try { return new URL(finalUrl).hostname.replace(/^www\./, '') } catch { return null } })()
-
-    return res.status(200).json({ ok: true, url: finalUrl, title, image, price, brand, siteName })
-  } catch (err) {
-    const aborted = err instanceof Error && err.name === 'AbortError'
-    console.error('[og-parse] error for', trimmed, ':', err instanceof Error ? err.message : err)
-    return res.status(200).json({ ok: false, reason: aborted ? 'The page took too long to load.' : "Couldn't read that link." })
-  }
+  const result = await scrapeProduct(trimmed)
+  if (!result.ok) return res.status(200).json({ ok: false, reason: result.reason })
+  const { url: finalUrl, title, image, price, brand, siteName } = result.fields
+  return res.status(200).json({ ok: true, url: finalUrl, title, image, price, brand, siteName })
 }

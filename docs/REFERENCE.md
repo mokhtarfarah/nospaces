@@ -101,6 +101,8 @@ Forward anything to `anything@nospaces.xyz`. AI finds every media item + saves a
 
 **DKIM verified (2026-06-02):** was blocked by a Porkbun wildcard CNAME (`*`). Fixed by deleting the wildcard and adding Postmark's DKIM TXT record directly. Selector: `20260602022450pm._domainkey`. Verify: `dig +short 20260602022450pm._domainkey.nospaces.xyz TXT`.
 
+**Things via email (s66):** forward a product link to **`things@nospaces.xyz`** (or `shop@`/`want@`) and it's scraped and saved to the board as a `type:'thing'` product — **no Anthropic call, free** (uses the shared `api/_scrape.ts`). Routing is by recipient local-part (`isThingsAddress` in `api/email.ts`); configurable via env `THINGS_EMAIL_LOCALPARTS` (default `things,shop,want`). Any other address → the media flow as before. Domain inbound forwards all local-parts to the same `/api/email` webhook, so no extra Postmark setup — just send to `things@`. Dedups by URL against the board. First scrapable link wins (skips tracking/unsubscribe links in forwarded shop emails).
+
 ### Spotify sync
 Add → "Sync from Spotify" → `/spotify`. Pulls Saved Albums on demand (PKCE OAuth, fully client-side). First sync → all as `want_to`. Subsequent syncs → only new albums as `done`. Deduped by title+artist and `metadata.spotifyId`. Stored: `type:'music'`, `source_detail:'spotify'`, `metadata.{spotifyId,spotifyUrl,coverUrl}`.
 
