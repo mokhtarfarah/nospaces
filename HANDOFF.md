@@ -15,22 +15,19 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (59):** Full **taste-page redesign** (Discover as the editorial benchmark). Critiqued cold first, then shipped: (1) "the gap" → plain-English sentence with bolded genres; (2) **tabbed page** — `profile` (vibe headline + prose + gap + always loved) vs `desert island`, kills the essay-vs-pastel whiplash; (3) vibe headline moved into the profile tab, inline·middots with no mid-word break; (4) the big one — **numbered, curatable desert island**: top-5 per medium, Discover countdown numeral, tap→`SheetHero` detail with the note as "why", `edit` mode with ▲▼ reorder + remove (writes `metadata.canonRank`, no migration), and an add picker of loved non-canon items with a 5/medium cap. All **free — UI + freeform metadata, no API.** typecheck + lint + 56 tests clean. **ALL UNVERIFIED on phone** (taste page auth-gated) — Farah tests in s60. Full detail → archive.
+**This session (60):** Acted on Farah's s59 feedback (verified on phone — good). Shipped: (1) **island "why" field** (`metadata.canonNote`) — separate from the library note, reads as prose + `edit` link in the detail sheet, surfaced as the italic line in each pick row (the Discover touch that was missing); library note hides once a why exists; (2) **covers bumped to match Discover** (opacity .42, mask 30%, numeral 96) — the "not as chic" fix; (3) add picker now shows **"added ✓"**; (4) removed the ◇ glyph by the desert-island chip; (5) **humanizer prose prompt** — anti-AI-writing guardrails (`github.com/blader/humanizer`) + "sharp friend" voice, model → **sonnet-4-6**; (6) **gitleaks CI fix** (free CLI, no license gate). Standing principle logged: all AI prose must not *feel* AI-written. Commits `7281535`, `eb07fa4`. Full detail → archive.
 
-**Last session (58):** Desert-island grid → Discover-style rows surfacing `item.note`. Superseded by s59's numbered rework. Full detail → archive.
+**Last session (59):** Full taste-page redesign — tabbed (profile / desert island) + numbered, curatable desert island. Full detail → archive.
 
 ---
 
-## ▶ Next session (60) — Farah's feedback on the s59 taste redesign
+## ▶ Next session (61)
 
-**Verify on phone + gather feedback (s59).** Whole taste page changed; nothing is phone-verified. Walk through:
-1. **Tabs** — `profile` / `desert island` read as one app (Discover/Library chip idiom); tabs stay anchored when switching.
-2. **Profile tab** — vibe headline (inline·middots) wraps cleanly, no mid-word break; reads as enough of a headline at 24px (nudge up if too quiet); no rule between headline and prose.
-3. **Desert island** — numbered rows; **tap → sheet** shows poster + note; **`edit`** → ▲▼ reorder actually moves picks + renumbers, ✕ removes; **`+ add`** lists loved non-canon items, films shows **full** (already 5). Watch: arrow hit-targets, numeral loudness, edit-mode busyness.
+Taste is now done (redesigned s59, polished s60 + phone-verified). Pick a direction *before* touching code:
 
-**Content cleanup (Farah, not code):** Two Towers' note is "❤️×8" — reads like a glitch in the reveal slot. Rewrite or clear.
-
-**Then:** #6 — **editorial feel app-wide** continues; Taste is now done, **Library + Add** remain (Discover is the benchmark). Or continue the roadmap walk: **taste tab keep-or-fold**, regions map, expansion beyond media (`docs/ROADMAP.md`). Pick a direction *before* touching code.
+1. **#6 — editorial feel app-wide** continues. Taste + Discover are the benchmark; **Library + Add** are what's left to bring up to that bar.
+2. **Propagate the humanizer guardrails** (new s60) to the other prose endpoints — `api/blurb.ts`, `api/recommend.ts`, `api/recommend-feeds.ts`. The block in `api/taste-profile.ts` is the template. *Standing principle: all AI prose must not feel AI-written.* (`docs/ROADMAP.md`)
+3. Or continue the roadmap walk: **taste tab keep-or-fold**, regions map, expansion beyond media (`docs/ROADMAP.md`).
 
 **Still pending re-check (s57 follow-ups, may already be fine):** Discover blurb titles read upright/distinct; search shows "all" tab highlighted while a query is active.
 

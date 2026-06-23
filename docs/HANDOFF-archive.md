@@ -4,6 +4,26 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 60 (2026-06-23) — Farah's s59 feedback: island "why" field, humanizer prose prompt, add-confirmation, gitleaks CI fix
+
+Discussion-led session on the s59 redesign, then shipped. **Pushed to `main` (direct push, 2-user workflow); Farah verified the detail sheet on phone — looks good.** Costs: only the taste-profile regen costs (1 Sonnet call); ran **one** test gen (~1¢) to demo the new voice. Everything else free (UI + freeform metadata + CI config).
+
+Diagnosed **why taste felt less chic than Discover**: covers were fainter (opacity .32 vs .42, image masked in later) *and* — the real reason — the desert-island rows carried no prose, while every Discover row has its italic "why." The empty rows read as a bare index.
+
+Shipped:
+1. **Island "why" field** (`metadata.canonNote`) — its own love-note, **separate from the library note** (deliberate: notes are working scraps, the why is the editorial statement). Surfaced as a one-line italic in each pick row (the Discover line that was missing → fixes the "chic" gap). In the detail sheet it **reads as prose with an `edit` link** (first pass shipped an always-on textarea — Farah flagged it looked like a form; reworked to read-by-default + edit/save/cancel, empty state = "+ add why" link). **Library note hides once a why exists**; shows muted only as fallback material when no why yet. Row + `islandWhy()` fall back to the library note so existing picks aren't blank.
+2. **Cover chic bump** to match Discover: opacity .32→**.42**, mask 38%→**30%**, numeral 88→**96**.
+3. **Add picker confirmation** — tapping `add` now shows **"added ✓"** + dims the row (snapshot the candidate list on open so the item doesn't silently vanish), instead of the old no-feedback drop.
+4. **Removed the ◇ glyph** next to the "desert island" chip in `ItemActionSheet` (the chip still darkens when on).
+5. **Humanizer prose prompt** (`api/taste-profile.ts`) — rewrote the system prompt: "sharp friend, not a critic/brand" voice + a full **anti-AI-writing guardrail block** (puffery, connective filler, rule-of-three, negative parallelism, trailing -ing clauses, dressed-up copulas, vague attribution, synonym cycling, false ranges, manufactured staccato punchlines, aphorism formulas, fake-candid openers; em-dashes allowed where natural). Source: **`github.com/blader/humanizer`** + the Wikipedia "Signs of AI writing" article. Model **claude-sonnet-4-5 → claude-sonnet-4-6** (same cost, better prose).
+6. **gitleaks CI fix** — `gitleaks-action@v2` now demands a (org-paid) `GITLEAKS_LICENSE` even on personal repos, failing the run. Swapped to the **free gitleaks CLI** (pinned v8.18.4; download URL verified 200). The `test` job was always passing — only the secret-scan job was red, and it never affected the live site (Vercel deploys independently).
+
+**Standing principle logged** (ROADMAP + memory `humanizer-prose-guidelines`): *all* AI-generated user-facing prose must not FEEL AI-written and must carry true insight. taste-profile is done; **propagate the guardrail block to `blurb.ts` / `recommend.ts` / `recommend-feeds.ts`** when next touching them.
+
+`TasteScreen.tsx` changes: `islandWhy()` helper, `CanonRow` (why line + cover bump), `CanonDetailSheet` (read/edit prose + library-note fallback), `CanonAddSheet` (snapshot + added ✓), `saveCanonWhy` handler. typecheck + lint + 56 tests clean throughout. Commits `7281535`, `eb07fa4`.
+
+---
+
 ### Session 59 (2026-06-23) — Taste page redesign: tabbed (profile / desert island) + numbered, curatable desert island
 
 Took the s58 desert-island rows further into a full **taste-page redesign**, using Discover's editorial principles as the benchmark. Critiqued the page cold first (read like a dashboard of stacked modules, not a magazine; grey wall of prose; note-less desert-island rows = empty colour bands). All work **free — pure UI + one freeform-metadata field, no API.** Every step **unverified on phone** (taste page is auth-gated; preview only reaches Google login) — Farah tests in s60.
