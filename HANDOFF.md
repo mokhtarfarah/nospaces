@@ -15,7 +15,7 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (63):** Built the **regions / country filter** end-to-end (country-only, per the decided plan). `api/wiki.ts` now pulls country of origin (film/TV → work's `P495`; book/music → creator's `P27`) and the title-search branch honours `parse=1`. New `src/lib/regions.ts` one-shot backfill; `LibraryScreen` gets a **"region"** filter group + a **"pull regions"** action in the ⋯ menu; auto-fill captures region for new items. Cost $0 (Wikidata reads). Verified: typecheck + 56 tests + live pull (*Drops of God* → France·Japan·US). **NOT visually verified** (OAuth wall) — eyeball on phone: ⋯ → pull regions. **Not yet pushed.** Full detail → archive.
+**This session (63):** Shipped the **regions / country filter** (country-only). The build was easy; making the backfill work on Farah's real 835-item library took five iterations — final answer pulls Wikipedia/Wikidata **directly from the browser** (`origin=*`, her IP) because routing through Vercel's shared IP got rate-limited. Resolution handles bands, co-productions, and historical-state rollups; a `REGION_VERSION` stamp auto-recleans on re-pull. **Coverage fills in progressively across re-runs** of ⋯ → "pull regions". Also: **trimmed the filter sheet** to collapsible sections (was a wall), and **designed the shopping / "Things" expansion** (→ ROADMAP, no code). Cost $0. Pushed to `main` (`a526d56..6e1d56a`). Full detail → archive.
 
 **Last session (62):** Brought `AddScreen` + `LibraryScreen` up to the Taste/Discover editorial bar (#6 done). Full detail → archive.
 
@@ -23,16 +23,14 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 ## ▶ Next session (64)
 
-**First thing: push s63.** The regions feature is built + verified (typecheck/tests/live pull) but **not pushed**. Confirm it eyeballs right on phone (⋯ → pull regions → check the "region" filter populates), then push to `main`.
+**Main job: flesh out the shopping / "Things" expansion → start building.** The full v1 design is in `docs/ROADMAP.md` → "Expansion beyond media" (domain-switcher IA, want/own-not-a-closet, the intent + candidates model, capture via link/photo/AI-suggest, category + subcategory vocab, aesthetic profile = phase 2). Next step is to turn that into a concrete build plan — likely start with the data model (`thing` type + intent/candidates shape), the domain switcher, and the link-paste OG-capture endpoint. **This will be the first paid-API surface for the new domain (photo + AI-suggest) — state costs before building.**
 
-**#6 done.** **Regions shipped s63** (country-only). If country alone feels wrong in real use, the language axis (`P364`) is a parked fast-follow → `docs/ROADMAP.md`.
+**Carried from s63 (check, don't rebuild):**
+- **Regions** — shipped, browser-direct backfill. Coverage was still filling in via repeated ⋯ → "pull regions". If it's plateaued with a stubborn `failed` count, slow the pull down (lower concurrency / add pacing in `src/lib/regions.ts`). Language axis `P364` parked in ROADMAP.
+- **Filter sheet** — trimmed to collapsible sections; confirm it eyeballs right on phone.
 
 **📅 ~2026-07-14 checkpoint — held decision:**
 1. **Taste-tab keep-or-fold** — DECIDED s63: *keep the tab*; revisit after real desert-island use. (Reasoning + profile-as-masthead fold sketch → `docs/ROADMAP.md`.)
-
-Otherwise pick a direction now:
-- **Expansion beyond media** (restaurants/places, calendar, the "life index") — bigger/longer-term.
-- Smaller carried item (softer PageHeader rule, catalog-miss interstitial decision, the s57 re-checks below).
 
 **Still pending re-check (s57 follow-ups, may already be fine):** Discover blurb titles read upright/distinct; search shows "all" tab highlighted while a query is active.
 
