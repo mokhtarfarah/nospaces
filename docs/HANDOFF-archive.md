@@ -4,6 +4,27 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 59 (2026-06-23) — Taste page redesign: tabbed (profile / desert island) + numbered, curatable desert island
+
+Took the s58 desert-island rows further into a full **taste-page redesign**, using Discover's editorial principles as the benchmark. Critiqued the page cold first (read like a dashboard of stacked modules, not a magazine; grey wall of prose; note-less desert-island rows = empty colour bands). All work **free — pure UI + one freeform-metadata field, no API.** Every step **unverified on phone** (taste page is auth-gated; preview only reaches Google login) — Farah tests in s60.
+
+Shipped, in order:
+1. **"The gap" → plain-English sentence** with the two genres bolded — *"You keep adding **indie** but finish **drama**."* (was `adding indie · finishing drama`, read like debug data).
+2. **Tabbed page.** Split into two chip-tabs (the Discover/Library idiom): **profile** (vibe headline + AI prose + the gap + always loved) and **desert island** (the picks). Kills the tonal whiplash — each tab is one register. Tabs sit directly under the header so they stay anchored. `TabChip` mirrors Discover's stream chips.
+3. **Vibe headline** moved *into* the profile tab (it describes the profile, not the picks; also stops the desert-island tab opening top-heavy). Tried a big **stacked masthead**, then reverted to **inline · middots** (reads as one identity, not a list) with per-word `nowrap` so it never breaks mid-word (the old `off-kilter` hyphen-break). Dropped a drop-cap + pull-quote experiment as too try-hard. Removed the rule between headline and prose (they read as linked).
+4. **Numbered, curatable desert island** (the big build). Replaced the noted/un-noted split with a ranked list:
+   - Uniform **numbered rows** (Discover countdown numeral, reset per medium); note no longer in the row.
+   - **Tap a pick → detail sheet** (reuses `SheetHero`): poster + rank watermark + the note as the "why".
+   - **Edit mode** (`edit`/`done` toggle): reorder with **▲▼ arrows** (chosen over touch-drag for mobile reliability) + remove (✕). Writes `metadata.canonRank` via `patchMetadata` (optimistic, no refetch). **No schema migration** — `metadata` is freeform JSON.
+   - **Add picker**: your loved items not yet canon; enforces a **5-per-medium cap** (scarcity is the point of a desert island). Add appends to the bottom (rank = current count) — no pick-a-number-at-add (friction + slot collisions).
+   - Order falls back to add-date until the first reorder, then ranks are concrete.
+
+New components in `TasteScreen.tsx`: `TabChip`, `CanonRow` (rewritten, numbered), `ArrowBtn`, `CanonDetailSheet`, `CanonAddSheet`, `DesertIsland`. Deleted `CanonLine` + old `CanonGallery`. Handlers `moveCanon`/`removeCanon`/`addCanon` in `TasteScreen`. typecheck + lint + 56 tests clean.
+
+Open content cleanup (Farah, not code): **Two Towers' note is "❤️×8"** — lands in the prominent reveal/row slot and reads like a glitch to anyone else. Either write a real one-liner or clear it.
+
+---
+
 ### Session 58 (2026-06-23) — Desert-island display rethink: Discover-row treatment, surfaces the note
 
 Walked the roadmap with Farah; she picked the **desert-island display rethink** (was in `ROADMAP.md` → Medium/long-term). Showed three directions as a mockup (current grid / stacked cards / numbered list); she chose the stacked-card direction **"but matching the Discover rows."**

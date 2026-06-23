@@ -10,7 +10,7 @@ When you finish a roadmap item: delete it from here (don't leave a ✅ checkmark
 
 Five of the six s56 observations shipped in s57 (see archive). One remains:
 
-6. **Bring the editorial feel to the rest of the app (direction).** "consider broadly how we can make the rest of the app feel as interesting / editorial aesthetically as the discover page, which i think is now a highlight." *(Discover is now the aesthetic benchmark — propose how Library/Taste/Add adopt the same magazine treatment.)*
+6. **Bring the editorial feel to the rest of the app (direction).** "consider broadly how we can make the rest of the app feel as interesting / editorial aesthetically as the discover page, which i think is now a highlight." *(Discover is the benchmark. **Taste fully redesigned in s59** — tabbed, numbered desert island. **Library + Add still remain.**)*
 
 ---
 
@@ -39,7 +39,7 @@ Each has a reason it's parked and a trigger to revisit. Don't re-raise without n
 
 **Taste & stats**
 - The earlier 3-section stats version of the taste page (medium pills, reaction breakdown, verdict counts, effort axis) was **deliberately removed** in the `216e6ca` redesign. Current page: vibe headline → AI prose → "the gap" → "always loved" → desert island gallery. Don't assume the stats sections still exist. Revisit only if a stats section is actively wanted back.
-- **Taste tab: keep or fold into Library** — still open. Option discussed but not decided: delete the taste tab and make library the primary entry point, with desert island as a filtered view or pinned section inside it. *Trigger: navigation conversation with Farah.* (The desert-island *display* itself was reworked in s58 — now Discover-style rows surfacing the note.)
+- **Taste tab: keep or fold into Library** — still open. Option discussed but not decided: delete the taste tab and make library the primary entry point, with desert island as a filtered view or pinned section inside it. *Trigger: navigation conversation with Farah.* (Note: the taste page got a full redesign in s59 — tabbed profile/desert-island, numbered + curatable picks — so it's a more developed surface now; weigh that before folding.)
 
 **Expansion beyond media (long-term)**
 - **Restaurants, museums, exhibitions, experiences** — same reaction/note/tag model; new types. Taste profile generalises naturally.

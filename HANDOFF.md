@@ -15,19 +15,24 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.**
 
-**This session (58):** Walked the roadmap; Farah picked the **desert-island display rethink**. Reworked `CanonGallery` in `TasteScreen.tsx` from a 3-column cover grid → **Discover-style rows** (ghost cover wash from the right, big title, uppercase meta, and — the point — **`item.note` set as the italic "why"**, which the grid hid entirely). No rank numeral (these aren't ranked). Graceful no-note fallback. New `CanonRow`; deleted dead `CoverTileInner`. Free — pure UI, no API. typecheck + lint clean. **UNVERIFIED on phone** (taste page is auth-gated; preview only reaches Google login). Deployed for Farah to verify next session.
+**This session (59):** Full **taste-page redesign** (Discover as the editorial benchmark). Critiqued cold first, then shipped: (1) "the gap" → plain-English sentence with bolded genres; (2) **tabbed page** — `profile` (vibe headline + prose + gap + always loved) vs `desert island`, kills the essay-vs-pastel whiplash; (3) vibe headline moved into the profile tab, inline·middots with no mid-word break; (4) the big one — **numbered, curatable desert island**: top-5 per medium, Discover countdown numeral, tap→`SheetHero` detail with the note as "why", `edit` mode with ▲▼ reorder + remove (writes `metadata.canonRank`, no migration), and an add picker of loved non-canon items with a 5/medium cap. All **free — UI + freeform metadata, no API.** typecheck + lint + 56 tests clean. **ALL UNVERIFIED on phone** (taste page auth-gated) — Farah tests in s60. Full detail → archive.
 
-**Last session (57):** Cleared 5 of Farah's 6 s56 observations (2 Discover bugs, Spotify warm-resume scroll root-cause, 2 library-filter calls). Full detail → archive.
+**Last session (58):** Desert-island grid → Discover-style rows surfacing `item.note`. Superseded by s59's numbered rework. Full detail → archive.
 
 ---
 
-## ▶ Next session — verify s58, then editorial feel app-wide
+## ▶ Next session (60) — Farah's feedback on the s59 taste redesign
 
-**Verify on phone (s58):** desert-island section on the taste page now shows **Discover-style rows** — cover ghosting in from the right, your **note as the italic reason**. Check: (a) it reads as editorial / like Discover, (b) notes written as quick reminders ("standout track: X") don't look odd in the prominent italic slot — if they do, that's *content* cleanup, not code.
+**Verify on phone + gather feedback (s59).** Whole taste page changed; nothing is phone-verified. Walk through:
+1. **Tabs** — `profile` / `desert island` read as one app (Discover/Library chip idiom); tabs stay anchored when switching.
+2. **Profile tab** — vibe headline (inline·middots) wraps cleanly, no mid-word break; reads as enough of a headline at 24px (nudge up if too quiet); no rule between headline and prose.
+3. **Desert island** — numbered rows; **tap → sheet** shows poster + note; **`edit`** → ▲▼ reorder actually moves picks + renumbers, ✕ removes; **`+ add`** lists loved non-canon items, films shows **full** (already 5). Watch: arrow hit-targets, numeral loudness, edit-mode busyness.
+
+**Content cleanup (Farah, not code):** Two Towers' note is "❤️×8" — reads like a glitch in the reveal slot. Rewrite or clear.
+
+**Then:** #6 — **editorial feel app-wide** continues; Taste is now done, **Library + Add** remain (Discover is the benchmark). Or continue the roadmap walk: **taste tab keep-or-fold**, regions map, expansion beyond media (`docs/ROADMAP.md`). Pick a direction *before* touching code.
 
 **Still pending re-check (s57 follow-ups, may already be fine):** Discover blurb titles read upright/distinct; search shows "all" tab highlighted while a query is active.
-
-**Then the real work:** #6 — **bring the editorial/magazine feel app-wide** (Discover + now the taste desert-island are the benchmark; propose how Library/Add adopt it). Roadmap walk can continue: **taste tab keep-or-fold**, regions map, expansion beyond media (`docs/ROADMAP.md`). Pick a direction *before* touching code.
 
 **Verified earlier — don't re-check:** s56 scroll-restore (cold-kill case) + "new music tuesday"; detail sheet (`SheetHero`); filter-clip bug (session-49 #5).
 
