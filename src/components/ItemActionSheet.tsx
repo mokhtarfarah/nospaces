@@ -1115,8 +1115,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
                 }}
               >
-                <span style={{ fontSize: 9, lineHeight: 1 }}>{item.metadata?.canon ? '◆' : '◇'}</span>
-                <span style={{ fontSize: 10 }}>desert island</span>
+                <span style={{ fontSize: 11 }}>desert island</span>
               </button>
             </div>
             <div style={{ marginBottom: 16 }}>

@@ -112,6 +112,12 @@ const CANON_CAP = 5
 const coverFor = (item: Item) =>
   (item.metadata?.coverUrl as string | null) ?? (item.metadata?.wikiThumb as string | null) ?? null
 
+// The island "why" is its own field (metadata.canonNote) — a deliberate love-note
+// for this pick, separate from the working library note. Fall back to the library
+// note so existing picks still show something until a dedicated why is written.
+const islandWhy = (item: Item) =>
+  ((item.metadata?.canonNote as string | undefined)?.trim()) || (item.note?.trim() ?? '')
+
 // A numbered desert-island pick. Discover's countdown language — oversized rank
 // watermark, ghosted cover wash, title + meta — but the note is NOT in the row;
 // it's revealed on tap (a uniform row keeps the list clean, the reveal makes the
@@ -127,6 +133,10 @@ function CanonRow({ item, index, editing, isFirst, isLast, onUp, onDown, onRemov
   const cover = artwork ?? stored
   const fallbackTint = typeColor(item.type).bg
   const meta = [item.year ?? undefined, item.creator ?? undefined].filter(Boolean).join(' · ')
+  // One line of the "why" in the row — the editorial line that makes the list
+  // read like Discover instead of a bare index. Hidden in edit mode (reorder is
+  // the job there) to keep rows compact.
+  const why = !editing ? islandWhy(item) : ''
   const stop = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
@@ -138,19 +148,19 @@ function CanonRow({ item, index, editing, isFirst, isLast, onUp, onDown, onRemov
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center',
-          filter: 'blur(4px)', opacity: 0.32, transform: 'scale(1.08)',
-          WebkitMaskImage: 'linear-gradient(90deg, transparent 38%, #000 100%)',
-          maskImage: 'linear-gradient(90deg, transparent 38%, #000 100%)',
+          filter: 'blur(4px)', opacity: 0.42, transform: 'scale(1.08)',
+          WebkitMaskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
+          maskImage: 'linear-gradient(90deg, transparent 30%, #000 100%)',
         }} />
       ) : (
-        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent 42%, ${fallbackTint})`, opacity: 0.7 }} />
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent 35%, ${fallbackTint})`, opacity: 0.8 }} />
       )}
 
       <div style={{ position: 'relative', padding: '16px 14px' }}>
         {/* Oversized rank numeral — faint watermark, text runs across it */}
         <span style={{
           position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)',
-          fontFamily: 'inherit', fontSize: 88, fontWeight: 300,
+          fontFamily: 'inherit', fontSize: 96, fontWeight: 300,
           color: '#E0DDD5', lineHeight: 1, letterSpacing: '-5px', zIndex: 0,
           pointerEvents: 'none', userSelect: 'none',
         }}>{index}</span>
@@ -159,6 +169,14 @@ function CanonRow({ item, index, editing, isFirst, isLast, onUp, onDown, onRemov
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.25 }}>{item.title}</div>
             <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', marginTop: 3 }}>{meta}</div>
+            {why && (
+              <p style={{
+                fontSize: 13, color: '#4A453E', lineHeight: 1.6, margin: '6px 0 0', fontStyle: 'italic',
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+              }}>
+                {inlineItalics(why)}
+              </p>
+            )}
           </div>
 
           {editing ? (
@@ -192,12 +210,27 @@ function ArrowBtn({ dir, disabled, onClick }: { dir: 'up' | 'down'; disabled: bo
 }
 
 // Tap a pick → detail sheet (same language as Discover): SheetHero with the rank
-// watermark + crisp poster, then the user's note as the "why".
-function CanonDetailSheet({ item, index, onClose }: { item: Item; index: number; onClose: () => void }) {
+// watermark + crisp poster, then an editable "why it's on your island" — its own
+// love-note, separate from the working library note (which shows muted below).
+function CanonDetailSheet({ item, index, onSaveWhy, onClose }: {
+  item: Item; index: number; onSaveWhy: (text: string) => void; onClose: () => void
+}) {
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const cover = artwork ?? coverFor(item)
   const meta = [typeColor(item.type).label, item.creator ?? undefined, item.year ?? undefined].filter(Boolean).join(' · ')
-  const note = item.note?.trim()
+  const savedWhy = ((item.metadata?.canonNote as string | undefined) ?? '').trim()
+  const [why, setWhy] = useState(savedWhy)
+  const [saved, setSaved] = useState(false)
+  const libNote = item.note?.trim()
+  const dirty = why.trim() !== savedWhy
+
+  function save() {
+    if (!dirty) return
+    onSaveWhy(why.trim())
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1600)
+  }
+
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
@@ -207,15 +240,36 @@ function CanonDetailSheet({ item, index, onClose }: { item: Item; index: number;
         maxHeight: '92dvh', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
       }}>
         <SheetHero type={item.type} title={item.title} meta={meta} cover={cover} numeral={index} onClose={onClose} />
-        {note ? (
-          <div style={{ marginTop: 18 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 8 }}>your note</div>
-            <div style={{ borderTop: `1.5px solid ${INK}`, paddingTop: 14 }}>
-              <p style={{ fontSize: 15, color: '#3A352E', lineHeight: 1.75, margin: 0, fontStyle: 'italic' }}>{inlineItalics(note)}</p>
-            </div>
+
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase' }}>why it's on your island</span>
+            {saved && <span style={{ fontSize: 11, color: MUTE }}>saved ✓</span>}
           </div>
-        ) : (
-          <p style={{ marginTop: 18, fontSize: 13, color: MUTE, fontStyle: 'italic' }}>no note yet — add one from the library.</p>
+          <textarea
+            value={why}
+            onChange={e => setWhy(e.target.value)}
+            onBlur={save}
+            placeholder="what makes this one a keeper, out of everything?"
+            rows={3}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '12px 14px',
+              border: `1.5px solid ${HAIR}`, borderRadius: 10, fontSize: 15, fontFamily: 'inherit',
+              lineHeight: 1.7, color: '#3A352E', fontStyle: 'italic', resize: 'none', outline: 'none',
+            }}
+          />
+          {dirty && (
+            <div style={{ textAlign: 'right', marginTop: 8 }}>
+              <button onClick={save} style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: INK, cursor: 'pointer', fontFamily: 'inherit', borderBottom: `1px solid ${INK}`, lineHeight: 1.4 }}>save</button>
+            </div>
+          )}
+        </div>
+
+        {libNote && (
+          <div style={{ marginTop: 18, borderTop: `1px solid ${HAIR}`, paddingTop: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 6 }}>library note</div>
+            <p style={{ fontSize: 13, color: MUTE, lineHeight: 1.6, margin: 0 }}>{inlineItalics(libNote)}</p>
+          </div>
         )}
       </div>
     </>
@@ -228,10 +282,15 @@ function CanonAddSheet({ candidates, fullTypes, onAdd, onClose }: {
   candidates: Item[]; fullTypes: Set<string>; onAdd: (item: Item) => void; onClose: () => void
 }) {
   const [q, setQ] = useState('')
+  // Snapshot the candidates when the sheet opens so a just-added item stays in
+  // place showing "added ✓" instead of silently vanishing (the parent's live
+  // candidate list drops it the moment it becomes canon).
+  const [snapshot] = useState(() => candidates)
+  const [added, setAdded] = useState<Set<string>>(new Set())
   const query = q.trim().toLowerCase()
   const list = query
-    ? candidates.filter(i => i.title.toLowerCase().includes(query) || (i.creator ?? '').toLowerCase().includes(query))
-    : candidates
+    ? snapshot.filter(i => i.title.toLowerCase().includes(query) || (i.creator ?? '').toLowerCase().includes(query))
+    : snapshot
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
@@ -251,21 +310,24 @@ function CanonAddSheet({ candidates, fullTypes, onAdd, onClose }: {
         <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {list.length === 0 ? (
             <p style={{ fontSize: 13, color: MUTE, textAlign: 'center', marginTop: 24 }}>
-              {candidates.length === 0 ? 'no loved items left to add' : 'nothing matched'}
+              {snapshot.length === 0 ? 'no loved items left to add' : 'nothing matched'}
             </p>
           ) : list.map(item => {
-            const full = fullTypes.has(item.type)
+            const isAdded = added.has(item.id)
+            const full = !isAdded && fullTypes.has(item.type)
             const meta = [TYPE_LABEL[item.type] ?? item.type, item.year ?? undefined, item.creator ?? undefined].filter(Boolean).join(' · ')
             return (
-              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: `1px solid ${HAIR}` }}>
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: `1px solid ${HAIR}`, opacity: isAdded ? 0.55 : 1 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: INK, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
                   <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.3px', textTransform: 'uppercase', marginTop: 2 }}>{meta}</div>
                 </div>
-                {full ? (
+                {isAdded ? (
+                  <span style={{ fontSize: 12, color: GRAPHITE, flexShrink: 0 }}>added ✓</span>
+                ) : full ? (
                   <span style={{ fontSize: 11, color: MUTE, flexShrink: 0 }}>{TYPE_LABEL[item.type] ?? item.type} full</span>
                 ) : (
-                  <button onClick={() => onAdd(item)} style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, fontSize: 12, color: INK, cursor: 'pointer', fontFamily: 'inherit', borderBottom: `1px solid ${INK}`, lineHeight: 1.4 }}>add</button>
+                  <button onClick={() => { onAdd(item); setAdded(prev => new Set(prev).add(item.id)) }} style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, fontSize: 12, color: INK, cursor: 'pointer', fontFamily: 'inherit', borderBottom: `1px solid ${INK}`, lineHeight: 1.4 }}>add</button>
                 )}
               </div>
             )
@@ -278,7 +340,7 @@ function CanonAddSheet({ candidates, fullTypes, onAdd, onClose }: {
 
 // The desert-island tab body: numbered picks grouped by medium, an edit mode for
 // reorder/remove, and an add picker.
-function DesertIsland({ byType, total, candidates, fullTypes, onMove, onRemove, onAdd }: {
+function DesertIsland({ byType, total, candidates, fullTypes, onMove, onRemove, onAdd, onSaveWhy }: {
   byType: { type: string; items: Item[] }[]
   total: number
   candidates: Item[]
@@ -286,6 +348,7 @@ function DesertIsland({ byType, total, candidates, fullTypes, onMove, onRemove, 
   onMove: (type: string, idx: number, dir: -1 | 1) => void
   onRemove: (item: Item) => void
   onAdd: (item: Item) => void
+  onSaveWhy: (item: Item, text: string) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [detail, setDetail] = useState<{ item: Item; index: number } | null>(null)
@@ -319,7 +382,7 @@ function DesertIsland({ byType, total, candidates, fullTypes, onMove, onRemove, 
         </div>
       ))}
 
-      {detail && <CanonDetailSheet item={detail.item} index={detail.index} onClose={() => setDetail(null)} />}
+      {detail && <CanonDetailSheet item={detail.item} index={detail.index} onSaveWhy={text => onSaveWhy(detail.item, text)} onClose={() => setDetail(null)} />}
       {adding && <CanonAddSheet candidates={candidates} fullTypes={fullTypes} onAdd={onAdd} onClose={() => setAdding(false)} />}
     </div>
   )
@@ -410,6 +473,11 @@ export function TasteScreen() {
 
   function removeCanon(item: Item) {
     void toggleCanon(item.id, false)
+  }
+
+  // The island "why" — its own field, separate from the library note.
+  function saveCanonWhy(item: Item, text: string) {
+    void patchMetadata(item.id, { canonNote: text })
   }
 
   // Add → append to the bottom of its medium (rank = current count). One metadata
@@ -606,6 +674,7 @@ export function TasteScreen() {
           onMove={moveCanon}
           onRemove={removeCanon}
           onAdd={addCanon}
+          onSaveWhy={saveCanonWhy}
         />
       )}
     </div>
