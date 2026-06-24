@@ -1315,16 +1315,30 @@ function Thumb({ src, size }: { src: string | null; size?: number }) {
   const dim = isGrid ? { width: '100%', aspectRatio: '4 / 5' } : { width: size, height: size }
   return (
     <div style={{
+      position: 'relative',
       ...dim, background: isGrid ? '#fff' : '#F4F2EE', overflow: 'hidden',
       border: `1px solid ${LINE}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>
-      {src
-        // saturate(0.9) turns colour down (not off): since the taste here skews
-        // monochrome/neutral, it gently mutes the warm-cream-vs-cool-grey clash
-        // between shops without dulling the product. Reversible if it reads flat.
-        ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: isGrid ? 'contain' : 'cover', filter: 'saturate(0.9)' }} loading="lazy" />
-        : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
+      {src ? (
+        isGrid ? (
+          <>
+            {/* Ambient fill: a blurred, zoomed copy of the SAME photo bleeds its own
+                background (grey/cream/white, gradients and all) to the edges, so a
+                product floating on its shop's backdrop reads as edge-to-edge filled
+                with no seam. Beats a single detected hex — which CORS blocks on
+                retail CDNs and wouldn't match a gradient backdrop anyway. */}
+            <img src={src} alt="" aria-hidden="true" loading="lazy"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(24px) saturate(0.9)', transform: 'scale(1.2)' }} />
+            {/* The sharp product, whole + centered, on top of its own ambient field.
+                saturate(0.9) gently mutes the colour (taste here skews neutral). */}
+            <img src={src} alt="" loading="lazy"
+              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain', filter: 'saturate(0.9)' }} />
+          </>
+        ) : (
+          <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.9)' }} />
+        )
+      ) : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
     </div>
   )
 }
