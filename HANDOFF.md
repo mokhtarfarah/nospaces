@@ -38,12 +38,14 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 **s68 shipped both phases (on `main`, deployed) — Things↔Library parity, nits #2 + #3.**
 - **Phase 1:** product card tap → internal `ProductSheet` (buy link behind an explicit **"buy ↗"** button, no accidental exits; per-card `⋯` gone, got-it/edit/remove in the sheet w/ remove confirm). Floating `+` speed-dial replaces the two in-body buttons.
 - **Phase 2:** sticky collapsing header (switcher+title+rule+masthead fold on scroll, sort+category rows pin) via a `100dvh` flex column + inner scroller; shared `TabChip` matching Library.
-- ⚠️ **EYEBALL ON LIVE:** all of s68 is behind Google auth, so **NONE** of it was click-verified in preview — only typecheck + 73 tests + clean load. Farah confirmed phase 1 reads "okay for now"; phase 2 still wants a scroll-behavior eyeball.
+- **Phase 2.5 (feedback round):** scroll smoothed (dropped the JS height-collapse → only the sort/category bar is `position:sticky`, top scrolls away naturally); **beige "your thread" box removed** (now editorial type on white); **thumbnails squared off** (match Library); **640px width cap dropped + responsive grid** (~2 cols phone → ~5 desktop, `ResizeObserver` on the scroller); **status filter row added** (all / saved / deciding / got it — bucket: done product or resolved plan = "got", open plan = "deciding", else "saved").
+- **Taste-on-plans:** confirmed deliberate + kept — an open plan adds nothing to the thread/category read; its winner counts once picked.
+- ⚠️ **EYEBALL ON LIVE:** all of s68 is behind Google auth → **NONE** click-verified in preview, only typecheck + 73 tests + clean load. Farah confirmed phase 1 + the polish round visually; the responsive grid / sticky scroll / status filter want a final eyeball.
 
-**PICK UP HERE / open from the umbrella (#3) — only minor bits left:**
-- Container shape: Things is a centered `maxWidth:640` column; Library is full-bleed. Only visible on a wide desktop window (phone is identical). Left as-is because full-bleed blows up the 2-up grid on desktop — revisit only if wanted.
-- Optionally tone the beige "your thread" masthead toward Library's palette (kept deliberately — it's the soul of Things).
-- If phase-2 scroll/collapse feels off on a short board (few items barely scroll), reconsider whether collapse earns its keep here.
+**PICK UP HERE — Things board is in good shape; only small follow-ups left:**
+- Optional: a manual grid-density toggle (the grid is auto-responsive now, but no explicit 2/3 control like Library's `gridCols`). Add only if Farah wants finer control.
+- Optional: list view for Things (skipped — grid suits visual products; revisit if wanted).
+- Watch: with 3 lifecycle buckets, is "got" (owned products + resolved plans together) the right grouping, or should resolved plans get their own "decided" tab?
 
 **Judgement calls on the now-working vision (worth an eye):**
 - **Tag quality as a first-time user** — right *granularity*? Read human, not like debug labels? Tune the prompt in `api/things-vision.ts` if off. Does auto-tagging feel magic or intrusive?
