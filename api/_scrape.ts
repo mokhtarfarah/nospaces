@@ -174,9 +174,18 @@ export async function scrapeProduct(rawUrl: string): Promise<ScrapeResult> {
         signal: controller.signal,
         redirect: 'follow',
         headers: {
-          // Some shops gate bot UAs; present as a normal browser to get the OG-tagged HTML.
-          'User-Agent': 'Mozilla/5.0 (compatible; Nospaces/1.0; +https://nospaces.vercel.app)',
-          'Accept': 'text/html,application/xhtml+xml',
+          // Present as a real Chrome doing a top-level navigation, not a bot — many
+          // mid-tier shops 403 a "Nospaces/1.0" UA but serve a full browser one. The
+          // Sec-Fetch-* + Accept-Language + Upgrade-Insecure-Requests set rounds out
+          // the fingerprint (mirrors the image-fetch trick in _vision.ts). Won't beat
+          // a real JS challenge (Cloudflare et al.) — those still fall back to manual.
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Upgrade-Insecure-Requests': '1',
         },
       })
     } finally {
