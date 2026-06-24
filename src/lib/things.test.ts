@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readThread, itemAttributes, promoteIntentToProduct, productPlan, normValue, priceValue, type Attribute } from './things'
+import { readThread, itemAttributes, promoteIntentToProduct, demoteProductToIntent, productPlan, normValue, priceValue, type Attribute } from './things'
 import type { Item } from './database.types'
 
 // Minimal thing factory — only the fields the thread logic reads matter.
@@ -139,6 +139,35 @@ describe('productPlan', () => {
 
   it('is null for a product saved directly (no plan history)', () => {
     expect(productPlan(product([a('palette', 'muted')]))).toBeNull()
+  })
+})
+
+describe('demoteProductToIntent', () => {
+  it('round-trips a promoted product back to the plan it came from', () => {
+    const intent = thing({
+      title: 'black clogs',
+      metadata: {
+        kind: 'intent', winner: 'c2', brief: 'under $200',
+        candidates: [
+          { id: 'c1', title: 'x', image: null, price: '250', brand: 'A', siteName: null, url: 'u1' },
+          { id: 'c2', title: 'y', image: 'img', price: '180', brand: 'B', siteName: null, url: 'u2' },
+        ],
+      },
+    })
+    const promoted = thing({ title: 'y', metadata: promoteIntentToProduct(intent)! })
+    const back = demoteProductToIntent(promoted)!
+    expect(back.title).toBe('black clogs')
+    expect(back.meta.kind).toBe('intent')
+    // winner stays picked, so it reads "decided" — exactly the pre-save state.
+    expect(back.meta.winner).toBe('c2')
+    expect(back.meta.brief).toBe('under $200')
+    expect(back.meta.candidates).toHaveLength(2)
+    // the product wrapper is gone — clean intent metadata, no fromPlan key.
+    expect('fromPlan' in back.meta).toBe(false)
+  })
+
+  it('is null for a product with no plan history (nothing to revert to)', () => {
+    expect(demoteProductToIntent(product([a('palette', 'muted')]))).toBeNull()
   })
 })
 

@@ -217,6 +217,23 @@ export function promoteIntentToProduct(item: Item): PromotedProductMeta | null {
   }
 }
 
+/**
+ * Reverse of promoteIntentToProduct: turn a promoted product back into the plan
+ * it came from, exactly as it stood right before "save the winner" — same need,
+ * same candidates, same brief, winner still picked (so it reads "decided"). Used
+ * to undo a save you didn't mean to make, while the product is still un-owned.
+ * Returns the title + IntentMeta to write back, or null for a product with no
+ * plan history (nothing to revert to).
+ */
+export function demoteProductToIntent(item: Item): { title: string; meta: IntentMeta } | null {
+  const plan = productPlan(item)
+  if (!plan) return null
+  return {
+    title: plan.need,
+    meta: { kind: 'intent', candidates: plan.candidates, leaning: null, winner: plan.winner ?? null, brief: plan.brief },
+  }
+}
+
 export type Thread = {
   /** Recurring-attribute tokens, e.g. ['muted','natural','structured']. */
   tokens: string[]

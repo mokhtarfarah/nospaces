@@ -6,7 +6,7 @@ import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
   parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, newCandidateId,
-  promoteIntentToProduct, productPlan,
+  promoteIntentToProduct, demoteProductToIntent, productPlan,
   EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS, priceValue,
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord,
 } from '../lib/things'
@@ -376,6 +376,18 @@ export function ThingsScreen() {
             await editItem(openProduct.id, { title: f.title || 'Untitled', creator: f.brand, metadata: { ...(openProduct.metadata as object), kind: 'product', ...f } })
           }}
           onToggleGot={() => editItem(openProduct.id, { status: openProduct.status === 'done' ? 'want_to' : 'done' })}
+          onReopenPlan={async () => {
+            // Reverse promoteIntentToProduct: rebuild the original plan from the
+            // fromPlan history (winner still picked → reads "decided"), drop the
+            // product wrapper, and reopen it so you can keep weighing. The whole
+            // metadata is replaced — the fromPlan/product keys are gone, so it's a
+            // clean intent again, as if "save" was never pressed.
+            const back = demoteProductToIntent(openProduct)
+            if (!back) return
+            await editItem(openProduct.id, { title: back.title, creator: null, status: 'want_to', metadata: back.meta })
+            setOpenProductId(null)
+            setOpenIntentId(openProduct.id)
+          }}
           onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
         />
       )}
@@ -594,11 +606,12 @@ function IntentRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
 // a card opens this in-app, and the only way *out* to the shop is the explicit
 // "buy" button — so you never leave the board by accident. Edit/got-it/remove all
 // live here too (they used to be a per-card ⋯ menu).
-function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
+function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onDelete }: {
   item: Item
   onClose: () => void
   onSave: (f: ProductFields) => void | Promise<void>
   onToggleGot: () => void
+  onReopenPlan: () => void | Promise<void>
   onDelete: () => void
 }) {
   const p = productMeta(item)
@@ -664,6 +677,16 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
       </div>
 
       {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
+
+      {/* Undo the "save as product" step: a decided-but-not-owned product can go
+          back to being the plan it came from, exactly as it stood before saving.
+          Only while un-owned — once you've got it, it's a settled purchase. */}
+      {plan && !got && (
+        <button onClick={async () => { await onReopenPlan(); onClose() }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+          <span style={{ fontSize: 13 }}>↩</span> put back in plan
+        </button>
+      )}
 
       <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: confirmDel ? 'flex-end' : 'flex-start', gap: 12, alignItems: 'center' }}>
         {confirmDel ? (
@@ -1064,6 +1087,16 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onDelete
           </button>
           <div style={{ fontSize: 11, color: MUTED, marginTop: 7 }}>this plan’s history stays with it.</div>
         </div>
+      )}
+
+      {/* Un-decide: clear the winner and drop back to weighing. Pairs with the
+          product sheet's "put back in plan" — together they make a save fully
+          reversible right up until you mark it owned. */}
+      {resolved && (
+        <button onClick={() => onPatch({ ...m, winner: null })}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+          <span style={{ fontSize: 13 }}>↩</span> change my mind — keep deciding
+        </button>
       )}
 
       <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-between' }}>
