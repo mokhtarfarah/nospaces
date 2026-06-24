@@ -26,6 +26,17 @@ export function isFailure(c: EmailCapture): boolean {
   return c.outcome === 'nothing_found' || c.outcome === 'error'
 }
 
+/**
+ * Whether a capture came from the Things (product) path rather than media, so the
+ * board can surface its own failed forwards. We tag by the detail strings the
+ * server writes for the things routes ("could not read product link", "no link in
+ * things email", "thing already on board"). Media misses ("no media found…") don't
+ * match, so they stay on the Library side.
+ */
+export function isThingsCapture(c: EmailCapture): boolean {
+  return /product link|things? email|on (your )?board/i.test(c.detail ?? '')
+}
+
 /** Fetch recent capture log rows for the signed-in user, newest first. */
 export async function fetchCaptures(limit = 30): Promise<EmailCapture[]> {
   // The table isn't in the generated Database types, so query loosely.

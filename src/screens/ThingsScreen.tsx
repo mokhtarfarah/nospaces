@@ -1,5 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { DomainSwitcher } from '../components/DomainSwitcher'
+import { CapturesSheet } from '../components/CapturesSheet'
+import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
 import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
@@ -124,6 +126,13 @@ export function ThingsScreen() {
   const [cat, setCat] = useState<string | null>(null)
   const [statusF, setStatusF] = useState<StatusFilter>('all')
   const [filterSheet, setFilterSheet] = useState(false)
+  // Forwarded product links that didn't land (logged server-side by /api/email).
+  // Surfaced here so a failed email capture isn't invisible from the board — the
+  // same "review failed forwards" feed the Library has, scoped to things.
+  const [captures, setCaptures] = useState<EmailCapture[]>([])
+  const [capturesOpen, setCapturesOpen] = useState(false)
+  useEffect(() => { fetchCaptures().then(cs => setCaptures(cs.filter(isThingsCapture))) }, [])
+  const captureFailures = useMemo(() => captures.filter(isFailure).length, [captures])
   const [flash, setFlash] = useState<string | null>(null)
   // Toast for the vision auto-tag result. Success auto-fades; a failure stays put
   // (tap to dismiss) so the reason is readable — no silent no-ops.
@@ -198,10 +207,25 @@ export function ThingsScreen() {
               </div>
               <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>things</h1>
             </div>
-            {things.length > 1 && <DensityToggle value={density} onChange={setDensity} />}
           </div>
           <div style={{ borderBottom: `1.5px solid ${INK}` }} />
           <ThreadMasthead things={things} />
+          {captures.length > 0 && (
+            <button onClick={() => setCapturesOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+                border: `1px solid ${captureFailures > 0 ? INK : LINE}`, borderRadius: 10, background: captureFailures > 0 ? '#FBFAF8' : '#fff',
+                padding: '9px 12px', margin: '0 0 18px', cursor: 'pointer', color: INK,
+              }}>
+              <span style={{ flexShrink: 0, width: 6, height: 6, borderRadius: 3, background: captureFailures > 0 ? INK : MUTED }} />
+              <span style={{ fontSize: 12, fontWeight: 500, flex: 1, minWidth: 0 }}>
+                {captureFailures > 0
+                  ? `${captureFailures} forward${captureFailures === 1 ? '' : 's'} didn’t land`
+                  : 'emailed forwards'}
+              </span>
+              <span style={{ fontSize: 11, color: MUTED }}>review ›</span>
+            </button>
+          )}
         </div>
 
         {/* Sticky control bar — one quiet row. Status filters scroll on the left;
@@ -335,7 +359,22 @@ export function ThingsScreen() {
         <FilterSheet
           categories={categories} cat={cat} onCat={setCat}
           sort={sort} onSort={setSort}
+          density={density} onDensity={setDensity}
           onClose={() => setFilterSheet(false)}
+        />
+      )}
+
+      {capturesOpen && (
+        <CapturesSheet
+          captures={captures}
+          // Scoped clear: only the things-related rows shown here, so this never
+          // nukes the Library's media captures (clearCaptures() wipes ALL of them).
+          onClear={async () => {
+            const ok = await Promise.all(captures.map(c => clearCapture(c.id)))
+            if (ok.some(Boolean)) setCaptures([])
+          }}
+          onClearOne={async (id) => { if (await clearCapture(id)) setCaptures(cs => cs.filter(c => c.id !== id)) }}
+          onClose={() => setCapturesOpen(false)}
         />
       )}
 
@@ -382,14 +421,16 @@ function ThreadMasthead({ things }: { things: Item[] }) {
   if (things.length === 0) return null
 
   if (thread) {
+    // No second uppercase kicker here — the page already has one ("N on the board").
+    // The keyword line leads; "your keywords" folds into the caption so the meaning
+    // stays without stacking two kickers under the rule.
     return (
-      <div style={{ margin: '16px 0 20px' }}>
-        <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 7 }}>your keywords</div>
+      <div style={{ margin: '14px 0 18px' }}>
         <div style={{ fontSize: 22, fontWeight: 600, color: INK, lineHeight: 1.15, letterSpacing: '-0.01em' }}>
           {thread.tokens.join('  ·  ')}
         </div>
         <div style={{ fontSize: 11, color: MUTED, marginTop: 8 }}>
-          read from {thread.basis} tagged thing{thread.basis === 1 ? '' : 's'} — it shifts as you save and tag more
+          your keywords — read from {thread.basis} tagged thing{thread.basis === 1 ? '' : 's'}, shifts as you save and tag more
         </div>
       </div>
     )
@@ -600,20 +641,27 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
 // Category + sort live here so the board's control row stays a single quiet line
 // of status filters. Opened from the adjustments icon; a dot on that icon flags
 // when anything in here is set, so a hidden filter never silently strands items.
-function FilterSheet({ categories, cat, onCat, sort, onSort, onClose }: {
+function FilterSheet({ categories, cat, onCat, sort, onSort, density, onDensity, onClose }: {
   categories: string[]
   cat: string | null
   onCat: (c: string | null) => void
   sort: SortKey
   onSort: (s: SortKey) => void
+  density: Density
+  onDensity: (d: Density) => void
   onClose: () => void
 }) {
   const kicker: React.CSSProperties = { fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 10 }
   return (
     <Sheet onClose={onClose}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: INK }}>filter &amp; sort</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: INK }}>view &amp; sort</h2>
         <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1 }}>×</button>
+      </div>
+
+      <div style={kicker}>density</div>
+      <div style={{ marginBottom: 22 }}>
+        <DensityToggle value={density} onChange={onDensity} />
       </div>
 
       <div style={kicker}>sort by</div>
@@ -1172,17 +1220,24 @@ function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: strin
 }
 
 function Thumb({ src, size }: { src: string | null; size?: number }) {
-  const dim = size ? { width: size, height: size } : { width: '100%', aspectRatio: '1 / 1' }
+  // Grid/hero thumbs are portrait (3:4) — a lookbook ratio that frames a model shot
+  // head-to-knee and stops squares from chopping figures at the thigh; the uniform
+  // crop is what tidies a wall of photos from different shops. Inline list thumbs
+  // (size set) stay square — they sit beside text in a row.
+  const dim = size ? { width: size, height: size } : { width: '100%', aspectRatio: '3 / 4' }
   return (
     <div style={{
-      // Square corners on a single unified matte — matches the media Library's grid
-      // art and keeps the board reading as one curated wall, not scraped thumbs.
+      // One unified matte + a hairline frame so mixed-background product shots read
+      // as framed catalog plates, not scraped thumbs.
       ...dim, background: '#F4F2EE', overflow: 'hidden',
       border: `1px solid ${LINE}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>
       {src
-        ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+        // saturate(0.9) turns colour down (not off): since the taste here skews
+        // monochrome/neutral, it gently mutes the warm-cream-vs-cool-grey clash
+        // between shops without dulling the product. Reversible if it reads flat.
+        ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.9)' }} loading="lazy" />
         : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
     </div>
   )
