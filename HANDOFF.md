@@ -19,7 +19,9 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 **Email-in: VERIFIED working (s67).** Farah retested → it landed. The normal-inbox auto-fallback (`captureThing` + `productLike` gate) and `things@` both work. Done.
 
-**This session (68) — Things↔Library parity, both phases. On `main`, deployed.** Phase 1 (nits #2a/#2b): product card tap → internal `ProductSheet` (buy link behind an explicit button); floating `+` speed-dial replaces the two in-body capture buttons. Phase 2 (nit #3 umbrella): sticky collapsing header (switcher+title+rule+masthead fold on scroll, sort+category rows pin) via a `100dvh` flex column + inner scroller, and a shared `TabChip` (ink+bold+italic active, no underline) matching Library. Behind auth → **eyeball on live; not click-verified in preview.**
+**This session (69) — Things lifecycle: `decided → save-as-product` workflow. On `main`, deployed. 76 tests green (+3), typecheck clean. Free (no API).** Farah spotted that "decided" and "got it" were the same bucket — picking a plan's winner faked ownership, and a decided plan stayed a plan-shaped card forever. New lifecycle: `plan: deciding → decided → [save winner → becomes a product] → saved → got it`. `promoteIntentToProduct` graduates the winner into a real product card *in place* (deliberation history kept under `metadata.fromPlan`); `itemAttributes` now counts a decided plan the moment a winner is picked (gated on `winner`, not `status:done`). New `decided` status tab; a self-explaining "save it to your things →" CTA in the decided IntentSheet. Also shipped a **manual grid-density toggle** (`roomy`/`dense` segmented control in the Things header, persisted to localStorage, layered on the responsive measure). **Behind auth → not click-verified in preview.** Full detail → archive (s69).
+
+**Last session (68) — Things↔Library parity, both phases. On `main`, deployed.** Phase 1: product card tap → internal `ProductSheet` (buy link behind an explicit button); floating `+` speed-dial. Phase 2: sticky collapsing header + shared `TabChip` matching Library. Behind auth → eyeballed on live, not click-verified in preview.
 
 **Last session (67) — Slice 4 (paid vision) shipped + VERIFIED working on deploy + UI fixes. All on `main`.**
 - **Slice 4 — paid vision attribute-read. WORKING on the live app.** `api/things-vision.ts` (Sonnet 4.6 vision, **~$0.01/call**, one image, rate-limited 40/hr, mirrors `things-compare`). Reads taste tags (material·palette·vibe·category) off a product image — the LOOK, not identity (no brand/logo/text). Client `readImageAttributes()` in `things.ts`. **Fires automatically in the background** after a product save that has an image + no manual tags (`autoTagFromImage` in `ThingsScreen`, merges-never-clobbers). Farah chose **auto-on-capture**. A board **toast** shows the result (sticky + tap-to-dismiss on failure, so it's never a silent no-op).
@@ -31,7 +33,21 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 ---
 
-## ▶ Next session (69)
+## ▶ Next session (70)
+
+**🎯 HEADLINE TASK — new-user audit (Farah's ask).** Role-play a *specific* first-time user and judge the whole app as her. The persona (use it verbatim, don't water it down):
+> A fashionable woman with an interesting, **architectural** taste. **Not materialistic; actively dislikes being sold to.** Trying to be a *thoughtful consumer* — buys things that are thoughtfully made, fairly (not over-) priced, to keep a **streamlined closet of high-quality items she'll wear for years.**
+>
+> Deliver: how does she like the app? **Pros and cons.** And critically — **how does it fit her day-to-day shopping across contexts: at home on a laptop, vs. on her phone, vs. on the go?** (This is where the email-in/vision gap and the capture flows get stress-tested — tie findings back to them.)
+
+Judge as her, not as Farah-who-built-it (per CLAUDE.md). Flag anything that reads salesy, materialistic, or like a debug label — that persona will bounce off it hard. Walk the real flows; where auth blocks the live app, reason from the code + mockups.
+
+---
+
+**s69 shipped the `decided → save-as-product` workflow + manual grid-density toggle (on `main`, deployed) — logic unit-tested, UI behind auth.**
+- ⚠️ **EYEBALL ON LIVE:** new `decided` status tab; the "save it to your things →" CTA inside a decided plan; that **legacy resolved plans now read as "decided"** (not "got it") and offer the save button. Confirm the promote actually produces a clean product card that then marks "got it".
+- **Watch:** is 5 status chips (all/saved/deciding/decided/got it) too many on a phone? If crowded, consider merging or letting the row scroll.
+- **Latent:** `metadata.fromPlan` (the kept deliberation record) isn't surfaced anywhere — could power a "decided from N options" line on the promoted product's sheet if wanted.
 
 **Slice 4 (paid vision) is DONE + verified working** (tags auto-fill from a saved product's image; ~1¢/save). Nothing to re-verify there.
 
@@ -42,10 +58,9 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 - **Taste-on-plans:** confirmed deliberate + kept — an open plan adds nothing to the thread/category read; its winner counts once picked.
 - ⚠️ **EYEBALL ON LIVE:** all of s68 is behind Google auth → **NONE** click-verified in preview, only typecheck + 73 tests + clean load. Farah confirmed phase 1 + the polish round visually; the responsive grid / sticky scroll / status filter want a final eyeball.
 
-**PICK UP HERE — Things board is in good shape; only small follow-ups left:**
-- Optional: a manual grid-density toggle (the grid is auto-responsive now, but no explicit 2/3 control like Library's `gridCols`). Add only if Farah wants finer control.
+**Things board is in good shape; small follow-ups left:**
 - Optional: list view for Things (skipped — grid suits visual products; revisit if wanted).
-- Watch: with 3 lifecycle buckets, is "got" (owned products + resolved plans together) the right grouping, or should resolved plans get their own "decided" tab?
+- *(s69 shipped: the "decided vs got it" grouping fix (own `decided` bucket + save-as-product step) AND the manual grid-density toggle — `roomy`/`dense` segmented control in the Things header, persisted to localStorage, layered on the responsive measure. Behind auth → eyeball on live.)*
 
 **Judgement calls on the now-working vision (worth an eye):**
 - **Tag quality as a first-time user** — right *granularity*? Read human, not like debug labels? Tune the prompt in `api/things-vision.ts` if off. Does auto-tagging feel magic or intrusive?
@@ -56,7 +71,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 - **Behind auth (eyeball):** masthead, Vibe rename, sorting, category filter, switcher-in-caps.
 - **Supabase preview-auth fix** still pending (`https://*.vercel.app/**` in Redirect URLs) — memory `preview-auth-redirect`.
 
-**Open Things items:** vision doesn't fire on **email-in** captures (server-side path) — decide if that's worth wiring (more cost, but auto-tags everything). Literal-`.avif` image links still fail (rare; add conversion only if it recurs). Full **web-search Compare reviews** (Reddit/blogs) — parked, pricey, Farah-flagged. Watch: is `FieldsForm` crowded now (fields + sale + taste tags)?
+**Open Things items:** **vision-on-email-in — PARKED but flagged likely-important (s69).** Vision doesn't fire on email-in captures (server-side path, a cost boundary). Farah's reasoning to revisit: on a phone / on the go you're *unlikely to paste links* — you'll forward/email instead, so email captures are exactly the ones that most need auto-tagging. When picked up: wire `readImageAttributes` into the server `captureThing` path (more cost, ~1¢/email-thing, but auto-tags everything). Literal-`.avif` image links still fail (rare; add conversion only if it recurs). Full **web-search Compare reviews** (Reddit/blogs) — parked, pricey, Farah-flagged. Watch: is `FieldsForm` crowded now (fields + sale + taste tags)?
 
 **Carried from s65 (Slice 0 — check, don't rebuild):** board, deliberation loop, edit/manual fallback, sale price, AI Compare voice + plan brief. Slice 0 passed the gut check. Watch: does Compare still read human on real items? Is the plan sheet busy?
 

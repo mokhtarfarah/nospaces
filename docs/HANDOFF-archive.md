@@ -4,6 +4,35 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 69 (2026-06-23) — Things lifecycle: decided → save-as-product workflow
+
+**On `main`, deployed. Logic unit-tested (76 green, +3); UI behind auth, not click-verified.** Cost: free (no API/Anthropic — pure client transform + Supabase edit).
+
+**The gap Farah spotted:** "decided" and "got it" were the same bucket — picking a plan's winner jumped it straight to "got it" even though deciding ≠ owning, and the decided plan stayed a plan-shaped card forever. Decided lifecycle questions from the menu round folded in here.
+
+**New lifecycle:** `product: saved → got it` · `plan: deciding → decided → [save winner → becomes product] → saved → got it`.
+
+**What changed:**
+- **`itemAttributes` now gates the intent winner on `winner != null`, not `status === 'done'`** (`src/lib/things.ts`). A *decided* plan feeds the thread the moment a winner is picked, even before it's owned. Old resolved intents (status:done + winner) still count — backward compatible.
+- **`promoteIntentToProduct(item)`** (new, in `things.ts`) — turns a decided plan's winner into product metadata *in place*; preserves the whole deliberation (all candidates, brief, original need) under `metadata.fromPlan` (productMeta ignores the extra key). Returns null if no resolvable winner.
+- **`statusBucket` reworked** (`ThingsScreen.tsx`): plans bucket by winner (`deciding`/`decided`), products by status (`saved`/`got`). New `decided` tab in the status filter (now 5 chips: all/saved/deciding/decided/got it). **Note:** legacy resolved plans now show under *decided*, not *got* — they can be promoted to real products.
+- **`onResolve` no longer sets `status:'done'`** — just sets the winner. `onSaveWinner` does the promote (→ product, status `want_to` = "saved").
+- **IntentSheet:** "decided" is now winner-based; added a self-explaining CTA block in the decided state — "you chose X… save it to your things →" + "this plan's history stays with it." IntentCard's "decided" tag is winner-based too.
+- **ProductSheet save** now spreads existing metadata first, so a promoted product keeps `fromPlan` through a manual edit.
+- **Tests:** +decided-counts-before-owned, +promote-keeps-history, +promote-null-without-winner.
+
+**Design calls (Farah picked both recommended):** decided plan *becomes* the product (vs keep both — avoids double-count + clutter); decided gets its own bucket (vs lumped in got it). Save is a deliberate button, not auto-on-resolve (deciding ≠ buying).
+
+**Also this session — manual grid-density toggle.** `roomy`/`dense` segmented control (`DensityToggle`, two grid-icon buttons) in the Things title row, shown only when >1 thing. `roomy` = today's behaviour (px-target 240); `dense` = denser (168). It feeds the existing responsive `ResizeObserver` measure (`floor(width / DENSITY_TARGET[density])`) rather than a fixed column count — so it scales with viewport (≈3-up dense on a phone → more on desktop), which suits Things' full-bleed layout better than Library's literal 3|4. Persisted to `localStorage['nospaces.thingsDensity']`. Pure UI, no tests (logic is one divisor constant).
+
+**Parked w/ reasoning — vision-on-email-in.** Farah flagged it likely-important: on phone/on-the-go you forward/email rather than paste links, so email captures are exactly the ones that most need auto-tagging. Deferred for now (cost), noted in HANDOFF open-items + queued for the new-user audit (s70) to stress-test.
+
+**Queued for s70:** new-user audit as a specific persona (architectural taste, anti-materialist, thoughtful-consumer, streamlined closet) across laptop / phone / on-the-go contexts. Persona verbatim in HANDOFF.
+
+**Eyeball on live (behind auth):** the new `decided` tab, the save-winner CTA, and that legacy resolved plans now read as "decided" with a save button. `fromPlan` history isn't surfaced anywhere yet — it's just preserved (could power a "decided from N options" detail later).
+
+---
+
 ### Session 67 (2026-06-23) — Slice 4 (first paid vision surface) + two Things UI fixes
 
 Short session. Opened on the s66 stop-point (verify email-in); Farah confirmed **email-in works** (the normal-inbox auto-fallback landed). Then two quick bug fixes she flagged + the main job, Slice 4.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readThread, itemAttributes, normValue, priceValue, type Attribute } from './things'
+import { readThread, itemAttributes, promoteIntentToProduct, normValue, priceValue, type Attribute } from './things'
 import type { Item } from './database.types'
 
 // Minimal thing factory — only the fields the thread logic reads matter.
@@ -70,6 +70,50 @@ describe('itemAttributes', () => {
       },
     })
     expect(itemAttributes(intent)).toEqual([a('palette', 'muted')])
+  })
+
+  it('counts a decided intent’s winner even before it’s marked owned', () => {
+    // Gated on winner, not status: a plan still in want_to but with a winner picked
+    // is "decided" and its choice already feeds the thread.
+    const intent = thing({
+      status: 'want_to',
+      metadata: {
+        kind: 'intent', winner: 'c1',
+        candidates: [{ id: 'c1', title: 'y', image: null, price: null, brand: null, siteName: null, url: null, attributes: [a('palette', 'muted')] }],
+      },
+    })
+    expect(itemAttributes(intent)).toEqual([a('palette', 'muted')])
+  })
+})
+
+describe('promoteIntentToProduct', () => {
+  it('turns the winner into product metadata and keeps the plan’s history', () => {
+    const intent = thing({
+      title: 'black clogs',
+      metadata: {
+        kind: 'intent', winner: 'c2', brief: 'under $200',
+        candidates: [
+          { id: 'c1', title: 'x', image: null, price: '250', brand: 'A', siteName: null, url: null, attributes: [a('palette', 'bold')] },
+          { id: 'c2', title: 'y', image: 'img', price: '180', brand: 'B', siteName: 's', url: 'u', attributes: [a('palette', 'muted')] },
+        ],
+      },
+    })
+    const meta = promoteIntentToProduct(intent)!
+    expect(meta.kind).toBe('product')
+    expect(meta.title).toBe('y')
+    expect(meta.price).toBe('180')
+    expect(meta.brand).toBe('B')
+    expect(meta.attributes).toEqual([a('palette', 'muted')])
+    // The whole deliberation is preserved, not just the winner.
+    expect(meta.fromPlan.need).toBe('black clogs')
+    expect(meta.fromPlan.brief).toBe('under $200')
+    expect(meta.fromPlan.candidates).toHaveLength(2)
+    expect(meta.fromPlan.winner).toBe('c2')
+  })
+
+  it('returns null when there’s no resolvable winner', () => {
+    const intent = thing({ metadata: { kind: 'intent', leaning: 'c1', candidates: [{ id: 'c1', title: 'x', image: null, price: null, brand: null, siteName: null, url: null }] } })
+    expect(promoteIntentToProduct(intent)).toBeNull()
   })
 })
 

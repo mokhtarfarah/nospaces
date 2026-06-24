@@ -151,17 +151,59 @@ export function productMeta(item: Item): ProductMeta {
 /**
  * The taste tags a thing contributes to the board's thread.
  * - a product → its own attributes
- * - a *resolved* intent → the winning candidate's attributes (the committed choice)
- * - an unresolved intent → nothing (not yet a settled signal)
+ * - a *decided* intent → the winning candidate's attributes (the committed choice)
+ * - an undecided intent → nothing (not yet a settled signal)
+ *
+ * Gated on `winner`, not status: the moment you pick a winner the plan is
+ * "decided" and its choice counts, even before you mark it owned. (A decided plan
+ * can be promoted to a standalone product via promoteIntentToProduct — once it is,
+ * it contributes as a product instead, so the choice is never counted twice.)
  */
 export function itemAttributes(item: Item): Attribute[] {
   const k = kindOf(item)
   if (k === 'product') return productMeta(item).attributes ?? []
-  if (k === 'intent' && item.status === 'done') {
+  if (k === 'intent') {
     const m = intentMeta(item)
     if (m.winner) return normAttributes(m.candidates.find(c => c.id === m.winner)?.attributes)
   }
   return []
+}
+
+/** The deliberation record carried forward when a plan becomes a product. */
+export type PlanRecord = {
+  /** The original need, e.g. "black clogs" (the plan's title). */
+  need: string
+  candidates: Candidate[]
+  brief: string | null
+  winner: string | null
+}
+
+/** A product that was promoted from a plan keeps its deliberation under fromPlan. */
+export type PromotedProductMeta = ProductMeta & { fromPlan: PlanRecord }
+
+/**
+ * Promote a *decided* plan into a standalone product. The winning candidate's
+ * fields become the product; the whole deliberation (all candidates, the brief,
+ * the original need) is preserved under `metadata.fromPlan` so nothing is lost —
+ * productMeta simply ignores the extra key. Returns the new metadata to store, or
+ * null when there's no resolvable winner to promote.
+ */
+export function promoteIntentToProduct(item: Item): PromotedProductMeta | null {
+  const m = intentMeta(item)
+  const win = m.candidates.find(c => c.id === m.winner)
+  if (!win) return null
+  return {
+    kind: 'product',
+    title: win.title,
+    image: win.image ?? null,
+    price: win.price ?? null,
+    wasPrice: win.wasPrice ?? null,
+    brand: win.brand ?? null,
+    siteName: win.siteName ?? null,
+    url: win.url ?? null,
+    attributes: normAttributes(win.attributes),
+    fromPlan: { need: item.title, candidates: m.candidates, brief: m.brief ?? null, winner: m.winner ?? null },
+  }
 }
 
 export type Thread = {

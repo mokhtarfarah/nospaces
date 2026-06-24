@@ -4,6 +4,7 @@ import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
   parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, newCandidateId,
+  promoteIntentToProduct,
   EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS, priceValue,
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet,
 } from '../lib/things'
@@ -19,6 +20,17 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'name', label: 'a–z' },
 ]
 
+// Grid density — a manual override on top of the responsive column count. "roomy"
+// is the default (today's behaviour, bigger cards); "dense" packs more per row.
+// The value is the px-per-column target fed to the responsive measure: a smaller
+// target yields more columns. Persisted so the choice sticks across sessions.
+type Density = 'roomy' | 'dense'
+const DENSITY_TARGET: Record<Density, number> = { roomy: 240, dense: 168 }
+const DENSITY_KEY = 'nospaces.thingsDensity'
+function loadDensity(): Density {
+  try { return localStorage.getItem(DENSITY_KEY) === 'dense' ? 'dense' : 'roomy' } catch { return 'roomy' }
+}
+
 // Category values a thing carries (for the filter row). Products use their own
 // tags; resolved intents use the winner's. Untagged things match nothing but
 // still show under "all".
@@ -27,18 +39,24 @@ function categoriesOf(item: Item): string[] {
 }
 
 // Lifecycle bucket for the status filter. Every thing lands in exactly one:
-// an owned product or a resolved plan is "got"; an open plan is "deciding";
-// anything else (a saved-but-unowned product) is "saved".
-type Bucket = 'saved' | 'deciding' | 'got'
+//   - a plan with no winner yet → "deciding"
+//   - a plan you've picked a winner on (but not yet saved as a product) → "decided"
+//   - a saved-but-unowned product → "saved"
+//   - a product you own → "got"
+// A plan is bucketed by its winner, not status — "decided" means chosen, not owned.
+// Once you save a decided plan's winner it becomes a product (promoteIntentToProduct)
+// and flows through saved → got like anything else.
+type Bucket = 'saved' | 'deciding' | 'decided' | 'got'
 function statusBucket(item: Item): Bucket {
-  if (item.status === 'done') return 'got'
-  return kindOf(item) === 'intent' ? 'deciding' : 'saved'
+  if (kindOf(item) === 'intent') return intentMeta(item).winner ? 'decided' : 'deciding'
+  return item.status === 'done' ? 'got' : 'saved'
 }
 type StatusFilter = 'all' | Bucket
 const STATUSES: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'all' },
   { key: 'saved', label: 'saved' },
   { key: 'deciding', label: 'deciding' },
+  { key: 'decided', label: 'decided' },
   { key: 'got', label: 'got it' },
 ]
 
@@ -82,15 +100,17 @@ export function ThingsScreen() {
   // fixed 2-up locked to a narrow column. Measured off the scroller's own width.
   const listRef = useRef<HTMLDivElement>(null)
   const [cols, setCols] = useState(2)
+  const [density, setDensity] = useState<Density>(loadDensity)
   useEffect(() => {
     const el = listRef.current
     if (!el) return
-    const measure = () => setCols(Math.max(2, Math.floor(el.clientWidth / 240)))
+    const measure = () => setCols(Math.max(2, Math.floor(el.clientWidth / DENSITY_TARGET[density])))
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [])
+  }, [density])
+  useEffect(() => { try { localStorage.setItem(DENSITY_KEY, density) } catch { /* private mode */ } }, [density])
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
   const [statusF, setStatusF] = useState<StatusFilter>('all')
@@ -167,6 +187,7 @@ export function ThingsScreen() {
               </div>
               <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>things</h1>
             </div>
+            {things.length > 1 && <DensityToggle value={density} onChange={setDensity} />}
           </div>
           <div style={{ borderBottom: `1.5px solid ${INK}` }} />
           <ThreadMasthead things={things} />
@@ -208,6 +229,7 @@ export function ThingsScreen() {
               {cat ? <>nothing tagged “{cat}” yet.</>
                 : statusF === 'saved' ? 'nothing saved yet.'
                 : statusF === 'deciding' ? 'nothing in the works.'
+                : statusF === 'decided' ? 'nothing decided yet.'
                 : statusF === 'got' ? 'nothing marked got it yet.'
                 : 'nothing here yet.'}
             </div>
@@ -267,7 +289,16 @@ export function ThingsScreen() {
           onClose={() => setOpenIntentId(null)}
           onPatch={(meta) => editItem(openIntent.id, { metadata: meta })}
           onResolve={(winnerId, meta) =>
-            editItem(openIntent.id, { status: 'done', metadata: { ...meta, winner: winnerId } })}
+            editItem(openIntent.id, { metadata: { ...meta, winner: winnerId } })}
+          onSaveWinner={async () => {
+            // Promote the chosen candidate into a real product card in place: the
+            // plan *becomes* the product (deliberation history kept in metadata),
+            // landing in "saved" so you can mark it "got it" once you own it.
+            const meta = promoteIntentToProduct(openIntent)
+            if (!meta) return
+            await editItem(openIntent.id, { title: meta.title || 'Untitled', creator: meta.brand, status: 'want_to', metadata: meta })
+            setOpenIntentId(null)
+          }}
           onDelete={async () => { await deleteItem(openIntent.id); setOpenIntentId(null) }}
         />
       )}
@@ -277,7 +308,9 @@ export function ThingsScreen() {
           item={openProduct}
           onClose={() => setOpenProductId(null)}
           onSave={async (f) => {
-            await editItem(openProduct.id, { title: f.title || 'Untitled', creator: f.brand, metadata: { kind: 'product', ...f } })
+            // Spread the existing metadata first so a promoted product keeps its
+            // fromPlan deliberation history through a manual edit.
+            await editItem(openProduct.id, { title: f.title || 'Untitled', creator: f.brand, metadata: { ...(openProduct.metadata as object), kind: 'product', ...f } })
           }}
           onToggleGot={() => editItem(openProduct.id, { status: openProduct.status === 'done' ? 'want_to' : 'done' })}
           onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
@@ -349,6 +382,42 @@ function ThreadMasthead({ things }: { things: Item[] }) {
   )
 }
 
+/* ---------- grid density toggle ---------- */
+
+// A quiet two-state control in the header: "roomy" (default, bigger cards) vs
+// "dense" (more per row). The icons read at a glance — a 2-up grid vs a 3-up grid
+// — so it needs no label. Sits in the title row, out of the busy filter chips.
+function DensityToggle({ value, onChange }: { value: Density; onChange: (d: Density) => void }) {
+  const Btn = ({ d, cells, label }: { d: Density; cells: number; label: string }) => {
+    const on = value === d
+    const n = cells // 2 → 2×2, 3 → 3×3
+    const gap = 1.5
+    const size = (14 - gap * (n - 1)) / n
+    return (
+      <button onClick={() => onChange(d)} aria-label={label} aria-pressed={on} title={label}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 24,
+          border: 'none', borderRadius: 7, background: on ? INK : 'transparent', cursor: 'pointer', padding: 0,
+        }}>
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+          {Array.from({ length: n }).flatMap((_, r) =>
+            Array.from({ length: n }).map((_, c) => (
+              <rect key={`${r}-${c}`} x={c * (size + gap)} y={r * (size + gap)} width={size} height={size}
+                rx={0.8} fill={on ? '#fff' : MUTED} />
+            )),
+          )}
+        </svg>
+      </button>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', gap: 2, padding: 2, borderRadius: 9, border: `1px solid ${LINE}`, flexShrink: 0 }}>
+      <Btn d="roomy" cells={2} label="roomy grid" />
+      <Btn d="dense" cells={3} label="dense grid" />
+    </div>
+  )
+}
+
 /* ---------- cards ---------- */
 
 // Tapping the card opens an internal detail sheet (like the media Library) — the
@@ -385,7 +454,7 @@ function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
 
 function IntentCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const m = intentMeta(item)
-  const resolved = item.status === 'done'
+  const resolved = m.winner != null
   const winner = resolved ? m.candidates.find(c => c.id === m.winner) : null
   const lean = !resolved && m.leaning ? m.candidates.find(c => c.id === m.leaning) : null
   const cover = winner ?? lean ?? m.candidates[0] ?? null
@@ -499,15 +568,19 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
 
 /* ---------- intent sheet (the deliberation flow) ---------- */
 
-function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
+function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onDelete }: {
   item: Item
   onClose: () => void
   onPatch: (meta: ReturnType<typeof intentMeta>) => void | Promise<void>
   onResolve: (winnerId: string, meta: ReturnType<typeof intentMeta>) => void | Promise<void>
+  onSaveWinner: () => void | Promise<void>
   onDelete: () => void
 }) {
   const m = intentMeta(item)
-  const resolved = item.status === 'done'
+  // "Decided" = a winner is picked. That's distinct from owning it — once decided
+  // you can save the winner as a product (onSaveWinner), then mark it got it there.
+  const resolved = m.winner != null
+  const winner = resolved ? m.candidates.find(c => c.id === m.winner) ?? null : null
   const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -724,6 +797,21 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
             + Add an option
           </button>
         )
+      )}
+
+      {/* Decided → graduate the winner into a real product card. Explains itself so
+          it isn't a mystery button: the plan becomes the product, history kept. */}
+      {resolved && winner && (
+        <div style={{ marginTop: 16, padding: '14px', borderRadius: 12, background: '#F7F5F1' }}>
+          <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.45 }}>
+            you chose <strong>{winner.title.slice(0, 40)}{winner.title.length > 40 ? '…' : ''}</strong>. save it to your things and it
+            lives as its own product — ready to mark “got it” when you buy it.
+          </div>
+          <button onClick={onSaveWinner} style={{ ...primaryBtn(false), width: '100%', marginTop: 10 }}>
+            save it to your things →
+          </button>
+          <div style={{ fontSize: 11, color: MUTED, marginTop: 7 }}>this plan’s history stays with it.</div>
+        </div>
       )}
 
       <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-between' }}>
