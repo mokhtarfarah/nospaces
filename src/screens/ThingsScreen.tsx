@@ -189,9 +189,9 @@ export function ThingsScreen() {
 
   // The control row only earns its space once there's more than one thing.
   const statusRow = things.length > 1
-  // Whether category/sort (now behind the filter icon) are set to anything other
-  // than the default — drives the dot on the icon so a hidden filter isn't a trap.
-  const filtersActive = cat !== null || sort !== 'recent'
+  // Category is visible on the row now; status + sort live behind the filter icon,
+  // so the dot flags when one of THOSE is set (a hidden filter shouldn't be a trap).
+  const filtersActive = statusF !== 'all' || sort !== 'recent'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
@@ -245,9 +245,16 @@ export function ThingsScreen() {
           <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: `1px solid ${LINE}`, padding: '6px 16px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingBottom: 8 }}>
               <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', flex: 1, minWidth: 0 }}>
-                {STATUSES.map(s => (
-                  <TabChip key={s.key} label={s.label} active={statusF === s.key} onClick={() => setStatusF(s.key)} />
-                ))}
+                {/* Category is the primary on-page filter; status/sort/layout live in
+                    the view sheet. Only show chips once there's a category to filter. */}
+                {categories.length > 0 && (
+                  <>
+                    <TabChip label="all" active={cat === null} onClick={() => setCat(null)} />
+                    {categories.map(c => (
+                      <TabChip key={c} label={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)} />
+                    ))}
+                  </>
+                )}
               </div>
               <button onClick={() => setFilterSheet(true)} aria-label="filter and sort"
                 style={{ border: 'none', background: 'none', cursor: 'pointer', color: filtersActive ? INK : MUTED, padding: '0 0 2px', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
@@ -375,10 +382,10 @@ export function ThingsScreen() {
 
       {filterSheet && (
         <FilterSheet
-          categories={categories} cat={cat} onCat={setCat}
-          sort={sort} onSort={setSort}
           view={view} onView={setView}
           density={density} onDensity={setDensity}
+          sort={sort} onSort={setSort}
+          status={statusF} onStatus={setStatusF}
           onClose={() => setFilterSheet(false)}
         />
       )}
@@ -460,42 +467,6 @@ function ThreadMasthead({ things }: { things: Item[] }) {
     <div style={{ margin: '16px 0 20px', fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>
       Tag your things — material, palette, form — and your <em>keywords</em> show up here.
       {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} tagged.</span>}
-    </div>
-  )
-}
-
-/* ---------- grid density toggle ---------- */
-
-// A quiet two-state control in the header: "roomy" (default, bigger cards) vs
-// "dense" (more per row). The icons read at a glance — a 2-up grid vs a 3-up grid
-// — so it needs no label. Sits in the title row, out of the busy filter chips.
-function DensityToggle({ value, onChange }: { value: Density; onChange: (d: Density) => void }) {
-  const Btn = ({ d, cells, label }: { d: Density; cells: number; label: string }) => {
-    const on = value === d
-    const n = cells // 2 → 2×2, 3 → 3×3
-    const gap = 1.5
-    const size = (14 - gap * (n - 1)) / n
-    return (
-      <button onClick={() => onChange(d)} aria-label={label} aria-pressed={on} title={label}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 24,
-          border: 'none', borderRadius: 7, background: on ? INK : 'transparent', cursor: 'pointer', padding: 0,
-        }}>
-        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-          {Array.from({ length: n }).flatMap((_, r) =>
-            Array.from({ length: n }).map((_, c) => (
-              <rect key={`${r}-${c}`} x={c * (size + gap)} y={r * (size + gap)} width={size} height={size}
-                rx={0.8} fill={on ? '#fff' : MUTED} />
-            )),
-          )}
-        </svg>
-      </button>
-    )
-  }
-  return (
-    <div style={{ display: 'flex', gap: 2, padding: 2, borderRadius: 9, border: `1px solid ${LINE}`, flexShrink: 0 }}>
-      <Btn d="roomy" cells={2} label="roomy grid" />
-      <Btn d="dense" cells={3} label="dense grid" />
     </div>
   )
 }
@@ -709,74 +680,90 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
   )
 }
 
-/* ---------- filter & sort sheet (tucked behind the control-row icon) ---------- */
+/* ---------- view & sort sheet (tucked behind the control-row icon) ---------- */
 
-// Category + sort live here so the board's control row stays a single quiet line
-// of status filters. Opened from the adjustments icon; a dot on that icon flags
-// when anything in here is set, so a hidden filter never silently strands items.
-function FilterSheet({ categories, cat, onCat, sort, onSort, view, onView, density, onDensity, onClose }: {
-  categories: string[]
-  cat: string | null
-  onCat: (c: string | null) => void
+// Layout, density, sort and status live here (category is the on-page row). Styled
+// to match the media Library's ViewSheet exactly — same drag-handle sheet, the same
+// label-left/segmented-buttons rows, and the same ✓ list rows — so flipping between
+// media and things feels like one app, not two.
+function FilterSheet({ sort, onSort, view, onView, density, onDensity, status, onStatus, onClose }: {
   sort: SortKey
   onSort: (s: SortKey) => void
   view: ViewMode
   onView: (v: ViewMode) => void
   density: Density
   onDensity: (d: Density) => void
+  status: StatusFilter
+  onStatus: (s: StatusFilter) => void
   onClose: () => void
 }) {
-  const kicker: React.CSSProperties = { fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 10 }
   return (
-    <Sheet onClose={onClose}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: INK }}>view &amp; sort</h2>
-        <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1 }}>×</button>
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: '#fff', borderRadius: '16px 16px 0 0',
+        padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201, maxWidth: 480, margin: '0 auto',
+        maxHeight: '90dvh', overflowY: 'auto',
+      }}>
+        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 18px' }} />
+
+        <SegRow label="layout" options={[{ k: 'grid', l: 'grid' }, { k: 'list', l: 'list' }]} value={view} onChange={onView} />
+        {view === 'grid' && (
+          <SegRow label="density" options={[{ k: 'roomy', l: 'roomy' }, { k: 'dense', l: 'dense' }]} value={density} onChange={onDensity} />
+        )}
+
+        <SheetList label="sort" options={SORTS.map(s => ({ k: s.key, l: s.label }))} value={sort} onChange={onSort} />
+        <SheetList label="show" options={STATUSES.map(s => ({ k: s.key, l: s.label }))} value={status} onChange={onStatus} />
       </div>
-
-      <div style={kicker}>layout</div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 22 }}>
-        <Pill label="grid" active={view === 'grid'} onClick={() => onView('grid')} />
-        <Pill label="list" active={view === 'list'} onClick={() => onView('list')} />
-      </div>
-
-      {view === 'grid' && (
-        <>
-          <div style={kicker}>grid density</div>
-          <div style={{ marginBottom: 22 }}>
-            <DensityToggle value={density} onChange={onDensity} />
-          </div>
-        </>
-      )}
-
-      <div style={kicker}>sort by</div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
-        {SORTS.map(s => <Pill key={s.key} label={s.label} active={sort === s.key} onClick={() => onSort(s.key)} />)}
-      </div>
-
-      {categories.length > 0 && (
-        <>
-          <div style={kicker}>category</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Pill label="all" active={cat === null} onClick={() => onCat(null)} />
-            {categories.map(c => <Pill key={c} label={c} active={cat === c} onClick={() => onCat(cat === c ? null : c)} />)}
-          </div>
-        </>
-      )}
-
-      <button onClick={onClose} style={{ ...primaryBtn(false), width: '100%', marginTop: 24, padding: 12 }}>done</button>
-    </Sheet>
+    </>
   )
 }
 
-// A filled-when-active rounded chip — the sheet's chunkier counterpart to the
-// board row's underlined TabChip.
-function Pill({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+// Label-left + segmented toggle buttons on the right — the Library ViewSheet's
+// layout/columns control, generic over the option keys.
+function SegRow<T extends string>({ label, options, value, onChange }: {
+  label: string; options: { k: T; l: string }[]; value: T; onChange: (v: T) => void
+}) {
   return (
-    <button onClick={onClick} style={{
-      fontSize: 12.5, fontWeight: 600, padding: '7px 14px', borderRadius: 999, cursor: 'pointer',
-      border: `1px solid ${active ? INK : LINE}`, background: active ? INK : '#fff', color: active ? '#fff' : INK,
-    }}>{label}</button>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+      <span style={{ fontSize: 13, color: '#555' }}>{label}</span>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {options.map(o => {
+          const on = value === o.k
+          return (
+            <button key={o.k} onClick={() => onChange(o.k)} style={{
+              padding: '4px 14px', borderRadius: 6, border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0',
+              background: on ? '#111' : '#fff', color: on ? '#fff' : '#888',
+              fontSize: 13, fontWeight: on ? 600 : 400, cursor: 'pointer',
+            }}>{o.l}</button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// A titled list of full-width ✓ rows — the Library ViewSheet's "sort" section.
+function SheetList<T extends string>({ label, options, value, onChange }: {
+  label: string; options: { k: T; l: string }[]; value: T; onChange: (v: T) => void
+}) {
+  return (
+    <>
+      <p style={{ fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '4px 0 6px', paddingTop: 14, borderTop: '1px solid #F0F0F0' }}>{label}</p>
+      {options.map(o => {
+        const on = value === o.k
+        return (
+          <button key={o.k} onClick={() => onChange(o.k)} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', padding: '8px 0', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left',
+          }}>
+            <span style={{ fontSize: 14, color: on ? '#111' : '#444', fontWeight: on ? 600 : 400 }}>{o.l}</span>
+            {on && <span style={{ fontSize: 15 }}>✓</span>}
+          </button>
+        )
+      })}
+    </>
   )
 }
 
@@ -1323,13 +1310,18 @@ function Thumb({ src, size }: { src: string | null; size?: number }) {
       {src ? (
         isGrid ? (
           <>
-            {/* Ambient fill: a blurred, zoomed copy of the SAME photo bleeds its own
-                background (grey/cream/white, gradients and all) to the edges, so a
-                product floating on its shop's backdrop reads as edge-to-edge filled
-                with no seam. Beats a single detected hex — which CORS blocks on
-                retail CDNs and wouldn't match a gradient backdrop anyway. */}
+            {/* Ambient fill: a blurred copy of the SAME photo bleeds its own
+                background to the edges, so a product floating on its shop's backdrop
+                reads as edge-to-edge filled with no seam. object-fit:FILL (not cover)
+                is deliberate — it maps every frame-row to the same image-row, so the
+                top/bottom letterbox bands pull from the photo's actual top/bottom
+                (the background), instead of cover cropping those edges out and
+                sampling the product in the middle (which darkened the bands). The
+                stretched product in the centre stays hidden behind the sharp image.
+                Beats a detected hex — CORS-blocked on retail CDNs, and a flat colour
+                wouldn't match a gradient backdrop anyway. */}
             <img src={src} alt="" aria-hidden="true" loading="lazy"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(24px) saturate(0.9)', transform: 'scale(1.2)' }} />
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', filter: 'blur(24px) saturate(0.9)', transform: 'scale(1.06)' }} />
             {/* The sharp product, whole + centered, on top of its own ambient field.
                 saturate(0.9) gently mutes the colour (taste here skews neutral). */}
             <img src={src} alt="" loading="lazy"
