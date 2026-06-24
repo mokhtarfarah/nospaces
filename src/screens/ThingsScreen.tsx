@@ -33,6 +33,14 @@ function loadDensity(): Density {
   try { return localStorage.getItem(DENSITY_KEY) === 'dense' ? 'dense' : 'roomy' } catch { return 'roomy' }
 }
 
+// Grid (visual wall) vs list (the plan-style row: square thumb + title + price).
+// Persisted like density so the choice sticks.
+type ViewMode = 'grid' | 'list'
+const VIEW_KEY = 'nospaces.thingsView'
+function loadView(): ViewMode {
+  try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
+}
+
 // Category values a thing carries (for the filter row). Products use their own
 // tags; resolved intents use the winner's. Untagged things match nothing but
 // still show under "all".
@@ -112,6 +120,8 @@ export function ThingsScreen() {
   const listRef = useRef<HTMLDivElement>(null)
   const [cols, setCols] = useState(2)
   const [density, setDensity] = useState<Density>(loadDensity)
+  const [view, setView] = useState<ViewMode>(loadView)
+  useEffect(() => { try { localStorage.setItem(VIEW_KEY, view) } catch { /* private mode */ } }, [view])
   useEffect(() => {
     const el = listRef.current
     if (!el) return
@@ -262,6 +272,14 @@ export function ThingsScreen() {
                 : statusF === 'got' ? 'nothing marked got it yet.'
                 : 'nothing here yet.'}
             </div>
+          ) : view === 'list' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {visible.map(item => (
+                kindOf(item) === 'intent'
+                  ? <IntentRow key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />
+                  : <ProductRow key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />
+              ))}
+            </div>
           ) : (
             <div style={{
               display: 'grid',
@@ -359,6 +377,7 @@ export function ThingsScreen() {
         <FilterSheet
           categories={categories} cat={cat} onCat={setCat}
           sort={sort} onSort={setSort}
+          view={view} onView={setView}
           density={density} onDensity={setDensity}
           onClose={() => setFilterSheet(false)}
         />
@@ -544,6 +563,60 @@ function IntentCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   )
 }
 
+/* ---------- list rows (the plan-style row, reused for the board's list view) ---------- */
+
+// Horizontal counterparts to the grid cards: a square thumb + text, tapping opens
+// the same detail sheet. Mirrors the deliberation candidate row so list view and
+// the plan sheet read as one family.
+function ProductRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
+  const p = productMeta(item)
+  const got = item.status === 'done'
+  const taste = (p.attributes ?? []).filter(a => a.facet !== 'category')
+  return (
+    <button onClick={onOpen}
+      style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%', textAlign: 'left', border: `1px solid ${LINE}`, borderRadius: 12, background: '#fff', padding: 10, cursor: 'pointer', color: INK }}>
+      <Thumb src={p.image} size={64} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</div>
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 3, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <PriceLine price={p.price} wasPrice={p.wasPrice} />
+          {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
+          {got && <span style={{ color: INK, fontWeight: 600 }}>· got it</span>}
+        </div>
+        {taste.length > 0 && (
+          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {taste.map(a => a.value).join(' · ')}
+          </div>
+        )}
+      </div>
+    </button>
+  )
+}
+
+function IntentRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
+  const m = intentMeta(item)
+  const resolved = m.winner != null
+  const winner = resolved ? m.candidates.find(c => c.id === m.winner) : null
+  const lean = !resolved && m.leaning ? m.candidates.find(c => c.id === m.leaning) : null
+  const cover = winner ?? lean ?? m.candidates[0] ?? null
+  const n = m.candidates.length
+  const status = resolved
+    ? (winner ? `decided · ${winner.title.slice(0, 30)}${winner.title.length > 30 ? '…' : ''}` : 'decided')
+    : lean ? `leaning · ${lean.title.slice(0, 28)}${lean.title.length > 28 ? '…' : ''}`
+    : n ? `deciding · ${n} option${n === 1 ? '' : 's'}`
+    : 'tap to add options'
+  return (
+    <button onClick={onOpen}
+      style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%', textAlign: 'left', border: `1px solid ${LINE}`, borderRadius: 12, background: '#fff', padding: 10, cursor: 'pointer' }}>
+      <Thumb src={cover?.image ?? null} size={64} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: INK, lineHeight: 1.3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>{status}</div>
+      </div>
+    </button>
+  )
+}
+
 /* ---------- product sheet (tap a saved product → detail/edit, like Library) ---------- */
 
 // The internal detail view for a saved product. Mirrors the media Library: tapping
@@ -641,12 +714,14 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
 // Category + sort live here so the board's control row stays a single quiet line
 // of status filters. Opened from the adjustments icon; a dot on that icon flags
 // when anything in here is set, so a hidden filter never silently strands items.
-function FilterSheet({ categories, cat, onCat, sort, onSort, density, onDensity, onClose }: {
+function FilterSheet({ categories, cat, onCat, sort, onSort, view, onView, density, onDensity, onClose }: {
   categories: string[]
   cat: string | null
   onCat: (c: string | null) => void
   sort: SortKey
   onSort: (s: SortKey) => void
+  view: ViewMode
+  onView: (v: ViewMode) => void
   density: Density
   onDensity: (d: Density) => void
   onClose: () => void
@@ -659,10 +734,20 @@ function FilterSheet({ categories, cat, onCat, sort, onSort, density, onDensity,
         <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1 }}>×</button>
       </div>
 
-      <div style={kicker}>density</div>
-      <div style={{ marginBottom: 22 }}>
-        <DensityToggle value={density} onChange={onDensity} />
+      <div style={kicker}>layout</div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 22 }}>
+        <Pill label="grid" active={view === 'grid'} onClick={() => onView('grid')} />
+        <Pill label="list" active={view === 'list'} onClick={() => onView('list')} />
       </div>
+
+      {view === 'grid' && (
+        <>
+          <div style={kicker}>grid density</div>
+          <div style={{ marginBottom: 22 }}>
+            <DensityToggle value={density} onChange={onDensity} />
+          </div>
+        </>
+      )}
 
       <div style={kicker}>sort by</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
