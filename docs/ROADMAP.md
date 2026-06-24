@@ -63,11 +63,13 @@ Design discussed in depth s63 (Farah + Claude). Decisions captured below — thi
 
 **Compare cheap-reviews — SHIPPED s66.** Compare now reads each candidate's own product page (description + JSON-LD `aggregateRating`) for context — no web search, still Haiku (~$0.001–0.002/call). **Parked, Farah-flagged:** the **full web-search version** (Reddit/blogs) — she may decide it's worth the cost ($0.01–0.05+/compare on the capped key) since she already uses Claude/Gemini this way.
 
-**Still open (Things):**
-- **Auto-category** — the natural Slice-4 vision hook (and JSON-LD often carries category too).
-- **Slice 4** = paid Sonnet vision attribute-read (see below).
+**Things — next builds (queued s72, in order):**
+1. **Mood board** — a collection of **pure-inspiration images** (not purchasable products), distinct from the buyable wishlist. Free (just saved images; no scrape, no buy link, lighter than a product). Capture = paste/upload an image. **Spec it the same way before building.**
+2. **Taste synthesis for Things** — a 1–2 sentence "what you're trying to reflect," shown like the media Taste page's vibe headline. **Combo of saved-item taste tags + mood-board vibe, but generates from saved items alone too** (Farah, s72) — so it starts working as you add things, before any moodboarding. One **cheap on-demand Anthropic call** (Haiku, text-only, cached, regenerate on demand — never auto-run). **Must import `HUMANIZER_GUARDRAILS`.** The board's `readThread()` keywords are the existing seed. Memory: `things-taste-synthesis`.
 
- **Next: Slice 4** = paid Sonnet vision attribute-read for photo/link-image capture (state exact per-call cost first; Compare proved the paid plumbing). **Open follow-up:** the masthead only lights up once items are actually tagged — Farah's existing saves are untagged, so first-run shows the nudge state until she tags them (by design). The slice details below describe the *original* full plan; the shipped pieces are done — **don't rebuild** (see s65/s66 archive).
+**Things — open polish (Farah feedback pending, s72):**
+- **`DecidingCard`** — labelled-box direction approved, execution unfinished (Farah will give specifics).
+- **Image trim quality** — `src/lib/imageTrim.ts` (client canvas) is off-centre on some products and soft when zoomed on a few. Limits = the bbox/centroid heuristic + **source image resolution** + **CORS** (only trims where a shop allows pixel reads; else falls back to plain cover-crop). *If it keeps annoying: move the trim **server-side** — we already fetch product images for vision (bypasses CORS, can pull higher-res), so a `sharp`-based trim there would fix both centering and sharpness.*
 
 **The pivot — the taste signal is the _set_, not the _verdict_.** You don't *react* to a coat; the act of **saving** it is already the taste statement (like pinning a moodboard). The aesthetic emerges from **what your saves have in common**, read live off the whole collection — and works with **zero owned items** (a wishlist alone is a self-portrait). New spine: **save → the set speaks → profile** (vs media's want→have→react→profile). _Why the rework: for objects, reaction collapses — you self-select for love before you'd ever rate, so `loved_it/eh/not_for_me` is foregone and carries no signal. Composition is the signal that actually exists. Full critique → s64 archive entry._
 

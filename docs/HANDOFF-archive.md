@@ -4,6 +4,29 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 72 (2026-06-24) — Things UX overhaul: undo, gallery card, image auto-trim, two-section board
+
+**All on `main`, pushed across many commits. Typecheck + eslint clean, 85 Vitest green (+ `formatPrice`, `demoteProductToIntent` tests). NONE runtime-verified — the Things board + plan sheets are behind Google auth, so everything here wants Farah's eye on the deploy.** Free except the retro/auto taste reads (existing ~1¢ Sonnet vision, only on tap or on plan→save).
+
+A long iterative session driven by Farah testing live. In order:
+
+- **Undo a decision (both directions).** New `demoteProductToIntent()` (pure inverse of `promoteIntentToProduct`, round-trip tested) → a decided-but-unowned product shows **"↩ put back in plan"** (rebuilds the original intent from `fromPlan`, winner still picked). And the decided IntentSheet got **"↩ change my mind — keep deciding"** (clears `winner` → back to weighing). Fully reversible up until "got it". Only on un-owned items.
+- **plan → saved always auto-runs taste.** `onSaveWinner` already auto-tagged but **skipped if the winner carried any tag** (e.g. a manually set category) → left palette/material/vibe blank. Loosened to "run whenever there's an image" (merge-never-clobber fills gaps). And the **no-photo case now flashes** "saved — add a photo to read taste from it" (was a silent no-op — the "no toast the first time" Farah hit).
+- **Retro taste button** → "run taste from photo" for anything that landed untagged. First on the main sheet, then (Farah) **moved into edit** + emoji dropped — it's cleanup, not a primary action.
+- **Product detail → gallery layout (chosen via AskUserQuestion).** Two earlier passes (info-first, then tighter buttons) still read "database row," so we stepped back. Final: **photo leads as a big hero** (auto-trimmed), close floats over it; name/price/keywords below; actions recede to a quiet row — **`view at <brand> ↗`** (no more giant black BUY bar; it's a mirror not a store), a small `got it` pill, `edit`; remove stays a quiet link. `formatPrice()` → **`$3,600`** (commas, drop `.00`/`.0`; used by `PriceLine` everywhere; unit-tested). Tags → one quiet descriptor line (values only, no facet labels, no redundant "category").
+- **Image auto-trim (chosen via AskUserQuestion: "smart auto-trim" over cover/contain).** New **`src/lib/imageTrim.ts`** — client canvas finds the product, crops the background whitespace, re-frames to 4:5 on a matched bg; returns a cropped data URL or **null → caller falls back to original cover-crop** (CORS-tainted shop image, or nothing to trim). **Removed the ambient blur fill + feather entirely** (the grey-halo "not chic" offender). Centering uses the product **centroid** (so straps/shadows don't drag framing off-centre) and **won't upscale** past the source crop (+ jpeg 0.92) for sharper zooms.
+- **Two-section board (spec'd + approved).** **DECIDING** = active plans in a swipeable strip up top, new **`DecidingCard`** (need headlined, "N options", a few option thumbs — a plan is a question, not a tile). **SAVED** = wishlist grid below. **GOT** (owned) = **hidden by default**, reachable via "show → got it". The `show` filter picks zones; category tabs filter saved/got, deciding always shows. Removed dead `IntentCard` / `statusBucket` / `matchesStatus` / `Bucket`.
+- **Smaller:** dropped the roomy/dense **density toggle** (grid just auto-sizes, `COL_TARGET=220`); **unified plan edit** (one editor for name + context, opened from the context block — the inline-title tap read messy; works on decided plans too); **media bug** — "shows near you" back arrow went to `/discover`, now `/library` (the music view it's reached from).
+
+**Decisions logged:** image = auto-trim; detail = gallery; got-it hidden by default; **bot/scraping risk = low** at personal volume (one fetch per save, no crawling) — keeping the s71 Chrome fingerprint (the gray-area bit); could swap to an honest UA at the cost of more 403s. **Taste-synthesis-for-Things = combo of saved items + mood board, but generates from saved alone too** (starts working as you add items, before any moodboarding).
+
+**Carried to next session (Farah will give feedback tomorrow):**
+- **DecidingCard needs work** — the labelled-box treatment is right but not finished.
+- **Images still wonky** — off-centre on some (heuristic limit), and **quality is soft when zoomed** on a few. Real cap = source resolution + CORS (trim only runs where the shop allows pixel reads; elsewhere it's plain cover). **Robust fix if it keeps annoying: move the trim server-side** (where we already fetch images for vision, bypassing CORS, and can pull higher-res).
+- **Next builds queued: mood board, then taste synthesis** (see ROADMAP).
+
+---
+
 ### Session 71 (2026-06-23) — Vision-on-email (close the on-the-go untagged gap)
 
 **On `main`. Typecheck clean, 78 tests green, eslint clean. NOT runtime-verified — the email webhook can't be exercised from the preview; wants a real forwarded product to confirm. Cost: ~1¢ per emailed thing (Sonnet 4.6 vision, one image, only when the thing has an image).**
