@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect } from 'react'
 import { DomainSwitcher } from '../components/DomainSwitcher'
 import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
-import { trimToAspect } from '../lib/imageTrim'
+import { thingImage } from '../lib/thingImage'
 import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
@@ -505,7 +505,7 @@ function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   return (
     <button onClick={onOpen}
       style={{ position: 'relative', textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: INK, display: 'block', width: '100%' }}>
-      <Thumb src={p.image} />
+      <Thumb src={p.image} referer={p.url} />
       <div style={{ marginTop: 6 }}>
         <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
           {p.title}
@@ -539,28 +539,53 @@ function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const resolved = m.winner != null
   const n = m.candidates.length
   const front = resolved ? m.winner : m.leaning
-  // Front-runner (winner → leaning) first, so the cover thumbs lead with it.
+  // Lead with the front-runner (winner → leaning → first), so the cover photo shows
+  // the option you're actually circling.
   const ordered = [...m.candidates]
   const fi = ordered.findIndex(c => c.id === front)
   if (fi > 0) ordered.unshift(ordered.splice(fi, 1)[0])
-  const thumbs = ordered.slice(0, 3)
-  const status = resolved ? 'decided' : n ? `${n} option${n === 1 ? '' : 's'}` : 'no options yet'
+  const cover = ordered[0] ?? null
+  const winner = resolved ? m.candidates.find(c => c.id === m.winner) ?? null : null
+  // The card is a *question*: the front-runner photo fills it, a frosted band carries
+  // the question, and "N options" + a peeking card behind say "this is a pile you're
+  // choosing between" (the job the old thumb-row did). When it resolves it settles —
+  // the stack and count drop away, the band goes solid, it reads "decided".
+  const W = 188
+
   return (
     <button onClick={onOpen} style={{
-      flexShrink: 0, width: 188, scrollSnapAlign: 'start', textAlign: 'left', color: INK,
-      border: `1px solid ${LINE}`, borderRadius: 14, background: '#fff', padding: 14, cursor: 'pointer', display: 'block',
+      position: 'relative', flexShrink: 0, width: W, scrollSnapAlign: 'start',
+      textAlign: 'left', color: INK, border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'block',
     }}>
-      <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{resolved ? 'decided' : 'deciding'}</div>
-      <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25, marginTop: 5, textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.4em' }}>{item.title}</div>
-      <div style={{ fontSize: 11.5, color: MUTED, marginTop: 4 }}>{status}</div>
-      {thumbs.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-          {thumbs.map(c => <Thumb key={c.id} src={c.image} size={44} />)}
-          {n > 3 && (
-            <div style={{ width: 44, height: 44, borderRadius: 6, border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: MUTED, flexShrink: 0 }}>+{n - 3}</div>
+      {/* The "stack" — a faint card peeking out behind, only while still deciding. */}
+      {!resolved && n > 1 && (
+        <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#efece6', border: `1px solid ${LINE}`, borderRadius: 14 }} />
+      )}
+      <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', border: `1px solid ${LINE}`, background: '#F4F2EE', aspectRatio: String(GRID_ASPECT) }}>
+        {cover?.image
+          ? <img src={thingImage(cover.image, GRID_ASPECT, cover.url) ?? cover.image} onError={imgFallback(cover.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
+          : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: MUTED }}>no options yet</div>}
+
+        {/* Count chip — only while deciding (a settled card doesn't need it). */}
+        {!resolved && n > 0 && (
+          <div style={{ position: 'absolute', top: 9, right: 9, fontSize: 10, color: INK, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)', padding: '3px 8px', borderRadius: 999 }}>
+            {n} option{n === 1 ? '' : 's'}
+          </div>
+        )}
+
+        {/* Title band — frosted while deciding (rides over any photo), solid once decided. */}
+        <div style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0, padding: '9px 11px',
+          background: resolved ? '#fff' : 'rgba(248,246,242,0.92)', backdropFilter: resolved ? undefined : 'blur(6px)',
+          borderTop: `1px solid ${resolved ? LINE : 'rgba(0,0,0,0.06)'}`,
+        }}>
+          {resolved && <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>decided</div>}
+          <div style={{ fontSize: 13.5, fontWeight: 500, lineHeight: 1.25, textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
+          {resolved && winner && (
+            <div style={{ fontSize: 11, color: MUTED, marginTop: 3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{winner.title}</div>
           )}
         </div>
-      )}
+      </div>
     </button>
   )
 }
@@ -639,10 +664,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const [editing, setEditing] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [showPlan, setShowPlan] = useState(false)
-  // Hero photo, auto-trimmed to the product (same engine as the grid). Hook must run
-  // before the `editing` early-return; falls back to the original while it computes.
-  const heroTrim = useTrimmed(p.image, GRID_ASPECT)
-  const hero = heroTrim ?? p.image
+  // Hero photo, auto-trimmed to the product server-side (same endpoint as the grid).
+  // Falls back to the original if the shop blocks us or there's nothing to trim.
+  const hero = thingImage(p.image, GRID_ASPECT, p.url) ?? p.image
   const taste = p.attributes ?? []
   // A descriptor line: values only, minus the obvious "category" (the photo shows
   // it's a bag/coat/etc). e.g. "leather · dark earth · structured".
@@ -679,7 +703,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           actions recede to a quiet row. Close floats over the image. */}
       <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#fff', border: `1px solid ${LINE}`, aspectRatio: '4 / 5' }}>
         {hero
-          ? <img src={hero} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
+          ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
         <button onClick={onClose} aria-label="close" style={{
           position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 999,
@@ -1381,29 +1405,27 @@ function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: strin
 // data URL when ready, else null — the caller falls back to the original, cover-
 // cropped (still uniform, just not zoomed). Null also covers shops that block pixel
 // access (CORS) and busy shots with nothing to trim.
-function useTrimmed(src: string | null, aspect: number): string | null {
-  const [url, setUrl] = useState<string | null>(null)
-  useEffect(() => {
-    setUrl(null)
-    if (!src) return
-    let live = true
-    trimToAspect(src, aspect).then(r => { if (live) setUrl(r) })
-    return () => { live = false }
-  }, [src, aspect])
-  return url
-}
-
 const GRID_ASPECT = 4 / 5
 
-function Thumb({ src, size }: { src: string | null; size?: number }) {
+// If the server trim/proxy can't be reached (offline dev, a transient 5xx), drop
+// back to the original photo URL so we never show a broken image. `data-fb` guards
+// against a fallback loop.
+function imgFallback(original: string | null | undefined) {
+  return (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget
+    if (original && !img.dataset.fb) { img.dataset.fb = '1'; img.src = original }
+  }
+}
+
+function Thumb({ src, size, referer }: { src: string | null; size?: number; referer?: string | null }) {
   // Grid/hero thumbs: every photo is auto-trimmed to its product and re-framed to a
-  // shared 4:5, so the board reads as one catalog (no more specks-in-grey-fields or
-  // blurred halos). While the trim computes — or where a shop blocks us — we just
-  // cover-crop the original, which is still a uniform tile. Inline list thumbs (size
-  // set) stay square + cover; they're small avatars beside text, not worth trimming.
+  // shared 4:5 by the server (api/thing-image), so the board reads as one catalog
+  // (no more specks-in-grey-fields or blurred halos), sharp at any zoom. The endpoint
+  // 302s to the original if it can't improve on it, so this is just a plain <img>.
+  // Inline list thumbs (size set) stay square + cover; they're small avatars beside
+  // text, not worth a round-trip.
   const isGrid = !size
-  const trimmed = useTrimmed(isGrid ? src : null, GRID_ASPECT)
-  const shown = trimmed ?? src
+  const shown = isGrid ? (thingImage(src, GRID_ASPECT, referer) ?? src) : src
   const dim = isGrid ? { width: '100%', aspectRatio: '4 / 5' } : { width: size, height: size }
   return (
     <div style={{
@@ -1412,7 +1434,7 @@ function Thumb({ src, size }: { src: string | null; size?: number }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>
       {shown
-        ? <img src={shown} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
+        ? <img src={shown} onError={isGrid ? imgFallback(src) : undefined} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
         : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
     </div>
   )

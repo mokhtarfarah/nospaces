@@ -32,10 +32,10 @@ const MAX_IMG_BYTES = 5 * 1024 * 1024 // Anthropic caps images ~5MB
 // raw bytes (base64). This matters: retail CDNs routinely 403 non-browser
 // fetchers, so passing the URL straight to the vision API failed silently on
 // exactly the kind of links Farah saves. SSRF-guarded (the URL is user-influenced).
-export async function fetchImageBase64(
+export async function fetchImageBuffer(
   url: string,
   referer?: string,
-): Promise<{ ok: true; data: string; media: OkMedia } | { ok: false; reason: string }> {
+): Promise<{ ok: true; buf: Buffer; media: OkMedia } | { ok: false; reason: string }> {
   if (!isSafePublicUrl(url)) return { ok: false, reason: 'unsafe-url' }
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 12000)
@@ -69,12 +69,23 @@ export async function fetchImageBase64(
     const buf = Buffer.from(await resp.arrayBuffer())
     if (buf.length === 0) return { ok: false, reason: 'empty' }
     if (buf.length > MAX_IMG_BYTES) return { ok: false, reason: 'too-big' }
-    return { ok: true, data: buf.toString('base64'), media }
+    return { ok: true, buf, media }
   } catch (err) {
     return { ok: false, reason: err instanceof Error && err.name === 'AbortError' ? 'timeout' : 'fetch-failed' }
   } finally {
     clearTimeout(timer)
   }
+}
+
+// Base64 wrapper for the vision callers (Anthropic wants base64). Thin shim over
+// fetchImageBuffer so the browser-spoofing fetch lives in exactly one place.
+export async function fetchImageBase64(
+  url: string,
+  referer?: string,
+): Promise<{ ok: true; data: string; media: OkMedia } | { ok: false; reason: string }> {
+  const r = await fetchImageBuffer(url, referer)
+  if (!r.ok) return r
+  return { ok: true, data: r.buf.toString('base64'), media: r.media }
 }
 
 const PROMPT = (() => {

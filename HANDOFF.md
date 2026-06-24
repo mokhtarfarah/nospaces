@@ -15,15 +15,13 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**This session (72) — Things UX overhaul. All on `main`, 85 Vitest green, typecheck + eslint clean. NOT runtime-verified — the board + plan sheets are behind Google auth, so it all wants Farah's eye on the deploy.** Highlights: undo a decision (**put back in plan** + **change my mind — keep deciding**), **plan→saved always auto-tags** (+ non-silent no-photo case), **gallery-style product detail** (image hero, quiet `view at <brand> ↗` actions, `$3,600` price formatting, descriptor tag line), **image auto-trim** (`src/lib/imageTrim.ts` — crops product out of its whitespace; replaced the ambient blur fill), **two-section board** (deciding strip ↑ / saved grid ↓, got-it hidden), unified plan edit, dropped the density toggle, fixed the "shows near you" back nav. Full detail + decisions → archive (s72).
+**This session (73) — server-side image trim + DecidingCard cover redesign. All on `main`, 85 Vitest green, typecheck + eslint + build clean. NOT runtime-verified on the live board (behind Google auth) — wants Farah's eye on the deploy.** Images now trim **server-side** (new free `api/thing-image.ts` + `api/_imageTrim.ts`): fetches a higher-res original, trims where CORS can't block us, edge-cached; 302 + `onError` fallbacks so a photo can never break — fixes the off-centre/soft shots. DecidingCard is now **cover-as-background** (front-runner photo fills it, frosted title band, "N options" chip + peeking-stack, settle-state on decided; "deciding" pill dropped). Deleted the old client `imageTrim.ts`. Full detail → archive (s73).
 
 ---
 
-## ▶ Next session (73)
+## ▶ Next session (74)
 
-**Everything from s72 needs Farah's eyeball on the live deploy (behind auth).** Her standing feedback for tomorrow:
-- **`DecidingCard` needs polish** — the labelled-box direction is right, the execution isn't finished.
-- **Images still wonky** — off-centre on some, soft when zoomed on a few. Limits are the heuristic + source resolution + CORS (the client trim only runs where a shop allows pixel reads; elsewhere it falls back to a plain cover-crop). **If it keeps annoying, the robust fix is to move the trim server-side** — where we already fetch images for vision (bypasses CORS, and we can pull higher-res).
+**First: Farah eyeballs the s73 deploy (behind auth)** — is the DecidingCard execution right, and are real-shop images now crisp + centred? (Algorithm proven on a synthetic shot; real shops unverified.)
 
 **Then build (queued, in order):**
 1. **Mood board** — a collection of pure-inspiration images (not purchasable); free (just saved images). Spec it the same way before building.

@@ -4,6 +4,23 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 73 (2026-06-24) — Server-side image trim + DecidingCard cover redesign
+
+**All on `main`. Typecheck + eslint + production build clean, 85 Vitest green. Free — the new image endpoint makes zero Anthropic calls (pure pixel work, edge-cached). NOT runtime-verified on the live board (behind Google auth) — wants Farah's eye on the deploy.** Two asks from Farah, both done:
+
+- **Images moved server-side (the robust fix flagged in s72).** The old trim ran in the browser and CORS blocked reading pixels on most shops → off-centre / failed crops (the CH bag, the Free People shots). New free endpoint **`api/thing-image.ts`**: fetches a **higher-res original** server-side (browser-spoofed UA + Referer, same trick as vision — beats hotlink 403s), trims where CORS can't touch us, returns a clean 4:5 JPEG, **edge-cached immutable** after first hit. 302s to the original on any miss; client `<img onError>` also falls back → a photo can never break.
+  - **`api/_imageTrim.ts`** — sharp port of the old canvas algorithm (corner-sample bg → centroid-centred bbox → extract+extend-pad → resize), plus `upscaleUrl()` that bumps Shopify-style `_500x` / `?width=` sources to 1600w (kills soft-when-zoomed). Output capped 1200w.
+  - Refactored `api/_vision.ts`: extracted `fetchImageBuffer()` (raw bytes); `fetchImageBase64()` now a thin shim over it (one home for the browser-spoof fetch).
+  - Client: new `src/lib/thingImage.ts` (builds the proxy URL w/ aspect + referer); `Thumb`/hero point at it; **deleted `src/lib/imageTrim.ts`** + the `useTrimmed` hook (no more async/flash — it's a plain `<img>`).
+  - Verified the algorithm on a synthetic off-centre product shot: output centred + filled the frame at exact 0.800 aspect. `upscaleUrl` cases all correct (`_500x500` → `_1600x` = width-only/proportional is intended).
+- **DecidingCard → cover-as-background** (`ThingsScreen.tsx`). Front-runner photo (winner→leaning→first) fills the card; frosted title band rides over any photo; **"N options" chip** + a **faint card peeking behind** carry the "pile of options" signal the old thumb-row did. Dropped the "deciding" pill (redundant w/ the `deciding · N` section header — Farah's call). **Settle-state:** once decided, stack + count drop away, band goes solid white, reads `decided · <winner>` — calms down in place (resolved intents stay in the strip).
+
+**Added `sharp ^0.34.5` as a direct dep** (was transitive via Next — pinned so the Vercel build can't break if Next drops it).
+
+**Carried into s74:** Farah to eyeball the live deploy — DecidingCard execution + whether real-shop images are now crisp/centred. Then the build queue: mood board, then Things taste synthesis.
+
+---
+
 ### Session 72 (2026-06-24) — Things UX overhaul: undo, gallery card, image auto-trim, two-section board
 
 **All on `main`, pushed across many commits. Typecheck + eslint clean, 85 Vitest green (+ `formatPrice`, `demoteProductToIntent` tests). NONE runtime-verified — the Things board + plan sheets are behind Google auth, so everything here wants Farah's eye on the deploy.** Free except the retro/auto taste reads (existing ~1¢ Sonnet vision, only on tap or on plan→save).
