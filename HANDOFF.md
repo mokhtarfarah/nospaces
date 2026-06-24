@@ -19,10 +19,11 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 **Email-in: VERIFIED working (s67).** Farah retested → it landed. The normal-inbox auto-fallback (`captureThing` + `productLike` gate) and `things@` both work. Done.
 
-**This session (67) — Slice 4 (paid vision) + two UI fixes. On `main`, NOT yet verified on deploy (api/ + auth don't run locally).**
-- **Slice 4 — paid vision attribute-read.** New `api/things-vision.ts` (Sonnet 4.6 vision, **~$0.01/call**, one image, rate-limited 40/hr, mirrors `things-compare`). Reads taste tags (material·palette·vibe·category) off a product image — the LOOK, not identity (no brand/logo/text). Client: `readImageAttributes()` in `things.ts`. **Fires automatically in the background** after a product save that has an image + no manual tags (`autoTagFromImage` in `ThingsScreen`, merges-never-clobbers). Farah chose **auto-on-capture** (the board mirrors you with zero tagging). Email-in `captureThing` does NOT trigger it (server-side path) — a natural cost boundary, but email things won't auto-tag.
-- **Two UI fixes:** menu links lowercased (`edit`·`got it`·`remove`, sheet titles, buttons, long placeholders — single-noun fields like `Name`/`Price` kept caps to match media's `Title`/`Creator`); **editorial header added** to Things (uppercase kicker `N on the board` + lowercase `things` title + 1.5px ink rule) to match its sibling Library — this was the "feels different" fix.
-- 73 Vitest green, typecheck clean. **Vision endpoint UNVERIFIED — needs a real save-with-image on deploy (will spend ~1¢).**
+**This session (67) — Slice 4 (paid vision) shipped + VERIFIED working on deploy + UI fixes. All on `main`.**
+- **Slice 4 — paid vision attribute-read. WORKING on the live app.** `api/things-vision.ts` (Sonnet 4.6 vision, **~$0.01/call**, one image, rate-limited 40/hr, mirrors `things-compare`). Reads taste tags (material·palette·vibe·category) off a product image — the LOOK, not identity (no brand/logo/text). Client `readImageAttributes()` in `things.ts`. **Fires automatically in the background** after a product save that has an image + no manual tags (`autoTagFromImage` in `ThingsScreen`, merges-never-clobbers). Farah chose **auto-on-capture**. A board **toast** shows the result (sticky + tap-to-dismiss on failure, so it's never a silent no-op).
+- **Two image-fetch gotchas found + fixed in verification** (key lessons for any future vision work): (1) passing the og:image URL straight to Anthropic gets **403'd** by retail CDNs — so the endpoint **fetches the image itself** with a browser UA + **Referer/Origin** (the product page) and sends base64. (2) Our `Accept` header listed `image/avif` first → CDNs content-negotiated to **AVIF, which Anthropic vision rejects** → "bad-type-image/avif". Fixed by asking only for webp/png/jpeg/gif. *Open edge case:* a link that is **literally** a `.avif` file (no negotiation) would still fail — add on-the-fly conversion only if it recurs.
+- **UI fixes:** all menu links + **all four save buttons** lowercased; sheet titles, buttons, long placeholders lowercased (single-noun fields `Name`/`Price` kept caps to match media's `Title`/`Creator`); **editorial header** added to Things (kicker + `things` + 1.5px rule) to match Library — the "feels different" fix; **board product/intent card titles forced lowercase** (textTransform) so shop ALL-CAPS names read uniformly.
+- Email-in `captureThing` does NOT trigger vision (server-side path) — a deliberate cost boundary; email things won't auto-tag. 73 Vitest green, typecheck clean.
 
 **Last session (65):** Built "Things" Slice 0 — gut-check PASSED, merged via PR #16. Free `og-parse` reader · board + both capture paths · deliberation loop · sale price · opt-in AI Compare + plan brief. (s65 archive entry was recovered after PR #16 cut one commit short.)
 
@@ -30,19 +31,23 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 ## ▶ Next session (68)
 
-**PICK UP HERE — verify Slice 4 (paid vision) on the live deploy.** It's built but unverified (api/ + auth don't run locally).
-1. **Save a product with an image** in the app (paste a clothing/object link) → wait ~2 min for the Vercel build → it saves instantly, then within a few seconds the **taste tags should auto-fill** (material/palette/vibe/category) and the masthead should start reading them. Costs **~1¢** per save — don't loop it.
-2. **If tags don't appear:** check the Vercel function logs for `[things-vision]`; confirm `ANTHROPIC_API_KEY` is set; confirm the image URL is public (Anthropic fetches it directly — a bot-walled CDN image will fail). The read is best-effort, so failure = silently no tags.
-3. **Judge the tags as a first-time user** — are they the right *granularity* and do they read human, not like debug labels? Tune the prompt in `api/things-vision.ts` if they're off. Watch: does auto-tagging feel magic or intrusive? (Farah can remove any via the "what matters" editor.)
+**Slice 4 (paid vision) is DONE + verified working** (tags auto-fill from a saved product's image; ~1¢/save). Nothing to re-verify there.
 
-**Still needs an eyeball on the live app (carried from s66/67):**
-- **Two UI fixes from s67:** menu links now lowercase; Things now has the editorial kicker+rule header — confirm it reads right and matches Library.
+**PICK UP HERE — Farah's nits from end of s67.** Theme: **make Things feel more like the media Library** (see #3 — it's the umbrella).
+1. **Drop `category` from the card's attribute line — it reads dumb.** The `ProductCard` attribute line (`src/screens/ThingsScreen.tsx`, ~`p.attributes.map(a => a.value).join(' · ')`) shows all facets incl. category; category is already the **filter row** above, so it's redundant on the card. Show only material/palette/vibe there. *(Quick, well-scoped.)*
+2. **⚠️ NEEDS DISCUSSION — add mechanism + click-target mismatch.** Two linked questions: **(a)** Should Things use the **same floating `+`** as the media Library (for consistency) instead of the two `save a product` / `plan a purchase` buttons? **(b)** Tapping a `ProductCard` opens the **external buy link** (`<a href>`), but in the Library tapping opens an **internal detail sheet** — muscle memory makes it *far too easy to accidentally leave the site*. Likely fix: tap a card → open an internal detail/edit sheet (like Library), with an explicit **"buy" / open-link** affordance for the external jump. Don't build until Farah and I talk through the interaction.
+3. **Umbrella: make Things feel more like the media Library generally.** s67 added the editorial header + lowercasing as a start; this is the continued direction — close the remaining visual/interaction gaps (#1 and #2 are instances). Worth a pass comparing the two side by side and listing every divergence.
+
+**Judgement calls on the now-working vision (worth an eye):**
+- **Tag quality as a first-time user** — right *granularity*? Read human, not like debug labels? Tune the prompt in `api/things-vision.ts` if off. Does auto-tagging feel magic or intrusive?
+- **Tag the existing saves** (or re-save them so vision tags them) — masthead shows "tag a few (0/4)" until ≥4 tagged; that's the real thread gut-check.
+
+**Still needs an eyeball on the live app (carried from s66):**
 - **JSON-LD scraper** (re-add the link that returned "Woman" — name/price should fill now) · **Compare cheap-reviews** (run Compare on 2+ linked candidates — should cite details/ratings).
 - **Behind auth (eyeball):** masthead, Vibe rename, sorting, category filter, switcher-in-caps.
 - **Supabase preview-auth fix** still pending (`https://*.vercel.app/**` in Redirect URLs) — memory `preview-auth-redirect`.
-- **Tag the 3 existing saves** (or re-save them so vision tags them) — masthead shows "tag a few (0/4)" until ≥4 tagged; this is the real thread gut-check.
 
-**Open Things items:** vision doesn't fire on **email-in** captures (server-side path) — decide if that's worth wiring (more cost, but auto-tags everything). Full **web-search Compare reviews** (Reddit/blogs) — parked, pricey, Farah-flagged. Watch: is `FieldsForm` crowded now (fields + sale + taste tags)?
+**Open Things items:** vision doesn't fire on **email-in** captures (server-side path) — decide if that's worth wiring (more cost, but auto-tags everything). Literal-`.avif` image links still fail (rare; add conversion only if it recurs). Full **web-search Compare reviews** (Reddit/blogs) — parked, pricey, Farah-flagged. Watch: is `FieldsForm` crowded now (fields + sale + taste tags)?
 
 **Carried from s65 (Slice 0 — check, don't rebuild):** board, deliberation loop, edit/manual fallback, sale price, AI Compare voice + plan brief. Slice 0 passed the gut check. Watch: does Compare still read human on real items? Is the plan sheet busy?
 
