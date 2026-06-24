@@ -115,6 +115,10 @@ export function ThingsScreen() {
   }, [])
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
+  // A taste-tag filter set by tapping a tag inside a product (e.g. 'monochrome') —
+  // narrows the board to things that share it, so a card's tags become a way INTO
+  // the rest of your taste, not just a label. Any facet/value; coexists with `cat`.
+  const [tagFilter, setTagFilter] = useState<{ facet: Facet; value: string } | null>(null)
   const [statusF, setStatusF] = useState<StatusFilter>('all')
   const [filterSheet, setFilterSheet] = useState(false)
   const [polishing, setPolishing] = useState(false)
@@ -148,13 +152,19 @@ export function ThingsScreen() {
   const savedItems = useMemo(() => {
     let r = sorted.filter(t => kindOf(t) === 'product' && t.status !== 'done')
     if (cat) r = r.filter(t => categoriesOf(t).includes(cat))
+    if (tagFilter) r = r.filter(t => itemAttributes(t).some(a => a.facet === tagFilter.facet && normValue(a.value) === normValue(tagFilter.value)))
     return r
-  }, [sorted, cat])
+  }, [sorted, cat, tagFilter])
   const gotItems = useMemo(() => {
     let r = sorted.filter(t => kindOf(t) === 'product' && t.status === 'done')
     if (cat) r = r.filter(t => categoriesOf(t).includes(cat))
+    if (tagFilter) r = r.filter(t => itemAttributes(t).some(a => a.facet === tagFilter.facet && normValue(a.value) === normValue(tagFilter.value)))
     return r
-  }, [sorted, cat])
+  }, [sorted, cat, tagFilter])
+  // How many board things carry a given tag — powers the "N others" count on the
+  // card's tappable tags (and gates a tag from being tappable when it's a one-off).
+  const countWithTag = (facet: Facet, value: string) =>
+    things.filter(t => itemAttributes(t).some(a => a.facet === facet && normValue(a.value) === normValue(value))).length
   // Which sections the "show" filter exposes.
   const showDeciding = (statusF === 'all' || statusF === 'deciding') && decidingItems.length > 0
   const showSaved = statusF === 'all' || statusF === 'saved'
@@ -353,6 +363,17 @@ export function ThingsScreen() {
         )}
 
         <div style={{ padding: '16px 16px 120px' }}>
+          {/* Active taste-tag filter (set from a product's tags) — a removable pill so
+              the narrowed board is never a hidden trap. */}
+          {tagFilter && (
+            <button onClick={() => setTagFilter(null)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 14, padding: '5px 10px 5px 12px',
+                borderRadius: 999, border: `1px solid ${INK}`, background: INK, color: '#fff', fontSize: 12, cursor: 'pointer' }}>
+              <span style={{ color: 'rgba(255,255,255,0.6)' }}>{FACET_LABEL[tagFilter.facet].toLowerCase()}</span>
+              {tagFilter.value}
+              <span style={{ fontSize: 14, lineHeight: 1, color: 'rgba(255,255,255,0.85)' }}>×</span>
+            </button>
+          )}
           {things.length === 0 ? (
             <Empty />
           ) : !anyShown ? (
@@ -487,6 +508,9 @@ export function ThingsScreen() {
           // auto-tag-on-save; spreads current meta so nothing else is lost.
           onRunTaste={() => autoTagFromImage(openProduct.id, productMeta(openProduct))}
           onToggleCutout={() => patchMetadata(openProduct.id, { cutoutHidden: !productMeta(openProduct).cutoutHidden })}
+          onSaveNote={(note) => patchMetadata(openProduct.id, { note })}
+          countWithTag={countWithTag}
+          onFilterTag={(facet, value) => { setTagFilter({ facet, value }); setOpenProductId(null) }}
           onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
         />
       )}
@@ -744,7 +768,49 @@ function IntentRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
 // a card opens this in-app, and the only way *out* to the shop is the explicit
 // "buy" button — so you never leave the board by accident. Edit/got-it/remove all
 // live here too (they used to be a per-card ⋯ menu).
-function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onDelete }: {
+// "Why you saved it" — a personal note that turns the card into your memory of the
+// item ("for the seattle trip", "wait for a sale"). Free-text, quiet until there's
+// something to say. Saves on blur / done so it never needs a separate save button.
+function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string | null) => void | Promise<void> }) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(note ?? '')
+
+  function commit() {
+    const t = text.trim()
+    setEditing(false)
+    if (t !== (note ?? '')) onSave(t || null)
+  }
+
+  if (editing) {
+    return (
+      <div style={{ marginTop: 16 }}>
+        <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
+          placeholder="why you saved it — the occasion, the wait-for-a-sale, the one detail you loved…"
+          rows={3}
+          style={{ width: '100%', boxSizing: 'border-box', resize: 'none', fontSize: 13, lineHeight: 1.5,
+            color: INK, background: '#F7F8F9', border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 12px', outline: 'none', fontFamily: 'inherit' }} />
+      </div>
+    )
+  }
+  if (note) {
+    return (
+      <button onClick={() => { setText(note); setEditing(true) }}
+        style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 16, padding: '11px 13px',
+          borderRadius: 10, background: '#F7F8F9', border: `1px solid ${LINE}`, cursor: 'pointer' }}>
+        <span style={{ fontSize: 10, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>your note</span>
+        <div style={{ fontSize: 13, lineHeight: 1.5, color: INK, marginTop: 4, whiteSpace: 'pre-wrap' }}>{note}</div>
+      </button>
+    )
+  }
+  return (
+    <button onClick={() => { setText(''); setEditing(true) }}
+      style={{ marginTop: 14, border: 'none', background: 'none', color: MUTED, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+      + add a note
+    </button>
+  )
+}
+
+function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onSaveNote, countWithTag, onFilterTag, onDelete }: {
   item: Item
   onClose: () => void
   onSave: (f: ProductFields) => void | Promise<void>
@@ -752,6 +818,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   onReopenPlan: () => void | Promise<void>
   onRunTaste: () => void | Promise<void>
   onToggleCutout: () => void | Promise<void>
+  onSaveNote: (note: string | null) => void | Promise<void>
+  countWithTag: (facet: Facet, value: string) => number
+  onFilterTag: (facet: Facet, value: string) => void
   onDelete: () => void
 }) {
   const p = productMeta(item)
@@ -764,9 +833,6 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const showCutout = !p.cutoutHidden && !!p.cutout
   const hero = showCutout ? p.cutout : (thingImageRaw(p.image, p.url) ?? p.image)
   const taste = p.attributes ?? []
-  // A descriptor line: values only, minus the obvious "category" (the photo shows
-  // it's a bag/coat/etc). e.g. "leather · dark earth · structured".
-  const tasteLine = taste.filter(a => a.facet !== 'category').map(a => a.value).join(' · ')
   // If this product was graduated from a plan, its deliberation (the options you
   // passed on) lives here — otherwise it'd be stored but unreachable.
   const plan = productPlan(item)
@@ -822,10 +888,28 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
           {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
         </div>
-        {/* Taste as one quiet descriptor line — values only, no facet labels, no
-            "category". Full labelled set lives in edit. */}
-        {tasteLine && (
-          <div style={{ fontSize: 12.5, color: MUTED, marginTop: 8, lineHeight: 1.4 }}>{tasteLine}</div>
+        {/* Taste tags as a way INTO the board: tap one to see what else shares it.
+            "· N" is how many OTHER things carry it; a one-off isn't tappable (nothing
+            to pull up). Category is left off — it's the inventory, not the vibe. */}
+        {taste.some(a => a.facet !== 'category') && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+            {taste.filter(a => a.facet !== 'category').map((a, i) => {
+              const others = countWithTag(a.facet, a.value) - 1
+              const tappable = others > 0
+              return (
+                <button key={i} disabled={!tappable}
+                  onClick={() => tappable && onFilterTag(a.facet, a.value)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: INK,
+                    background: '#F0F1F3', border: `1px solid ${tappable ? '#E0E2E6' : 'transparent'}`,
+                    borderRadius: 999, padding: '5px 10px', cursor: tappable ? 'pointer' : 'default',
+                  }}>
+                  {a.value}
+                  {others > 0 && <span style={{ color: MUTED }}>· {others}</span>}
+                </button>
+              )
+            })}
+          </div>
         )}
       </div>
 
@@ -845,6 +929,8 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         }}>{got ? '✓ got it' : 'mark as got it'}</button>
         <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 13, cursor: 'pointer', padding: 0, marginLeft: 'auto' }}>edit</button>
       </div>
+
+      <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
 
       {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
 

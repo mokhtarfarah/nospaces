@@ -130,6 +130,8 @@ export type ProductFields = {
   url: string | null
   /** Taste tags. Empty/undefined until the user (or, later, vision) adds them. */
   attributes?: Attribute[]
+  /** Your own reason for saving it — "for the seattle trip", "wait for a sale". */
+  note?: string | null
   /** How the photo frames the item (vision-read). Gates the cutout. */
   shotType?: ShotType | null
   /**
@@ -190,6 +192,7 @@ export function productMeta(item: Item): ProductMeta {
     siteName: m.siteName ?? null,
     url: m.url ?? null,
     attributes: normAttributes(m.attributes),
+    note: m.note ?? null,
     shotType: m.shotType ?? null,
     cutout: m.cutout ?? null,
     cutoutV: m.cutoutV ?? null,
