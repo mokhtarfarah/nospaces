@@ -62,8 +62,12 @@ export function ThingsScreen() {
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
   const [flash, setFlash] = useState<string | null>(null)
-  // Transient toast — shows the vision auto-tag result, then fades on its own.
-  const showFlash = (msg: string) => { setFlash(msg); window.setTimeout(() => setFlash(null), 3500) }
+  // Toast for the vision auto-tag result. Success auto-fades; a failure stays put
+  // (tap to dismiss) so the reason is readable — no silent no-ops.
+  const showFlash = (msg: string, sticky = false) => {
+    setFlash(msg)
+    if (!sticky) window.setTimeout(() => setFlash(null), 3500)
+  }
 
   const things = useMemo(() => items.filter(i => kindOf(i) !== null), [items])
   const sorted = useMemo(() => sortThings(things, sort), [things, sort])
@@ -88,9 +92,9 @@ export function ThingsScreen() {
   async function autoTagFromImage(id: string, f: ProductFields) {
     if (!f.image) return
     setFlash('reading taste from the photo…')
-    const r = await readImageAttributes(f.image)
-    if (!r.ok) { showFlash(`couldn't read the photo (${r.reason})`); return }
-    if (r.attributes.length === 0) { showFlash('no clear taste tags from that photo'); return }
+    const r = await readImageAttributes(f.image, f.url)
+    if (!r.ok) { showFlash(`couldn't read the photo — ${r.reason} (tap to dismiss)`, true); return }
+    if (r.attributes.length === 0) { showFlash('no clear taste tags from that photo (tap to dismiss)', true); return }
     const existing = f.attributes ?? []
     const have = new Set(existing.map(a => a.facet))
     const fresh = r.attributes.filter(a => !have.has(a.facet))
@@ -102,9 +106,9 @@ export function ThingsScreen() {
   return (
     <div style={{ padding: '20px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
       {flash && (
-        <div style={{
+        <div onClick={() => setFlash(null)} style={{
           position: 'fixed', left: '50%', bottom: 'calc(80px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
-          background: INK, color: '#fff', fontSize: 12.5, padding: '9px 14px', borderRadius: 999,
+          background: INK, color: '#fff', fontSize: 12.5, padding: '9px 14px', borderRadius: 999, cursor: 'pointer',
           maxWidth: '90vw', textAlign: 'center', zIndex: 300, boxShadow: '0 4px 18px rgba(0,0,0,0.2)',
         }}>{flash}</div>
       )}
@@ -282,7 +286,7 @@ function ProductCard({ item, onGotIt, onDelete, onEdit }: { item: Item; onGotIt:
         style={{ textDecoration: 'none', color: INK, display: 'block' }}>
         <Thumb src={p.image} />
         <div style={{ marginTop: 6 }}>
-          <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
             {p.title}
           </div>
           <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
@@ -324,7 +328,7 @@ function IntentCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
         <Tag label={resolved ? 'decided' : `deciding · ${m.candidates.length}`} filled={resolved} />
       </div>
       <div style={{ marginTop: 6 }}>
-        <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 600, color: INK, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 600, color: INK, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
           {item.title}
         </div>
         <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>

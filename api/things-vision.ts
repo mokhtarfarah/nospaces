@@ -33,17 +33,29 @@ const MAX_IMG_BYTES = 5 * 1024 * 1024 // Anthropic caps images ~5MB
 // exactly the kind of links Farah saves. SSRF-guarded (the URL is user-influenced).
 async function fetchImageBase64(
   url: string,
+  referer?: string,
 ): Promise<{ ok: true; data: string; media: OkMedia } | { ok: false; reason: string }> {
   if (!isSafePublicUrl(url)) return { ok: false, reason: 'unsafe-url' }
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 12000)
   try {
+    // Present as a real browser loading the image FROM the product page — many
+    // retail CDNs (Shopify hotlink protection) 403 anything without a matching
+    // Referer / origin, even with a browser User-Agent.
+    let origin: string | undefined
+    try { origin = referer ? new URL(referer).origin : new URL(url).origin } catch { /* ignore */ }
     const resp = await fetch(url, {
       signal: controller.signal,
       redirect: 'follow',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
-        'Accept': 'image/avif,image/webp,image/png,image/jpeg,*/*',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/png,image/jpeg,*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        ...(referer ? { 'Referer': referer } : {}),
+        ...(origin ? { 'Origin': origin } : {}),
+        'Sec-Fetch-Dest': 'image',
+        'Sec-Fetch-Mode': 'no-cors',
+        'Sec-Fetch-Site': 'same-origin',
       },
     })
     if (!resp.ok) return { ok: false, reason: `fetch-${resp.status}` }
@@ -70,13 +82,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(429).json({ error: 'Lots of reads this hour — try again later.' })
   }
 
-  const { image } = req.body as { image?: string }
+  const { image, referer } = req.body as { image?: string; referer?: string }
   if (!image || typeof image !== 'string' || !/^https?:\/\//i.test(image)) {
     return res.status(400).json({ error: 'Need an image URL.' })
   }
 
-  // Fetch the image ourselves (browser UA) and pass bytes, not the URL.
-  const img = await fetchImageBase64(image)
+  // Fetch the image ourselves (browser UA + Referer) and pass bytes, not the URL.
+  const img = await fetchImageBase64(image, typeof referer === 'string' ? referer : undefined)
   if (!img.ok) {
     console.warn('[things-vision] image fetch failed:', img.reason, '·', image.slice(0, 120))
     return res.status(422).json({ error: 'Could not load that image.', reason: img.reason })

@@ -266,13 +266,14 @@ export async function parseProductLink(
  */
 export async function readImageAttributes(
   image: string,
+  referer?: string | null,
 ): Promise<{ ok: true; attributes: Attribute[] } | { ok: false; reason: string }> {
   let resp: Response
   try {
     resp = await fetch('/api/things-vision', {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ image }),
+      body: JSON.stringify({ image, referer: referer || undefined }),
     })
   } catch {
     return { ok: false, reason: "Couldn't reach the reader." }
