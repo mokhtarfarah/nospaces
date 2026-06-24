@@ -27,6 +27,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
   - **Calmer header — Things-only, Library untouched.** Dropped the second uppercase kicker (`YOUR KEYWORDS`); the keyword line now leads and "your keywords" folds into the caption. The shared editorial chrome (kicker + title + **1.5px rule kept**) is unchanged → Library parity preserved. (Decision: don't lighten the rule; it read heavy only because of the clutter beneath it.)
   - **Density toggle moved into the filter sheet** (now "view & sort") — off the title row, mirroring how media keeps view/sort in a popup. Serif headers were **considered and dropped** this round.
 
+**Image-treatment iteration (Farah live feedback loop — SETTLED, "looks okay, leave it"):** the s71 portrait-3:4-*cover* above was superseded same-session. Final state of the grid/hero `Thumb`:
+- **`object-fit: contain` on white at 4:5** — products show WHOLE + centered, uniform "catalog plates" (SSENSE/NAP look), nothing cropped. Beat *cover*, which filled unevenly because shops bake different whitespace into product photos.
+- **Ambient blur fill** behind the contained image so tiles fill edge-to-edge: a blurred copy of the SAME photo, **`object-fit: fill`** (NOT cover — fill maps frame-row→image-row so the letterbox bands pull the photo's true top/bottom *background*, not the product in the middle, which had darkened the bands). `blur(28px) saturate(0.9) scale(1.06)`.
+- **Edge feather** (`FEATHER_EDGE` mask, both axes intersected) on the sharp image so its rectangular boundary dissolves into the fill instead of a faint tonal seam.
+- **Transparency skip** (`useAmbientFill` hook): probes the image via a CORS canvas read; if corners are transparent (cutout PNG) it **skips the fill** (blur would smear the product's own colour into the corners — the "halo"). A CORS-tainted/failed read keeps the fill (safe default).
+- *Honest limit:* the fill is a stretched copy of the photo's own bg, so a faint tonal diff can remain on strong-vignette shots. The pixel-perfect fix = sample the true bg colour **server-side** at save (no CORS there) — parked, not needed yet.
+
+**List view + menu reorg (Farah feedback):**
+- **List view for the board** — a `grid`/`list` toggle in the view sheet; list = the plan-style row (square thumb + title + price/brand, taste line / plan status). Reuses the deliberation candidate-row look. Persisted to localStorage.
+- **Menu reorg:** **category is now the on-page chip row** (primary filter); **status (saved/deciding/got it) moved into the view sheet** alongside layout/density/sort.
+- **View sheet restyled to match the Library's `ViewSheet` exactly** (it "looked really different" before) — drag-handle sheet, label-left segmented buttons, ✓ list rows — via new shared `SegRow` / `SheetList` helpers. Removed the now-dead `Pill` + `DensityToggle`.
+
+**Scraper 403 mitigation (free — no API call):** `api/_scrape.ts` now sends a **full Chrome browser fingerprint** (real UA + `Sec-Fetch-*` + `Accept-Language` + `Upgrade-Insecure-Requests`) instead of `Nospaces/1.0`, so mid-tier shops that 403'd the bot UA now serve their OG HTML. Won't beat a real JS challenge (Cloudflare) — those still fall back to manual entry.
+
+**Parked (Farah + me, s71): screenshot-capture for things.** Tempting to mirror media's photo-identify, BUT a thing has no catalog — a screenshot gives name/price/image but **no buy link**, and hand-adding the link on mobile is the exact pain we're escaping. Making it work like media (identify → pull real source URL + info) needs **reverse product web-search** to recover the link = the **expensive web_search API + unreliable** (wrong colour / resale / blog). Not worth it until that's acceptable. The scraper upgrade is the cheap reliable lever instead.
+
 ---
 
 ### Session 70 (2026-06-23) — New-user audit + editorial pass + decided-item fix
