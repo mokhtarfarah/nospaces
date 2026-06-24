@@ -4,7 +4,7 @@ import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
 import { thingImage, thingImageRaw } from '../lib/thingImage'
 import { makeCutout, CUTOUT_VERSION } from '../lib/cutout'
-import { NoteQuote } from '../components/NoteQuote'
+import { NoteProse } from '../components/NoteProse'
 import { useItems } from '../hooks/useItems'
 import { useAuth } from '../hooks/useAuth'
 import type { Item } from '../lib/database.types'
@@ -788,8 +788,8 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
         <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
           placeholder="why you saved it — the occasion, the wait-for-a-sale, the one detail you loved…"
           rows={3}
-          style={{ width: '100%', boxSizing: 'border-box', resize: 'none', fontSize: 13, lineHeight: 1.5,
-            color: INK, background: '#F7F8F9', border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 12px', outline: 'none', fontFamily: 'inherit' }} />
+          style={{ width: '100%', boxSizing: 'border-box', resize: 'none', fontSize: 13, lineHeight: 1.65,
+            color: '#4A453E', fontStyle: 'italic', background: '#F7F8F9', border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 12px', outline: 'none', fontFamily: 'inherit' }} />
       </div>
     )
   }
@@ -797,7 +797,7 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
     return (
       <button onClick={() => { setText(note); setEditing(true) }}
         style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 16, border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
-        <NoteQuote label="your note">{note}</NoteQuote>
+        <NoteProse label="your note">{note}</NoteProse>
       </button>
     )
   }

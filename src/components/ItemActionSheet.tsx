@@ -3,7 +3,7 @@ import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { authHeaders } from '../lib/supabase'
 import { NoteInput } from './NoteInput'
-import { NoteQuote } from './NoteQuote'
+import { NoteProse } from './NoteProse'
 import { MoodChips } from './MoodChips'
 import { VIBES, VERDICTS, vibesForType } from '../lib/moods'
 import { useWikipediaInfo } from '../lib/wikipedia'
@@ -753,7 +753,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
 
             {item.note && (
               <div style={{ marginBottom: 16 }}>
-                <NoteQuote label="thoughts">{renderNote(item.note)}</NoteQuote>
+                <NoteProse label="thoughts">{renderNote(item.note)}</NoteProse>
               </div>
             )}
 
