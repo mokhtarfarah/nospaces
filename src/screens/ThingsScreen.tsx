@@ -871,7 +871,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
     <Sheet onClose={onClose}>
       {/* Gallery layout: the photo leads (this is a taste mirror, not a checkout),
           actions recede to a quiet row. Close floats over the image. */}
-      <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}`, aspectRatio: '4 / 5' }}>
+      {/* Height-capped + centred so the photo doesn't eat the whole viewport on a
+          laptop (the note/actions stay near the fold). Sized off height to keep 4:5. */}
+      <div style={{ position: 'relative', margin: '0 auto', maxWidth: '100%', height: 'min(54vh, 440px)', aspectRatio: '4 / 5', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}` }}>
         {hero
           ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: showCutout ? 'contain' : 'cover', padding: showCutout ? '8%' : 0, boxSizing: 'border-box', filter: showCutout ? undefined : 'saturate(0.95)' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
@@ -894,8 +896,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         {taste.some(a => a.facet !== 'category') && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
             {taste.filter(a => a.facet !== 'category').map((a, i) => {
-              const others = countWithTag(a.facet, a.value) - 1
-              const tappable = others > 0
+              // The count is how many things the tag pulls up (this one included), so
+              // it matches the filtered board exactly. A one-off (count 1) isn't tappable.
+              const count = countWithTag(a.facet, a.value)
+              const tappable = count > 1
               return (
                 <button key={i} disabled={!tappable}
                   onClick={() => tappable && onFilterTag(a.facet, a.value)}
@@ -905,7 +909,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
                     borderRadius: 999, padding: '5px 10px', cursor: tappable ? 'pointer' : 'default',
                   }}>
                   {a.value}
-                  {others > 0 && <span style={{ color: MUTED }}>· {others}</span>}
+                  {tappable && <span style={{ color: MUTED }}>· {count}</span>}
                 </button>
               )
             })}
