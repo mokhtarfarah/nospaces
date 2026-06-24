@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { DomainSwitcher } from '../components/DomainSwitcher'
 import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
@@ -25,6 +25,22 @@ const SORTS: { key: SortKey; label: string }[] = [
 function categoriesOf(item: Item): string[] {
   return itemAttributes(item).filter(a => a.facet === 'category').map(a => normValue(a.value))
 }
+
+// Lifecycle bucket for the status filter. Every thing lands in exactly one:
+// an owned product or a resolved plan is "got"; an open plan is "deciding";
+// anything else (a saved-but-unowned product) is "saved".
+type Bucket = 'saved' | 'deciding' | 'got'
+function statusBucket(item: Item): Bucket {
+  if (item.status === 'done') return 'got'
+  return kindOf(item) === 'intent' ? 'deciding' : 'saved'
+}
+type StatusFilter = 'all' | Bucket
+const STATUSES: { key: StatusFilter; label: string }[] = [
+  { key: 'all', label: 'all' },
+  { key: 'saved', label: 'saved' },
+  { key: 'deciding', label: 'deciding' },
+  { key: 'got', label: 'got it' },
+]
 
 // The price a thing sorts by: a product's own, or an intent's front-runner
 // (winner → leaning → first candidate). Null when there's nothing to read.
@@ -61,17 +77,23 @@ export function ThingsScreen() {
   const [openProductId, setOpenProductId] = useState<string | null>(null)
   // Speed-dial for the floating +: open reveals the two capture paths.
   const [addMenu, setAddMenu] = useState(false)
-  // Header collapse-on-scroll (mirrors Library): the switcher + title + masthead
-  // fold away once you scroll into the board, leaving the sort + category rows
-  // pinned. Hysteresis (collapse past 56px, expand under 16px) avoids flicker.
-  const [collapsed, setCollapsed] = useState(false)
+  // Responsive grid: more columns as the board gets wider (≈2 on a phone, up to
+  // ~5 on a desktop), so it fills the page like the rest of the app instead of a
+  // fixed 2-up locked to a narrow column. Measured off the scroller's own width.
   const listRef = useRef<HTMLDivElement>(null)
-  const onListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const t = e.currentTarget.scrollTop
-    setCollapsed(prev => (prev ? t > 16 : t > 56))
+  const [cols, setCols] = useState(2)
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    const measure = () => setCols(Math.max(2, Math.floor(el.clientWidth / 240)))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
   }, [])
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
+  const [statusF, setStatusF] = useState<StatusFilter>('all')
   const [flash, setFlash] = useState<string | null>(null)
   // Toast for the vision auto-tag result. Success auto-fades; a failure stays put
   // (tap to dismiss) so the reason is readable — no silent no-ops.
@@ -88,10 +110,12 @@ export function ThingsScreen() {
     things.forEach(t => categoriesOf(t).forEach(c => set.add(c)))
     return [...set].sort()
   }, [things])
-  const visible = useMemo(
-    () => (cat ? sorted.filter(t => categoriesOf(t).includes(cat)) : sorted),
-    [sorted, cat],
-  )
+  const visible = useMemo(() => {
+    let r = sorted
+    if (statusF !== 'all') r = r.filter(t => statusBucket(t) === statusF)
+    if (cat) r = r.filter(t => categoriesOf(t).includes(cat))
+    return r
+  }, [sorted, cat, statusF])
   const openIntent = things.find(i => i.id === openIntentId) ?? null
   const openProduct = things.find(i => i.id === openProductId) ?? null
 
@@ -114,7 +138,9 @@ export function ThingsScreen() {
     showFlash(`added ${fresh.length} taste tag${fresh.length === 1 ? '' : 's'}: ${fresh.map(a => a.value).join(' · ')}`)
   }
 
-  const sortRow = things.length > 1
+  // The combined status + sort row only earns its space once there's more than
+  // one thing to sort or filter.
+  const statusRow = things.length > 1
   const catRow = categories.length > 0
 
   return (
@@ -127,13 +153,11 @@ export function ThingsScreen() {
         }}>{flash}</div>
       )}
 
-      {/* Sticky header — mirrors Library. The switcher + title + rule + thread
-          masthead fold away on scroll; the sort + category rows stay pinned. */}
-      <header style={{ padding: '20px 16px 0', background: '#fff', borderBottom: `1px solid ${LINE}`, maxWidth: 640, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        <div style={{
-          overflow: 'hidden', transition: 'max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease',
-          maxHeight: collapsed ? 0 : 320, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 4,
-        }}>
+      {/* One scroller. The switcher + title + thread masthead scroll away
+          naturally (no JS height animation — that was the jumpy part); only the
+          sort + category bar is position:sticky, so it pins smoothly on its own. */}
+      <div ref={listRef} style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '20px 16px 0' }}>
           <DomainSwitcher current="things" />
           {/* Magazine header — small kicker + label + rule (shared treatment with Library) */}
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -148,35 +172,44 @@ export function ThingsScreen() {
           <ThreadMasthead things={things} />
         </div>
 
-        {/* Pinned controls — read like Library's filter rows (italic-bold active). */}
-        {catRow && (
-          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>
-            <TabChip label="all" active={cat === null} onClick={() => setCat(null)} />
-            {categories.map(c => (
-              <TabChip key={c} label={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)} />
-            ))}
+        {/* Sticky control bar — category, then status + sort (reads like Library's
+            filter rows: italic-bold active). Full-bleed bg so content scrolls
+            cleanly under it. */}
+        {(catRow || statusRow) && (
+          <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: `1px solid ${LINE}`, padding: '2px 16px 0' }}>
+            {catRow && (
+              <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>
+                <TabChip label="all" active={cat === null} onClick={() => setCat(null)} />
+                {categories.map(c => (
+                  <TabChip key={c} label={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)} />
+                ))}
+              </div>
+            )}
+            {statusRow && (
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 10, marginTop: catRow ? 6 : 4 }}>
+                {STATUSES.map(s => (
+                  <TabChip key={s.key} label={s.label} active={statusF === s.key} onClick={() => setStatusF(s.key)} />
+                ))}
+                <div style={{ width: 1, height: 14, background: '#DDD', flexShrink: 0 }} />
+                <span style={{ fontSize: 11, color: MUTED, letterSpacing: '0.04em', flexShrink: 0 }}>sort</span>
+                {SORTS.map(s => (
+                  <TabChip key={s.key} label={s.label} active={sort === s.key} onClick={() => setSort(s.key)} />
+                ))}
+              </div>
+            )}
           </div>
         )}
-        {sortRow && (
-          <div style={{ display: 'flex', gap: 14, alignItems: 'center', paddingBottom: 10, marginTop: catRow ? 6 : 2 }}>
-            <span style={{ fontSize: 11, color: MUTED, letterSpacing: '0.04em' }}>sort</span>
-            {SORTS.map(s => (
-              <TabChip key={s.key} label={s.label} active={sort === s.key} onClick={() => setSort(s.key)} />
-            ))}
-          </div>
-        )}
-        {/* When neither control row shows, give the rule a little breathing room. */}
-        {!catRow && !sortRow && <div style={{ height: 10 }} />}
-      </header>
 
-      {/* Scrolling board */}
-      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '16px 16px 120px' }}>
+        <div style={{ padding: '16px 16px 120px' }}>
           {things.length === 0 ? (
             <Empty />
           ) : visible.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px 20px', color: MUTED, fontSize: 13 }}>
-              nothing tagged “{cat}” yet.
+              {cat ? <>nothing tagged “{cat}” yet.</>
+                : statusF === 'saved' ? 'nothing saved yet.'
+                : statusF === 'deciding' ? 'nothing in the works.'
+                : statusF === 'got' ? 'nothing marked got it yet.'
+                : 'nothing here yet.'}
             </div>
           ) : (
             <div style={{
@@ -184,8 +217,8 @@ export function ThingsScreen() {
               // minmax(0,1fr) — without the 0 floor, a card's no-wrap attribute line
               // forces its column wider and squashes the neighbour (the "one grew,
               // one shrank" bug). align-items:start so a taller card doesn't stretch
-              // its row-mate.
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              // its row-mate. Column count is responsive (see `cols`).
+              gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
               alignItems: 'start',
               gap: 12,
             }}>
@@ -295,12 +328,12 @@ function ThreadMasthead({ things }: { things: Item[] }) {
 
   if (thread) {
     return (
-      <div style={{ margin: '0 0 22px', padding: '14px 16px', borderRadius: 14, background: '#F7F5F1', border: `1px solid ${LINE}` }}>
-        <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 6 }}>your thread</div>
-        <div style={{ fontSize: 21, fontWeight: 600, color: INK, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+      <div style={{ margin: '16px 0 20px' }}>
+        <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 7 }}>your thread</div>
+        <div style={{ fontSize: 22, fontWeight: 600, color: INK, lineHeight: 1.15, letterSpacing: '-0.01em' }}>
           {thread.tokens.join('  ·  ')}
         </div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: 7 }}>
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 8 }}>
           read from {thread.basis} tagged thing{thread.basis === 1 ? '' : 's'} — it shifts as you save and tag more
         </div>
       </div>
@@ -309,7 +342,7 @@ function ThreadMasthead({ things }: { things: Item[] }) {
 
   // Below the threshold (or nothing recurs yet) — a gentle nudge, never a nag.
   return (
-    <div style={{ margin: '0 0 22px', padding: '12px 14px', borderRadius: 14, border: `1px dashed ${LINE}`, fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>
+    <div style={{ margin: '16px 0 20px', fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>
       Tag your things — material, palette, form — and your aesthetic <em>thread</em> shows up here.
       {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} tagged.</span>}
     </div>
@@ -922,7 +955,9 @@ function Thumb({ src, size, dashed }: { src: string | null; size?: number; dashe
   const dim = size ? { width: size, height: size } : { width: '100%', aspectRatio: '1 / 1' }
   return (
     <div style={{
-      ...dim, borderRadius: 12, background: '#F4F2EE', overflow: 'hidden',
+      // Square corners — matches the media Library's grid art (sharper, more
+      // editorial than the old rounded thumbs).
+      ...dim, background: '#F4F2EE', overflow: 'hidden',
       border: dashed ? `1px dashed ${MUTED}` : `1px solid ${LINE}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>
