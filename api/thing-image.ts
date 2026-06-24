@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import sharp from 'sharp'
 import { isSafePublicUrl } from './_ssrf.js'
 import { fetchImageBuffer } from './_vision.js'
 import { trimToAspect, upscaleUrl } from './_imageTrim.js'
@@ -26,6 +27,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const referer = typeof req.query.r === 'string' ? req.query.r : undefined
   const aspect = clampAspect(req.query.a)
   if (!url || !isSafePublicUrl(url)) return res.status(400).end()
+
+  // raw=1 — hand the browser the ORIGINAL pixels (re-encoded JPEG) with a
+  // permissive CORS header, so the cutout model (src/lib/cutout.ts) can read bytes
+  // that the shop's own CDN would CORS-block on a direct fetch. Unlike the trim path
+  // it NEVER 302s to the cross-origin source — a redirect would just re-trip CORS —
+  // so failure is a real 502 the client can fall back from. Capped at 1024px: the
+  // segmentation model downsamples internally, so a bigger source only wastes bytes.
+  if (req.query.raw === '1') {
+    const upscaled = upscaleUrl(url)
+    let img = await fetchImageBuffer(upscaled, referer)
+    if (!img.ok && upscaled !== url) img = await fetchImageBuffer(url, referer)
+    if (!img.ok) return res.status(502).json({ error: 'fetch-failed', reason: img.reason })
+    try {
+      const out = await sharp(img.buf, { failOn: 'none' })
+        .rotate()
+        .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer()
+      res.setHeader('Content-Type', 'image/jpeg')
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Cache-Control', `public, max-age=${YEAR}, immutable`)
+      return res.status(200).send(out)
+    } catch {
+      return res.status(502).json({ error: 'decode-failed' })
+    }
+  }
 
   // Serve the untrimmed original (302) on any failure so the photo still shows.
   const passthrough = () => {

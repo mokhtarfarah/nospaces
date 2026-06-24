@@ -151,3 +151,29 @@ create policy "Users can delete own email captures"
   using (auth.uid() = user_id);
 
 create index email_captures_user_id_created on public.email_captures (user_id, created_at desc);
+
+-- ---------------------------------------------------------------------------
+-- Storage bucket for Things image cutouts (s74). Transparent-PNG subject
+-- cutouts are generated browser-side at save (see src/lib/cutout.ts) and the
+-- board renders them on a cream tile. Public read so a plain <img> can load
+-- them; writes are scoped to each user's own folder ("<uid>/<itemId>.png").
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+  values ('thing-cutouts', 'thing-cutouts', true)
+  on conflict (id) do nothing;
+
+create policy "cutouts public read"
+  on storage.objects for select
+  using (bucket_id = 'thing-cutouts');
+
+create policy "cutouts owner insert"
+  on storage.objects for insert
+  with check (bucket_id = 'thing-cutouts' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "cutouts owner update"
+  on storage.objects for update
+  using (bucket_id = 'thing-cutouts' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "cutouts owner delete"
+  on storage.objects for delete
+  using (bucket_id = 'thing-cutouts' and auth.uid()::text = (storage.foldername(name))[1]);

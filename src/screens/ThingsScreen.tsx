@@ -3,7 +3,9 @@ import { DomainSwitcher } from '../components/DomainSwitcher'
 import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
 import { thingImage } from '../lib/thingImage'
+import { makeCutout } from '../lib/cutout'
 import { useItems } from '../hooks/useItems'
+import { useAuth } from '../hooks/useAuth'
 import type { Item } from '../lib/database.types'
 import {
   parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, newCandidateId,
@@ -15,6 +17,9 @@ import {
 const INK = '#1C1B19'
 const MUTED = '#ABA69C'
 const LINE = '#E8E8E8'
+// Warm cream the cutout tiles sit on — a hair warmer than the grey-cream surfaces
+// elsewhere, so a board of products-on-cream reads as one catalog (see src/lib/cutout).
+const CREAM = '#F2EEE4'
 
 type SortKey = 'recent' | 'price' | 'name'
 const SORTS: { key: SortKey; label: string }[] = [
@@ -82,7 +87,8 @@ function sortThings(things: Item[], sort: SortKey): Item[] {
 }
 
 export function ThingsScreen() {
-  const { items, addItem, editItem, deleteItem } = useItems()
+  const { items, addItem, editItem, deleteItem, patchMetadata } = useItems()
+  const { user } = useAuth()
   const [composer, setComposer] = useState<null | 'product' | 'intent'>(null)
   const [openIntentId, setOpenIntentId] = useState<string | null>(null)
   const [openProductId, setOpenProductId] = useState<string | null>(null)
@@ -108,6 +114,7 @@ export function ThingsScreen() {
   const [cat, setCat] = useState<string | null>(null)
   const [statusF, setStatusF] = useState<StatusFilter>('all')
   const [filterSheet, setFilterSheet] = useState(false)
+  const [polishing, setPolishing] = useState(false)
   // Forwarded product links that didn't land (logged server-side by /api/email).
   // Surfaced here so a failed email capture isn't invisible from the board — the
   // same "review failed forwards" feed the Library has, scoped to things.
@@ -168,18 +175,92 @@ export function ThingsScreen() {
   // picks them up on the next render. Merges, never clobbers manual tags. A brief
   // toast confirms it ran (and surfaces why, if the photo couldn't be read) — so
   // it's never a silent no-op.
+  //
+  // s74 — the same vision call also returns a shot type, which we store and use to
+  // gate the cutout: a bare `product` packshot gets cut out onto a cream tile (see
+  // polishImage), model/lifestyle shots stay full-bleed. patchMetadata merges, so
+  // tags and shotType land without disturbing the rest of the item.
   async function autoTagFromImage(id: string, f: ProductFields) {
     if (!f.image) return
     setFlash('reading taste from the photo…')
     const r = await readImageAttributes(f.image, f.url)
     if (!r.ok) { showFlash(`couldn't read the photo — ${r.reason} (tap to dismiss)`, true); return }
-    if (r.attributes.length === 0) { showFlash('no clear taste tags from that photo (tap to dismiss)', true); return }
     const existing = f.attributes ?? []
     const have = new Set(existing.map(a => a.facet))
     const fresh = r.attributes.filter(a => !have.has(a.facet))
-    if (fresh.length === 0) { showFlash('no new taste tags to add'); return }
-    await editItem(id, { metadata: { kind: 'product', ...f, attributes: [...existing, ...fresh] } })
-    showFlash(`added ${fresh.length} taste tag${fresh.length === 1 ? '' : 's'}: ${fresh.map(a => a.value).join(' · ')}`)
+    const patch: Record<string, unknown> = {}
+    if (r.shotType) patch.shotType = r.shotType
+    if (fresh.length) patch.attributes = [...existing, ...fresh]
+    if (Object.keys(patch).length) await patchMetadata(id, patch)
+
+    // A bare product shot → cut it out onto a cream tile; the polish flash takes
+    // over from here. Otherwise report the tag outcome.
+    if (r.shotType === 'product') {
+      void polishImage(id, f.image, f.url)
+    } else if (r.attributes.length === 0) {
+      showFlash('no clear taste tags from that photo')
+    } else if (fresh.length === 0) {
+      showFlash('no new taste tags to add')
+    } else {
+      showFlash(`added ${fresh.length} taste tag${fresh.length === 1 ? '' : 's'}: ${fresh.map(a => a.value).join(' · ')}`)
+    }
+  }
+
+  // Cut the product out of its photo and drop it on a cream tile (browser-side,
+  // free — see src/lib/cutout.ts). Stores the resulting PNG URL on the item.
+  // Best-effort: a failure leaves the original cover in place. `silent` suppresses
+  // the toasts for the batch backfill, which runs its own progress line.
+  async function polishImage(id: string, image: string, referer: string | null | undefined, opts?: { silent?: boolean }) {
+    if (!user || !image) return false
+    if (!opts?.silent) setFlash('cleaning up the photo…')
+    const r = await makeCutout({ userId: user.id, itemId: id, image, referer })
+    if (!r.ok) { if (!opts?.silent) showFlash(`couldn't clean up the photo — ${r.reason} (tap to dismiss)`, true); return false }
+    await patchMetadata(id, { cutout: r.url })
+    if (!opts?.silent) showFlash('cleaned up the photo')
+    return true
+  }
+
+  // Backfill — products with a photo but no cutout yet, that aren't known to be
+  // model/lifestyle shots (those stay full-bleed). Covers items saved before the
+  // cutout shipped, plus any whose save-time cutout was interrupted.
+  const polishable = useMemo(() => things.filter(i => {
+    if (kindOf(i) !== 'product') return false
+    const p = productMeta(i)
+    return !!p.image && !p.cutout && p.shotType !== 'onModel' && p.shotType !== 'lifestyle'
+  }), [things])
+
+  // One-tap "polish images": for each backfill item, learn the shot type if we don't
+  // know it yet (one vision read, ~1¢ — only for legacy items), then cut out the bare
+  // product shots. Sequential so the model loads once and the board isn't hammered.
+  async function polishAllMissing() {
+    if (polishing || polishable.length === 0) return
+    setPolishing(true)
+    const todo = polishable.slice()
+    let done = 0
+    for (let i = 0; i < todo.length; i++) {
+      setFlash(`cleaning up photos… ${i + 1}/${todo.length}`)
+      const p = productMeta(todo[i])
+      if (!p.image) continue
+      let shot = p.shotType
+      // Legacy item with no shot type read yet → read it once (also fills any missing
+      // taste tags, merged). New saves already carry shotType, so this is skipped.
+      if (!shot) {
+        const r = await readImageAttributes(p.image, p.url)
+        if (r.ok) {
+          shot = r.shotType
+          const patch: Record<string, unknown> = {}
+          if (r.shotType) patch.shotType = r.shotType
+          const existing = p.attributes ?? []
+          const have = new Set(existing.map(a => a.facet))
+          const fresh = r.attributes.filter(a => !have.has(a.facet))
+          if (fresh.length) patch.attributes = [...existing, ...fresh]
+          if (Object.keys(patch).length) await patchMetadata(todo[i].id, patch)
+        }
+      }
+      if (shot === 'product' && await polishImage(todo[i].id, p.image, p.url, { silent: true })) done++
+    }
+    setPolishing(false)
+    showFlash(done > 0 ? `cleaned up ${done} photo${done === 1 ? '' : 's'}` : 'nothing new to clean up')
   }
 
   // The control row only earns its space once there's more than one thing.
@@ -406,6 +487,8 @@ export function ThingsScreen() {
           view={view} onView={setView}
           sort={sort} onSort={setSort}
           status={statusF} onStatus={setStatusF}
+          polishCount={polishable.length} polishing={polishing}
+          onPolishAll={() => { setFilterSheet(false); void polishAllMissing() }}
           onClose={() => setFilterSheet(false)}
         />
       )}
@@ -505,7 +588,7 @@ function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   return (
     <button onClick={onOpen}
       style={{ position: 'relative', textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: INK, display: 'block', width: '100%' }}>
-      <Thumb src={p.image} referer={p.url} />
+      <Thumb src={p.image} referer={p.url} cutout={p.cutout} />
       <div style={{ marginTop: 6 }}>
         <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
           {p.title}
@@ -703,8 +786,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
     <Sheet onClose={onClose}>
       {/* Gallery layout: the photo leads (this is a taste mirror, not a checkout),
           actions recede to a quiet row. Close floats over the image. */}
-      <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#fff', border: `1px solid ${LINE}`, aspectRatio: '4 / 5' }}>
-        {hero
+      <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: p.cutout ? CREAM : '#fff', border: `1px solid ${LINE}`, aspectRatio: '4 / 5' }}>
+        {p.cutout
+          ? <img src={p.cutout} onError={imgFallback(hero)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '12%', boxSizing: 'border-box' }} />
+          : hero
           ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
         <button onClick={onClose} aria-label="close" style={{
@@ -776,13 +861,16 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
 // to match the media Library's ViewSheet exactly — same drag-handle sheet, the same
 // label-left/segmented-buttons rows, and the same ✓ list rows — so flipping between
 // media and things feels like one app, not two.
-function FilterSheet({ sort, onSort, view, onView, status, onStatus, onClose }: {
+function FilterSheet({ sort, onSort, view, onView, status, onStatus, polishCount, polishing, onPolishAll, onClose }: {
   sort: SortKey
   onSort: (s: SortKey) => void
   view: ViewMode
   onView: (v: ViewMode) => void
   status: StatusFilter
   onStatus: (s: StatusFilter) => void
+  polishCount: number
+  polishing: boolean
+  onPolishAll: () => void
   onClose: () => void
 }) {
   return (
@@ -800,6 +888,22 @@ function FilterSheet({ sort, onSort, view, onView, status, onStatus, onClose }: 
 
         <SheetList label="sort" options={SORTS.map(s => ({ k: s.key, l: s.label }))} value={sort} onChange={onSort} />
         <SheetList label="show" options={STATUSES.map(s => ({ k: s.key, l: s.label }))} value={status} onChange={onStatus} />
+
+        {/* Tidy a mixed board: cut each bare product shot onto a cream tile so the
+            set reads as one catalog. Only shows when there's something to do. */}
+        {polishCount > 0 && (
+          <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${LINE}` }}>
+            <button onClick={onPolishAll} disabled={polishing}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                border: `1px solid ${LINE}`, borderRadius: 10, background: '#fff', padding: '11px 13px',
+                cursor: polishing ? 'default' : 'pointer', color: INK, opacity: polishing ? 0.6 : 1,
+              }}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{polishing ? 'cleaning up…' : 'polish images'}</span>
+              <span style={{ fontSize: 11.5, color: MUTED }}>{polishCount} to tidy ›</span>
+            </button>
+          </div>
+        )}
       </div>
     </>
   )
@@ -1419,7 +1523,7 @@ function imgFallback(original: string | null | undefined) {
   }
 }
 
-function Thumb({ src, size, referer }: { src: string | null; size?: number; referer?: string | null }) {
+function Thumb({ src, size, referer, cutout }: { src: string | null; size?: number; referer?: string | null; cutout?: string | null }) {
   // Grid/hero thumbs: every photo is auto-trimmed to its product and re-framed to a
   // shared 4:5 by the server (api/thing-image), so the board reads as one catalog
   // (no more specks-in-grey-fields or blurred halos), sharp at any zoom. The endpoint
@@ -1427,6 +1531,21 @@ function Thumb({ src, size, referer }: { src: string | null; size?: number; refe
   // Inline list thumbs (size set) stay square + cover; they're small avatars beside
   // text, not worth a round-trip.
   const isGrid = !size
+  // s74 — when the product has a subject cutout (a transparent PNG, see cutout.ts),
+  // float it on a warm-cream tile (contain + padding, no crop) so a mixed set of
+  // shops reads as one catalog. No proxy/trim for these — the PNG is already clean.
+  // onError falls back to the normal trimmed cover if the stored cutout ever 404s.
+  if (isGrid && cutout) {
+    return (
+      <div style={{
+        width: '100%', aspectRatio: '4 / 5', background: CREAM, overflow: 'hidden',
+        border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <img src={cutout} onError={imgFallback(thingImage(src, GRID_ASPECT, referer) ?? src)} alt="" loading="lazy"
+          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '12%', boxSizing: 'border-box' }} />
+      </div>
+    )
+  }
   const shown = isGrid ? (thingImage(src, GRID_ASPECT, referer) ?? src) : src
   const dim = isGrid ? { width: '100%', aspectRatio: '4 / 5' } : { width: size, height: size }
   return (

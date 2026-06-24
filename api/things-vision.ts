@@ -41,5 +41,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   console.log('[things-vision] read', result.attributes.length, 'tags:',
     result.attributes.map(a => `${a.facet}:${a.value}`).join(', ') || '(none)')
-  return res.status(200).json({ attributes: result.attributes })
+  return res.status(200).json({ attributes: result.attributes, shotType: result.shotType })
 }

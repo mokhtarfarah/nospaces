@@ -239,11 +239,17 @@ async function captureThing(userId: string, urls: string[], strict: boolean): Pr
   // vision), only when there's an image. Best-effort: a vision failure (403 /
   // avif / timeout) must never block the save — we just store no attributes.
   let attributes: { facet: string; value: string }[] = []
+  // The shot type rides the same read; stored so the board's "polish images"
+  // backfill can cut out a bare product shot without re-reading the photo. (The
+  // cutout itself runs browser-side, so an email-captured item is polished on the
+  // next board visit, not here.)
+  let shotType: string | null = null
   if (fields.image) {
     const v = await readImageAttributes(fields.image, fields.url)
     if (v.ok) {
       attributes = v.attributes
-      console.log('[email] vision tagged thing:', attributes.map(a => `${a.facet}:${a.value}`).join(', ') || '(none)')
+      shotType = v.shotType
+      console.log('[email] vision tagged thing:', attributes.map(a => `${a.facet}:${a.value}`).join(', ') || '(none)', '· shot:', shotType ?? '(none)')
     } else {
       console.warn('[email] vision read failed (saving untagged):', v.reason)
     }
@@ -251,7 +257,7 @@ async function captureThing(userId: string, urls: string[], strict: boolean): Pr
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any).from('items').insert({
     user_id: userId, title, creator: fields.brand, type: 'thing', status: 'want_to', source: 'email',
-    metadata: { kind: 'product', title, image: fields.image, price: fields.price, brand: fields.brand, siteName: fields.siteName, url: fields.url, attributes },
+    metadata: { kind: 'product', title, image: fields.image, price: fields.price, brand: fields.brand, siteName: fields.siteName, url: fields.url, attributes, shotType },
   })
   if (error) return { kind: 'error', message: error.message }
   return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length }

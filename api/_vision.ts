@@ -23,6 +23,13 @@ export const FACETS = Object.keys(FACET_VOCAB) as (keyof typeof FACET_VOCAB)[]
 
 export type Attribute = { facet: string; value: string }
 
+// How the product is shown. Drives the board's cutout: a bare `product` shot cuts
+// cleanly onto a cream tile; an `onModel` or `lifestyle` (staged-scene) shot would
+// shred if we tried — so those stay full-bleed. Read off the SAME vision call as
+// the taste tags (no extra Anthropic spend).
+export type ShotType = 'product' | 'onModel' | 'lifestyle'
+const SHOT_TYPES: ShotType[] = ['product', 'onModel', 'lifestyle']
+
 // Media types Anthropic vision accepts.
 const OK_MEDIA = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const
 type OkMedia = (typeof OK_MEDIA)[number]
@@ -97,8 +104,14 @@ ${vocab}
 
 Only tag a facet when you can genuinely see it. Skip material if you can't tell the fabric; skip any facet you'd be guessing at. One value per facet (the dominant one). Better to return fewer, honest tags than to pad.
 
+Also classify how the product is SHOWN, as "shotType":
+- "product": the item alone on a plain or seamless background (a packshot / catalog cutout), nothing else in frame.
+- "onModel": worn by or held by a person.
+- "lifestyle": staged in a scene or setting — propped on furniture, among other objects, in a room or outdoors.
+When unsure between product and lifestyle, look at the background: a clean studio sweep is "product"; any real surface, prop, or scenery is "lifestyle".
+
 Return JSON only, no prose:
-{ "attributes": [ { "facet": "material|palette|vibe|category", "value": "<one or two words>" }, ... ] }`
+{ "shotType": "product|onModel|lifestyle", "attributes": [ { "facet": "material|palette|vibe|category", "value": "<one or two words>" }, ... ] }`
 })()
 
 // Clean a raw model attribute list down to well-formed tags: one per known facet,
@@ -118,13 +131,13 @@ function cleanAttributes(raw: unknown[]): Attribute[] {
 export async function readImageAttributes(
   imageUrl: string,
   referer?: string,
-): Promise<{ ok: true; attributes: Attribute[] } | { ok: false; reason: string }> {
+): Promise<{ ok: true; attributes: Attribute[]; shotType: ShotType | null } | { ok: false; reason: string }> {
   const img = await fetchImageBase64(imageUrl, referer)
   if (!img.ok) return { ok: false, reason: img.reason }
   try {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 200,
+      max_tokens: 220,
       messages: [{
         role: 'user',
         content: [
@@ -136,7 +149,8 @@ export async function readImageAttributes(
     const text = message.content[0].type === 'text' ? message.content[0].text : ''
     const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
     const attributes = cleanAttributes(Array.isArray(parsed.attributes) ? parsed.attributes : [])
-    return { ok: true, attributes }
+    const shotType = SHOT_TYPES.includes(parsed.shotType) ? (parsed.shotType as ShotType) : null
+    return { ok: true, attributes, shotType }
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : 'vision-error' }
   }

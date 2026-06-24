@@ -4,6 +4,24 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 74 (2026-06-24) — AI image cutout (subject-on-cream tiles)
+
+Built the planned AI subject cutout (spec: memory `things-image-cutout`). The heuristic trim was making "box-in-box" tiles on styled/lifestyle shots; the fix cuts the product out and floats it, centred, on one warm-cream tile so a mixed board reads as one catalog. **All on `main`, 85 Vitest green, typecheck + eslint + production build clean. NOT runtime-verified** (board is behind Google auth; the cutout, model download, and Supabase upload need the live authed board) — wants Farah's eye + **one SQL run** (below).
+
+**What landed:**
+- **Vision → shot type.** `api/_vision.ts` now also returns `shotType` (`product`|`onModel`|`lifestyle`) off the SAME Sonnet call (no extra spend); threaded through `api/things-vision.ts` and `api/email.ts`. Only bare `product` packshots get cut out — model/lifestyle shots stay full-bleed.
+- **Browser-side cutout** (`src/lib/cutout.ts`): lazy-imports `@imgly/background-removal` (web/WASM, ~40MB model from imgly's CDN, ~2–4s) at save, uploads the transparent PNG to a new `thing-cutouts` Supabase Storage bucket (public read, per-user folder), stores the URL on `metadata.cutout`. **Free** — browser compute + free-tier storage.
+- **Raw CORS proxy:** `api/thing-image?...&raw=1` re-encodes the (CORS-blocked) shop photo with a permissive header so the browser can read bytes to feed the model. Never 302s (a redirect would re-trip CORS).
+- **Render:** cutouts float on a cream tile (`object-fit:contain`, 12% padding) in the grid card AND the product sheet hero; `onError` falls back to the server-trim cover. New `CREAM = '#F2EEE4'`.
+- **Backfill:** "polish images (N to tidy)" button in the view sheet — learns shot type for legacy items (one ~1¢ vision read each, only items missing it) then cuts out the products, sequential. No silent auto-run (would trigger surprise 40MB downloads + spend).
+- **Build:** excluded the 24MB onnxruntime WASM from the SW precache (`injectManifest.globIgnores`) — it's lazy-loaded, must not precache. Engine is fully code-split out of the main bundle (first paint untouched).
+
+**⚠️ Action required before it works live:** run the new `thing-cutouts` block at the bottom of `supabase/schema.sql` in the Supabase SQL editor (creates the bucket + RLS policies).
+
+**Files:** `api/_vision.ts`, `api/things-vision.ts`, `api/email.ts`, `api/thing-image.ts`, `src/lib/things.ts`, `src/lib/cutout.ts` (new), `src/screens/ThingsScreen.tsx`, `vite.config.ts`, `supabase/schema.sql`, `package.json` (+`@imgly/background-removal`).
+
+---
+
 ### Session 73 (2026-06-24) — Server-side image trim + DecidingCard cover redesign
 
 **All on `main`. Typecheck + eslint + production build clean, 85 Vitest green. Free — the new image endpoint makes zero Anthropic calls (pure pixel work, edge-cached). NOT runtime-verified on the live board (behind Google auth) — wants Farah's eye on the deploy.** Two asks from Farah, both done:

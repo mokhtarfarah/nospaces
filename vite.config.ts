@@ -11,6 +11,13 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      // The image-cutout engine (@imgly/background-removal) drags in onnxruntime's
+      // ~24MB WASM. It's lazy-loaded only when someone polishes a photo, so it must
+      // NOT go in the SW precache (which is fetched up front on every install) —
+      // exclude it; it's still served + runtime-cached normally on first use.
+      injectManifest: {
+        globIgnores: ['**/ort-*.wasm', '**/*.onnx'],
+      },
       manifest: {
         name: 'Nospaces',
         short_name: 'Nospaces',

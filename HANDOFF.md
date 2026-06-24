@@ -15,13 +15,15 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**This session (73) — server-side image trim + DecidingCard cover redesign. All on `main`, 85 Vitest green, typecheck + eslint + build clean. NOT runtime-verified on the live board (behind Google auth) — wants Farah's eye on the deploy.** Images now trim **server-side** (new free `api/thing-image.ts` + `api/_imageTrim.ts`): fetches a higher-res original, trims where CORS can't block us, edge-cached; 302 + `onError` fallbacks so a photo can never break — fixes the off-centre/soft shots. DecidingCard is now **cover-as-background** (front-runner photo fills it, frosted title band, "N options" chip + peeking-stack, settle-state on decided; "deciding" pill dropped). Deleted the old client `imageTrim.ts`. Full detail → archive (s73).
+**This session (74) — AI image cutout (subject-on-cream tiles). All on `main`, 85 Vitest green, typecheck + eslint + build clean. NOT runtime-verified (board behind Google auth) — wants Farah's eye + ONE SQL run.** The heuristic trim made box-in-box tiles on styled shots; now a bare `product` packshot is **cut out and floated on one warm-cream tile** so the mixed board reads as one catalog. Browser-side at save (`src/lib/cutout.ts`, `@imgly/background-removal`, free), stored as a transparent PNG in a new `thing-cutouts` Supabase bucket; model/lifestyle shots (read off the SAME vision call's new `shotType`) stay full-bleed. A "polish images" button in the view sheet backfills existing items. Full detail → archive (s74).
+
+> **⚠️ Before it works live:** run the new `thing-cutouts` block at the bottom of `supabase/schema.sql` in the Supabase SQL editor (bucket + RLS). Then load the live board and tap **view sheet → polish images** to backfill the ~10 existing items, and eyeball the cream tiles.
 
 ---
 
-## ▶ Next session (74)
+## ▶ Next session (75)
 
-**TOP PRIORITY — build the AI image cutout.** The s73 server trim landed and the DecidingCard redesign looks good, BUT the color-guess trim still mangles styled/lifestyle photos *within* the tile (box-in-box on soft cayetano, ch steel, etc.) — Farah: "unprofessional, decreases the cachet." We validated the real fix and she approved it: **subject cutout on a warm-cream tile.** Decisions locked, architecture validated (browser-side at save — the engine is too big for Vercel serverless). **Full spec + build outline → memory `things-image-cutout`.** This is a multi-part build (Supabase storage bucket, save-flow cutout, vision-prompt shot-type, backfill) — give it a focused session.
+**First: verify s74 cutout on the live board** (run the SQL, polish the existing items, judge the cream tiles as a first-time user — do the cutouts look catalog-clean, or do any products get shredded / mis-classified as lifestyle?).
 
 **Then build (queued, in order):**
 1. **Mood board** — a collection of pure-inspiration images (not purchasable); free (just saved images). Spec it the same way before building.

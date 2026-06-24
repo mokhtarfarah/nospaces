@@ -30,6 +30,12 @@ export type Facet = 'material' | 'palette' | 'vibe' | 'category' | 'priceTier'
 /** A single taste tag, e.g. {facet:'palette', value:'muted'}. */
 export type Attribute = { facet: Facet; value: string }
 
+// How a product photo frames the item, read off the vision call. Drives the board
+// cutout: a bare `product` packshot cuts cleanly onto a cream tile; `onModel` /
+// `lifestyle` shots would shred, so they stay full-bleed. See `src/lib/cutout.ts`.
+export type ShotType = 'product' | 'onModel' | 'lifestyle'
+export const SHOT_TYPES: ShotType[] = ['product', 'onModel', 'lifestyle']
+
 // Facets that feed the "thread" read, in display order. Category is deliberately
 // EXCLUDED — it's a *what* (bag, coat), not a *vibe*, so "neutral · leather ·
 // relaxed · bag" reads odd. The thread is the aesthetic, not the inventory.
@@ -124,6 +130,15 @@ export type ProductFields = {
   url: string | null
   /** Taste tags. Empty/undefined until the user (or, later, vision) adds them. */
   attributes?: Attribute[]
+  /** How the photo frames the item (vision-read). Gates the cutout. */
+  shotType?: ShotType | null
+  /**
+   * A transparent-PNG subject cutout (Supabase Storage public URL), generated
+   * browser-side at save for `product` shots. The board renders it centred on a
+   * cream tile so a mixed set of shops reads as one catalog. Null/absent → fall
+   * back to the server trim+proxy (`thingImage`).
+   */
+  cutout?: string | null
 }
 
 /** A weighed option inside an intent. Flat object stored in metadata.candidates[]. */
@@ -168,6 +183,8 @@ export function productMeta(item: Item): ProductMeta {
     siteName: m.siteName ?? null,
     url: m.url ?? null,
     attributes: normAttributes(m.attributes),
+    shotType: m.shotType ?? null,
+    cutout: m.cutout ?? null,
   }
 }
 
@@ -360,7 +377,7 @@ export async function parseProductLink(
 export async function readImageAttributes(
   image: string,
   referer?: string | null,
-): Promise<{ ok: true; attributes: Attribute[] } | { ok: false; reason: string }> {
+): Promise<{ ok: true; attributes: Attribute[]; shotType: ShotType | null } | { ok: false; reason: string }> {
   let resp: Response
   try {
     resp = await fetch('/api/things-vision', {
@@ -380,7 +397,8 @@ export async function readImageAttributes(
   }
   const data = await resp.json()
   const attributes = normAttributes(Array.isArray(data.attributes) ? data.attributes : [])
-  return { ok: true, attributes }
+  const shotType = SHOT_TYPES.includes(data.shotType) ? (data.shotType as ShotType) : null
+  return { ok: true, attributes, shotType }
 }
 
 export type Comparison = { notes: string[]; lean: number | null; verdict: string }
