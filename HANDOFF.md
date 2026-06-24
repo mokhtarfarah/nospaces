@@ -19,7 +19,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 **Email-in: VERIFIED working (s67).** Farah retested → it landed. The normal-inbox auto-fallback (`captureThing` + `productLike` gate) and `things@` both work. Done.
 
-**This session (68) — Things↔Library parity (nits #2a/#2b). On `main`, deployed.** Product card tap → internal `ProductSheet` (buy link behind an explicit button); floating `+` speed-dial replaces the two in-body capture buttons. Behind auth → eyeball on live; not click-verified in preview. Phase 2 (sticky header + sort/filter chrome) is the next "feels different" pass → see Next session.
+**This session (68) — Things↔Library parity, both phases. On `main`, deployed.** Phase 1 (nits #2a/#2b): product card tap → internal `ProductSheet` (buy link behind an explicit button); floating `+` speed-dial replaces the two in-body capture buttons. Phase 2 (nit #3 umbrella): sticky collapsing header (switcher+title+rule+masthead fold on scroll, sort+category rows pin) via a `100dvh` flex column + inner scroller, and a shared `TabChip` (ink+bold+italic active, no underline) matching Library. Behind auth → **eyeball on live; not click-verified in preview.**
 
 **Last session (67) — Slice 4 (paid vision) shipped + VERIFIED working on deploy + UI fixes. All on `main`.**
 - **Slice 4 — paid vision attribute-read. WORKING on the live app.** `api/things-vision.ts` (Sonnet 4.6 vision, **~$0.01/call**, one image, rate-limited 40/hr, mirrors `things-compare`). Reads taste tags (material·palette·vibe·category) off a product image — the LOOK, not identity (no brand/logo/text). Client `readImageAttributes()` in `things.ts`. **Fires automatically in the background** after a product save that has an image + no manual tags (`autoTagFromImage` in `ThingsScreen`, merges-never-clobbers). Farah chose **auto-on-capture**. A board **toast** shows the result (sticky + tap-to-dismiss on failure, so it's never a silent no-op).
@@ -35,15 +35,15 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 **Slice 4 (paid vision) is DONE + verified working** (tags auto-fill from a saved product's image; ~1¢/save). Nothing to re-verify there.
 
-**s68 shipped (on `main`, deployed) — Things↔Library parity, nits #2a/#2b.**
-- **Tap a product → internal `ProductSheet`** (image, price, taste chips), external shop link now behind an explicit **"buy ↗"** button — no more accidental exits. Per-card `⋯` gone; got-it/edit/remove live in the sheet (remove has a confirm step).
-- **Floating `+` speed-dial** (save a product / plan a purchase) replaces the two in-body buttons; mirrors the media FAB. Empty state points at `+`.
-- ⚠️ **EYEBALL ON LIVE:** all of s68 is behind Google auth, so it was **NOT** click-verified in preview — only typecheck + 73 tests + clean load. Farah to confirm board behavior on the deploy.
+**s68 shipped both phases (on `main`, deployed) — Things↔Library parity, nits #2 + #3.**
+- **Phase 1:** product card tap → internal `ProductSheet` (buy link behind an explicit **"buy ↗"** button, no accidental exits; per-card `⋯` gone, got-it/edit/remove in the sheet w/ remove confirm). Floating `+` speed-dial replaces the two in-body buttons.
+- **Phase 2:** sticky collapsing header (switcher+title+rule+masthead fold on scroll, sort+category rows pin) via a `100dvh` flex column + inner scroller; shared `TabChip` matching Library.
+- ⚠️ **EYEBALL ON LIVE:** all of s68 is behind Google auth, so **NONE** of it was click-verified in preview — only typecheck + 73 tests + clean load. Farah confirmed phase 1 reads "okay for now"; phase 2 still wants a scroll-behavior eyeball.
 
-**PICK UP HERE — phase 2 of the "feels like a different app" umbrella (#3).** Remaining divergences after s68:
-- **Sticky collapsing header** — Library's header pins + folds on scroll and carries view/search/⋯ controls top-right; Things' header is static and scrolls away. Biggest remaining "not an app screen" gap.
-- **Sort/filter visual language** — Library = "view ▾"/"filter ▾" sheets + chip tabs; Things = plain text `sort recent price a–z` links + underline chips. Same job, different look.
-- Minor: container shape (Things is a centered `maxWidth:640` column; Library is full-bleed — only visible on wide screens, phone is moot) + tone the beige "your thread" masthead toward Library's palette (keep it — it's the soul of Things).
+**PICK UP HERE / open from the umbrella (#3) — only minor bits left:**
+- Container shape: Things is a centered `maxWidth:640` column; Library is full-bleed. Only visible on a wide desktop window (phone is identical). Left as-is because full-bleed blows up the 2-up grid on desktop — revisit only if wanted.
+- Optionally tone the beige "your thread" masthead toward Library's palette (kept deliberately — it's the soul of Things).
+- If phase-2 scroll/collapse feels off on a short board (few items barely scroll), reconsider whether collapse earns its keep here.
 
 **Judgement calls on the now-working vision (worth an eye):**
 - **Tag quality as a first-time user** — right *granularity*? Read human, not like debug labels? Tune the prompt in `api/things-vision.ts` if off. Does auto-tagging feel magic or intrusive?
