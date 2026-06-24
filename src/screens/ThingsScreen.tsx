@@ -4,6 +4,7 @@ import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
 import { thingImage, thingImageRaw } from '../lib/thingImage'
 import { makeCutout, CUTOUT_VERSION } from '../lib/cutout'
+import { NoteQuote } from '../components/NoteQuote'
 import { useItems } from '../hooks/useItems'
 import { useAuth } from '../hooks/useAuth'
 import type { Item } from '../lib/database.types'
@@ -795,10 +796,8 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
   if (note) {
     return (
       <button onClick={() => { setText(note); setEditing(true) }}
-        style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 16, padding: '11px 13px',
-          borderRadius: 10, background: '#F7F8F9', border: `1px solid ${LINE}`, cursor: 'pointer' }}>
-        <span style={{ fontSize: 10, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>your note</span>
-        <div style={{ fontSize: 13, lineHeight: 1.5, color: INK, marginTop: 4, whiteSpace: 'pre-wrap' }}>{note}</div>
+        style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 16, border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
+        <NoteQuote label="your note">{note}</NoteQuote>
       </button>
     )
   }
