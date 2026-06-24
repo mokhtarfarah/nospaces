@@ -580,7 +580,9 @@ function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
           borderTop: `1px solid ${resolved ? LINE : 'rgba(0,0,0,0.06)'}`,
         }}>
           {resolved && <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>decided</div>}
-          <div style={{ fontSize: 13.5, fontWeight: 500, lineHeight: 1.25, textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
+          {/* Always reserve two lines so the band is the same height on every card,
+              whether the title wraps to one line or two. */}
+          <div style={{ fontSize: 13.5, fontWeight: 500, lineHeight: 1.25, height: '2.5em', textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
           {resolved && winner && (
             <div style={{ fontSize: 11, color: MUTED, marginTop: 3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{winner.title}</div>
           )}

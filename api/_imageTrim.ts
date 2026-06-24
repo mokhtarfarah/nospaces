@@ -93,8 +93,8 @@ export async function trimToAspect(input: Buffer, aspect: number): Promise<Buffe
   // one side doesn't drag the framing; size half-extents to still cover the whole
   // bbox from that centre, +8% breathing room.
   const ctxX = d.sumX / d.hits, ctxY = d.sumY / d.hits
-  const hx = Math.max(ctxX - d.minX, d.maxX - ctxX) * 1.08
-  const hy = Math.max(ctxY - d.minY, d.maxY - ctxY) * 1.08
+  const hx = Math.max(ctxX - d.minX, d.maxX - ctxX) * 1.04
+  const hy = Math.max(ctxY - d.minY, d.maxY - ctxY) * 1.04
   const cx = ctxX / SW * NW, cy = ctxY / SH * NH
   let cw = hx / SW * NW * 2, ch = hy / SH * NH * 2
   if (cw / ch > aspect) ch = cw / aspect; else cw = ch * aspect
@@ -111,13 +111,18 @@ export async function trimToAspect(input: Buffer, aspect: number): Promise<Buffe
 
   // Output res: cap at 1200w (retina-sharp for the card + hero, still cheap/fast).
   const OW = Math.max(320, Math.min(1200, Math.round(cw)))
-  const OH = Math.round(OW / aspect)
   const [r, g, b] = d.bg
   return base
     .clone()
     .extract({ left: sx, top: sy, width: sw, height: sh })
     .extend({ top, bottom, left, right, background: { r, g, b } })
-    .resize(OW, OH, { fit: 'fill' })
+    // flatten BEFORE encoding: a transparent product PNG would otherwise have its
+    // see-through pixels baked to black by JPEG — repaint them with the detected bg.
+    .flatten({ background: { r, g, b } })
+    // Scale by width only (no fit:'fill') so we never distort: the padded crop is
+    // ~target aspect already, and the card's object-fit:cover absorbs any rounding
+    // drift by cropping, not stretching.
+    .resize({ width: OW })
     .jpeg({ quality: 88 })
     .toBuffer()
 }
