@@ -641,6 +641,16 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         <FieldsForm saveLabel="save" initial={p}
           onCancel={() => setEditing(false)}
           onSave={async (f) => { await onSave(f); setEditing(false) }} />
+        {/* Tucked into edit (not the main sheet) — it's a cleanup tool, not a primary
+            action. Reads taste off the photo; merges, never clobbers what's there. */}
+        {p.image && (
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}` }}>
+            <button onClick={() => { onRunTaste(); setEditing(false) }}
+              style={{ border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+              {taste.length > 0 ? 're-run taste from photo' : 'run taste from photo'}
+            </button>
+          </div>
+        )}
       </Sheet>
     )
   }
@@ -670,16 +680,6 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
             </span>
           ))}
         </div>
-      )}
-
-      {/* Read taste off the photo on demand — for anything that landed untagged
-          (older saves, manual entries, an emailed thing). Uses the same ~1¢ vision
-          call as auto-tag; only fires when tapped. Merges, never clobbers. */}
-      {p.image && (
-        <button onClick={onRunTaste}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: taste.length > 0 ? 10 : 12, border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-          ✨ {taste.length > 0 ? 're-run taste from photo' : 'run taste from photo'}
-        </button>
       )}
 
       {p.url && (
