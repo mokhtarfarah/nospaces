@@ -58,7 +58,9 @@ export function ThingsScreen() {
   const { items, addItem, editItem, deleteItem } = useItems()
   const [composer, setComposer] = useState<null | 'product' | 'intent'>(null)
   const [openIntentId, setOpenIntentId] = useState<string | null>(null)
-  const [editProductId, setEditProductId] = useState<string | null>(null)
+  const [openProductId, setOpenProductId] = useState<string | null>(null)
+  // Speed-dial for the floating +: open reveals the two capture paths.
+  const [addMenu, setAddMenu] = useState(false)
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
   const [flash, setFlash] = useState<string | null>(null)
@@ -82,7 +84,7 @@ export function ThingsScreen() {
     [sorted, cat],
   )
   const openIntent = things.find(i => i.id === openIntentId) ?? null
-  const editProduct = things.find(i => i.id === editProductId) ?? null
+  const openProduct = things.find(i => i.id === openProductId) ?? null
 
   // Slice 4 — read taste tags off a freshly-saved product's image and patch them
   // in. Runs in the background so the save itself is instant; the board's masthead
@@ -126,13 +128,6 @@ export function ThingsScreen() {
 
       <ThreadMasthead things={things} />
 
-      {/* Two first-class capture paths: save a concrete product, or plan a purchase
-          (an intent you'll weigh options against). */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        <AddButton label="save a product" onClick={() => setComposer('product')} />
-        <AddButton label="plan a purchase" onClick={() => setComposer('intent')} />
-      </div>
-
       {things.length > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <span style={{ fontSize: 11, color: MUTED, letterSpacing: '0.04em' }}>sort</span>
@@ -175,10 +170,7 @@ export function ThingsScreen() {
           {visible.map(item => (
             kindOf(item) === 'intent'
               ? <IntentCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />
-              : <ProductCard key={item.id} item={item}
-                  onGotIt={() => editItem(item.id, { status: item.status === 'done' ? 'want_to' : 'done' })}
-                  onDelete={() => deleteItem(item.id)}
-                  onEdit={() => setEditProductId(item.id)} />
+              : <ProductCard key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />
           ))}
         </div>
       )}
@@ -223,18 +215,44 @@ export function ThingsScreen() {
         />
       )}
 
-      {editProduct && (
-        <Sheet onClose={() => setEditProductId(null)}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 16px', color: INK }}>edit product</h2>
-          <FieldsForm saveLabel="save"
-            initial={productMeta(editProduct)}
-            onCancel={() => setEditProductId(null)}
-            onSave={async (f) => {
-              await editItem(editProduct.id, { title: f.title || 'Untitled', creator: f.brand, metadata: { kind: 'product', ...f } })
-              setEditProductId(null)
-            }} />
-        </Sheet>
+      {openProduct && (
+        <ProductSheet
+          item={openProduct}
+          onClose={() => setOpenProductId(null)}
+          onSave={async (f) => {
+            await editItem(openProduct.id, { title: f.title || 'Untitled', creator: f.brand, metadata: { kind: 'product', ...f } })
+          }}
+          onToggleGot={() => editItem(openProduct.id, { status: openProduct.status === 'done' ? 'want_to' : 'done' })}
+          onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
+        />
       )}
+
+      {/* Floating + — the app's single add gesture (mirrors the media FAB). The
+          board has no bottom nav, so it anchors to the bottom-right on its own.
+          Tapping reveals the two capture paths; tapping the scrim or × closes. */}
+      {addMenu && (
+        <div onClick={() => setAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 98 }} />
+      )}
+      <div style={{ position: 'fixed', right: 20, bottom: 'calc(24px + env(safe-area-inset-bottom))', zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+        {addMenu && (
+          <>
+            <FabAction label="save a product" onClick={() => { setAddMenu(false); setComposer('product') }} />
+            <FabAction label="plan a purchase" onClick={() => { setAddMenu(false); setComposer('intent') }} />
+          </>
+        )}
+        <button onClick={() => setAddMenu(m => !m)} aria-label={addMenu ? 'close add menu' : 'add'}
+          style={{
+            width: 50, height: 50, borderRadius: '50%', background: INK, color: '#fff', border: 'none',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 16px rgba(0,0,0,0.22)', transition: 'transform 0.18s ease',
+            transform: addMenu ? 'rotate(45deg)' : 'none', alignSelf: 'flex-end',
+          }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }
@@ -276,44 +294,35 @@ function ThreadMasthead({ things }: { things: Item[] }) {
 
 /* ---------- cards ---------- */
 
-function ProductCard({ item, onGotIt, onDelete, onEdit }: { item: Item; onGotIt: () => void; onDelete: () => void; onEdit: () => void }) {
+// Tapping the card opens an internal detail sheet (like the media Library) — the
+// external buy link lives behind an explicit button inside, so a stray tap never
+// bounces you off the site.
+function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const p = productMeta(item)
   const got = item.status === 'done'
-  const [menu, setMenu] = useState(false)
   // The card's taste line shows material/palette/vibe only — category is already
   // the filter row above, so repeating it under the item reads redundant.
   const taste = (p.attributes ?? []).filter(a => a.facet !== 'category')
   return (
-    <div style={{ position: 'relative' }}>
-      <a href={p.url ?? undefined} target="_blank" rel="noreferrer"
-        style={{ textDecoration: 'none', color: INK, display: 'block' }}>
-        <Thumb src={p.image} />
-        <div style={{ marginTop: 6 }}>
-          <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
-            {p.title}
-          </div>
-          <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
-            <PriceLine price={p.price} wasPrice={p.wasPrice} />
-            {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
-          </div>
-          {taste.length > 0 && (
-            <div style={{ fontSize: 10.5, color: MUTED, marginTop: 3, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {taste.map(a => a.value).join(' · ')}
-            </div>
-          )}
+    <button onClick={onOpen}
+      style={{ position: 'relative', textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: INK, display: 'block', width: '100%' }}>
+      <Thumb src={p.image} />
+      <div style={{ marginTop: 6 }}>
+        <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
+          {p.title}
         </div>
-      </a>
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
+          <PriceLine price={p.price} wasPrice={p.wasPrice} />
+          {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
+        </div>
+        {taste.length > 0 && (
+          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 3, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {taste.map(a => a.value).join(' · ')}
+          </div>
+        )}
+      </div>
       {got && <Tag label="got it" filled />}
-      <button onClick={() => setMenu(m => !m)} aria-label="more"
-        style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: 13, border: 'none', background: 'rgba(0,0,0,0.45)', color: '#fff', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⋯</button>
-      {menu && (
-        <div style={{ position: 'absolute', top: 34, right: 6, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 8, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', zIndex: 5, overflow: 'hidden' }}>
-          <MenuItem label="edit" onClick={() => { onEdit(); setMenu(false) }} />
-          <MenuItem label={got ? 'mark as not owned' : 'got it'} onClick={() => { onGotIt(); setMenu(false) }} />
-          <MenuItem label="remove" danger onClick={() => { onDelete(); setMenu(false) }} />
-        </div>
-      )}
-    </div>
+    </button>
   )
 }
 
@@ -342,6 +351,92 @@ function IntentCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
         </div>
       </div>
     </button>
+  )
+}
+
+/* ---------- product sheet (tap a saved product → detail/edit, like Library) ---------- */
+
+// The internal detail view for a saved product. Mirrors the media Library: tapping
+// a card opens this in-app, and the only way *out* to the shop is the explicit
+// "buy" button — so you never leave the board by accident. Edit/got-it/remove all
+// live here too (they used to be a per-card ⋯ menu).
+function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
+  item: Item
+  onClose: () => void
+  onSave: (f: ProductFields) => void | Promise<void>
+  onToggleGot: () => void
+  onDelete: () => void
+}) {
+  const p = productMeta(item)
+  const got = item.status === 'done'
+  const [editing, setEditing] = useState(false)
+  const [confirmDel, setConfirmDel] = useState(false)
+  const taste = p.attributes ?? []
+
+  if (editing) {
+    return (
+      <Sheet onClose={onClose}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 16px', color: INK }}>edit product</h2>
+        <FieldsForm saveLabel="save" initial={p}
+          onCancel={() => setEditing(false)}
+          onSave={async (f) => { await onSave(f); setEditing(false) }} />
+      </Sheet>
+    )
+  }
+
+  const buyLabel = p.brand ? `buy at ${p.brand}` : p.siteName ? `buy at ${p.siteName}` : 'buy'
+  return (
+    <Sheet onClose={onClose}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+        <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1 }}>×</button>
+      </div>
+      <Thumb src={p.image} />
+      <div style={{ marginTop: 14 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: INK, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
+        <div style={{ fontSize: 13, color: MUTED, marginTop: 6, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+          <PriceLine price={p.price} wasPrice={p.wasPrice} />
+          {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
+        </div>
+      </div>
+
+      {taste.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
+          {taste.map((a, i) => (
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: INK, background: '#F4F2EE', borderRadius: 999, padding: '4px 9px' }}>
+              <span style={{ color: MUTED }}>{FACET_LABEL[a.facet].toLowerCase()}</span>{a.value}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {p.url && (
+        <a href={p.url} target="_blank" rel="noreferrer"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18, padding: '12px', borderRadius: 12, background: INK, color: '#fff', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+          {buyLabel} <span style={{ fontSize: 13 }}>↗</span>
+        </a>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+        <button onClick={onToggleGot} style={{ flex: 1, padding: '11px', borderRadius: 12, border: `1px solid ${got ? INK : LINE}`, background: got ? INK : '#fff', color: got ? '#fff' : INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+          {got ? '✓ got it' : 'mark as got it'}
+        </button>
+        <button onClick={() => setEditing(true)} style={{ flex: 1, padding: '11px', borderRadius: 12, border: `1px solid ${LINE}`, background: '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+          edit
+        </button>
+      </div>
+
+      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: confirmDel ? 'flex-end' : 'flex-start', gap: 12, alignItems: 'center' }}>
+        {confirmDel ? (
+          <>
+            <span style={{ fontSize: 12.5, color: MUTED, marginRight: 'auto' }}>remove from the board?</span>
+            <button onClick={() => setConfirmDel(false)} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>
+            <button onClick={onDelete} style={{ border: 'none', background: '#B4413C', color: '#fff', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>remove</button>
+          </>
+        ) : (
+          <button onClick={() => setConfirmDel(true)} style={{ border: 'none', background: 'none', color: '#B4413C', fontSize: 12.5, cursor: 'pointer', padding: 0 }}>remove</button>
+        )}
+      </div>
+    </Sheet>
   )
 }
 
@@ -825,11 +920,13 @@ function Tag({ label, filled }: { label: string; filled?: boolean }) {
   )
 }
 
-function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
+// A labelled action that pops above the floating + (speed-dial style).
+function FabAction({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{
-      flex: 1, padding: '11px 8px', borderRadius: 12, border: `1px solid ${INK}`,
+      padding: '9px 16px', borderRadius: 999, border: `1px solid ${LINE}`,
       background: '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.14)', whiteSpace: 'nowrap',
     }}>{label}</button>
   )
 }
@@ -844,21 +941,12 @@ function CatChip({ label, active, onClick }: { label: string; active: boolean; o
   )
 }
 
-function MenuItem({ label, onClick, danger }: { label: string; onClick: () => void; danger?: boolean }) {
-  return (
-    <button onClick={onClick} style={{
-      display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', border: 'none',
-      background: 'none', fontSize: 12.5, color: danger ? '#B4413C' : INK, cursor: 'pointer', whiteSpace: 'nowrap',
-    }}>{label}</button>
-  )
-}
-
 function Empty() {
   return (
     <div style={{ textAlign: 'center', padding: '48px 20px', color: MUTED }}>
       <div style={{ fontSize: 13, lineHeight: 1.6 }}>
         Your board is empty.<br />
-        Save a product you love, or plan a purchase you're weighing.
+        Tap <span style={{ fontWeight: 600, color: INK }}>+</span> to save a product you love, or plan a purchase you're weighing.
       </div>
     </div>
   )
