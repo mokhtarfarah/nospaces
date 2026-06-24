@@ -2,6 +2,7 @@ import { useMemo, useState, useRef, useEffect } from 'react'
 import { DomainSwitcher } from '../components/DomainSwitcher'
 import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
+import { trimToAspect } from '../lib/imageTrim'
 import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
@@ -629,6 +630,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const [editing, setEditing] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [showPlan, setShowPlan] = useState(false)
+  // Hero photo, auto-trimmed to the product (same engine as the grid). Hook must run
+  // before the `editing` early-return; falls back to the original while it computes.
+  const heroTrim = useTrimmed(p.image, GRID_ASPECT)
+  const hero = heroTrim ?? p.image
   const taste = p.attributes ?? []
   // A descriptor line: values only, minus the obvious "category" (the photo shows
   // it's a bag/coat/etc). e.g. "leather · dark earth · structured".
@@ -658,68 +663,64 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
     )
   }
 
-  const buyLabel = p.brand ? `buy at ${p.brand}` : p.siteName ? `buy at ${p.siteName}` : 'buy'
+  const buyLabel = p.brand ? `view at ${p.brand}` : p.siteName ? `view at ${p.siteName}` : 'view at shop'
   return (
     <Sheet onClose={onClose}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
-        <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1 }}>×</button>
+      {/* Gallery layout: the photo leads (this is a taste mirror, not a checkout),
+          actions recede to a quiet row. Close floats over the image. */}
+      <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#fff', border: `1px solid ${LINE}`, aspectRatio: '4 / 5' }}>
+        {hero
+          ? <img src={hero} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
+          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
+        <button onClick={onClose} aria-label="close" style={{
+          position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 999,
+          border: 'none', background: 'rgba(255,255,255,0.92)', color: INK, fontSize: 18, lineHeight: 1,
+          cursor: 'pointer', boxShadow: '0 1px 6px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>×</button>
       </div>
-      {/* Info + links first. A tall product photo used to push the name, price and
-          buy button below the fold (worst on desktop). The photo now sits at the
-          bottom of the sheet. */}
-      <div>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: INK, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
+
+      <div style={{ marginTop: 16 }}>
+        <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: INK, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6, display: 'flex', gap: 8, alignItems: 'baseline' }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
           {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
         </div>
+        {/* Taste as one quiet descriptor line — values only, no facet labels, no
+            "category". Full labelled set lives in edit. */}
+        {tasteLine && (
+          <div style={{ fontSize: 12.5, color: MUTED, marginTop: 8, lineHeight: 1.4 }}>{tasteLine}</div>
+        )}
       </div>
 
-      {/* Taste as one quiet line — just the values, no facet labels, no "category"
-          (the photo already tells you it's a bag). Reads like a descriptor, not a
-          database row. Full set with labels lives in edit. */}
-      {tasteLine && (
-        <div style={{ fontSize: 12.5, color: MUTED, marginTop: 10, lineHeight: 1.4 }}>{tasteLine}</div>
-      )}
-
-      {/* One primary action (buy), one secondary (got it). Edit + remove are quiet
-          text links at the bottom — they're management, not the point of the card. */}
-      {p.url && (
-        <a href={p.url} target="_blank" rel="noreferrer"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18, padding: '13px', borderRadius: 10, background: INK, color: '#fff', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
-          {buyLabel} <span style={{ fontSize: 13 }}>↗</span>
-        </a>
-      )}
-
-      <button onClick={onToggleGot} style={{ width: '100%', marginTop: 10, padding: '12px', borderRadius: 10, border: got ? 'none' : `1px solid ${LINE}`, background: got ? '#F4F2EE' : '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-        {got ? '✓ got it' : 'mark as got it'}
-      </button>
+      {/* Quiet action row — understated links, not buttons shouting "BUY". The one
+          with a touch of weight is "got it" (the meaningful state change). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 16, flexWrap: 'wrap' }}>
+        {p.url && (
+          <a href={p.url} target="_blank" rel="noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: INK, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+            {buyLabel} <span style={{ fontSize: 12 }}>↗</span>
+          </a>
+        )}
+        <button onClick={onToggleGot} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 999,
+          border: `1px solid ${got ? INK : LINE}`, background: got ? INK : '#fff', color: got ? '#fff' : INK,
+          fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+        }}>{got ? '✓ got it' : 'mark as got it'}</button>
+        <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 13, cursor: 'pointer', padding: 0, marginLeft: 'auto' }}>edit</button>
+      </div>
 
       {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
 
       {/* Undo the "save as product" step: a decided-but-not-owned product can go
-          back to being the plan it came from, exactly as it stood before saving.
-          Only while un-owned — once you've got it, it's a settled purchase. */}
+          back to being the plan it came from. Only while un-owned. */}
       {plan && !got && (
         <button onClick={async () => { await onReopenPlan(); onClose() }}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
           <span style={{ fontSize: 13 }}>↩</span> put back in plan
         </button>
       )}
 
-      {/* The photo as a tight, balanced plate — fixed 4:5, the product filling it
-          (cover crops the dead whitespace shops bake into their shots, so a $3,600
-          bag isn't a speck in a grey void). To see the full uncropped shot, that's
-          what the shop link is for. */}
-      {p.image && (
-        <div style={{ marginTop: 18, borderRadius: 10, overflow: 'hidden', border: `1px solid ${LINE}`, background: '#fff', aspectRatio: '4 / 5' }}>
-          <img src={p.image} alt="" loading="lazy"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.9)' }} />
-        </div>
-      )}
-
-      {/* Management actions — quiet text links, not buttons competing with buy. */}
-      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'flex-end', gap: 12, alignItems: 'center' }}>
         {confirmDel ? (
           <>
             <span style={{ fontSize: 12.5, color: MUTED, marginRight: 'auto' }}>remove from the board?</span>
@@ -727,10 +728,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
             <button onClick={onDelete} style={{ border: 'none', background: '#B4413C', color: '#fff', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>remove</button>
           </>
         ) : (
-          <>
-            <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>edit</button>
-            <button onClick={() => setConfirmDel(true)} style={{ border: 'none', background: 'none', color: '#B4413C', fontSize: 12.5, cursor: 'pointer', padding: 0 }}>remove</button>
-          </>
+          <button onClick={() => setConfirmDel(true)} style={{ border: 'none', background: 'none', color: '#B4413C', fontSize: 12.5, cursor: 'pointer', padding: 0 }}>remove</button>
         )}
       </div>
     </Sheet>
@@ -1374,101 +1372,44 @@ function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: strin
   )
 }
 
-// Feather the contained image's outer edge to transparent on all four sides so its
-// rectangular boundary dissolves into the ambient fill instead of leaving a faint
-// seam where the tone shifts. Only the bg margin (outer ~6%) fades — the centered
-// product is untouched. Two gradients intersected; degrades to a corner-only fade
-// where mask-composite is unsupported (never worse than a hard edge).
-const FEATHER_EDGE: React.CSSProperties = {
-  WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent), linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)',
-  WebkitMaskComposite: 'source-in',
-  maskImage: 'linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent), linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)',
-  maskComposite: 'intersect',
+// Auto-trim a product out of its background whitespace and re-frame it to `aspect`,
+// so photos from different shops read at a consistent size. Returns the trimmed
+// data URL when ready, else null — the caller falls back to the original, cover-
+// cropped (still uniform, just not zoomed). Null also covers shops that block pixel
+// access (CORS) and busy shots with nothing to trim.
+function useTrimmed(src: string | null, aspect: number): string | null {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    setUrl(null)
+    if (!src) return
+    let live = true
+    trimToAspect(src, aspect).then(r => { if (live) setUrl(r) })
+    return () => { live = false }
+  }, [src, aspect])
+  return url
 }
 
-// Whether to paint the ambient blur fill behind a contained product image. Default
-// ON — keeps the fill for the common case and for any CORS-blocked image we can't
-// inspect. We flip it OFF only when we can positively read the pixels and see a
-// TRANSPARENT background: there, blurring smears the product's own colour into the
-// empty corners (the "halo" bug). Probed via one CORS image load; a tainted or
-// failed read just keeps the fill.
-function useAmbientFill(src: string | null): boolean {
-  const [fill, setFill] = useState(true)
-  useEffect(() => {
-    setFill(true)
-    if (!src) return
-    let cancelled = false
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      try {
-        const c = document.createElement('canvas')
-        c.width = 24; c.height = 24
-        const ctx = c.getContext('2d', { willReadFrequently: true })
-        if (!ctx) return
-        ctx.drawImage(img, 0, 0, 24, 24)
-        const corners = [[0, 0], [23, 0], [0, 23], [23, 23]] as const
-        const transparent = corners.some(([x, y]) => ctx.getImageData(x, y, 1, 1).data[3] < 200)
-        if (!cancelled && transparent) setFill(false)
-      } catch { /* CORS-tainted — can't tell, keep the fill */ }
-    }
-    img.src = src
-    return () => { cancelled = true }
-  }, [src])
-  return fill
-}
+const GRID_ASPECT = 4 / 5
 
 function Thumb({ src, size }: { src: string | null; size?: number }) {
-  // Grid/hero thumbs: "catalog plate" treatment. Product photos arrive framed
-  // differently per shop (a tight model shot vs an object floating on white with
-  // baked-in whitespace), so `cover` filled the frame unevenly. Instead we
-  // `contain` every image WHOLE on a shared white field at 4:5 — nothing cropped,
-  // every tile reads as the same kind of plate (the SSENSE/NAP grid look). Inline
-  // list thumbs (size set) stay square + cover — they're avatars beside text.
+  // Grid/hero thumbs: every photo is auto-trimmed to its product and re-framed to a
+  // shared 4:5, so the board reads as one catalog (no more specks-in-grey-fields or
+  // blurred halos). While the trim computes — or where a shop blocks us — we just
+  // cover-crop the original, which is still a uniform tile. Inline list thumbs (size
+  // set) stay square + cover; they're small avatars beside text, not worth trimming.
   const isGrid = !size
-  const fill = useAmbientFill(isGrid ? src : null)
+  const trimmed = useTrimmed(isGrid ? src : null, GRID_ASPECT)
+  const shown = trimmed ?? src
   const dim = isGrid ? { width: '100%', aspectRatio: '4 / 5' } : { width: size, height: size }
   return (
     <div style={{
-      position: 'relative',
       ...dim, background: isGrid ? '#fff' : '#F4F2EE', overflow: 'hidden',
       border: `1px solid ${LINE}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>
-      {src ? (
-        isGrid ? (
-          <>
-            {/* Ambient fill: a blurred copy of the SAME photo bleeds its own
-                background to the edges, so a product floating on its shop's backdrop
-                reads as edge-to-edge filled with no seam. object-fit:FILL (not cover)
-                is deliberate — it maps every frame-row to the same image-row, so the
-                top/bottom letterbox bands pull from the photo's actual top/bottom
-                (the background), instead of cover cropping those edges out and
-                sampling the product in the middle (which darkened the bands). The
-                stretched product in the centre stays hidden behind the sharp image.
-                Skipped entirely for transparent images (no background to bleed). */}
-            {fill && (
-              <>
-                <img src={src} alt="" aria-hidden="true" loading="lazy"
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', filter: 'blur(30px) saturate(0.3) brightness(1.15)', transform: 'scale(1.06)' }} />
-                {/* A pale veil over the blurred fill. On an object-on-white shot the
-                    fill is already near-white, so this barely shows; on a full-bleed
-                    model shot it washes the colored letterbox bands down to a faint
-                    neutral instead of EMPHASISING the dominant colour (the bug Farah
-                    hit on the denim shots). */}
-                <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.5)' }} />
-              </>
-            )}
-            {/* The sharp product, whole + centered, on top of its own ambient field.
-                Its edges are feathered into the fill (only when a fill is present)
-                so the boundary doesn't read as a tonal seam. */}
-            <img src={src} alt="" loading="lazy"
-              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain', filter: 'saturate(0.9)', ...(fill ? FEATHER_EDGE : {}) }} />
-          </>
-        ) : (
-          <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.9)' }} />
-        )
-      ) : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
+      {shown
+        ? <img src={shown} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
+        : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
     </div>
   )
 }
