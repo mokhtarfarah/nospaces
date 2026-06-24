@@ -1220,16 +1220,17 @@ function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: strin
 }
 
 function Thumb({ src, size }: { src: string | null; size?: number }) {
-  // Grid/hero thumbs are portrait (3:4) — a lookbook ratio that frames a model shot
-  // head-to-knee and stops squares from chopping figures at the thigh; the uniform
-  // crop is what tidies a wall of photos from different shops. Inline list thumbs
-  // (size set) stay square — they sit beside text in a row.
-  const dim = size ? { width: size, height: size } : { width: '100%', aspectRatio: '3 / 4' }
+  // Grid/hero thumbs: "catalog plate" treatment. Product photos arrive framed
+  // differently per shop (a tight model shot vs an object floating on white with
+  // baked-in whitespace), so `cover` filled the frame unevenly. Instead we
+  // `contain` every image WHOLE on a shared white field at 4:5 — nothing cropped,
+  // every tile reads as the same kind of plate (the SSENSE/NAP grid look). Inline
+  // list thumbs (size set) stay square + cover — they're avatars beside text.
+  const isGrid = !size
+  const dim = isGrid ? { width: '100%', aspectRatio: '4 / 5' } : { width: size, height: size }
   return (
     <div style={{
-      // One unified matte + a hairline frame so mixed-background product shots read
-      // as framed catalog plates, not scraped thumbs.
-      ...dim, background: '#F4F2EE', overflow: 'hidden',
+      ...dim, background: isGrid ? '#fff' : '#F4F2EE', overflow: 'hidden',
       border: `1px solid ${LINE}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>
@@ -1237,7 +1238,7 @@ function Thumb({ src, size }: { src: string | null; size?: number }) {
         // saturate(0.9) turns colour down (not off): since the taste here skews
         // monochrome/neutral, it gently mutes the warm-cream-vs-cool-grey clash
         // between shops without dulling the product. Reversible if it reads flat.
-        ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.9)' }} loading="lazy" />
+        ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: isGrid ? 'contain' : 'cover', filter: 'saturate(0.9)' }} loading="lazy" />
         : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
     </div>
   )
