@@ -5,6 +5,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { genreBlock } from './_genres.js'
 import { isSafePublicUrl } from './_ssrf.js'
 import { scrapeProduct, type ScrapedFields } from './_scrape.js'
+import { readImageAttributes } from './_vision.js'
 
 // Strip any non-ASCII chars that may have crept in via copy-paste
 const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
@@ -198,11 +199,19 @@ function extractEmailUrls(textBody: string, htmlBody: string): string[] {
 }
 
 type ThingCapture =
-  | { kind: 'saved'; title: string; price: string | null }
+  | { kind: 'saved'; title: string; price: string | null; tagCount: number }
   | { kind: 'duplicate'; title: string }
   | { kind: 'no-link' }
   | { kind: 'unreadable' }
   | { kind: 'error'; message: string }
+
+// Reply line about taste tags: if vision read some, say it auto-tagged (and that
+// the user can tweak); if it read none, nudge them to tag by hand to feed the thread.
+function tagNote(tagCount: number): string {
+  return tagCount > 0
+    ? `I auto-tagged its look (${tagCount} taste tag${tagCount > 1 ? 's' : ''}) to feed your thread — tweak them in the app if they're off.`
+    : `Tag it (material, palette, vibe) in the app to feed your thread.`
+}
 
 // Scrape the first usable product link and save it to the board as a thing.
 // `strict` (used by the auto-fallback on the media address) only saves pages that
@@ -224,13 +233,28 @@ async function captureThing(userId: string, urls: string[], strict: boolean): Pr
     return { kind: 'duplicate', title: fields.title ?? 'That item' }
   }
   const title = fields.title ?? 'Untitled'
+  // Vision-on-email (s71): read taste tags off the product image so an emailed
+  // thing auto-tags like a client-side save does — email is the settled mobile
+  // capture path, and was the ONE path landing untagged. ~1¢/thing (Sonnet
+  // vision), only when there's an image. Best-effort: a vision failure (403 /
+  // avif / timeout) must never block the save — we just store no attributes.
+  let attributes: { facet: string; value: string }[] = []
+  if (fields.image) {
+    const v = await readImageAttributes(fields.image, fields.url)
+    if (v.ok) {
+      attributes = v.attributes
+      console.log('[email] vision tagged thing:', attributes.map(a => `${a.facet}:${a.value}`).join(', ') || '(none)')
+    } else {
+      console.warn('[email] vision read failed (saving untagged):', v.reason)
+    }
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any).from('items').insert({
     user_id: userId, title, creator: fields.brand, type: 'thing', status: 'want_to', source: 'email',
-    metadata: { kind: 'product', title, image: fields.image, price: fields.price, brand: fields.brand, siteName: fields.siteName, url: fields.url },
+    metadata: { kind: 'product', title, image: fields.image, price: fields.price, brand: fields.brand, siteName: fields.siteName, url: fields.url, attributes },
   })
   if (error) return { kind: 'error', message: error.message }
-  return { kind: 'saved', title, price: fields.price ?? null }
+  return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length }
 }
 
 // Fetch a URL and return a compact summary of its OpenGraph / title metadata,
@@ -415,7 +439,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const r = await captureThing(matchedUser.id, extractEmailUrls(body, HtmlBody ?? ''), false)
     if (r.kind === 'saved') {
       await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
-        `Added to your board:\n\n• ${r.title}${r.price ? ` — ${r.price}` : ''}\n\nTag it (material, palette, vibe) in the app to feed your thread.`)
+        `Added to your board:\n\n• ${r.title}${r.price ? ` — ${r.price}` : ''}\n\n${tagNote(r.tagCount)}`)
       return res.status(200).json({ saved: 1, domain: 'thing' })
     }
     if (r.kind === 'duplicate') {
@@ -510,7 +534,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const t = await captureThing(matchedUser.id, extractEmailUrls(body, HtmlBody ?? ''), true)
       if (t.kind === 'saved') {
         await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
-          `That looked like a product, so I added it to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\nTag it (material, palette, vibe) in the app to feed your thread.`)
+          `That looked like a product, so I added it to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}`)
         return res.status(200).json({ saved: 1, domain: 'thing' })
       }
       if (t.kind === 'duplicate') {

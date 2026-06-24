@@ -4,6 +4,23 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 71 (2026-06-23) — Vision-on-email (close the on-the-go untagged gap)
+
+**On `main`. Typecheck clean, 78 tests green, eslint clean. NOT runtime-verified — the email webhook can't be exercised from the preview; wants a real forwarded product to confirm. Cost: ~1¢ per emailed thing (Sonnet 4.6 vision, one image, only when the thing has an image).**
+
+**Headline task — vision-on-email, greenlit s70.** Emailed things (`things@`/`shop@`/`want@`, plus the strict normal-inbox product fallback) were the ONE capture path landing untagged; client-side saves already auto-tag from the image. Now they auto-tag too.
+
+- **New shared module `api/_vision.ts`** — extracted `fetchImageBase64` + the taste prompt + parser out of `api/things-vision.ts` so both callers use ONE code path (no HTTP round-trip, no duplicated prompt/vocab). Exports `readImageAttributes(imageUrl, referer?)` → `{ok, attributes}` / `{ok:false, reason}`; never throws.
+- **`api/things-vision.ts` slimmed** to a thin HTTP wrapper over the shared read (kept the 422-vs-500 split: fetch-failures = user's link, vision/parse errors = ours).
+- **`api/email.ts` `captureThing`** now calls `readImageAttributes(fields.image, fields.url)` before insert and stores `metadata.attributes` (same `{facet,value}[]` shape the client uses). **Best-effort:** a vision failure (403 / avif / timeout) logs + saves untagged — never blocks the save. One vision call per email max.
+- **Reply copy** — new `tagNote(tagCount)`: if it tagged, "I auto-tagged its look (N taste tags) … tweak in the app"; if not, the old "tag it by hand" nudge.
+- **No new abuse surface** — the webhook is secret-gated + sender-allowlisted, so only Farah/Tom can trigger the paid call.
+- **Watch:** the literal-`.avif` image-link edge case still fails Anthropic vision (rare; add on-the-fly conversion only if it recurs). The s67 note that "email-in does NOT trigger vision" is now superseded.
+
+**To verify (Farah):** forward a product with a clear image to `things@nospaces.xyz` → reply should say "I auto-tagged its look (N taste tags)"; open it on the board → material/palette/vibe/category chips present.
+
+---
+
 ### Session 70 (2026-06-23) — New-user audit + editorial pass + decided-item fix
 
 **On `main`. Logic unit-tested (78 green, +2); UI behind auth, not click-verified. Free (no new API calls — but see auto-tag note).**
