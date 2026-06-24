@@ -257,6 +257,32 @@ export async function parseProductLink(
   }
 }
 
+/**
+ * Slice 4 — paid vision read (Sonnet 4.6, ~$0.01/call). Reads taste attributes
+ * off a product image (material/palette/vibe/category) so the board mirrors you
+ * without manual tagging. Reads the look, never the identity. Fires automatically
+ * in the background after a save — best-effort, so any failure just means no
+ * auto-tags (the user can still tag by hand). Sends only the image URL.
+ */
+export async function readImageAttributes(
+  image: string,
+): Promise<{ ok: true; attributes: Attribute[] } | { ok: false; reason: string }> {
+  let resp: Response
+  try {
+    resp = await fetch('/api/things-vision', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ image }),
+    })
+  } catch {
+    return { ok: false, reason: "Couldn't reach the reader." }
+  }
+  if (!resp.ok) return { ok: false, reason: 'Could not read that image.' }
+  const data = await resp.json()
+  const attributes = normAttributes(Array.isArray(data.attributes) ? data.attributes : [])
+  return { ok: true, attributes }
+}
+
 export type Comparison = { notes: string[]; lean: number | null; verdict: string }
 
 /**

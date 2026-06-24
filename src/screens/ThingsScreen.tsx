@@ -3,7 +3,7 @@ import { DomainSwitcher } from '../components/DomainSwitcher'
 import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
-  parseProductLink, compareCandidates, kindOf, intentMeta, productMeta, newCandidateId,
+  parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, newCandidateId,
   EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS, priceValue,
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet,
 } from '../lib/things'
@@ -77,16 +77,41 @@ export function ThingsScreen() {
   const openIntent = things.find(i => i.id === openIntentId) ?? null
   const editProduct = things.find(i => i.id === editProductId) ?? null
 
+  // Slice 4 — read taste tags off a freshly-saved product's image and patch them
+  // in. Runs in the background so the save itself is instant; the board's masthead
+  // picks them up on the next render. Merges, never clobbers manual tags.
+  async function autoTagFromImage(id: string, f: ProductFields) {
+    if (!f.image) return
+    const r = await readImageAttributes(f.image)
+    if (!r.ok || r.attributes.length === 0) return
+    const existing = f.attributes ?? []
+    const have = new Set(existing.map(a => a.facet))
+    const merged = [...existing, ...r.attributes.filter(a => !have.has(a.facet))]
+    if (merged.length === existing.length) return
+    await editItem(id, { metadata: { kind: 'product', ...f, attributes: merged } })
+  }
+
   return (
     <div style={{ padding: '20px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
       <DomainSwitcher current="things" />
+      {/* Magazine header — small kicker + label + rule (shared treatment with Library) */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>
+            {things.length === 0 ? 'the board' : `${things.length} on the board`}
+          </div>
+          <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>things</h1>
+        </div>
+      </div>
+      <div style={{ borderBottom: `1.5px solid ${INK}`, marginBottom: 18 }} />
+
       <ThreadMasthead things={things} />
 
       {/* Two first-class capture paths: save a concrete product, or plan a purchase
           (an intent you'll weigh options against). */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        <AddButton label="Save a product" onClick={() => setComposer('product')} />
-        <AddButton label="Plan a purchase" onClick={() => setComposer('intent')} />
+        <AddButton label="save a product" onClick={() => setComposer('product')} />
+        <AddButton label="plan a purchase" onClick={() => setComposer('intent')} />
       </div>
 
       {things.length > 1 && (
@@ -115,7 +140,7 @@ export function ThingsScreen() {
         <Empty />
       ) : visible.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '32px 20px', color: MUTED, fontSize: 13 }}>
-          Nothing tagged “{cat}” yet.
+          nothing tagged “{cat}” yet.
         </div>
       ) : (
         <div style={{
@@ -143,8 +168,15 @@ export function ThingsScreen() {
         <ProductComposer
           onClose={() => setComposer(null)}
           onSave={async (f) => {
-            await addItem(f.title || 'Untitled', 'thing', f.brand, null, { kind: 'product', ...f })
+            const id = await addItem(f.title || 'Untitled', 'thing', f.brand, null, { kind: 'product', ...f })
             setComposer(null)
+            // Slice 4 — auto-read taste tags off the image in the background, so the
+            // board mirrors you without manual tagging. Only when there's an image
+            // and the user hasn't already tagged it. Best-effort: a failure just
+            // leaves it untagged. ~$0.01 a call (Sonnet vision).
+            if (id && f.image && !(f.attributes && f.attributes.length)) {
+              void autoTagFromImage(id, f)
+            }
           }}
         />
       )}
@@ -174,7 +206,7 @@ export function ThingsScreen() {
 
       {editProduct && (
         <Sheet onClose={() => setEditProductId(null)}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 16px', color: INK }}>Edit product</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 16px', color: INK }}>edit product</h2>
           <FieldsForm saveLabel="Save"
             initial={productMeta(editProduct)}
             onCancel={() => setEditProductId(null)}
@@ -254,9 +286,9 @@ function ProductCard({ item, onGotIt, onDelete, onEdit }: { item: Item; onGotIt:
         style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: 13, border: 'none', background: 'rgba(0,0,0,0.45)', color: '#fff', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⋯</button>
       {menu && (
         <div style={{ position: 'absolute', top: 34, right: 6, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 8, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', zIndex: 5, overflow: 'hidden' }}>
-          <MenuItem label="Edit" onClick={() => { onEdit(); setMenu(false) }} />
-          <MenuItem label={got ? 'Mark as not owned' : 'Got it'} onClick={() => { onGotIt(); setMenu(false) }} />
-          <MenuItem label="Remove" danger onClick={() => { onDelete(); setMenu(false) }} />
+          <MenuItem label="edit" onClick={() => { onEdit(); setMenu(false) }} />
+          <MenuItem label={got ? 'mark as not owned' : 'got it'} onClick={() => { onGotIt(); setMenu(false) }} />
+          <MenuItem label="remove" danger onClick={() => { onDelete(); setMenu(false) }} />
         </div>
       )}
     </div>
@@ -362,13 +394,13 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
       {editingBrief ? (
         <div style={{ marginTop: 12 }}>
           <textarea autoFocus value={briefDraft} onChange={e => setBriefDraft(e.target.value)}
-            placeholder="Budget, occasion, must-haves, dealbreakers…"
+            placeholder="budget, occasion, must-haves, dealbreakers…"
             rows={3} style={{ ...inputStyle, width: '100%', resize: 'vertical', fontFamily: 'inherit' }} />
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
             <button onClick={() => { setBriefDraft(m.brief ?? ''); setEditingBrief(false) }}
               style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>
             <button onClick={async () => { await onPatch({ ...m, brief: briefDraft.trim() || null }); setEditingBrief(false) }}
-              style={primaryBtn(false)}>Save context</button>
+              style={primaryBtn(false)}>save context</button>
           </div>
         </div>
       ) : m.brief ? (
@@ -495,7 +527,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
               <input
                 autoFocus value={link} onChange={e => setLink(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') addCandidate() }}
-                placeholder="Paste a product link…"
+                placeholder="paste a product link…"
                 style={inputStyle}
               />
               <button onClick={addCandidate} disabled={busy || !link.trim()} style={primaryBtn(busy || !link.trim())}>
@@ -550,7 +582,7 @@ function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f:
   const editing = fields || manual
   return (
     <Sheet onClose={onClose}>
-      <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>Save a product</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>save a product</h2>
       <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>Paste a link — we'll pull the image, name and price. You can tweak anything before saving.</p>
 
       {!editing ? (
@@ -586,13 +618,13 @@ function IntentComposer({ onClose, onCreate }: { onClose: () => void; onCreate: 
   const [brief, setBrief] = useState('')
   return (
     <Sheet onClose={onClose}>
-      <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>Plan a purchase</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>plan a purchase</h2>
       <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>Name what you're after. You'll add options to weigh, then pick one when you're ready.</p>
       <input autoFocus value={need} onChange={e => setNeed(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && need.trim()) onCreate(need.trim(), brief.trim()) }}
         placeholder="e.g. black clogs" style={{ ...inputStyle, width: '100%' }} />
       <textarea value={brief} onChange={e => setBrief(e.target.value)}
-        placeholder="What matters? Budget, occasion, must-haves, dealbreakers… (optional — helps Compare)"
+        placeholder="what matters? budget, occasion, must-haves, dealbreakers… (optional — helps compare)"
         rows={3} style={{ ...inputStyle, width: '100%', marginTop: 8, resize: 'vertical', fontFamily: 'inherit' }} />
       <button onClick={() => need.trim() && onCreate(need.trim(), brief.trim())} disabled={!need.trim()}
         style={{ ...primaryBtn(!need.trim()), width: '100%', padding: 12, marginTop: 10 }}>start</button>
@@ -639,15 +671,15 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
         <Thumb src={f.image} size={72} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <input value={f.title} onChange={e => set({ title: e.target.value })} placeholder="Name" style={{ ...inputStyle, fontWeight: 500 }} />
-          <input value={f.image ?? ''} onChange={e => set({ image: e.target.value })} placeholder="Image URL — paste to change the photo" style={inputStyle} />
+          <input value={f.image ?? ''} onChange={e => set({ image: e.target.value })} placeholder="image url — paste to change the photo" style={inputStyle} />
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <input value={f.price ?? ''} onChange={e => set({ price: e.target.value })} placeholder="Price" style={inputStyle} />
-        <input value={f.wasPrice ?? ''} onChange={e => set({ wasPrice: e.target.value })} placeholder="Was (if on sale)" style={inputStyle} />
+        <input value={f.wasPrice ?? ''} onChange={e => set({ wasPrice: e.target.value })} placeholder="was (if on sale)" style={inputStyle} />
       </div>
       <input value={f.brand ?? ''} onChange={e => set({ brand: e.target.value })} placeholder="Brand" style={inputStyle} />
-      <input value={f.url ?? ''} onChange={e => set({ url: e.target.value })} placeholder="Buy link (kept even if it doesn't preview)" style={inputStyle} />
+      <input value={f.url ?? ''} onChange={e => set({ url: e.target.value })} placeholder="buy link (kept even if it doesn't preview)" style={inputStyle} />
       <AttributesEditor value={f.attributes ?? []} onChange={attributes => set({ attributes })} />
       <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 2 }}>
         <button onClick={onCancel} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>

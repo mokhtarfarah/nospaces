@@ -4,6 +4,16 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 67 (2026-06-23) — Slice 4 (first paid vision surface) + two Things UI fixes
+
+Short session. Opened on the s66 stop-point (verify email-in); Farah confirmed **email-in works** (the normal-inbox auto-fallback landed). Then two quick bug fixes she flagged + the main job, Slice 4.
+
+**Two UI fixes (the "aesthetic feels different" report).** Root cause of the lowercase complaint: the card `⋯` **menu items** were Title Case (`Edit`/`Got it`/`Remove`) while the rest of the app is lowercase — lowercased those + the sheet `<h2>` titles, the capture buttons, the "save context" button, and the long descriptive placeholders. Kept single-noun field placeholders (`Name`/`Price`/`Brand`) capitalised to match the media side's `Title`/`Creator`/`Year`. Bigger fix: **Things had no editorial header** — every other page (incl. its sibling Library) leads with the magazine kicker + 1.5px ink rule, Things jumped straight to the switcher + a rounded masthead card. Added the shared header (uppercase kicker `N on the board` + lowercase `things` title + rule). That was the real "feels different" cause.
+
+**Slice 4 — paid vision attribute-read (auto-on-capture).** Stated cost first per the rule: **Sonnet 4.6 vision ≈ $0.01/call** (one downscaled image ~1.3–1.6K tokens + ~600 prompt + ~150 out; ~5–10× a Compare call; ~2,000 captures/mo before the $20 cap bites). New `api/things-vision.ts` mirrors `things-compare` exactly (auth, rate-limit 40/hr, JSON-only). Reads the **look not the identity** — prompt explicitly forbids brand/logo/text recognition — and returns `{facet,value}[]` constrained to the four masthead facets (material/palette/vibe/category), one per facet, mapped onto the existing vocab. Anthropic vision takes the **image URL directly** (capture is link-based, so the image is always a URL — no download/base64). Client `readImageAttributes()` in `things.ts`. Wired **auto-fire**: `ProductComposer.onSave` → `autoTagFromImage(id, f)` runs in the **background** after the save (instant save; tags patch in a few seconds later; merges-never-clobbers manual tags). Farah picked **auto-on-capture** over an opt-in button — the whole point is the board mirroring her with zero tagging (also covers her "auto-category" ask). `type:'thing'` isn't in `GENRE_TYPES`, so no genre/vibe double-charge. Email-in `captureThing` (server-side) does NOT trigger vision — a natural cost boundary, flagged in ROADMAP-via-HANDOFF for a later call.
+
+73 Vitest green, typecheck clean. **Vision endpoint is UNVERIFIED** — api/ + auth don't run locally, and I declined to burn a test API call; needs a real save-with-image on the live deploy (s68 next-step #1).
+
 ### Session 66 (2026-06-23) — "Things" Slices 1–3 + 2 feedback rounds (masthead, switcher, email-in, compare reviews)
 
 Big session. Started by syncing `main` (Slice 0 / PR #16 was merged but local main was stale + the s65 docs commit `6f203b1` had been left out of the merge — recovered it). Then built Slices 1→3 and the Slice 2 masthead, and did two rounds of Farah's board feedback. **Switched to committing straight to `main`** (no feature branches — Farah's call, the branch dance was causing confusion). All Things work rides the existing `Item` model.

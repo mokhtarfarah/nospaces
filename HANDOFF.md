@@ -17,28 +17,32 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 **This session (66) — Things Slices 1–3 + masthead + two feedback rounds. All on `main` (no branches now).** Slice 1 = attribute model + pure `readThread`. Slice 3 = `DomainSwitcher` (Media/Things toggle) + stop things leaking into the media Library. Slice 2 = `ThreadMasthead` (≥4 tagged → "muted · wool · structured", else a nudge). Then Farah's feedback: **Form facet → Vibe** (holds bold/statement/chunky; legacy tags mapped forward), category out of the thread, board **sorting** + **category filter**, dismissable Compare, JSON-LD scraper fix (the "Woman"/no-price misses), **email-in**, and **Compare cheap-reviews** (reads each product page's description + on-page rating, still Haiku ~$0.001–0.002, no web search). Comparison-table dropped. 73 Vitest green. Full detail + decisions → archive (s66).
 
-**⏸ Stopped mid-verification of email-in.** Farah tested it → nothing landed. Cause: she emailed her **normal media inbox**, not `things@` — so it ran the media flow and gave up (and no reply came back: talkback is gated on Postmark approval, so the **board is the only signal**). Fix shipped: the **normal inbox now auto-saves a thing** when an email has no media but a *product-like* link (`captureThing` + strict `productLike` gate so articles don't slip in); also reads links from HTML `href`s. Both `things@` and the normal inbox now work. **Last push `3f9f08d` — VERIFY ON DEPLOY (see Next session).**
+**Email-in: VERIFIED working (s67).** Farah retested → it landed. The normal-inbox auto-fallback (`captureThing` + `productLike` gate) and `things@` both work. Done.
+
+**This session (67) — Slice 4 (paid vision) + two UI fixes. On `main`, NOT yet verified on deploy (api/ + auth don't run locally).**
+- **Slice 4 — paid vision attribute-read.** New `api/things-vision.ts` (Sonnet 4.6 vision, **~$0.01/call**, one image, rate-limited 40/hr, mirrors `things-compare`). Reads taste tags (material·palette·vibe·category) off a product image — the LOOK, not identity (no brand/logo/text). Client: `readImageAttributes()` in `things.ts`. **Fires automatically in the background** after a product save that has an image + no manual tags (`autoTagFromImage` in `ThingsScreen`, merges-never-clobbers). Farah chose **auto-on-capture** (the board mirrors you with zero tagging). Email-in `captureThing` does NOT trigger it (server-side path) — a natural cost boundary, but email things won't auto-tag.
+- **Two UI fixes:** menu links lowercased (`edit`·`got it`·`remove`, sheet titles, buttons, long placeholders — single-noun fields like `Name`/`Price` kept caps to match media's `Title`/`Creator`); **editorial header added** to Things (uppercase kicker `N on the board` + lowercase `things` title + 1.5px ink rule) to match its sibling Library — this was the "feels different" fix.
+- 73 Vitest green, typecheck clean. **Vision endpoint UNVERIFIED — needs a real save-with-image on deploy (will spend ~1¢).**
 
 **Last session (65):** Built "Things" Slice 0 — gut-check PASSED, merged via PR #16. Free `og-parse` reader · board + both capture paths · deliberation loop · sale price · opt-in AI Compare + plan brief. (s65 archive entry was recovered after PR #16 cut one commit short.)
 
 ---
 
-## ▶ Next session (67)
+## ▶ Next session (68)
 
-**PICK UP HERE — verify email-in on the live deploy (push `3f9f08d`).** This is exactly where we stopped.
-1. **Retest email-in:** forward/send a product link to Farah's **normal Nospaces inbox** (the auto-fallback path we just shipped) → wait ~2 min for the Vercel build → check it lands on the **board** (NO confirmation email — talkback is gated). Also worth a test to **`things@nospaces.xyz`** directly.
-2. **If it fails:** the in-app **email-captures feed** (in Library) logs failures with a reason — read that to trace. Common culprits: sender not in `ALLOWED_EMAILS`; Postmark inbound not domain-wide (only matters for the `things@` path — the normal-inbox fallback sidesteps it); link only reachable behind bot-protection (scrape fails).
-3. Talkback replies are still gated on Postmark approval — until then, **no confirmation email** comes back on success OR failure. Worth chasing the Postmark approval so capture isn't silent.
+**PICK UP HERE — verify Slice 4 (paid vision) on the live deploy.** It's built but unverified (api/ + auth don't run locally).
+1. **Save a product with an image** in the app (paste a clothing/object link) → wait ~2 min for the Vercel build → it saves instantly, then within a few seconds the **taste tags should auto-fill** (material/palette/vibe/category) and the masthead should start reading them. Costs **~1¢** per save — don't loop it.
+2. **If tags don't appear:** check the Vercel function logs for `[things-vision]`; confirm `ANTHROPIC_API_KEY` is set; confirm the image URL is public (Anthropic fetches it directly — a bot-walled CDN image will fail). The read is best-effort, so failure = silently no tags.
+3. **Judge the tags as a first-time user** — are they the right *granularity* and do they read human, not like debug labels? Tune the prompt in `api/things-vision.ts` if they're off. Watch: does auto-tagging feel magic or intrusive? (Farah can remove any via the "what matters" editor.)
 
-**Then — the rest of s66 still needs an eyeball on the live app** (`api/` + auth don't run locally):
+**Still needs an eyeball on the live app (carried from s66/67):**
+- **Two UI fixes from s67:** menu links now lowercase; Things now has the editorial kicker+rule header — confirm it reads right and matches Library.
 - **JSON-LD scraper** (re-add the link that returned "Woman" — name/price should fill now) · **Compare cheap-reviews** (run Compare on 2+ linked candidates — should cite details/ratings).
-- **Behind auth (eyeball):** masthead, Vibe rename, sorting, category filter, switcher-in-caps, no redundant header.
+- **Behind auth (eyeball):** masthead, Vibe rename, sorting, category filter, switcher-in-caps.
 - **Supabase preview-auth fix** still pending (`https://*.vercel.app/**` in Redirect URLs) — memory `preview-auth-redirect`.
-- **Tag the 3 existing saves** — masthead shows "tag a few (0/4)" until ≥4 tagged (by design); tagging them is the real thread gut-check.
+- **Tag the 3 existing saves** (or re-save them so vision tags them) — masthead shows "tag a few (0/4)" until ≥4 tagged; this is the real thread gut-check.
 
-**Main job: Slice 4 — first PAID surface in Things.** Sonnet **vision** attribute-read for photo/link-image capture (reads material/palette/vibe/category off an image, not identity). **State exact per-call cost before building** — Compare proved the paid plumbing. The natural unlock: vision fills the tags the masthead reads, so the board mirrors you without manual tagging (also covers Farah's "auto-category" ask).
-
-**Other open Things items:** full **web-search Compare reviews** (Reddit/blogs) — parked, pricey, Farah-flagged to revisit. Watch: is `FieldsForm` crowded now (fields + sale + taste tags)?
+**Open Things items:** vision doesn't fire on **email-in** captures (server-side path) — decide if that's worth wiring (more cost, but auto-tags everything). Full **web-search Compare reviews** (Reddit/blogs) — parked, pricey, Farah-flagged. Watch: is `FieldsForm` crowded now (fields + sale + taste tags)?
 
 **Carried from s65 (Slice 0 — check, don't rebuild):** board, deliberation loop, edit/manual fallback, sale price, AI Compare voice + plan brief. Slice 0 passed the gut check. Watch: does Compare still read human on real items? Is the plan sheet busy?
 
