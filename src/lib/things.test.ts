@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readThread, itemAttributes, promoteIntentToProduct, normValue, priceValue, type Attribute } from './things'
+import { readThread, itemAttributes, promoteIntentToProduct, productPlan, normValue, priceValue, type Attribute } from './things'
 import type { Item } from './database.types'
 
 // Minimal thing factory — only the fields the thread logic reads matter.
@@ -114,6 +114,31 @@ describe('promoteIntentToProduct', () => {
   it('returns null when there’s no resolvable winner', () => {
     const intent = thing({ metadata: { kind: 'intent', leaning: 'c1', candidates: [{ id: 'c1', title: 'x', image: null, price: null, brand: null, siteName: null, url: null }] } })
     expect(promoteIntentToProduct(intent)).toBeNull()
+  })
+})
+
+describe('productPlan', () => {
+  it('reads back the deliberation a promoted product carries', () => {
+    const intent = thing({
+      title: 'black clogs',
+      metadata: {
+        kind: 'intent', winner: 'c2', brief: 'under $200',
+        candidates: [
+          { id: 'c1', title: 'x', image: null, price: '250', brand: 'A', siteName: null, url: 'u1' },
+          { id: 'c2', title: 'y', image: 'img', price: '180', brand: 'B', siteName: null, url: 'u2' },
+        ],
+      },
+    })
+    // Simulate the promote: store the returned meta on the item.
+    const promoted = thing({ title: 'y', metadata: promoteIntentToProduct(intent)! })
+    const plan = productPlan(promoted)!
+    expect(plan.need).toBe('black clogs')
+    expect(plan.winner).toBe('c2')
+    expect(plan.candidates).toHaveLength(2)
+  })
+
+  it('is null for a product saved directly (no plan history)', () => {
+    expect(productPlan(product([a('palette', 'muted')]))).toBeNull()
   })
 })
 

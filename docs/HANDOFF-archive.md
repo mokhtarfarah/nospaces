@@ -4,6 +4,28 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 70 (2026-06-23) — New-user audit + editorial pass + decided-item fix
+
+**On `main`. Logic unit-tested (78 green, +2); UI behind auth, not click-verified. Free (no new API calls — but see auto-tag note).**
+
+**Headline task — new-user audit (the "thoughtful consumer" persona).** Walked the real flows as her (architectural taste, anti-salesy, streamlined closet). Verdict: loves the mirror-not-a-store concept + the deliberation flow; **bounces hard on-the-go.** Key finding, grounded in code: the PWA `share_target` in `vite.config.ts` only accepts *images* (not links) and routes to `/add` = the **media** flow — and iOS Safari doesn't support Web Share Target *at all*, so it's dead on her phone regardless. **Farah confirmed:** they tried share-target + Shortcuts, both failed, email is the settled on-the-go mechanism. So the real gap = **email-in lands things untagged** (vision is a server-side cost boundary), exactly the captures that most need auto-tags. → **vision-on-email is now the #1 functional priority (greenlit by Farah, ~1¢/email-thing, to build next).** Dropped my "fix share target" rec (iOS won't honor it).
+
+**Designer pass (persona + a designer's eye).** App reads "clean tech-startup," not "editorial magazine." Shipped fixes this session (B&W kept — Klein blue `#002FA7` is manifest-only/invisible; Farah: keep B&W, Library drifted off it):
+- **De-badged cards** — status pills off the photos → quiet caption text (`ProductCard` "got it", `IntentCard` "deciding · N options"). Images stay clean.
+- **No dashed borders** — `Thumb` `dashed` prop removed; intent cards use the same solid matte. Dead `Tag` component deleted.
+- **One control row + filter icon** — category + sort moved off the board into a new **`FilterSheet`** (bottom sheet) behind a sliders icon; a dot on the icon flags when a hidden filter/sort is set. Status filters stay as the single visible row.
+- **Status chips 5 → 4** — dropped the standalone **"decided"** chip; `matchesStatus` folds decided under **"deciding"** *for filtering only* (card still reads "decided · X", attribute-counting + the save-as-product CTA unchanged). One-line revert if Farah wants it back.
+- **Stronger active state** — `TabChip` active now carries a 1.5px underline rule (italic alone was unreadable on a phone).
+- **Lowercase toggle** — `DomainSwitcher` reworked: iOS segmented pill → editorial `media / things` split by a hairline, active word ink-bold. **Shared component → also changes the media Library top — eyeball there.** (Reverses the s66 "keep caps" call, with new rationale: the designer pass.)
+- **Renamed** masthead "your thread" → **"your keywords"** (+ nudge copy). Internal `readThread`/`ThreadMasthead` names unchanged.
+- **Font:** kept **Geist** for now (rejected a Fraunces serif-pairing prototype — revisit later if wanted). The serif/sans-pairing critique stands as the biggest unshipped "chic" lever.
+
+**Decided-item bug (Farah caught it).** A promoted product's `metadata.fromPlan` (losing options + brief) was stored but **never rendered** — no way to pull passed-on cards back. Fixed: new **`productPlan(item)`** accessor (`things.ts`) + a **`PlanReveal`** in `ProductSheet` ("decided from N options ›" → expands the brief + the options you passed on, each linking out). +2 unit tests.
+
+**Promote auto-tag gap (Farah caught it).** Saving a decided winner (`onSaveWinner` → `promoteIntentToProduct`) skipped the vision auto-tag that a *direct* product save runs — so promoted products never fed the keywords/filters. Fixed: `onSaveWinner` now fires `autoTagFromImage` when the winner has an image + no tags (~1¢ Sonnet vision, the **already-approved s67 auto-tag-on-save** path, not the parked email path). `fromPlan` survives the patch.
+
+**Auto-tag coverage now:** direct product save ✅ · decide→save winner ✅ · email-in ⏸️ (parked, greenlit to build next).
+
 ### Session 69 (2026-06-23) — Things lifecycle: decided → save-as-product workflow
 
 **On `main`, deployed. Logic unit-tested (76 green, +3); UI behind auth, not click-verified.** Cost: free (no API/Anthropic — pure client transform + Supabase edit).

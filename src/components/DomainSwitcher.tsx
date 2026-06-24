@@ -14,11 +14,15 @@ export function DomainSwitcher({ current }: { current: Domain }) {
   const navigate = useNavigate()
   const go = (d: Domain) => { if (d !== current) navigate(d === 'things' ? '/things' : '/library') }
 
+  // Editorial, not a segmented pill: two lowercase words split by a hairline. The
+  // active one reads ink + bold, the other muted — same language as the rest of
+  // the app (no borrowed iOS chrome at the very top of the screen).
   return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 14px' }}>
-      <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: '#F4F2EE', border: '1px solid #E8E8E8' }}>
-        <Segment label="Media" active={current === 'media'} onClick={() => go('media')} />
-        <Segment label="Things" active={current === 'things'} onClick={() => go('things')} />
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, fontSize: 14, letterSpacing: '0.01em' }}>
+        <Segment label="media" active={current === 'media'} onClick={() => go('media')} />
+        <span style={{ color: '#DAD7D0' }}>/</span>
+        <Segment label="things" active={current === 'things'} onClick={() => go('things')} />
       </div>
     </div>
   )
@@ -27,12 +31,9 @@ export function DomainSwitcher({ current }: { current: Domain }) {
 function Segment({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} aria-pressed={active} style={{
-      border: 'none', cursor: active ? 'default' : 'pointer',
-      padding: '6px 18px', borderRadius: 999,
-      fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
-      background: active ? '#fff' : 'transparent',
+      border: 'none', background: 'none', padding: 0, cursor: active ? 'default' : 'pointer',
+      fontSize: 14, fontWeight: active ? 600 : 400,
       color: active ? INK : MUTED,
-      boxShadow: active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
     }}>{label}</button>
   )
 }

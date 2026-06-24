@@ -19,7 +19,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 **Email-in: VERIFIED working (s67).** Farah retested → it landed. The normal-inbox auto-fallback (`captureThing` + `productLike` gate) and `things@` both work. Done.
 
-**This session (69) — Things lifecycle: `decided → save-as-product` workflow. On `main`, deployed. 76 tests green (+3), typecheck clean. Free (no API).** Farah spotted that "decided" and "got it" were the same bucket — picking a plan's winner faked ownership, and a decided plan stayed a plan-shaped card forever. New lifecycle: `plan: deciding → decided → [save winner → becomes a product] → saved → got it`. `promoteIntentToProduct` graduates the winner into a real product card *in place* (deliberation history kept under `metadata.fromPlan`); `itemAttributes` now counts a decided plan the moment a winner is picked (gated on `winner`, not `status:done`). New `decided` status tab; a self-explaining "save it to your things →" CTA in the decided IntentSheet. Also shipped a **manual grid-density toggle** (`roomy`/`dense` segmented control in the Things header, persisted to localStorage, layered on the responsive measure). **Behind auth → not click-verified in preview.** Full detail → archive (s69).
+**This session (70) — new-user audit + editorial pass + two bug fixes Farah caught. On `main`, deployed. 78 tests green (+2), typecheck clean. Free (no new API calls).** Audit = role-played the "thoughtful consumer" persona; verdict: loves the mirror-not-a-store concept, **bounces on-the-go.** Confirmed the real on-the-go gap is **email-in lands things untagged** (share-target/Shortcuts are dead on iOS — email is the settled mechanism) → **vision-on-email greenlit as the #1 next build** (~1¢/email-thing). Designer pass shipped (Geist kept, strict B&W): **de-badged cards** (status → caption, clean photos), **no dashed borders**, **one control row + a filter-icon sheet** (`FilterSheet` holds category + sort), **status chips 5→4** (decided folds under deciding for filtering only), **stronger active underline**, **lowercase `media / things` toggle** (shared `DomainSwitcher` → also changes Library top), masthead **"your thread" → "your keywords."** Bug fixes: **`PlanReveal`** surfaces a promoted product's buried `fromPlan` (the options you passed on, was stored-but-invisible); **`onSaveWinner` now auto-tags** the promoted winner (was skipping the s67 auto-tag-on-save path). Full detail → archive (s70).
 
 **Last session (68) — Things↔Library parity, both phases. On `main`, deployed.** Phase 1: product card tap → internal `ProductSheet` (buy link behind an explicit button); floating `+` speed-dial. Phase 2: sticky collapsing header + shared `TabChip` matching Library. Behind auth → eyeballed on live, not click-verified in preview.
 
@@ -33,21 +33,17 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 ---
 
-## ▶ Next session (70)
+## ▶ Next session (71)
 
-**🎯 HEADLINE TASK — new-user audit (Farah's ask).** Role-play a *specific* first-time user and judge the whole app as her. The persona (use it verbatim, don't water it down):
-> A fashionable woman with an interesting, **architectural** taste. **Not materialistic; actively dislikes being sold to.** Trying to be a *thoughtful consumer* — buys things that are thoughtfully made, fairly (not over-) priced, to keep a **streamlined closet of high-quality items she'll wear for years.**
->
-> Deliver: how does she like the app? **Pros and cons.** And critically — **how does it fit her day-to-day shopping across contexts: at home on a laptop, vs. on her phone, vs. on the go?** (This is where the email-in/vision gap and the capture flows get stress-tested — tie findings back to them.)
-
-Judge as her, not as Farah-who-built-it (per CLAUDE.md). Flag anything that reads salesy, materialistic, or like a debug label — that persona will bounce off it hard. Walk the real flows; where auth blocks the live app, reason from the code + mockups.
+**🎯 HEADLINE TASK — vision-on-email (greenlit by Farah, s70).** Wire `readImageAttributes` into the **server** `captureThing` path (`api/email.ts` + `api/things-vision.ts`) so a thing forwarded to `things@`/`shop@`/`want@` auto-tags from its image like a client-side save does. **State exact cost first** (~1¢/email-thing, Sonnet vision, against the $20/mo cap). This closes the on-the-go gap the s70 audit found: email is the settled mobile capture path (share-target + Shortcuts are dead on iOS), and right now those captures are the *only* ones that land untagged — exactly the ones that most need it. Watch: the literal-`.avif` image-link edge case still fails (rare; add conversion only if it recurs).
 
 ---
 
-**s69 shipped the `decided → save-as-product` workflow + manual grid-density toggle (on `main`, deployed) — logic unit-tested, UI behind auth.**
-- ⚠️ **EYEBALL ON LIVE:** new `decided` status tab; the "save it to your things →" CTA inside a decided plan; that **legacy resolved plans now read as "decided"** (not "got it") and offer the save button. Confirm the promote actually produces a clean product card that then marks "got it".
-- **Watch:** is 5 status chips (all/saved/deciding/decided/got it) too many on a phone? If crowded, consider merging or letting the row scroll.
-- **Latent:** `metadata.fromPlan` (the kept deliberation record) isn't surfaced anywhere — could power a "decided from N options" line on the promoted product's sheet if wanted.
+**s70 shipped the editorial pass + 2 bug fixes (on `main`) — logic unit-tested (78 green), UI behind auth.**
+- ⚠️ **EYEBALL ON LIVE (s70):** de-badged cards (status now caption text, no pills on photos) · no dashed borders · the **filter-icon sheet** (category + sort moved off the board) · status row now **4 chips** (decided folds under deciding) · active chip **underline** · the new lowercase **`media / things` toggle** — *also changes the media Library top* (shared `DomainSwitcher`), so check Library too · masthead reads **"your keywords."**
+- ⚠️ **EYEBALL the `PlanReveal`:** open a product that was promoted from a plan → "decided from N options ›" should expand the brief + the options you passed on (each links out). And confirm a promoted winner now **auto-tags** (a taste-tag toast fires on save).
+- **Judgment call to confirm:** dropping the standalone **"decided"** status chip (5→4) — fine, or want it back as its own chip? One-line revert.
+- **Biggest unshipped "chic" lever:** the **serif/sans type pairing** (rejected Fraunces this round; Geist kept). Revisit the font when wanted.
 
 **Slice 4 (paid vision) is DONE + verified working** (tags auto-fill from a saved product's image; ~1¢/save). Nothing to re-verify there.
 
@@ -71,7 +67,7 @@ Judge as her, not as Farah-who-built-it (per CLAUDE.md). Flag anything that read
 - **Behind auth (eyeball):** masthead, Vibe rename, sorting, category filter, switcher-in-caps.
 - **Supabase preview-auth fix** still pending (`https://*.vercel.app/**` in Redirect URLs) — memory `preview-auth-redirect`.
 
-**Open Things items:** **vision-on-email-in — PARKED but flagged likely-important (s69).** Vision doesn't fire on email-in captures (server-side path, a cost boundary). Farah's reasoning to revisit: on a phone / on the go you're *unlikely to paste links* — you'll forward/email instead, so email captures are exactly the ones that most need auto-tagging. When picked up: wire `readImageAttributes` into the server `captureThing` path (more cost, ~1¢/email-thing, but auto-tags everything). Literal-`.avif` image links still fail (rare; add conversion only if it recurs). Full **web-search Compare reviews** (Reddit/blogs) — parked, pricey, Farah-flagged. Watch: is `FieldsForm` crowded now (fields + sale + taste tags)?
+**Open Things items:** **vision-on-email-in is now the s71 headline (greenlit s70)** — see Next session above. Full **web-search Compare reviews** (Reddit/blogs) — parked, pricey, Farah-flagged. Watch: is `FieldsForm` crowded now (fields + sale + taste tags)?
 
 **Carried from s65 (Slice 0 — check, don't rebuild):** board, deliberation loop, edit/manual fallback, sale price, AI Compare voice + plan brief. Slice 0 passed the gut check. Watch: does Compare still read human on real items? Is the plan sheet busy?
 

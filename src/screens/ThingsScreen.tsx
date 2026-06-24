@@ -4,9 +4,9 @@ import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
 import {
   parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, newCandidateId,
-  promoteIntentToProduct,
+  promoteIntentToProduct, productPlan,
   EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS, priceValue,
-  type Candidate, type ProductFields, type Comparison, type Attribute, type Facet,
+  type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord,
 } from '../lib/things'
 
 const INK = '#1C1B19'
@@ -51,14 +51,23 @@ function statusBucket(item: Item): Bucket {
   if (kindOf(item) === 'intent') return intentMeta(item).winner ? 'decided' : 'deciding'
   return item.status === 'done' ? 'got' : 'saved'
 }
-type StatusFilter = 'all' | Bucket
+// One fewer chip on the phone: "deciding" covers the whole deliberation lifecycle
+// (a plan still weighing *or* one you've decided but not yet saved as a product).
+// The card still reads "decided · X", and the save-as-product CTA still lives in
+// the plan sheet — so the distinction isn't lost, the filter row is just calmer.
+type StatusFilter = 'all' | 'saved' | 'deciding' | 'got'
 const STATUSES: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'all' },
   { key: 'saved', label: 'saved' },
   { key: 'deciding', label: 'deciding' },
-  { key: 'decided', label: 'decided' },
   { key: 'got', label: 'got it' },
 ]
+function matchesStatus(item: Item, f: StatusFilter): boolean {
+  if (f === 'all') return true
+  const b = statusBucket(item)
+  if (f === 'deciding') return b === 'deciding' || b === 'decided'
+  return b === f
+}
 
 // The price a thing sorts by: a product's own, or an intent's front-runner
 // (winner → leaning → first candidate). Null when there's nothing to read.
@@ -114,6 +123,7 @@ export function ThingsScreen() {
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
   const [statusF, setStatusF] = useState<StatusFilter>('all')
+  const [filterSheet, setFilterSheet] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
   // Toast for the vision auto-tag result. Success auto-fades; a failure stays put
   // (tap to dismiss) so the reason is readable — no silent no-ops.
@@ -132,7 +142,7 @@ export function ThingsScreen() {
   }, [things])
   const visible = useMemo(() => {
     let r = sorted
-    if (statusF !== 'all') r = r.filter(t => statusBucket(t) === statusF)
+    if (statusF !== 'all') r = r.filter(t => matchesStatus(t, statusF))
     if (cat) r = r.filter(t => categoriesOf(t).includes(cat))
     return r
   }, [sorted, cat, statusF])
@@ -158,10 +168,11 @@ export function ThingsScreen() {
     showFlash(`added ${fresh.length} taste tag${fresh.length === 1 ? '' : 's'}: ${fresh.map(a => a.value).join(' · ')}`)
   }
 
-  // The combined status + sort row only earns its space once there's more than
-  // one thing to sort or filter.
+  // The control row only earns its space once there's more than one thing.
   const statusRow = things.length > 1
-  const catRow = categories.length > 0
+  // Whether category/sort (now behind the filter icon) are set to anything other
+  // than the default — drives the dot on the icon so a hidden filter isn't a trap.
+  const filtersActive = cat !== null || sort !== 'recent'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
@@ -193,31 +204,26 @@ export function ThingsScreen() {
           <ThreadMasthead things={things} />
         </div>
 
-        {/* Sticky control bar — category, then status + sort (reads like Library's
-            filter rows: italic-bold active). Full-bleed bg so content scrolls
-            cleanly under it. */}
-        {(catRow || statusRow) && (
-          <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: `1px solid ${LINE}`, padding: '2px 16px 0' }}>
-            {catRow && (
-              <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>
-                <TabChip label="all" active={cat === null} onClick={() => setCat(null)} />
-                {categories.map(c => (
-                  <TabChip key={c} label={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)} />
-                ))}
-              </div>
-            )}
-            {statusRow && (
-              <div style={{ display: 'flex', gap: 14, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 10, marginTop: catRow ? 6 : 4 }}>
+        {/* Sticky control bar — one quiet row. Status filters scroll on the left;
+            category + sort tuck behind the filter icon so they don't compete with
+            the masthead. Full-bleed bg so content scrolls cleanly under it. */}
+        {statusRow && (
+          <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: `1px solid ${LINE}`, padding: '6px 16px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingBottom: 8 }}>
+              <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', flex: 1, minWidth: 0 }}>
                 {STATUSES.map(s => (
                   <TabChip key={s.key} label={s.label} active={statusF === s.key} onClick={() => setStatusF(s.key)} />
                 ))}
-                <div style={{ width: 1, height: 14, background: '#DDD', flexShrink: 0 }} />
-                <span style={{ fontSize: 11, color: MUTED, letterSpacing: '0.04em', flexShrink: 0 }}>sort</span>
-                {SORTS.map(s => (
-                  <TabChip key={s.key} label={s.label} active={sort === s.key} onClick={() => setSort(s.key)} />
-                ))}
               </div>
-            )}
+              <button onClick={() => setFilterSheet(true)} aria-label="filter and sort"
+                style={{ border: 'none', background: 'none', cursor: 'pointer', color: filtersActive ? INK : MUTED, padding: '0 0 2px', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" fill="#fff" />
+                  <line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" fill="#fff" />
+                </svg>
+                {filtersActive && <span style={{ width: 5, height: 5, borderRadius: '50%', background: INK }} />}
+              </button>
+            </div>
           </div>
         )}
 
@@ -229,7 +235,6 @@ export function ThingsScreen() {
               {cat ? <>nothing tagged “{cat}” yet.</>
                 : statusF === 'saved' ? 'nothing saved yet.'
                 : statusF === 'deciding' ? 'nothing in the works.'
-                : statusF === 'decided' ? 'nothing decided yet.'
                 : statusF === 'got' ? 'nothing marked got it yet.'
                 : 'nothing here yet.'}
             </div>
@@ -296,8 +301,17 @@ export function ThingsScreen() {
             // landing in "saved" so you can mark it "got it" once you own it.
             const meta = promoteIntentToProduct(openIntent)
             if (!meta) return
-            await editItem(openIntent.id, { title: meta.title || 'Untitled', creator: meta.brand, status: 'want_to', metadata: meta })
+            const id = openIntent.id
+            await editItem(id, { title: meta.title || 'Untitled', creator: meta.brand, status: 'want_to', metadata: meta })
             setOpenIntentId(null)
+            // A promoted winner is a saved product like any other — auto-read its
+            // taste tags off the image so it feeds the keywords + filters too.
+            // Only when it has an image and the winner wasn't already tagged.
+            // ~1¢ (Sonnet vision), background, best-effort. autoTagFromImage spreads
+            // the full meta back, so fromPlan history survives the patch.
+            if (meta.image && !(meta.attributes && meta.attributes.length)) {
+              void autoTagFromImage(id, meta)
+            }
           }}
           onDelete={async () => { await deleteItem(openIntent.id); setOpenIntentId(null) }}
         />
@@ -314,6 +328,14 @@ export function ThingsScreen() {
           }}
           onToggleGot={() => editItem(openProduct.id, { status: openProduct.status === 'done' ? 'want_to' : 'done' })}
           onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
+        />
+      )}
+
+      {filterSheet && (
+        <FilterSheet
+          categories={categories} cat={cat} onCat={setCat}
+          sort={sort} onSort={setSort}
+          onClose={() => setFilterSheet(false)}
         />
       )}
 
@@ -362,7 +384,7 @@ function ThreadMasthead({ things }: { things: Item[] }) {
   if (thread) {
     return (
       <div style={{ margin: '16px 0 20px' }}>
-        <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 7 }}>your thread</div>
+        <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 7 }}>your keywords</div>
         <div style={{ fontSize: 22, fontWeight: 600, color: INK, lineHeight: 1.15, letterSpacing: '-0.01em' }}>
           {thread.tokens.join('  ·  ')}
         </div>
@@ -376,7 +398,7 @@ function ThreadMasthead({ things }: { things: Item[] }) {
   // Below the threshold (or nothing recurs yet) — a gentle nudge, never a nag.
   return (
     <div style={{ margin: '16px 0 20px', fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>
-      Tag your things — material, palette, form — and your aesthetic <em>thread</em> shows up here.
+      Tag your things — material, palette, form — and your <em>keywords</em> show up here.
       {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} tagged.</span>}
     </div>
   )
@@ -437,9 +459,11 @@ function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
         <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
           {p.title}
         </div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
           {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
+          {/* Status as a quiet caption mark, not a pill floating on the photo. */}
+          {got && <span style={{ color: INK, fontWeight: 600 }}>· got it</span>}
         </div>
         {taste.length > 0 && (
           <div style={{ fontSize: 10.5, color: MUTED, marginTop: 3, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -447,7 +471,6 @@ function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
           </div>
         )}
       </div>
-      {got && <Tag label="got it" filled />}
     </button>
   )
 }
@@ -458,23 +481,23 @@ function IntentCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const winner = resolved ? m.candidates.find(c => c.id === m.winner) : null
   const lean = !resolved && m.leaning ? m.candidates.find(c => c.id === m.leaning) : null
   const cover = winner ?? lean ?? m.candidates[0] ?? null
+  const n = m.candidates.length
+  // Status lives in the caption now (not a pill on the photo) — the count the pill
+  // used to carry folds in here, so a deciding card still reads at a glance.
+  const status = resolved
+    ? (winner ? `decided · ${winner.title.slice(0, 22)}${winner.title.length > 22 ? '…' : ''}` : 'decided')
+    : lean ? `leaning · ${lean.title.slice(0, 20)}${lean.title.length > 20 ? '…' : ''}`
+    : n ? `deciding · ${n} option${n === 1 ? '' : 's'}`
+    : 'tap to add options'
   return (
     <button onClick={onOpen}
-      style={{ textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', position: 'relative' }}>
-      <div style={{ position: 'relative' }}>
-        <Thumb src={cover?.image ?? null} dashed={!resolved} />
-        <Tag label={resolved ? 'decided' : `deciding · ${m.candidates.length}`} filled={resolved} />
-      </div>
+      style={{ textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
+      <Thumb src={cover?.image ?? null} />
       <div style={{ marginTop: 6 }}>
         <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 600, color: INK, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
           {item.title}
         </div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
-          {resolved
-            ? (winner ? `chose ${winner.title.slice(0, 24)}${winner.title.length > 24 ? '…' : ''}` : 'resolved')
-            : lean ? `leaning: ${lean.title.slice(0, 22)}${lean.title.length > 22 ? '…' : ''}`
-            : m.candidates.length ? 'weighing options' : 'tap to add options'}
-        </div>
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{status}</div>
       </div>
     </button>
   )
@@ -497,7 +520,11 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
   const got = item.status === 'done'
   const [editing, setEditing] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
+  const [showPlan, setShowPlan] = useState(false)
   const taste = p.attributes ?? []
+  // If this product was graduated from a plan, its deliberation (the options you
+  // passed on) lives here — otherwise it'd be stored but unreachable.
+  const plan = productPlan(item)
 
   if (editing) {
     return (
@@ -551,6 +578,8 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
         </button>
       </div>
 
+      {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
+
       <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: confirmDel ? 'flex-end' : 'flex-start', gap: 12, alignItems: 'center' }}>
         {confirmDel ? (
           <>
@@ -563,6 +592,109 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onDelete }: {
         )}
       </div>
     </Sheet>
+  )
+}
+
+/* ---------- filter & sort sheet (tucked behind the control-row icon) ---------- */
+
+// Category + sort live here so the board's control row stays a single quiet line
+// of status filters. Opened from the adjustments icon; a dot on that icon flags
+// when anything in here is set, so a hidden filter never silently strands items.
+function FilterSheet({ categories, cat, onCat, sort, onSort, onClose }: {
+  categories: string[]
+  cat: string | null
+  onCat: (c: string | null) => void
+  sort: SortKey
+  onSort: (s: SortKey) => void
+  onClose: () => void
+}) {
+  const kicker: React.CSSProperties = { fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 10 }
+  return (
+    <Sheet onClose={onClose}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: INK }}>filter &amp; sort</h2>
+        <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1 }}>×</button>
+      </div>
+
+      <div style={kicker}>sort by</div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
+        {SORTS.map(s => <Pill key={s.key} label={s.label} active={sort === s.key} onClick={() => onSort(s.key)} />)}
+      </div>
+
+      {categories.length > 0 && (
+        <>
+          <div style={kicker}>category</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Pill label="all" active={cat === null} onClick={() => onCat(null)} />
+            {categories.map(c => <Pill key={c} label={c} active={cat === c} onClick={() => onCat(cat === c ? null : c)} />)}
+          </div>
+        </>
+      )}
+
+      <button onClick={onClose} style={{ ...primaryBtn(false), width: '100%', marginTop: 24, padding: 12 }}>done</button>
+    </Sheet>
+  )
+}
+
+// A filled-when-active rounded chip — the sheet's chunkier counterpart to the
+// board row's underlined TabChip.
+function Pill({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      fontSize: 12.5, fontWeight: 600, padding: '7px 14px', borderRadius: 999, cursor: 'pointer',
+      border: `1px solid ${active ? INK : LINE}`, background: active ? INK : '#fff', color: active ? '#fff' : INK,
+    }}>{label}</button>
+  )
+}
+
+/* ---------- plan reveal (the deliberation behind a promoted product) ---------- */
+
+// A product that graduated from a plan keeps every option it was weighed against
+// (metadata.fromPlan). This pulls those passed-on cards back up — otherwise the
+// history is stored but unreachable. Read-only: the thumbnail + title link out to
+// each option's page, so you can still revisit (or buy) one you set aside.
+function PlanReveal({ plan, open, onToggle }: { plan: PlanRecord; open: boolean; onToggle: () => void }) {
+  const others = plan.candidates.filter(c => c.id !== plan.winner)
+  return (
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${LINE}` }}>
+      <button onClick={onToggle}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+        decided from {plan.candidates.length} option{plan.candidates.length === 1 ? '' : 's'}
+        <span style={{ fontSize: 11, color: MUTED, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>›</span>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {plan.brief && (
+            <div style={{ padding: '8px 10px', borderRadius: 10, background: '#F7F5F1', fontSize: 11.5, lineHeight: 1.45, color: INK }}>
+              <span style={{ fontSize: 10, color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase' }}>what mattered</span>
+              <div style={{ marginTop: 3, whiteSpace: 'pre-wrap' }}>{plan.brief}</div>
+            </div>
+          )}
+          {others.length === 0 ? (
+            <div style={{ fontSize: 12, color: MUTED }}>no other options were weighed.</div>
+          ) : (
+            <>
+              <div style={{ fontSize: 11, color: MUTED }}>you passed on:</div>
+              {others.map(c => (
+                <a key={c.id} href={c.url ?? undefined} target={c.url ? '_blank' : undefined} rel="noreferrer"
+                  style={{ display: 'flex', gap: 12, alignItems: 'center', textDecoration: 'none', color: INK, opacity: 0.85 }}>
+                  <Thumb src={c.image} size={48} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.3, textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.title || 'untitled'}</div>
+                    <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                      <PriceLine price={c.price} wasPrice={c.wasPrice} />
+                      {(c.brand || c.siteName) && <span>{c.brand || c.siteName}</span>}
+                    </div>
+                  </div>
+                  {c.url && <span style={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>↗</span>}
+                </a>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -1039,31 +1171,20 @@ function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: strin
   )
 }
 
-function Thumb({ src, size, dashed }: { src: string | null; size?: number; dashed?: boolean }) {
+function Thumb({ src, size }: { src: string | null; size?: number }) {
   const dim = size ? { width: size, height: size } : { width: '100%', aspectRatio: '1 / 1' }
   return (
     <div style={{
-      // Square corners — matches the media Library's grid art (sharper, more
-      // editorial than the old rounded thumbs).
+      // Square corners on a single unified matte — matches the media Library's grid
+      // art and keeps the board reading as one curated wall, not scraped thumbs.
       ...dim, background: '#F4F2EE', overflow: 'hidden',
-      border: dashed ? `1px dashed ${MUTED}` : `1px solid ${LINE}`,
+      border: `1px solid ${LINE}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>
       {src
         ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
         : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
     </div>
-  )
-}
-
-function Tag({ label, filled }: { label: string; filled?: boolean }) {
-  return (
-    <span style={{
-      position: 'absolute', top: 8, left: 8, fontSize: 10, fontWeight: 600, letterSpacing: '0.04em',
-      padding: '3px 7px', borderRadius: 999,
-      background: filled ? INK : 'rgba(255,255,255,0.92)', color: filled ? '#fff' : INK,
-      border: filled ? 'none' : `1px solid ${LINE}`,
-    }}>{label}</span>
   )
 }
 
@@ -1078,14 +1199,16 @@ function FabAction({ label, onClick }: { label: string; onClick: () => void }) {
   )
 }
 
-// Shared tab-chip language with the media Library: active reads ink + bold +
-// italic, inactive muted — no underline. Keeps the two boards feeling like one app.
+// Tab-chip for the status row: active reads ink + bold + italic AND carries a
+// 1.5px underline rule — the italic alone was too subtle to scan on a phone, so
+// the rule does the work the eye needs at a glance.
 function TabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{
-      flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer', padding: '4px 2px 8px',
+      flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer', padding: '4px 1px 7px',
       whiteSpace: 'nowrap', fontSize: 13, color: active ? '#111' : '#888',
       fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal',
+      borderBottom: active ? '1.5px solid #111' : '1.5px solid transparent',
     }}>{label}</button>
   )
 }

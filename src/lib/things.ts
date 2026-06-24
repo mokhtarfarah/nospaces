@@ -182,6 +182,17 @@ export type PlanRecord = {
 export type PromotedProductMeta = ProductMeta & { fromPlan: PlanRecord }
 
 /**
+ * The deliberation record on a product, if it was graduated from a plan — the
+ * losing candidates, the brief, and the original need. Null for a product saved
+ * directly. Lets the product sheet pull the passed-on options back up (otherwise
+ * they're stored but invisible).
+ */
+export function productPlan(item: Item): PlanRecord | null {
+  const m = (item.metadata ?? {}) as { fromPlan?: PlanRecord }
+  return m.fromPlan ?? null
+}
+
+/**
  * Promote a *decided* plan into a standalone product. The winning candidate's
  * fields become the product; the whole deliberation (all candidates, the brief,
  * the original need) is preserved under `metadata.fromPlan` so nothing is lost —
