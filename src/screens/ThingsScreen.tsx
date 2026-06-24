@@ -354,12 +354,13 @@ export function ThingsScreen() {
             const id = openIntent.id
             await editItem(id, { title: meta.title || 'Untitled', creator: meta.brand, status: 'want_to', metadata: meta })
             setOpenIntentId(null)
-            // A promoted winner is a saved product like any other — auto-read its
-            // taste tags off the image so it feeds the keywords + filters too.
-            // Only when it has an image and the winner wasn't already tagged.
-            // ~1¢ (Sonnet vision), background, best-effort. autoTagFromImage spreads
-            // the full meta back, so fromPlan history survives the patch.
-            if (meta.image && !(meta.attributes && meta.attributes.length)) {
+            // Moving from plan → saved always reads taste off the photo (when there
+            // is one), even if the winner already carried a tag or two from the
+            // deciding stage — autoTagFromImage merges and never clobbers, so it only
+            // fills the facets that are missing. ~1¢ (Sonnet vision), background,
+            // best-effort. It spreads the full meta back, so fromPlan history
+            // survives the patch.
+            if (meta.image) {
               void autoTagFromImage(id, meta)
             }
           }}
