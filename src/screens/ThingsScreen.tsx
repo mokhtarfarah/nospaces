@@ -61,6 +61,9 @@ export function ThingsScreen() {
   const [editProductId, setEditProductId] = useState<string | null>(null)
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
+  const [flash, setFlash] = useState<string | null>(null)
+  // Transient toast — shows the vision auto-tag result, then fades on its own.
+  const showFlash = (msg: string) => { setFlash(msg); window.setTimeout(() => setFlash(null), 3500) }
 
   const things = useMemo(() => items.filter(i => kindOf(i) !== null), [items])
   const sorted = useMemo(() => sortThings(things, sort), [things, sort])
@@ -79,20 +82,32 @@ export function ThingsScreen() {
 
   // Slice 4 — read taste tags off a freshly-saved product's image and patch them
   // in. Runs in the background so the save itself is instant; the board's masthead
-  // picks them up on the next render. Merges, never clobbers manual tags.
+  // picks them up on the next render. Merges, never clobbers manual tags. A brief
+  // toast confirms it ran (and surfaces why, if the photo couldn't be read) — so
+  // it's never a silent no-op.
   async function autoTagFromImage(id: string, f: ProductFields) {
     if (!f.image) return
+    setFlash('reading taste from the photo…')
     const r = await readImageAttributes(f.image)
-    if (!r.ok || r.attributes.length === 0) return
+    if (!r.ok) { showFlash(`couldn't read the photo (${r.reason})`); return }
+    if (r.attributes.length === 0) { showFlash('no clear taste tags from that photo'); return }
     const existing = f.attributes ?? []
     const have = new Set(existing.map(a => a.facet))
-    const merged = [...existing, ...r.attributes.filter(a => !have.has(a.facet))]
-    if (merged.length === existing.length) return
-    await editItem(id, { metadata: { kind: 'product', ...f, attributes: merged } })
+    const fresh = r.attributes.filter(a => !have.has(a.facet))
+    if (fresh.length === 0) { showFlash('no new taste tags to add'); return }
+    await editItem(id, { metadata: { kind: 'product', ...f, attributes: [...existing, ...fresh] } })
+    showFlash(`added ${fresh.length} taste tag${fresh.length === 1 ? '' : 's'}: ${fresh.map(a => a.value).join(' · ')}`)
   }
 
   return (
     <div style={{ padding: '20px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
+      {flash && (
+        <div style={{
+          position: 'fixed', left: '50%', bottom: 'calc(80px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
+          background: INK, color: '#fff', fontSize: 12.5, padding: '9px 14px', borderRadius: 999,
+          maxWidth: '90vw', textAlign: 'center', zIndex: 300, boxShadow: '0 4px 18px rgba(0,0,0,0.2)',
+        }}>{flash}</div>
+      )}
       <DomainSwitcher current="things" />
       {/* Magazine header — small kicker + label + rule (shared treatment with Library) */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -207,7 +222,7 @@ export function ThingsScreen() {
       {editProduct && (
         <Sheet onClose={() => setEditProductId(null)}>
           <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 16px', color: INK }}>edit product</h2>
-          <FieldsForm saveLabel="Save"
+          <FieldsForm saveLabel="save"
             initial={productMeta(editProduct)}
             onCancel={() => setEditProductId(null)}
             onSave={async (f) => {
@@ -432,7 +447,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
           const aiLeans = compare?.lean === idx + 1
           if (editingId === c.id) {
             return (
-              <FieldsForm key={c.id} saveLabel="Save"
+              <FieldsForm key={c.id} saveLabel="save"
                 initial={{ title: c.title, image: c.image, price: c.price, brand: c.brand, siteName: c.siteName, url: c.url, attributes: c.attributes }}
                 onCancel={() => setEditingId(null)}
                 onSave={async (f) => {
@@ -517,7 +532,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onDelete }: {
 
       {!resolved && (
         manual ? (
-          <FieldsForm saveLabel="Add option"
+          <FieldsForm saveLabel="add option"
             initial={{ title: '', image: null, price: null, brand: null, siteName: null, url: link.trim() || null }}
             onCancel={resetAdd}
             onSave={saveNewCandidate} />
@@ -604,7 +619,7 @@ function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f:
           )}
         </>
       ) : (
-        <FieldsForm saveLabel="Save to board"
+        <FieldsForm saveLabel="save to board"
           initial={fields ?? { title: '', image: null, price: null, brand: null, siteName: null, url: link.trim() || null }}
           onCancel={() => { setFields(null); setManual(false); setError(null) }}
           onSave={onSave} />

@@ -277,7 +277,13 @@ export async function readImageAttributes(
   } catch {
     return { ok: false, reason: "Couldn't reach the reader." }
   }
-  if (!resp.ok) return { ok: false, reason: 'Could not read that image.' }
+  if (!resp.ok) {
+    // Surface the server's specific reason (e.g. the image 403'd) so failures
+    // aren't silent — the board shows a brief note and we can diagnose.
+    let reason = 'Could not read that image.'
+    try { const e = await resp.json(); if (e?.reason) reason = `image: ${e.reason}` } catch { /* keep default */ }
+    return { ok: false, reason }
+  }
   const data = await resp.json()
   const attributes = normAttributes(Array.isArray(data.attributes) ? data.attributes : [])
   return { ok: true, attributes }
