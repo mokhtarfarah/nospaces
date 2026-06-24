@@ -42,23 +42,9 @@ function categoriesOf(item: Item): string[] {
   return itemAttributes(item).filter(a => a.facet === 'category').map(a => normValue(a.value))
 }
 
-// Lifecycle bucket for the status filter. Every thing lands in exactly one:
-//   - a plan with no winner yet → "deciding"
-//   - a plan you've picked a winner on (but not yet saved as a product) → "decided"
-//   - a saved-but-unowned product → "saved"
-//   - a product you own → "got"
-// A plan is bucketed by its winner, not status — "decided" means chosen, not owned.
-// Once you save a decided plan's winner it becomes a product (promoteIntentToProduct)
-// and flows through saved → got like anything else.
-type Bucket = 'saved' | 'deciding' | 'decided' | 'got'
-function statusBucket(item: Item): Bucket {
-  if (kindOf(item) === 'intent') return intentMeta(item).winner ? 'decided' : 'deciding'
-  return item.status === 'done' ? 'got' : 'saved'
-}
-// One fewer chip on the phone: "deciding" covers the whole deliberation lifecycle
-// (a plan still weighing *or* one you've decided but not yet saved as a product).
-// The card still reads "decided · X", and the save-as-product CTA still lives in
-// the plan sheet — so the distinction isn't lost, the filter row is just calmer.
+// The "show" filter exposes the board's zones: everything (deciding + saved),
+// just plans, just the wishlist, or owned things. The board renders deciding and
+// saved as separate sections; this just picks which are visible (see ThingsScreen).
 type StatusFilter = 'all' | 'saved' | 'deciding' | 'got'
 const STATUSES: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'all' },
@@ -66,12 +52,6 @@ const STATUSES: { key: StatusFilter; label: string }[] = [
   { key: 'deciding', label: 'deciding' },
   { key: 'got', label: 'got it' },
 ]
-function matchesStatus(item: Item, f: StatusFilter): boolean {
-  if (f === 'all') return true
-  const b = statusBucket(item)
-  if (f === 'deciding') return b === 'deciding' || b === 'decided'
-  return b === f
-}
 
 // The price a thing sorts by: a product's own, or an intent's front-runner
 // (winner → leaning → first candidate). Null when there's nothing to read.
@@ -151,12 +131,35 @@ export function ThingsScreen() {
     things.forEach(t => categoriesOf(t).forEach(c => set.add(c)))
     return [...set].sort()
   }, [things])
-  const visible = useMemo(() => {
-    let r = sorted
-    if (statusF !== 'all') r = r.filter(t => matchesStatus(t, statusF))
+  // Two-section board: active plans up top (deciding), the wishlist below (saved),
+  // owned things hidden by default. Category filters the saved/got grids; the
+  // deciding strip always shows (a plan usually isn't categorised yet).
+  const decidingItems = useMemo(() => sorted.filter(t => kindOf(t) === 'intent'), [sorted])
+  const savedItems = useMemo(() => {
+    let r = sorted.filter(t => kindOf(t) === 'product' && t.status !== 'done')
     if (cat) r = r.filter(t => categoriesOf(t).includes(cat))
     return r
-  }, [sorted, cat, statusF])
+  }, [sorted, cat])
+  const gotItems = useMemo(() => {
+    let r = sorted.filter(t => kindOf(t) === 'product' && t.status === 'done')
+    if (cat) r = r.filter(t => categoriesOf(t).includes(cat))
+    return r
+  }, [sorted, cat])
+  // Which sections the "show" filter exposes.
+  const showDeciding = (statusF === 'all' || statusF === 'deciding') && decidingItems.length > 0
+  const showSaved = statusF === 'all' || statusF === 'saved'
+  const showGot = statusF === 'got'
+  const anyShown = showGot ? gotItems.length > 0 : (showDeciding || (showSaved && savedItems.length > 0))
+  // A grid (or list) of products — reused by the saved + got sections.
+  const productGridOrList = (list: Item[]) => view === 'list' ? (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {list.map(item => <ProductRow key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />)}
+    </div>
+  ) : (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, alignItems: 'start', gap: 12 }}>
+      {list.map(item => <ProductCard key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />)}
+    </div>
+  )
   const openIntent = things.find(i => i.id === openIntentId) ?? null
   const openProduct = things.find(i => i.id === openProductId) ?? null
 
@@ -263,7 +266,7 @@ export function ThingsScreen() {
         <div style={{ padding: '16px 16px 120px' }}>
           {things.length === 0 ? (
             <Empty />
-          ) : visible.length === 0 ? (
+          ) : !anyShown ? (
             <div style={{ textAlign: 'center', padding: '32px 20px', color: MUTED, fontSize: 13 }}>
               {cat ? <>nothing tagged “{cat}” yet.</>
                 : statusF === 'saved' ? 'nothing saved yet.'
@@ -271,31 +274,36 @@ export function ThingsScreen() {
                 : statusF === 'got' ? 'nothing marked got it yet.'
                 : 'nothing here yet.'}
             </div>
-          ) : view === 'list' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {visible.map(item => (
-                kindOf(item) === 'intent'
-                  ? <IntentRow key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />
-                  : <ProductRow key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />
-              ))}
-            </div>
           ) : (
-            <div style={{
-              display: 'grid',
-              // minmax(0,1fr) — without the 0 floor, a card's no-wrap attribute line
-              // forces its column wider and squashes the neighbour (the "one grew,
-              // one shrank" bug). align-items:start so a taller card doesn't stretch
-              // its row-mate. Column count is responsive (see `cols`).
-              gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-              alignItems: 'start',
-              gap: 12,
-            }}>
-              {visible.map(item => (
-                kindOf(item) === 'intent'
-                  ? <IntentCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />
-                  : <ProductCard key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />
-              ))}
-            </div>
+            <>
+              {/* DECIDING — active plans, up top. A swipeable strip in grid view (a
+                  plan is a labelled box, not a product tile); plain rows in list. */}
+              {showDeciding && (
+                <section style={{ marginBottom: 26 }}>
+                  <SectionLabel>deciding · {decidingItems.length}</SectionLabel>
+                  {view === 'list' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {decidingItems.map(item => <IntentRow key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />)}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x proximity' }}>
+                      {decidingItems.map(item => <DecidingCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />)}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* SAVED — the wishlist grid (labelled only when it sits below deciding). */}
+              {showSaved && savedItems.length > 0 && (
+                <section>
+                  {showDeciding && <SectionLabel>saved · {savedItems.length}</SectionLabel>}
+                  {productGridOrList(savedItems)}
+                </section>
+              )}
+
+              {/* GOT — only when explicitly filtered to "got it". */}
+              {showGot && productGridOrList(gotItems)}
+            </>
           )}
         </div>
       </div>
@@ -518,30 +526,41 @@ function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   )
 }
 
-function IntentCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
+// Small uppercase kicker dividing the board's deciding / saved zones.
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>{children}</div>
+}
+
+// The deciding-zone card: a plan is a *question*, not a product, so it reads as a
+// labelled box — the need headlined, a count, and a few option thumbs to signal the
+// deliberation. Distinct from the product tiles in the saved grid below.
+function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const m = intentMeta(item)
   const resolved = m.winner != null
-  const winner = resolved ? m.candidates.find(c => c.id === m.winner) : null
-  const lean = !resolved && m.leaning ? m.candidates.find(c => c.id === m.leaning) : null
-  const cover = winner ?? lean ?? m.candidates[0] ?? null
   const n = m.candidates.length
-  // Status lives in the caption now (not a pill on the photo) — the count the pill
-  // used to carry folds in here, so a deciding card still reads at a glance.
-  const status = resolved
-    ? (winner ? `decided · ${winner.title.slice(0, 22)}${winner.title.length > 22 ? '…' : ''}` : 'decided')
-    : lean ? `leaning · ${lean.title.slice(0, 20)}${lean.title.length > 20 ? '…' : ''}`
-    : n ? `deciding · ${n} option${n === 1 ? '' : 's'}`
-    : 'tap to add options'
+  const front = resolved ? m.winner : m.leaning
+  // Front-runner (winner → leaning) first, so the cover thumbs lead with it.
+  const ordered = [...m.candidates]
+  const fi = ordered.findIndex(c => c.id === front)
+  if (fi > 0) ordered.unshift(ordered.splice(fi, 1)[0])
+  const thumbs = ordered.slice(0, 3)
+  const status = resolved ? 'decided' : n ? `${n} option${n === 1 ? '' : 's'}` : 'no options yet'
   return (
-    <button onClick={onOpen}
-      style={{ textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
-      <Thumb src={cover?.image ?? null} />
-      <div style={{ marginTop: 6 }}>
-        <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 600, color: INK, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
-          {item.title}
+    <button onClick={onOpen} style={{
+      flexShrink: 0, width: 188, scrollSnapAlign: 'start', textAlign: 'left', color: INK,
+      border: `1px solid ${LINE}`, borderRadius: 14, background: '#fff', padding: 14, cursor: 'pointer', display: 'block',
+    }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{resolved ? 'decided' : 'deciding'}</div>
+      <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25, marginTop: 5, textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.4em' }}>{item.title}</div>
+      <div style={{ fontSize: 11.5, color: MUTED, marginTop: 4 }}>{status}</div>
+      {thumbs.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+          {thumbs.map(c => <Thumb key={c.id} src={c.image} size={44} />)}
+          {n > 3 && (
+            <div style={{ width: 44, height: 44, borderRadius: 6, border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: MUTED, flexShrink: 0 }}>+{n - 3}</div>
+          )}
         </div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{status}</div>
-      </div>
+      )}
     </button>
   )
 }
