@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useCallback } from 'react'
 import { DomainSwitcher } from '../components/DomainSwitcher'
 import { useItems } from '../hooks/useItems'
 import type { Item } from '../lib/database.types'
@@ -61,6 +61,15 @@ export function ThingsScreen() {
   const [openProductId, setOpenProductId] = useState<string | null>(null)
   // Speed-dial for the floating +: open reveals the two capture paths.
   const [addMenu, setAddMenu] = useState(false)
+  // Header collapse-on-scroll (mirrors Library): the switcher + title + masthead
+  // fold away once you scroll into the board, leaving the sort + category rows
+  // pinned. Hysteresis (collapse past 56px, expand under 16px) avoids flicker.
+  const [collapsed, setCollapsed] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
+  const onListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const t = e.currentTarget.scrollTop
+    setCollapsed(prev => (prev ? t > 16 : t > 56))
+  }, [])
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
   const [flash, setFlash] = useState<string | null>(null)
@@ -105,8 +114,11 @@ export function ThingsScreen() {
     showFlash(`added ${fresh.length} taste tag${fresh.length === 1 ? '' : 's'}: ${fresh.map(a => a.value).join(' · ')}`)
   }
 
+  const sortRow = things.length > 1
+  const catRow = categories.length > 0
+
   return (
-    <div style={{ padding: '20px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
       {flash && (
         <div onClick={() => setFlash(null)} style={{
           position: 'fixed', left: '50%', bottom: 'calc(80px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
@@ -114,66 +126,78 @@ export function ThingsScreen() {
           maxWidth: '90vw', textAlign: 'center', zIndex: 300, boxShadow: '0 4px 18px rgba(0,0,0,0.2)',
         }}>{flash}</div>
       )}
-      <DomainSwitcher current="things" />
-      {/* Magazine header — small kicker + label + rule (shared treatment with Library) */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>
-            {things.length === 0 ? 'the board' : `${things.length} on the board`}
+
+      {/* Sticky header — mirrors Library. The switcher + title + rule + thread
+          masthead fold away on scroll; the sort + category rows stay pinned. */}
+      <header style={{ padding: '20px 16px 0', background: '#fff', borderBottom: `1px solid ${LINE}`, maxWidth: 640, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{
+          overflow: 'hidden', transition: 'max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease',
+          maxHeight: collapsed ? 0 : 320, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 4,
+        }}>
+          <DomainSwitcher current="things" />
+          {/* Magazine header — small kicker + label + rule (shared treatment with Library) */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>
+                {things.length === 0 ? 'the board' : `${things.length} on the board`}
+              </div>
+              <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>things</h1>
+            </div>
           </div>
-          <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>things</h1>
+          <div style={{ borderBottom: `1.5px solid ${INK}` }} />
+          <ThreadMasthead things={things} />
+        </div>
+
+        {/* Pinned controls — read like Library's filter rows (italic-bold active). */}
+        {catRow && (
+          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <TabChip label="all" active={cat === null} onClick={() => setCat(null)} />
+            {categories.map(c => (
+              <TabChip key={c} label={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)} />
+            ))}
+          </div>
+        )}
+        {sortRow && (
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', paddingBottom: 10, marginTop: catRow ? 6 : 2 }}>
+            <span style={{ fontSize: 11, color: MUTED, letterSpacing: '0.04em' }}>sort</span>
+            {SORTS.map(s => (
+              <TabChip key={s.key} label={s.label} active={sort === s.key} onClick={() => setSort(s.key)} />
+            ))}
+          </div>
+        )}
+        {/* When neither control row shows, give the rule a little breathing room. */}
+        {!catRow && !sortRow && <div style={{ height: 10 }} />}
+      </header>
+
+      {/* Scrolling board */}
+      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: '16px 16px 120px' }}>
+          {things.length === 0 ? (
+            <Empty />
+          ) : visible.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 20px', color: MUTED, fontSize: 13 }}>
+              nothing tagged “{cat}” yet.
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              // minmax(0,1fr) — without the 0 floor, a card's no-wrap attribute line
+              // forces its column wider and squashes the neighbour (the "one grew,
+              // one shrank" bug). align-items:start so a taller card doesn't stretch
+              // its row-mate.
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              alignItems: 'start',
+              gap: 12,
+            }}>
+              {visible.map(item => (
+                kindOf(item) === 'intent'
+                  ? <IntentCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />
+                  : <ProductCard key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
-      <div style={{ borderBottom: `1.5px solid ${INK}`, marginBottom: 18 }} />
-
-      <ThreadMasthead things={things} />
-
-      {things.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <span style={{ fontSize: 11, color: MUTED, letterSpacing: '0.04em' }}>sort</span>
-          {SORTS.map(s => (
-            <button key={s.key} onClick={() => setSort(s.key)}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: 12,
-                color: sort === s.key ? INK : MUTED, fontWeight: sort === s.key ? 600 : 400 }}>
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {categories.length > 0 && (
-        <div style={{ display: 'flex', gap: 14, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 14 }}>
-          <CatChip label="all" active={cat === null} onClick={() => setCat(null)} />
-          {categories.map(c => (
-            <CatChip key={c} label={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)} />
-          ))}
-        </div>
-      )}
-
-      {things.length === 0 ? (
-        <Empty />
-      ) : visible.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '32px 20px', color: MUTED, fontSize: 13 }}>
-          nothing tagged “{cat}” yet.
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          // minmax(0,1fr) — without the 0 floor, a card's no-wrap attribute line
-          // forces its column wider and squashes the neighbour (the "one grew,
-          // one shrank" bug). align-items:start so a taller card doesn't stretch
-          // its row-mate.
-          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-          alignItems: 'start',
-          gap: 12,
-        }}>
-          {visible.map(item => (
-            kindOf(item) === 'intent'
-              ? <IntentCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />
-              : <ProductCard key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />
-          ))}
-        </div>
-      )}
 
       {composer === 'product' && (
         <ProductComposer
@@ -931,12 +955,14 @@ function FabAction({ label, onClick }: { label: string; onClick: () => void }) {
   )
 }
 
-function CatChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+// Shared tab-chip language with the media Library: active reads ink + bold +
+// italic, inactive muted — no underline. Keeps the two boards feeling like one app.
+function TabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{
-      border: 'none', background: 'none', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap',
-      fontSize: 12.5, color: active ? INK : MUTED, fontWeight: active ? 600 : 400,
-      borderBottom: active ? `1.5px solid ${INK}` : '1.5px solid transparent', paddingBottom: 2,
+      flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer', padding: '4px 2px 8px',
+      whiteSpace: 'nowrap', fontSize: 13, color: active ? '#111' : '#888',
+      fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal',
     }}>{label}</button>
   )
 }
