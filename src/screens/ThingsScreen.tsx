@@ -280,6 +280,9 @@ function ProductCard({ item, onGotIt, onDelete, onEdit }: { item: Item; onGotIt:
   const p = productMeta(item)
   const got = item.status === 'done'
   const [menu, setMenu] = useState(false)
+  // The card's taste line shows material/palette/vibe only — category is already
+  // the filter row above, so repeating it under the item reads redundant.
+  const taste = (p.attributes ?? []).filter(a => a.facet !== 'category')
   return (
     <div style={{ position: 'relative' }}>
       <a href={p.url ?? undefined} target="_blank" rel="noreferrer"
@@ -293,9 +296,9 @@ function ProductCard({ item, onGotIt, onDelete, onEdit }: { item: Item; onGotIt:
             <PriceLine price={p.price} wasPrice={p.wasPrice} />
             {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
           </div>
-          {p.attributes && p.attributes.length > 0 && (
+          {taste.length > 0 && (
             <div style={{ fontSize: 10.5, color: MUTED, marginTop: 3, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {p.attributes.map(a => a.value).join(' · ')}
+              {taste.map(a => a.value).join(' · ')}
             </div>
           )}
         </div>

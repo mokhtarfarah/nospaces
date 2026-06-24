@@ -33,8 +33,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 **Slice 4 (paid vision) is DONE + verified working** (tags auto-fill from a saved product's image; ~1¢/save). Nothing to re-verify there.
 
-**PICK UP HERE — Farah's nits from end of s67.** Theme: **make Things feel more like the media Library** (see #3 — it's the umbrella).
-1. **Drop `category` from the card's attribute line — it reads dumb.** The `ProductCard` attribute line (`src/screens/ThingsScreen.tsx`, ~`p.attributes.map(a => a.value).join(' · ')`) shows all facets incl. category; category is already the **filter row** above, so it's redundant on the card. Show only material/palette/vibe there. *(Quick, well-scoped.)*
+**PICK UP HERE — Farah's nits from end of s67.** Theme: **make Things feel more like the media Library** (see #3 — it's the umbrella). _(Nit #1 — drop category from the card line — done in s67.)_
 2. **⚠️ NEEDS DISCUSSION — add mechanism + click-target mismatch.** Two linked questions: **(a)** Should Things use the **same floating `+`** as the media Library (for consistency) instead of the two `save a product` / `plan a purchase` buttons? **(b)** Tapping a `ProductCard` opens the **external buy link** (`<a href>`), but in the Library tapping opens an **internal detail sheet** — muscle memory makes it *far too easy to accidentally leave the site*. Likely fix: tap a card → open an internal detail/edit sheet (like Library), with an explicit **"buy" / open-link** affordance for the external jump. Don't build until Farah and I talk through the interaction.
 3. **Umbrella: make Things feel more like the media Library generally.** s67 added the editorial header + lowercasing as a start; this is the continued direction — close the remaining visual/interaction gaps (#1 and #2 are instances). Worth a pass comparing the two side by side and listing every divergence.
 
