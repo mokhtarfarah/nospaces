@@ -1291,6 +1291,50 @@ function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: strin
   )
 }
 
+// Feather the contained image's outer edge to transparent on all four sides so its
+// rectangular boundary dissolves into the ambient fill instead of leaving a faint
+// seam where the tone shifts. Only the bg margin (outer ~6%) fades — the centered
+// product is untouched. Two gradients intersected; degrades to a corner-only fade
+// where mask-composite is unsupported (never worse than a hard edge).
+const FEATHER_EDGE: React.CSSProperties = {
+  WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent), linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)',
+  WebkitMaskComposite: 'source-in',
+  maskImage: 'linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent), linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)',
+  maskComposite: 'intersect',
+}
+
+// Whether to paint the ambient blur fill behind a contained product image. Default
+// ON — keeps the fill for the common case and for any CORS-blocked image we can't
+// inspect. We flip it OFF only when we can positively read the pixels and see a
+// TRANSPARENT background: there, blurring smears the product's own colour into the
+// empty corners (the "halo" bug). Probed via one CORS image load; a tainted or
+// failed read just keeps the fill.
+function useAmbientFill(src: string | null): boolean {
+  const [fill, setFill] = useState(true)
+  useEffect(() => {
+    setFill(true)
+    if (!src) return
+    let cancelled = false
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas')
+        c.width = 24; c.height = 24
+        const ctx = c.getContext('2d', { willReadFrequently: true })
+        if (!ctx) return
+        ctx.drawImage(img, 0, 0, 24, 24)
+        const corners = [[0, 0], [23, 0], [0, 23], [23, 23]] as const
+        const transparent = corners.some(([x, y]) => ctx.getImageData(x, y, 1, 1).data[3] < 200)
+        if (!cancelled && transparent) setFill(false)
+      } catch { /* CORS-tainted — can't tell, keep the fill */ }
+    }
+    img.src = src
+    return () => { cancelled = true }
+  }, [src])
+  return fill
+}
+
 function Thumb({ src, size }: { src: string | null; size?: number }) {
   // Grid/hero thumbs: "catalog plate" treatment. Product photos arrive framed
   // differently per shop (a tight model shot vs an object floating on white with
@@ -1299,6 +1343,7 @@ function Thumb({ src, size }: { src: string | null; size?: number }) {
   // every tile reads as the same kind of plate (the SSENSE/NAP grid look). Inline
   // list thumbs (size set) stay square + cover — they're avatars beside text.
   const isGrid = !size
+  const fill = useAmbientFill(isGrid ? src : null)
   const dim = isGrid ? { width: '100%', aspectRatio: '4 / 5' } : { width: size, height: size }
   return (
     <div style={{
@@ -1318,14 +1363,16 @@ function Thumb({ src, size }: { src: string | null; size?: number }) {
                 (the background), instead of cover cropping those edges out and
                 sampling the product in the middle (which darkened the bands). The
                 stretched product in the centre stays hidden behind the sharp image.
-                Beats a detected hex — CORS-blocked on retail CDNs, and a flat colour
-                wouldn't match a gradient backdrop anyway. */}
-            <img src={src} alt="" aria-hidden="true" loading="lazy"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', filter: 'blur(24px) saturate(0.9)', transform: 'scale(1.06)' }} />
+                Skipped entirely for transparent images (no background to bleed). */}
+            {fill && (
+              <img src={src} alt="" aria-hidden="true" loading="lazy"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', filter: 'blur(28px) saturate(0.9)', transform: 'scale(1.06)' }} />
+            )}
             {/* The sharp product, whole + centered, on top of its own ambient field.
-                saturate(0.9) gently mutes the colour (taste here skews neutral). */}
+                Its edges are feathered into the fill (only when a fill is present)
+                so the boundary doesn't read as a tonal seam. */}
             <img src={src} alt="" loading="lazy"
-              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain', filter: 'saturate(0.9)' }} />
+              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain', filter: 'saturate(0.9)', ...(fill ? FEATHER_EDGE : {}) }} />
           </>
         ) : (
           <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.9)' }} />
