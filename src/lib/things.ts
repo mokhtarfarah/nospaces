@@ -134,11 +134,18 @@ export type ProductFields = {
   shotType?: ShotType | null
   /**
    * A transparent-PNG subject cutout (Supabase Storage public URL), generated
-   * browser-side at save for `product` shots. The board renders it centred on a
-   * cream tile so a mixed set of shops reads as one catalog. Null/absent → fall
-   * back to the server trim+proxy (`thingImage`).
+   * browser-side at save for `product` shots. The board floats it on a gray tile so
+   * a mixed set of shops reads as one catalog. Null/absent → show the photo itself.
    */
   cutout?: string | null
+  /** Pipeline version of the stored cutout (see CUTOUT_VERSION) — drives re-polish. */
+  cutoutV?: number | null
+  /**
+   * User override: hide the cutout and show the original photo instead. For the rare
+   * shot the AI mis-read as a plain product and cut out badly (e.g. a full-body model
+   * shot). Set from the product sheet; the board then renders the photo full-bleed.
+   */
+  cutoutHidden?: boolean | null
 }
 
 /** A weighed option inside an intent. Flat object stored in metadata.candidates[]. */
@@ -185,6 +192,8 @@ export function productMeta(item: Item): ProductMeta {
     attributes: normAttributes(m.attributes),
     shotType: m.shotType ?? null,
     cutout: m.cutout ?? null,
+    cutoutV: m.cutoutV ?? null,
+    cutoutHidden: m.cutoutHidden ?? null,
   }
 }
 

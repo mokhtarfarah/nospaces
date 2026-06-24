@@ -2,8 +2,8 @@ import { useMemo, useState, useRef, useEffect } from 'react'
 import { DomainSwitcher } from '../components/DomainSwitcher'
 import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
-import { thingImage } from '../lib/thingImage'
-import { makeCutout } from '../lib/cutout'
+import { thingImage, thingImageRaw } from '../lib/thingImage'
+import { makeCutout, CUTOUT_VERSION } from '../lib/cutout'
 import { useItems } from '../hooks/useItems'
 import { useAuth } from '../hooks/useAuth'
 import type { Item } from '../lib/database.types'
@@ -17,9 +17,12 @@ import {
 const INK = '#1C1B19'
 const MUTED = '#ABA69C'
 const LINE = '#E8E8E8'
-// Warm cream the cutout tiles sit on — a hair warmer than the grey-cream surfaces
-// elsewhere, so a board of products-on-cream reads as one catalog (see src/lib/cutout).
-const CREAM = '#F2EEE4'
+// The one tile field every board image sits on — a light, cool-toned gray. Cutouts
+// float on it; model/lifestyle photos are floated on it too (their cool studio
+// backgrounds blend into it), so the whole board reads as one catalog rather than a
+// mix of warm cutout tiles and full-bleed photos. Cool (not warm cream) to match the
+// grey studio photography most shops use.
+const TILE = '#ECEDEF'
 
 type SortKey = 'recent' | 'price' | 'name'
 const SORTS: { key: SortKey; label: string }[] = [
@@ -191,10 +194,13 @@ export function ThingsScreen() {
     const patch: Record<string, unknown> = {}
     if (r.shotType) patch.shotType = r.shotType
     if (fresh.length) patch.attributes = [...existing, ...fresh]
+    // If a re-read flips a shot to model/lifestyle, drop any cutout it shouldn't have
+    // had (e.g. a full-body model the AI first mis-read as a product) → full-bleed photo.
+    if (r.shotType && r.shotType !== 'product' && f.cutout) { patch.cutout = null; patch.cutoutV = null }
     if (Object.keys(patch).length) await patchMetadata(id, patch)
 
-    // A bare product shot → cut it out onto a cream tile; the polish flash takes
-    // over from here. Otherwise report the tag outcome.
+    // A bare product shot → cut it out onto the tile; the polish flash takes over from
+    // here. Otherwise report the tag outcome.
     if (r.shotType === 'product') {
       void polishImage(id, f.image, f.url)
     } else if (r.attributes.length === 0) {
@@ -215,18 +221,20 @@ export function ThingsScreen() {
     if (!opts?.silent) setFlash('cleaning up the photo…')
     const r = await makeCutout({ userId: user.id, itemId: id, image, referer })
     if (!r.ok) { if (!opts?.silent) showFlash(`couldn't clean up the photo — ${r.reason} (tap to dismiss)`, true); return false }
-    await patchMetadata(id, { cutout: r.url })
+    await patchMetadata(id, { cutout: r.url, cutoutV: r.version, cutoutHidden: false })
     if (!opts?.silent) showFlash('cleaned up the photo')
     return true
   }
 
-  // Backfill — products with a photo but no cutout yet, that aren't known to be
-  // model/lifestyle shots (those stay full-bleed). Covers items saved before the
-  // cutout shipped, plus any whose save-time cutout was interrupted.
+  // Backfill — products with a photo whose cutout is missing OR stale (an older
+  // pipeline version, e.g. the untrimmed too-small v1), skipping model/lifestyle
+  // shots (those stay full-bleed) and any the user chose to show full-photo.
+  // Re-polishing a stale cutout is FREE (no AI — shot type's already known).
   const polishable = useMemo(() => things.filter(i => {
     if (kindOf(i) !== 'product') return false
     const p = productMeta(i)
-    return !!p.image && !p.cutout && p.shotType !== 'onModel' && p.shotType !== 'lifestyle'
+    if (!p.image || p.cutoutHidden || p.shotType === 'onModel' || p.shotType === 'lifestyle') return false
+    return !p.cutout || p.cutoutV !== CUTOUT_VERSION
   }), [things])
 
   // One-tap "polish images": for each backfill item, learn the shot type if we don't
@@ -478,6 +486,7 @@ export function ThingsScreen() {
           // Retroactive taste-read for an untagged save. Same ~1¢ vision path as
           // auto-tag-on-save; spreads current meta so nothing else is lost.
           onRunTaste={() => autoTagFromImage(openProduct.id, productMeta(openProduct))}
+          onToggleCutout={() => patchMetadata(openProduct.id, { cutoutHidden: !productMeta(openProduct).cutoutHidden })}
           onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
         />
       )}
@@ -588,7 +597,7 @@ function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   return (
     <button onClick={onOpen}
       style={{ position: 'relative', textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: INK, display: 'block', width: '100%' }}>
-      <Thumb src={p.image} referer={p.url} cutout={p.cutout} />
+      <Thumb src={p.image} referer={p.url} cutout={p.cutoutHidden ? null : p.cutout} />
       <div style={{ marginTop: 6 }}>
         <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
           {p.title}
@@ -735,13 +744,14 @@ function IntentRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
 // a card opens this in-app, and the only way *out* to the shop is the explicit
 // "buy" button — so you never leave the board by accident. Edit/got-it/remove all
 // live here too (they used to be a per-card ⋯ menu).
-function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onDelete }: {
+function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onDelete }: {
   item: Item
   onClose: () => void
   onSave: (f: ProductFields) => void | Promise<void>
   onToggleGot: () => void
   onReopenPlan: () => void | Promise<void>
   onRunTaste: () => void | Promise<void>
+  onToggleCutout: () => void | Promise<void>
   onDelete: () => void
 }) {
   const p = productMeta(item)
@@ -749,9 +759,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const [editing, setEditing] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [showPlan, setShowPlan] = useState(false)
-  // Hero photo, auto-trimmed to the product server-side (same endpoint as the grid).
-  // Falls back to the original if the shop blocks us or there's nothing to trim.
-  const hero = thingImage(p.image, GRID_ASPECT, p.url) ?? p.image
+  // Hero photo — same treatment as the grid: a product cutout floats on the gray
+  // tile; a model/lifestyle photo (or one the user flipped to full-photo) fills it.
+  const showCutout = !p.cutoutHidden && !!p.cutout
+  const hero = showCutout ? p.cutout : (thingImageRaw(p.image, p.url) ?? p.image)
   const taste = p.attributes ?? []
   // A descriptor line: values only, minus the obvious "category" (the photo shows
   // it's a bag/coat/etc). e.g. "leather · dark earth · structured".
@@ -770,11 +781,19 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         {/* Tucked into edit (not the main sheet) — it's a cleanup tool, not a primary
             action. Reads taste off the photo; merges, never clobbers what's there. */}
         {p.image && (
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}` }}>
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
             <button onClick={() => { onRunTaste(); setEditing(false) }}
               style={{ border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
               {taste.length > 0 ? 're-run taste from photo' : 'run taste from photo'}
             </button>
+            {/* Escape hatch for a shot the AI cut out badly (e.g. read a full-body model
+                as a plain product) — flip back to the original photo, full-bleed. */}
+            {p.cutout && (
+              <button onClick={() => { onToggleCutout(); setEditing(false) }}
+                style={{ border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                {p.cutoutHidden ? 'use the cutout' : 'show the full photo instead'}
+              </button>
+            )}
           </div>
         )}
       </Sheet>
@@ -786,11 +805,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
     <Sheet onClose={onClose}>
       {/* Gallery layout: the photo leads (this is a taste mirror, not a checkout),
           actions recede to a quiet row. Close floats over the image. */}
-      <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: p.cutout ? CREAM : '#fff', border: `1px solid ${LINE}`, aspectRatio: '4 / 5' }}>
-        {p.cutout
-          ? <img src={p.cutout} onError={imgFallback(hero)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '12%', boxSizing: 'border-box' }} />
-          : hero
-          ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
+      <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}`, aspectRatio: '4 / 5' }}>
+        {hero
+          ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: showCutout ? 'contain' : 'cover', padding: showCutout ? '8%' : 0, boxSizing: 'border-box', filter: showCutout ? undefined : 'saturate(0.95)' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
         <button onClick={onClose} aria-label="close" style={{
           position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 999,
@@ -1531,31 +1548,36 @@ function Thumb({ src, size, referer, cutout }: { src: string | null; size?: numb
   // Inline list thumbs (size set) stay square + cover; they're small avatars beside
   // text, not worth a round-trip.
   const isGrid = !size
-  // s74 — when the product has a subject cutout (a transparent PNG, see cutout.ts),
-  // float it on a warm-cream tile (contain + padding, no crop) so a mixed set of
-  // shops reads as one catalog. No proxy/trim for these — the PNG is already clean.
-  // onError falls back to the normal trimmed cover if the stored cutout ever 404s.
-  if (isGrid && cutout) {
+  // s74 — two clean treatments on one cool-gray tile, so the board reads as a catalog:
+  //   - a product CUTOUT (transparent PNG) → floats on the gray with breathing room.
+  //   - a model/lifestyle PHOTO → fills the tile edge-to-edge (cover). Never floated:
+  //     a photo has its own background, so floating it just boxes a white/grey rectangle
+  //     inside the tile — the exact "box-in-box" we're killing.
+  // Inline list thumbs (size set) stay square + cover — small avatars beside text.
+  if (isGrid) {
     return (
       <div style={{
-        width: '100%', aspectRatio: '4 / 5', background: CREAM, overflow: 'hidden',
+        width: '100%', aspectRatio: '4 / 5', background: TILE, overflow: 'hidden',
         border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <img src={cutout} onError={imgFallback(thingImage(src, GRID_ASPECT, referer) ?? src)} alt="" loading="lazy"
-          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '12%', boxSizing: 'border-box' }} />
+        {cutout
+          ? <img src={cutout} onError={imgFallback(thingImageRaw(src, referer) ?? src)} alt="" loading="lazy"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '8%', boxSizing: 'border-box' }} />
+          : (thingImageRaw(src, referer) ?? src)
+          ? <img src={thingImageRaw(src, referer) ?? src!} onError={imgFallback(src)} alt="" loading="lazy"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
+          : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
       </div>
     )
   }
-  const shown = isGrid ? (thingImage(src, GRID_ASPECT, referer) ?? src) : src
-  const dim = isGrid ? { width: '100%', aspectRatio: '4 / 5' } : { width: size, height: size }
   return (
     <div style={{
-      ...dim, background: isGrid ? '#fff' : '#F4F2EE', overflow: 'hidden',
+      width: size, height: size, background: TILE, overflow: 'hidden',
       border: `1px solid ${LINE}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>
-      {shown
-        ? <img src={shown} onError={isGrid ? imgFallback(src) : undefined} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
+      {src
+        ? <img src={src} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
         : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
     </div>
   )

@@ -18,3 +18,14 @@ export function thingImage(src: string | null | undefined, aspect = 4 / 5, refer
   if (referer) q.set('r', referer)
   return `/api/thing-image?${q.toString()}`
 }
+
+// The UNTRIMMED proxy (raw=1): the original photo, server-fetched (no hotlink 403)
+// and re-encoded, with NO crop/trim. Used to show model/lifestyle shots floated on
+// the board's tile — the trim bakes a background colour into the image, which would
+// re-box against the tile, so for "photo on a tile" we want the clean original.
+export function thingImageRaw(src: string | null | undefined, referer?: string | null): string | null {
+  if (!src) return null
+  const q = new URLSearchParams({ u: src, raw: '1' })
+  if (referer) q.set('r', referer)
+  return `/api/thing-image?${q.toString()}`
+}

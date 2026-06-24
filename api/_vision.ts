@@ -104,11 +104,12 @@ ${vocab}
 
 Only tag a facet when you can genuinely see it. Skip material if you can't tell the fabric; skip any facet you'd be guessing at. One value per facet (the dominant one). Better to return fewer, honest tags than to pad.
 
-Also classify how the product is SHOWN, as "shotType":
-- "product": the item alone on a plain or seamless background (a packshot / catalog cutout), nothing else in frame.
-- "onModel": worn by or held by a person.
-- "lifestyle": staged in a scene or setting — propped on furniture, among other objects, in a room or outdoors.
-When unsure between product and lifestyle, look at the background: a clean studio sweep is "product"; any real surface, prop, or scenery is "lifestyle".
+Also classify how the product is SHOWN, as "shotType". This decides whether we can
+cut the item out cleanly, so be strict:
+- "onModel": ANY person is visible — worn, held, or even partly in frame (a hand, legs, a body). If you see a person at all, it is "onModel", never "product".
+- "lifestyle": no person, but staged in a scene or among other objects — propped on furniture, on a real surface, in a room, outdoors.
+- "product": ONLY the item itself, alone, floating on a plain seamless studio background (a clean packshot), no person and no scenery.
+When in doubt, do NOT say "product" — prefer "onModel" (if any person) or "lifestyle". "product" is reserved for a clean isolated packshot.
 
 Return JSON only, no prose:
 { "shotType": "product|onModel|lifestyle", "attributes": [ { "facet": "material|palette|vibe|category", "value": "<one or two words>" }, ... ] }`
