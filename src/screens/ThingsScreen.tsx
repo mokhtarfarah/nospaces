@@ -651,9 +651,9 @@ function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
     }}>
       {/* The "stack" — a faint card peeking out behind, only while still deciding. */}
       {!resolved && n > 1 && (
-        <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#efece6', border: `1px solid ${LINE}`, borderRadius: 14 }} />
+        <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#E2E4E7', border: `1px solid ${LINE}`, borderRadius: 14 }} />
       )}
-      <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', border: `1px solid ${LINE}`, background: '#F4F2EE', aspectRatio: String(GRID_ASPECT) }}>
+      <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', border: `1px solid ${LINE}`, background: TILE, aspectRatio: String(GRID_ASPECT) }}>
         {cover?.image
           ? <img src={thingImage(cover.image, GRID_ASPECT, cover.url) ?? cover.image} onError={imgFallback(cover.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
           : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: MUTED }}>no options yet</div>}
@@ -668,7 +668,7 @@ function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
         {/* Title band — frosted while deciding (rides over any photo), solid once decided. */}
         <div style={{
           position: 'absolute', left: 0, right: 0, bottom: 0, padding: '9px 11px',
-          background: resolved ? '#fff' : 'rgba(248,246,242,0.92)', backdropFilter: resolved ? undefined : 'blur(6px)',
+          background: resolved ? '#fff' : 'rgba(237,238,240,0.9)', backdropFilter: resolved ? undefined : 'blur(6px)',
           borderTop: `1px solid ${resolved ? LINE : 'rgba(0,0,0,0.06)'}`,
         }}>
           {resolved && <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>decided</div>}
