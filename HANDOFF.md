@@ -21,7 +21,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ## ▶ Next session (74)
 
-**First: Farah eyeballs the s73 deploy (behind auth)** — is the DecidingCard execution right, and are real-shop images now crisp + centred? (Algorithm proven on a synthetic shot; real shops unverified.)
+**TOP PRIORITY — build the AI image cutout.** The s73 server trim landed and the DecidingCard redesign looks good, BUT the color-guess trim still mangles styled/lifestyle photos *within* the tile (box-in-box on soft cayetano, ch steel, etc.) — Farah: "unprofessional, decreases the cachet." We validated the real fix and she approved it: **subject cutout on a warm-cream tile.** Decisions locked, architecture validated (browser-side at save — the engine is too big for Vercel serverless). **Full spec + build outline → memory `things-image-cutout`.** This is a multi-part build (Supabase storage bucket, save-flow cutout, vision-prompt shot-type, backfill) — give it a focused session.
 
 **Then build (queued, in order):**
 1. **Mood board** — a collection of pure-inspiration images (not purchasable); free (just saved images). Spec it the same way before building.
