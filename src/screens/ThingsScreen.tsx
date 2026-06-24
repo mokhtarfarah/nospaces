@@ -7,7 +7,7 @@ import type { Item } from '../lib/database.types'
 import {
   parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, newCandidateId,
   promoteIntentToProduct, demoteProductToIntent, productPlan,
-  EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS, priceValue,
+  EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS, priceValue, formatPrice,
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord,
 } from '../lib/things'
 
@@ -630,6 +630,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const [confirmDel, setConfirmDel] = useState(false)
   const [showPlan, setShowPlan] = useState(false)
   const taste = p.attributes ?? []
+  // A descriptor line: values only, minus the obvious "category" (the photo shows
+  // it's a bag/coat/etc). e.g. "leather · dark earth · structured".
+  const tasteLine = taste.filter(a => a.facet !== 'category').map(a => a.value).join(' · ')
   // If this product was graduated from a plan, its deliberation (the options you
   // passed on) lives here — otherwise it'd be stored but unreachable.
   const plan = productPlan(item)
@@ -672,31 +675,25 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         </div>
       </div>
 
-      {taste.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
-          {taste.map((a, i) => (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: INK, background: '#F4F2EE', borderRadius: 999, padding: '4px 9px' }}>
-              <span style={{ color: MUTED }}>{FACET_LABEL[a.facet].toLowerCase()}</span>{a.value}
-            </span>
-          ))}
-        </div>
+      {/* Taste as one quiet line — just the values, no facet labels, no "category"
+          (the photo already tells you it's a bag). Reads like a descriptor, not a
+          database row. Full set with labels lives in edit. */}
+      {tasteLine && (
+        <div style={{ fontSize: 12.5, color: MUTED, marginTop: 10, lineHeight: 1.4 }}>{tasteLine}</div>
       )}
 
+      {/* One primary action (buy), one secondary (got it). Edit + remove are quiet
+          text links at the bottom — they're management, not the point of the card. */}
       {p.url && (
         <a href={p.url} target="_blank" rel="noreferrer"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18, padding: '12px', borderRadius: 12, background: INK, color: '#fff', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18, padding: '13px', borderRadius: 10, background: INK, color: '#fff', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
           {buyLabel} <span style={{ fontSize: 13 }}>↗</span>
         </a>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-        <button onClick={onToggleGot} style={{ flex: 1, padding: '11px', borderRadius: 12, border: `1px solid ${got ? INK : LINE}`, background: got ? INK : '#fff', color: got ? '#fff' : INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-          {got ? '✓ got it' : 'mark as got it'}
-        </button>
-        <button onClick={() => setEditing(true)} style={{ flex: 1, padding: '11px', borderRadius: 12, border: `1px solid ${LINE}`, background: '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-          edit
-        </button>
-      </div>
+      <button onClick={onToggleGot} style={{ width: '100%', marginTop: 10, padding: '12px', borderRadius: 10, border: got ? 'none' : `1px solid ${LINE}`, background: got ? '#F4F2EE' : '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+        {got ? '✓ got it' : 'mark as got it'}
+      </button>
 
       {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
 
@@ -710,17 +707,19 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         </button>
       )}
 
-      {/* The photo, at the bottom. Shown whole on white (no crop, no ambient-fill
-          plate treatment — that's only for the uniform grid). Capped so a very
-          tall model shot doesn't run on forever. */}
+      {/* The photo as a tight, balanced plate — fixed 4:5, the product filling it
+          (cover crops the dead whitespace shops bake into their shots, so a $3,600
+          bag isn't a speck in a grey void). To see the full uncropped shot, that's
+          what the shop link is for. */}
       {p.image && (
-        <div style={{ marginTop: 18, borderRadius: 12, overflow: 'hidden', border: `1px solid ${LINE}`, background: '#fff', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ marginTop: 18, borderRadius: 10, overflow: 'hidden', border: `1px solid ${LINE}`, background: '#fff', aspectRatio: '4 / 5' }}>
           <img src={p.image} alt="" loading="lazy"
-            style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', filter: 'saturate(0.9)' }} />
+            style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.9)' }} />
         </div>
       )}
 
-      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: confirmDel ? 'flex-end' : 'flex-start', gap: 12, alignItems: 'center' }}>
+      {/* Management actions — quiet text links, not buttons competing with buy. */}
+      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
         {confirmDel ? (
           <>
             <span style={{ fontSize: 12.5, color: MUTED, marginRight: 'auto' }}>remove from the board?</span>
@@ -728,7 +727,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
             <button onClick={onDelete} style={{ border: 'none', background: '#B4413C', color: '#fff', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>remove</button>
           </>
         ) : (
-          <button onClick={() => setConfirmDel(true)} style={{ border: 'none', background: 'none', color: '#B4413C', fontSize: 12.5, cursor: 'pointer', padding: 0 }}>remove</button>
+          <>
+            <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>edit</button>
+            <button onClick={() => setConfirmDel(true)} style={{ border: 'none', background: 'none', color: '#B4413C', fontSize: 12.5, cursor: 'pointer', padding: 0 }}>remove</button>
+          </>
         )}
       </div>
     </Sheet>
@@ -1365,8 +1367,8 @@ function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: strin
   const onSale = !!(wasPrice && price)
   return (
     <span style={{ display: 'inline-flex', gap: 5, alignItems: 'baseline', flexWrap: 'wrap' }}>
-      {price && <span style={{ color: INK }}>{price}</span>}
-      {wasPrice && <span style={{ textDecoration: 'line-through', color: MUTED, fontSize: '0.92em' }}>{wasPrice}</span>}
+      {price && <span style={{ color: INK }}>{formatPrice(price)}</span>}
+      {wasPrice && <span style={{ textDecoration: 'line-through', color: MUTED, fontSize: '0.92em' }}>{formatPrice(wasPrice)}</span>}
       {onSale && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', color: '#B4413C', border: '1px solid #E3C3C1', borderRadius: 4, padding: '0 4px', textTransform: 'uppercase' }}>sale</span>}
     </span>
   )

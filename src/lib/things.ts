@@ -89,6 +89,29 @@ export function priceValue(p: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/**
+ * Pretty-print a scraped price for display: thousands separators, and drop a
+ * trailing ".00" so "$3600.00" reads "$3,600" (and "$295.0" → "$295"). Keeps any
+ * real cents ("$12.99" stays). Preserves the leading currency symbol; falls back
+ * to the raw string if there's no number to parse (or a trailing-symbol currency
+ * we can't safely reformat).
+ */
+export function formatPrice(raw: string | null | undefined): string | null {
+  if (!raw) return raw ?? null
+  // Only confidently reformat the US/UK shape: optional leading symbol, an integer
+  // (with or without thousands commas), optional ".dd" cents. Anything else (a
+  // trailing-symbol EU locale, "price on request") is left exactly as scraped.
+  const m = raw.trim().match(/^([^\d]*?)\s*(\d[\d,]*)(?:\.(\d+))?\s*$/)
+  if (!m) return raw
+  const [, symbol, intPart, decPart] = m
+  const intNum = parseInt(intPart.replace(/,/g, ''), 10)
+  if (!Number.isFinite(intNum)) return raw
+  const grouped = intNum.toLocaleString('en-US')
+  // Keep cents only when they're non-zero (so ".00"/".0" vanish); pad to 2 digits.
+  const cents = decPart && /[1-9]/.test(decPart) ? '.' + decPart.padEnd(2, '0').slice(0, 2) : ''
+  return `${symbol}${grouped}${cents}`
+}
+
 export type ProductFields = {
   title: string
   image: string | null

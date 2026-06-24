@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readThread, itemAttributes, promoteIntentToProduct, demoteProductToIntent, productPlan, normValue, priceValue, type Attribute } from './things'
+import { readThread, itemAttributes, promoteIntentToProduct, demoteProductToIntent, productPlan, normValue, priceValue, formatPrice, type Attribute } from './things'
 import type { Item } from './database.types'
 
 // Minimal thing factory — only the fields the thread logic reads matter.
@@ -38,6 +38,23 @@ describe('priceValue', () => {
     expect(priceValue(null)).toBeNull()
     expect(priceValue('')).toBeNull()
     expect(priceValue('Price on request')).toBeNull()
+  })
+})
+
+describe('formatPrice', () => {
+  it('adds thousands separators and drops trailing .00 / .0', () => {
+    expect(formatPrice('$3600.00')).toBe('$3,600')
+    expect(formatPrice('$295.0')).toBe('$295')
+    expect(formatPrice('1250')).toBe('1,250')
+    expect(formatPrice('£1,299.00')).toBe('£1,299')
+  })
+  it('keeps real cents', () => {
+    expect(formatPrice('$12.99')).toBe('$12.99')
+  })
+  it('leaves untouched what it can’t safely reformat', () => {
+    expect(formatPrice('Price on request')).toBe('Price on request')
+    expect(formatPrice('1.299,00 €')).toBe('1.299,00 €') // trailing-symbol locale
+    expect(formatPrice(null)).toBeNull()
   })
 })
 
