@@ -362,6 +362,10 @@ export function ThingsScreen() {
             // survives the patch.
             if (meta.image) {
               void autoTagFromImage(id, meta)
+            } else {
+              // No photo on the winner → nothing to read taste from. Say so, so the
+              // save isn't a silent no-op (you can add a photo + "run taste" later).
+              showFlash('saved — add a photo to read taste from it')
             }
           }}
           onDelete={async () => { await deleteItem(openIntent.id); setOpenIntentId(null) }}
