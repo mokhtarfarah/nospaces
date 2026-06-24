@@ -344,6 +344,7 @@ export function ThingsScreen() {
           onPatch={(meta) => editItem(openIntent.id, { metadata: meta })}
           onResolve={(winnerId, meta) =>
             editItem(openIntent.id, { metadata: { ...meta, winner: winnerId } })}
+          onRename={(title) => editItem(openIntent.id, { title })}
           onSaveWinner={async () => {
             // Promote the chosen candidate into a real product card in place: the
             // plan *becomes* the product (deliberation history kept in metadata),
@@ -388,6 +389,9 @@ export function ThingsScreen() {
             setOpenProductId(null)
             setOpenIntentId(openProduct.id)
           }}
+          // Retroactive taste-read for an untagged save. Same ~1¢ vision path as
+          // auto-tag-on-save; spreads current meta so nothing else is lost.
+          onRunTaste={() => autoTagFromImage(openProduct.id, productMeta(openProduct))}
           onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
         />
       )}
@@ -606,12 +610,13 @@ function IntentRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
 // a card opens this in-app, and the only way *out* to the shop is the explicit
 // "buy" button — so you never leave the board by accident. Edit/got-it/remove all
 // live here too (they used to be a per-card ⋯ menu).
-function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onDelete }: {
+function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onDelete }: {
   item: Item
   onClose: () => void
   onSave: (f: ProductFields) => void | Promise<void>
   onToggleGot: () => void
   onReopenPlan: () => void | Promise<void>
+  onRunTaste: () => void | Promise<void>
   onDelete: () => void
 }) {
   const p = productMeta(item)
@@ -641,8 +646,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onDele
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
         <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1 }}>×</button>
       </div>
-      <Thumb src={p.image} />
-      <div style={{ marginTop: 14 }}>
+      {/* Info + links first. A tall product photo used to push the name, price and
+          buy button below the fold (worst on desktop). The photo now sits at the
+          bottom of the sheet. */}
+      <div>
         <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: INK, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6, display: 'flex', gap: 8, alignItems: 'baseline' }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
@@ -658,6 +665,16 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onDele
             </span>
           ))}
         </div>
+      )}
+
+      {/* Read taste off the photo on demand — for anything that landed untagged
+          (older saves, manual entries, an emailed thing). Uses the same ~1¢ vision
+          call as auto-tag; only fires when tapped. Merges, never clobbers. */}
+      {p.image && (
+        <button onClick={onRunTaste}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: taste.length > 0 ? 10 : 12, border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+          ✨ {taste.length > 0 ? 're-run taste from photo' : 'run taste from photo'}
+        </button>
       )}
 
       {p.url && (
@@ -686,6 +703,16 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onDele
           style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
           <span style={{ fontSize: 13 }}>↩</span> put back in plan
         </button>
+      )}
+
+      {/* The photo, at the bottom. Shown whole on white (no crop, no ambient-fill
+          plate treatment — that's only for the uniform grid). Capped so a very
+          tall model shot doesn't run on forever. */}
+      {p.image && (
+        <div style={{ marginTop: 18, borderRadius: 12, overflow: 'hidden', border: `1px solid ${LINE}`, background: '#fff', display: 'flex', justifyContent: 'center' }}>
+          <img src={p.image} alt="" loading="lazy"
+            style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', filter: 'saturate(0.9)' }} />
+        </div>
       )}
 
       <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: confirmDel ? 'flex-end' : 'flex-start', gap: 12, alignItems: 'center' }}>
@@ -843,15 +870,18 @@ function PlanReveal({ plan, open, onToggle }: { plan: PlanRecord; open: boolean;
 
 /* ---------- intent sheet (the deliberation flow) ---------- */
 
-function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onDelete }: {
+function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename, onDelete }: {
   item: Item
   onClose: () => void
   onPatch: (meta: ReturnType<typeof intentMeta>) => void | Promise<void>
   onResolve: (winnerId: string, meta: ReturnType<typeof intentMeta>) => void | Promise<void>
   onSaveWinner: () => void | Promise<void>
+  onRename: (title: string) => void | Promise<void>
   onDelete: () => void
 }) {
   const m = intentMeta(item)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(item.title)
   // "Decided" = a winner is picked. That's distinct from owning it — once decided
   // you can save the winner as a product (onSaveWinner), then mark it got it there.
   const resolved = m.winner != null
@@ -903,13 +933,26 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onDelete
   return (
     <Sheet onClose={onClose}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 4 }}>
             {resolved ? 'decided' : 'deciding on'}
           </div>
-          <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0, color: INK }}>{item.title}</h2>
+          {editingTitle ? (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input autoFocus value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && titleDraft.trim()) { onRename(titleDraft.trim()); setEditingTitle(false) } }}
+                style={{ ...inputStyle, fontSize: 18, fontWeight: 600 }} />
+              <button onClick={() => { if (titleDraft.trim()) { onRename(titleDraft.trim()); setEditingTitle(false) } }}
+                style={{ border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>save</button>
+            </div>
+          ) : (
+            <h2 onClick={() => { setTitleDraft(item.title); setEditingTitle(true) }}
+              style={{ fontSize: 20, fontWeight: 600, margin: 0, color: INK, cursor: 'pointer' }}>
+              {item.title} <span style={{ fontSize: 12, color: MUTED, fontWeight: 400 }}>edit</span>
+            </h2>
+          )}
         </div>
-        <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1 }}>×</button>
+        <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
       </div>
 
       {/* The brief: what matters for this purchase. Feeds Compare. */}
@@ -1398,8 +1441,16 @@ function Thumb({ src, size }: { src: string | null; size?: number }) {
                 stretched product in the centre stays hidden behind the sharp image.
                 Skipped entirely for transparent images (no background to bleed). */}
             {fill && (
-              <img src={src} alt="" aria-hidden="true" loading="lazy"
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', filter: 'blur(28px) saturate(0.9)', transform: 'scale(1.06)' }} />
+              <>
+                <img src={src} alt="" aria-hidden="true" loading="lazy"
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', filter: 'blur(30px) saturate(0.3) brightness(1.15)', transform: 'scale(1.06)' }} />
+                {/* A pale veil over the blurred fill. On an object-on-white shot the
+                    fill is already near-white, so this barely shows; on a full-bleed
+                    model shot it washes the colored letterbox bands down to a faint
+                    neutral instead of EMPHASISING the dominant colour (the bug Farah
+                    hit on the denim shots). */}
+                <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.5)' }} />
+              </>
             )}
             {/* The sharp product, whole + centered, on top of its own ambient field.
                 Its edges are feathered into the fill (only when a fill is present)

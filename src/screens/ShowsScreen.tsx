@@ -157,7 +157,10 @@ export function ShowsScreen() {
   return (
     <div style={{ padding: '20px 16px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh' }}>
       <button
-        onClick={() => navigate('/discover')}
+        // "shows near you" is only reachable from the music view, so back returns
+        // there (Library restores the music category from persisted prefs), not to
+        // Discover where it used to dump you.
+        onClick={() => navigate('/library')}
         style={{ border: 'none', background: 'none', color: '#999', fontSize: 13, padding: 0, marginBottom: 16, cursor: 'pointer' }}
       >
         ← back
