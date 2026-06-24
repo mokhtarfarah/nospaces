@@ -19,7 +19,9 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 **Email-in: VERIFIED working (s67).** Farah retested → it landed. The normal-inbox auto-fallback (`captureThing` + `productLike` gate) and `things@` both work. Done.
 
-**This session (67) — Slice 4 (paid vision) shipped + VERIFIED working on deploy + UI fixes. All on `main`.**
+**This session (68) — Things↔Library parity (nits #2a/#2b). On `main`, deployed.** Product card tap → internal `ProductSheet` (buy link behind an explicit button); floating `+` speed-dial replaces the two in-body capture buttons. Behind auth → eyeball on live; not click-verified in preview. Phase 2 (sticky header + sort/filter chrome) is the next "feels different" pass → see Next session.
+
+**Last session (67) — Slice 4 (paid vision) shipped + VERIFIED working on deploy + UI fixes. All on `main`.**
 - **Slice 4 — paid vision attribute-read. WORKING on the live app.** `api/things-vision.ts` (Sonnet 4.6 vision, **~$0.01/call**, one image, rate-limited 40/hr, mirrors `things-compare`). Reads taste tags (material·palette·vibe·category) off a product image — the LOOK, not identity (no brand/logo/text). Client `readImageAttributes()` in `things.ts`. **Fires automatically in the background** after a product save that has an image + no manual tags (`autoTagFromImage` in `ThingsScreen`, merges-never-clobbers). Farah chose **auto-on-capture**. A board **toast** shows the result (sticky + tap-to-dismiss on failure, so it's never a silent no-op).
 - **Two image-fetch gotchas found + fixed in verification** (key lessons for any future vision work): (1) passing the og:image URL straight to Anthropic gets **403'd** by retail CDNs — so the endpoint **fetches the image itself** with a browser UA + **Referer/Origin** (the product page) and sends base64. (2) Our `Accept` header listed `image/avif` first → CDNs content-negotiated to **AVIF, which Anthropic vision rejects** → "bad-type-image/avif". Fixed by asking only for webp/png/jpeg/gif. *Open edge case:* a link that is **literally** a `.avif` file (no negotiation) would still fail — add on-the-fly conversion only if it recurs.
 - **UI fixes:** all menu links + **all four save buttons** lowercased; sheet titles, buttons, long placeholders lowercased (single-noun fields `Name`/`Price` kept caps to match media's `Title`/`Creator`); **editorial header** added to Things (kicker + `things` + 1.5px rule) to match Library — the "feels different" fix; **board product/intent card titles forced lowercase** (textTransform) so shop ALL-CAPS names read uniformly.
@@ -29,13 +31,19 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV). Live at ht
 
 ---
 
-## ▶ Next session (68)
+## ▶ Next session (69)
 
 **Slice 4 (paid vision) is DONE + verified working** (tags auto-fill from a saved product's image; ~1¢/save). Nothing to re-verify there.
 
-**PICK UP HERE — Farah's nits from end of s67.** Theme: **make Things feel more like the media Library** (see #3 — it's the umbrella). _(Nit #1 — drop category from the card line — done in s67.)_
-2. **⚠️ NEEDS DISCUSSION — add mechanism + click-target mismatch.** Two linked questions: **(a)** Should Things use the **same floating `+`** as the media Library (for consistency) instead of the two `save a product` / `plan a purchase` buttons? **(b)** Tapping a `ProductCard` opens the **external buy link** (`<a href>`), but in the Library tapping opens an **internal detail sheet** — muscle memory makes it *far too easy to accidentally leave the site*. Likely fix: tap a card → open an internal detail/edit sheet (like Library), with an explicit **"buy" / open-link** affordance for the external jump. Don't build until Farah and I talk through the interaction.
-3. **Umbrella: make Things feel more like the media Library generally.** s67 added the editorial header + lowercasing as a start; this is the continued direction — close the remaining visual/interaction gaps (#1 and #2 are instances). Worth a pass comparing the two side by side and listing every divergence.
+**s68 shipped (on `main`, deployed) — Things↔Library parity, nits #2a/#2b.**
+- **Tap a product → internal `ProductSheet`** (image, price, taste chips), external shop link now behind an explicit **"buy ↗"** button — no more accidental exits. Per-card `⋯` gone; got-it/edit/remove live in the sheet (remove has a confirm step).
+- **Floating `+` speed-dial** (save a product / plan a purchase) replaces the two in-body buttons; mirrors the media FAB. Empty state points at `+`.
+- ⚠️ **EYEBALL ON LIVE:** all of s68 is behind Google auth, so it was **NOT** click-verified in preview — only typecheck + 73 tests + clean load. Farah to confirm board behavior on the deploy.
+
+**PICK UP HERE — phase 2 of the "feels like a different app" umbrella (#3).** Remaining divergences after s68:
+- **Sticky collapsing header** — Library's header pins + folds on scroll and carries view/search/⋯ controls top-right; Things' header is static and scrolls away. Biggest remaining "not an app screen" gap.
+- **Sort/filter visual language** — Library = "view ▾"/"filter ▾" sheets + chip tabs; Things = plain text `sort recent price a–z` links + underline chips. Same job, different look.
+- Minor: container shape (Things is a centered `maxWidth:640` column; Library is full-bleed — only visible on wide screens, phone is moot) + tone the beige "your thread" masthead toward Library's palette (keep it — it's the soul of Things).
 
 **Judgement calls on the now-working vision (worth an eye):**
 - **Tag quality as a first-time user** — right *granularity*? Read human, not like debug labels? Tune the prompt in `api/things-vision.ts` if off. Does auto-tagging feel magic or intrusive?
