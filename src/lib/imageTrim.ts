@@ -53,9 +53,11 @@ function compute(img: HTMLImageElement, aspect: number): string | null {
   const transparent = cornerAlpha < 200
   const bg = transparent ? [255, 255, 255] : [0, 1, 2].map(k => Math.round(corners.reduce((s, c) => s + c[k], 0) / corners.length))
 
-  // Bounding box of pixels that are "product" (differ from the background).
+  // Bounding box of "product" pixels (differ from background) AND their centroid.
+  // We centre the crop on the centroid, not the bbox centre, so a thin strap or a
+  // drop-shadow off to one side doesn't drag the framing off-centre.
   const TH = 38
-  let minX = SW, minY = SH, maxX = 0, maxY = 0, hits = 0
+  let minX = SW, minY = SH, maxX = 0, maxY = 0, hits = 0, sumX = 0, sumY = 0
   for (let y = 0; y < SH; y++) {
     for (let x = 0; x < SW; x++) {
       const i = (y * SW + x) * 4
@@ -63,30 +65,30 @@ function compute(img: HTMLImageElement, aspect: number): string | null {
       const isProduct = transparent
         ? a > 40
         : a > 20 && Math.abs(data[i] - bg[0]) + Math.abs(data[i + 1] - bg[1]) + Math.abs(data[i + 2] - bg[2]) > TH
-      if (isProduct) { hits++; if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y }
+      if (isProduct) { hits++; sumX += x; sumY += y; if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y }
     }
   }
 
   // Nothing clear to trim, or the subject already fills the frame → let the caller
   // just cover-crop the original (no point re-encoding it).
   if (hits < SW * SH * 0.004) return null
-  const bw = maxX - minX + 1, bh = maxY - minY + 1
-  if (bw >= SW * 0.94 && bh >= SH * 0.94) return null
+  if (maxX - minX + 1 >= SW * 0.94 && maxY - minY + 1 >= SH * 0.94) return null
 
-  // Box → fractions → pad ~8% → expand to the target aspect (no distortion),
-  // centred on the product. Spill past the image edge is fine — filled with bg.
-  let fx0 = minX / SW, fy0 = minY / SH, fx1 = (maxX + 1) / SW, fy1 = (maxY + 1) / SH
-  const padX = (fx1 - fx0) * 0.08, padY = (fy1 - fy0) * 0.08
-  fx0 = Math.max(0, fx0 - padX); fy0 = Math.max(0, fy0 - padY)
-  fx1 = Math.min(1, fx1 + padX); fy1 = Math.min(1, fy1 + padY)
-
-  let cw = (fx1 - fx0) * NW, ch = (fy1 - fy0) * NH
-  const cx = (fx0 + fx1) / 2 * NW, cy = (fy0 + fy1) / 2 * NH
+  // Centre on the centroid (in proxy px), and size the half-extents to still cover
+  // the whole bounding box from that centre — so nothing gets clipped.
+  const ctxX = sumX / hits, ctxY = sumY / hits
+  const hx = Math.max(ctxX - minX, maxX - ctxX) * 1.08 // +8% breathing room
+  const hy = Math.max(ctxY - minY, maxY - ctxY) * 1.08
+  // To natural px.
+  const cx = ctxX / SW * NW, cy = ctxY / SH * NH
+  let cw = hx / SW * NW * 2, ch = hy / SH * NH * 2
   if (cw / ch > aspect) ch = cw / aspect; else cw = ch * aspect
   const rx = cx - cw / 2, ry = cy - ch / 2
 
-  // Render the crop at a crisp-but-light size, padding-filled with the background.
-  const OW = 520, OH = Math.round(OW / aspect)
+  // Render padding-filled with the background. Don't upscale past the source crop's
+  // own resolution (that's what made tight zooms look soft) — cap output to it.
+  const OW = Math.max(160, Math.min(640, Math.round(cw)))
+  const OH = Math.round(OW / aspect)
   const oc = document.createElement('canvas')
   oc.width = OW; oc.height = OH
   const octx = oc.getContext('2d')
@@ -101,5 +103,5 @@ function compute(img: HTMLImageElement, aspect: number): string | null {
   const sw = sx2 - sx, sh = sy2 - sy
   if (sw <= 0 || sh <= 0) return null
   octx.drawImage(img, sx, sy, sw, sh, (sx - rx) * scale, (sy - ry) * scale, sw * scale, sh * scale)
-  return oc.toDataURL('image/jpeg', 0.86)
+  return oc.toDataURL('image/jpeg', 0.92)
 }

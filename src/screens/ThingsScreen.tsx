@@ -23,19 +23,12 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'name', label: 'a–z' },
 ]
 
-// Grid density — a manual override on top of the responsive column count. "roomy"
-// is the default (today's behaviour, bigger cards); "dense" packs more per row.
-// The value is the px-per-column target fed to the responsive measure: a smaller
-// target yields more columns. Persisted so the choice sticks across sessions.
-type Density = 'roomy' | 'dense'
-const DENSITY_TARGET: Record<Density, number> = { roomy: 240, dense: 168 }
-const DENSITY_KEY = 'nospaces.thingsDensity'
-function loadDensity(): Density {
-  try { return localStorage.getItem(DENSITY_KEY) === 'dense' ? 'dense' : 'roomy' } catch { return 'roomy' }
-}
+// Target px-per-column for the responsive grid — the wall auto-sizes its column
+// count to the device width (no manual density toggle; keep it simple).
+const COL_TARGET = 220
 
 // Grid (visual wall) vs list (the plan-style row: square thumb + title + price).
-// Persisted like density so the choice sticks.
+// Persisted so the choice sticks.
 type ViewMode = 'grid' | 'list'
 const VIEW_KEY = 'nospaces.thingsView'
 function loadView(): ViewMode {
@@ -120,19 +113,17 @@ export function ThingsScreen() {
   // fixed 2-up locked to a narrow column. Measured off the scroller's own width.
   const listRef = useRef<HTMLDivElement>(null)
   const [cols, setCols] = useState(2)
-  const [density, setDensity] = useState<Density>(loadDensity)
   const [view, setView] = useState<ViewMode>(loadView)
   useEffect(() => { try { localStorage.setItem(VIEW_KEY, view) } catch { /* private mode */ } }, [view])
   useEffect(() => {
     const el = listRef.current
     if (!el) return
-    const measure = () => setCols(Math.max(2, Math.floor(el.clientWidth / DENSITY_TARGET[density])))
+    const measure = () => setCols(Math.max(2, Math.floor(el.clientWidth / COL_TARGET)))
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [density])
-  useEffect(() => { try { localStorage.setItem(DENSITY_KEY, density) } catch { /* private mode */ } }, [density])
+  }, [])
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
   const [statusF, setStatusF] = useState<StatusFilter>('all')
@@ -405,7 +396,6 @@ export function ThingsScreen() {
       {filterSheet && (
         <FilterSheet
           view={view} onView={setView}
-          density={density} onDensity={setDensity}
           sort={sort} onSort={setSort}
           status={statusF} onStatus={setStatusF}
           onClose={() => setFilterSheet(false)}
@@ -741,13 +731,11 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
 // to match the media Library's ViewSheet exactly — same drag-handle sheet, the same
 // label-left/segmented-buttons rows, and the same ✓ list rows — so flipping between
 // media and things feels like one app, not two.
-function FilterSheet({ sort, onSort, view, onView, density, onDensity, status, onStatus, onClose }: {
+function FilterSheet({ sort, onSort, view, onView, status, onStatus, onClose }: {
   sort: SortKey
   onSort: (s: SortKey) => void
   view: ViewMode
   onView: (v: ViewMode) => void
-  density: Density
-  onDensity: (d: Density) => void
   status: StatusFilter
   onStatus: (s: StatusFilter) => void
   onClose: () => void
@@ -764,9 +752,6 @@ function FilterSheet({ sort, onSort, view, onView, density, onDensity, status, o
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 18px' }} />
 
         <SegRow label="layout" options={[{ k: 'grid', l: 'grid' }, { k: 'list', l: 'list' }]} value={view} onChange={onView} />
-        {view === 'grid' && (
-          <SegRow label="density" options={[{ k: 'roomy', l: 'roomy' }, { k: 'dense', l: 'dense' }]} value={density} onChange={onDensity} />
-        )}
 
         <SheetList label="sort" options={SORTS.map(s => ({ k: s.key, l: s.label }))} value={sort} onChange={onSort} />
         <SheetList label="show" options={STATUSES.map(s => ({ k: s.key, l: s.label }))} value={status} onChange={onStatus} />
@@ -885,7 +870,9 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
   onDelete: () => void
 }) {
   const m = intentMeta(item)
-  const [editingTitle, setEditingTitle] = useState(false)
+  // One editor for the plan's name + context together (opened from near the
+  // context — a fiddly inline title tap read messy).
+  const [editingDetails, setEditingDetails] = useState(false)
   const [titleDraft, setTitleDraft] = useState(item.title)
   // "Decided" = a winner is picked. That's distinct from owning it — once decided
   // you can save the winner as a product (onSaveWinner), then mark it got it there.
@@ -900,8 +887,14 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
   const [comparing, setComparing] = useState(false)
   const [compare, setCompare] = useState<Comparison | null>(null)
   const [compareErr, setCompareErr] = useState<string | null>(null)
-  const [editingBrief, setEditingBrief] = useState(false)
   const [briefDraft, setBriefDraft] = useState(m.brief ?? '')
+  const openDetails = () => { setTitleDraft(item.title); setBriefDraft(m.brief ?? ''); setEditingDetails(true) }
+  const saveDetails = async () => {
+    const t = titleDraft.trim()
+    if (t && t !== item.title) await onRename(t)
+    await onPatch({ ...m, brief: briefDraft.trim() || null })
+    setEditingDetails(false)
+  }
 
   async function runCompare() {
     if (comparing) return
@@ -942,47 +935,39 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
           <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 4 }}>
             {resolved ? 'decided' : 'deciding on'}
           </div>
-          {editingTitle ? (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input autoFocus value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && titleDraft.trim()) { onRename(titleDraft.trim()); setEditingTitle(false) } }}
-                style={{ ...inputStyle, fontSize: 18, fontWeight: 600 }} />
-              <button onClick={() => { if (titleDraft.trim()) { onRename(titleDraft.trim()); setEditingTitle(false) } }}
-                style={{ border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>save</button>
-            </div>
-          ) : (
-            <h2 onClick={() => { setTitleDraft(item.title); setEditingTitle(true) }}
-              style={{ fontSize: 20, fontWeight: 600, margin: 0, color: INK, cursor: 'pointer' }}>
-              {item.title} <span style={{ fontSize: 12, color: MUTED, fontWeight: 400 }}>edit</span>
-            </h2>
+          {!editingDetails && (
+            <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0, color: INK }}>{item.title}</h2>
           )}
         </div>
         <button onClick={onClose} aria-label="close" style={{ border: 'none', background: 'none', fontSize: 22, color: MUTED, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
       </div>
 
-      {/* The brief: what matters for this purchase. Feeds Compare. */}
-      {editingBrief ? (
+      {/* Name + context, edited together. One "edit" by the context handles both —
+          no fiddly inline-title tap. */}
+      {editingDetails ? (
         <div style={{ marginTop: 12 }}>
-          <textarea autoFocus value={briefDraft} onChange={e => setBriefDraft(e.target.value)}
-            placeholder="budget, occasion, must-haves, dealbreakers…"
-            rows={3} style={{ ...inputStyle, width: '100%', resize: 'vertical', fontFamily: 'inherit' }} />
+          <input autoFocus value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
+            placeholder="what are you after? e.g. black clogs"
+            style={{ ...inputStyle, width: '100%', fontWeight: 600 }} />
+          <textarea value={briefDraft} onChange={e => setBriefDraft(e.target.value)}
+            placeholder="what matters? budget, occasion, must-haves, dealbreakers…"
+            rows={3} style={{ ...inputStyle, width: '100%', marginTop: 8, resize: 'vertical', fontFamily: 'inherit' }} />
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
-            <button onClick={() => { setBriefDraft(m.brief ?? ''); setEditingBrief(false) }}
+            <button onClick={() => { setTitleDraft(item.title); setBriefDraft(m.brief ?? ''); setEditingDetails(false) }}
               style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>
-            <button onClick={async () => { await onPatch({ ...m, brief: briefDraft.trim() || null }); setEditingBrief(false) }}
-              style={primaryBtn(false)}>save context</button>
+            <button onClick={saveDetails} disabled={!titleDraft.trim()} style={primaryBtn(!titleDraft.trim())}>save</button>
           </div>
         </div>
       ) : m.brief ? (
-        <div onClick={() => !resolved && setEditingBrief(true)}
-          style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: '#F7F5F1', fontSize: 12.5, lineHeight: 1.5, color: INK, cursor: resolved ? 'default' : 'pointer' }}>
-          <span style={{ fontSize: 10, color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase' }}>what matters{!resolved && ' · tap to edit'}</span>
+        <div onClick={openDetails}
+          style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: '#F7F5F1', fontSize: 12.5, lineHeight: 1.5, color: INK, cursor: 'pointer' }}>
+          <span style={{ fontSize: 10, color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase' }}>what matters · tap to edit</span>
           <div style={{ marginTop: 3, whiteSpace: 'pre-wrap' }}>{m.brief}</div>
         </div>
-      ) : !resolved && (
-        <button onClick={() => setEditingBrief(true)}
+      ) : (
+        <button onClick={openDetails}
           style={{ marginTop: 10, border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-          + Add context (budget, occasion, must-haves)
+          + edit name & add context
         </button>
       )}
 
