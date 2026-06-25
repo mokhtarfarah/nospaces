@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readThread, boardTasteSummary, itemAttributes, promoteIntentToProduct, demoteProductToIntent, productPlan, normValue, priceValue, formatPrice, type Attribute } from './things'
+import { readThread, boardTasteSummary, itemAttributes, promoteIntentToProduct, demoteProductToIntent, productPlan, normValue, priceValue, formatPrice, recurringBrands, type Attribute } from './things'
 import type { Item } from './database.types'
 
 // Minimal thing factory — only the fields the thread logic reads matter.
@@ -18,6 +18,32 @@ function product(attributes: Attribute[]): Item {
 }
 
 const a = (facet: Attribute['facet'], value: string): Attribute => ({ facet, value })
+
+describe('recurringBrands', () => {
+  const withBrand = (brand: string | null) => thing({ metadata: { kind: 'product', title: 't', brand } })
+
+  it('surfaces only brands at or above the threshold, most-saved first', () => {
+    const items = [
+      withBrand('Acne'), withBrand('Acne'), withBrand('Acne'),
+      withBrand('Toteme'), withBrand('Toteme'),
+      withBrand('Cos'),
+    ]
+    expect(recurringBrands(items)).toEqual([{ brand: 'Acne', count: 3 }])
+  })
+
+  it('matches case-insensitively but keeps the first-seen spelling', () => {
+    const items = [withBrand('Zara'), withBrand('ZARA'), withBrand('zara')]
+    expect(recurringBrands(items, 2)).toEqual([{ brand: 'Zara', count: 3 }])
+  })
+
+  it('ignores items with no brand and non-products', () => {
+    const items = [
+      withBrand(null), withBrand('  '),
+      thing({ metadata: { kind: 'inspiration', brand: 'Mood' } as never }),
+    ]
+    expect(recurringBrands(items, 1)).toEqual([])
+  })
+})
 
 describe('normValue', () => {
   it('trims and lowercases', () => {

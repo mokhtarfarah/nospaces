@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { DomainSwitcher } from '../components/DomainSwitcher'
+import { WishlistIcon, TasteIcon } from '../components/navIcons'
 import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
 import { thingImageRaw } from '../lib/thingImage'
@@ -12,7 +13,7 @@ import {
   parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, inspirationMeta, newCandidateId,
   promoteIntentToProduct, demoteProductToIntent, productPlan,
   EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, itemAttributes, THREAD_MIN_ITEMS, priceValue, formatPrice,
-  boardTasteSummary, readTasteFit, readTasteSynthesis,
+  boardTasteSummary, readTasteFit, readTasteSynthesis, recurringBrands,
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord, type BoardTasteSummary,
 } from '../lib/things'
 import { uploadMoodImage, moodSrc } from '../lib/mood'
@@ -48,14 +49,25 @@ function loadView(): ViewMode {
   try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
 }
 
-// The two halves of the Things domain: the buyable wishlist (products + plans) and
-// the mood board (pure-inspiration images). One toggle flips between them; both feed
-// the same taste read (the thread masthead reads across both). Persisted.
-type Tab = 'wishlist' | 'mood' | 'taste'
+// Two main pages, mirroring the media domain (library / taste): the buyable
+// WISHLIST (products + plans), and TASTE — the read-back mirror. Taste in turn has
+// two sub-tabs (profile · moodboard), just as the media taste page splits into
+// profile · desert island. The moodboard (pure-inspiration images) lives under
+// taste because it feeds the same aesthetic read the profile reflects. Persisted.
+type Tab = 'wishlist' | 'taste'
 const TAB_KEY = 'nospaces.thingsTab'
-const TABS: Tab[] = ['wishlist', 'mood', 'taste']
+const TABS: Tab[] = ['wishlist', 'taste']
 function loadTab(): Tab {
   try { const t = localStorage.getItem(TAB_KEY); return TABS.includes(t as Tab) ? (t as Tab) : 'wishlist' } catch { return 'wishlist' }
+}
+
+// The taste page's two sub-tabs. Profile is the read (the headline); moodboard is
+// the image wall you add inspiration to.
+type TasteSub = 'profile' | 'moodboard'
+const TASTE_SUB_KEY = 'nospaces.thingsTasteSub'
+const TASTE_SUBS: TasteSub[] = ['profile', 'moodboard']
+function loadTasteSub(): TasteSub {
+  try { const s = localStorage.getItem(TASTE_SUB_KEY); return TASTE_SUBS.includes(s as TasteSub) ? (s as TasteSub) : 'profile' } catch { return 'profile' }
 }
 
 // Category values a thing carries (for the filter row). Products use their own
@@ -116,9 +128,17 @@ export function ThingsScreen() {
   const [openIntentId, setOpenIntentId] = useState<string | null>(null)
   const [openProductId, setOpenProductId] = useState<string | null>(null)
   const [openMoodId, setOpenMoodId] = useState<string | null>(null)
-  // Wishlist vs mood board — the two halves of Things.
+  // Wishlist vs taste — the two main pages of Things.
   const [tab, setTabRaw] = useState<Tab>(loadTab)
   const setTab = (t: Tab) => { setTabRaw(t); setAddMenu(false); try { localStorage.setItem(TAB_KEY, t) } catch { /* private mode */ } }
+  // Taste's sub-tab (profile · moodboard), persisted so the page reopens where you left it.
+  const [tasteSub, setTasteSubRaw] = useState<TasteSub>(loadTasteSub)
+  const setTasteSub = (s: TasteSub) => { setTasteSubRaw(s); try { localStorage.setItem(TASTE_SUB_KEY, s) } catch { /* private mode */ } }
+  // The moodboard now lives under taste — true only when both are selected. Used by
+  // the paste handler, the FAB, and the content switch below.
+  const onMoodboard = tab === 'taste' && tasteSub === 'moodboard'
+  // Jump straight to the moodboard (e.g. right after adding an image).
+  const goMoodboard = () => { setTab('taste'); setTasteSub('moodboard') }
   // Speed-dial for the floating +: open reveals the two capture paths.
   const [addMenu, setAddMenu] = useState(false)
   // Responsive grid: more columns as the board gets wider (≈2 on a phone, up to
@@ -155,7 +175,7 @@ export function ThingsScreen() {
   useEffect(() => { fetchCaptures().then(cs => setCaptures(cs.filter(isThingsCapture))) }, [])
   // Desktop nicety: paste a copied image anywhere on the mood tab to add it.
   useEffect(() => {
-    if (tab !== 'mood') return
+    if (!onMoodboard) return
     const onPaste = (e: ClipboardEvent) => {
       const list = e.clipboardData?.items
       if (!list) return
@@ -165,7 +185,7 @@ export function ThingsScreen() {
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab])
+  }, [onMoodboard])
   const captureFailures = useMemo(() => captures.filter(isFailure).length, [captures])
   const [flash, setFlash] = useState<string | null>(null)
   // Toast for the vision auto-tag result. Success auto-fades; a failure stays put
@@ -281,7 +301,7 @@ export function ThingsScreen() {
   // (one summary toast) so the loop doesn't flicker through a dozen flashes.
   async function addMoodFiles(files: File[]) {
     if (!user || files.length === 0) return
-    setTab('mood')
+    goMoodboard()
     const single = files.length === 1
     const saved: { id: string; url: string }[] = []
     for (let i = 0; i < files.length; i++) {
@@ -312,7 +332,7 @@ export function ThingsScreen() {
     if (!/^https?:\/\//i.test(u)) { showFlash('paste a full image link (https://…)', true); return }
     const id = await addItem('inspiration', 'thing', null, null, { kind: 'inspiration', image: u, hosted: false, sourceUrl: u })
     setMoodLink(false)
-    setTab('mood')
+    goMoodboard()
     if (id) void autoTagMood(id, u)
   }
 
@@ -437,9 +457,9 @@ export function ThingsScreen() {
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>
                 {tab === 'taste'
-                  ? 'taste'
-                  : tab === 'mood'
-                  ? (moods.length === 0 ? 'mood board' : `${moods.length} image${moods.length === 1 ? '' : 's'}`)
+                  ? (tasteSub === 'moodboard'
+                      ? (moods.length === 0 ? 'mood board' : `${moods.length} image${moods.length === 1 ? '' : 's'}`)
+                      : 'taste')
                   : (things.length === 0 ? 'the board' : `${things.length} on the board`)}
               </div>
               <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>things</h1>
@@ -499,26 +519,36 @@ export function ThingsScreen() {
 
         <div style={{ padding: '16px 16px 120px' }}>
           {tab === 'taste' ? (
-            <TasteTab
-              items={tasteItems}
-              board={board}
-              synthesis={thingsTaste ?? null}
-              onSave={setThingsTaste}
-            />
-          ) : tab === 'mood' ? (
             <>
-              {moods.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                  {untaggedMoods.length > 0
-                    ? <button onClick={tagAllMoods} disabled={taggingMoods} style={quietLink}>
-                        {taggingMoods ? 'reading taste…' : `read taste for ${untaggedMoods.length} untagged`}
-                      </button>
-                    : <span />}
-                  <button onClick={() => setMoodLink(true)} style={quietLink}>paste a link</button>
-                </div>
+              {/* Sub-tabs — profile · moodboard, mirroring the media taste page's
+                  profile · desert island split. */}
+              <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 18 }}>
+                <TabChip label="profile" active={tasteSub === 'profile'} onClick={() => setTasteSub('profile')} />
+                <TabChip label="moodboard" active={tasteSub === 'moodboard'} onClick={() => setTasteSub('moodboard')} />
+              </div>
+              {tasteSub === 'moodboard' ? (
+                <>
+                  {moods.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                      {untaggedMoods.length > 0
+                        ? <button onClick={tagAllMoods} disabled={taggingMoods} style={quietLink}>
+                            {taggingMoods ? 'reading taste…' : `read taste for ${untaggedMoods.length} untagged`}
+                          </button>
+                        : <span />}
+                      <button onClick={() => setMoodLink(true)} style={quietLink}>paste a link</button>
+                    </div>
+                  )}
+                  <MoodWall moods={sortedMoods} cols={cols} onOpen={setOpenMoodId}
+                    onAddUpload={() => moodFileRef.current?.click()} onAddLink={() => setMoodLink(true)} />
+                </>
+              ) : (
+                <TasteTab
+                  items={tasteItems}
+                  board={board}
+                  synthesis={thingsTaste ?? null}
+                  onSave={setThingsTaste}
+                />
               )}
-              <MoodWall moods={sortedMoods} cols={cols} onOpen={setOpenMoodId}
-                onAddUpload={() => moodFileRef.current?.click()} onAddLink={() => setMoodLink(true)} />
             </>
           ) : (
           <>
@@ -554,7 +584,7 @@ export function ThingsScreen() {
                       both list and grid view (Farah, s75). It never degrades to a flat
                       row, so a plan reads the same however the saved items are laid out. */}
                   <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x proximity' }}>
-                    {decidingItems.map(item => <DecidingCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />)}
+                    {decidingItems.map(item => <DecidingCard key={item.id} item={item} view={view} onOpen={() => setOpenIntentId(item.id)} />)}
                   </div>
                 </section>
               )}
@@ -734,8 +764,10 @@ export function ThingsScreen() {
       {addMenu && (
         <div onClick={() => setAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 98 }} />
       )}
-      {/* Taste is a read-only mirror — nothing to add there, so the FAB hides. */}
-      {tab !== 'taste' && (
+      {/* The FAB shows on the wishlist (speed-dial: product / plan) and on the
+          moodboard (one tap → image picker). The taste PROFILE is a read-only
+          mirror — nothing to add there — so the FAB hides. */}
+      {(tab === 'wishlist' || onMoodboard) && (
       <div style={{ position: 'fixed', right: 20, bottom: 'calc(56px + env(safe-area-inset-bottom) + 18px)', zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
         {tab === 'wishlist' && addMenu && (
           <>
@@ -744,8 +776,8 @@ export function ThingsScreen() {
           </>
         )}
         <button
-          onClick={() => tab === 'mood' ? moodFileRef.current?.click() : setAddMenu(m => !m)}
-          aria-label={tab === 'mood' ? 'add inspiration' : addMenu ? 'close add menu' : 'add'}
+          onClick={() => onMoodboard ? moodFileRef.current?.click() : setAddMenu(m => !m)}
+          aria-label={onMoodboard ? 'add inspiration' : addMenu ? 'close add menu' : 'add'}
           style={{
             width: 50, height: 50, borderRadius: '50%', background: INK, color: '#fff', border: 'none',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -760,9 +792,9 @@ export function ThingsScreen() {
       </div>
       )}
 
-      {/* The Things bottom nav — the wishlist/mood toggle, mirroring the media nav
-          (library/taste/discover). The media BottomNav is hidden on /things (App.tsx),
-          so this is the only bar here. Grows to a 3rd 'taste' tab when synthesis ships. */}
+      {/* The Things bottom nav — two pages (wishlist / taste), mirroring the media
+          domain's library / taste. The media BottomNav is hidden on /things
+          (App.tsx), so this is the only bar here. */}
       <ThingsNav tab={tab} onTab={setTab} />
     </div>
   )
@@ -784,9 +816,6 @@ function ThingsNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
       <button onClick={() => onTab('wishlist')} style={{ ...base, color: tab === 'wishlist' ? '#111' : '#999' }}>
         <WishlistIcon /> wishlist
       </button>
-      <button onClick={() => onTab('mood')} style={{ ...base, color: tab === 'mood' ? '#111' : '#999' }}>
-        <MoodIcon /> mood
-      </button>
       <button onClick={() => onTab('taste')} style={{ ...base, color: tab === 'taste' ? '#111' : '#999' }}>
         <TasteIcon /> taste
       </button>
@@ -794,33 +823,6 @@ function ThingsNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
   )
 }
 
-function WishlistIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
-    </svg>
-  )
-}
-
-function MoodIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="8" height="8" rx="1" /><rect x="13" y="3" width="8" height="8" rx="1" />
-      <rect x="3" y="13" width="8" height="8" rx="1" /><rect x="13" y="13" width="8" height="8" rx="1" />
-    </svg>
-  )
-}
-
-// Taste — a prism/eye mark for the read-back mirror (mirrors the media Taste tab's
-// role: the set reflected back as an identity).
-function TasteIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
 
 /* ---------- the taste tab (the board read back as a taste mirror) ---------- */
 
@@ -841,6 +843,8 @@ function TasteTab({ items, board, synthesis, onSave }: {
   const [err, setErr] = useState<string | null>(null)
   const [colors, setColors] = useState<string[]>([])
   const tagged = useMemo(() => items.filter(t => itemAttributes(t).length > 0).length, [items])
+  // Brands you keep reaching for — the makers' echo of the keyword thread.
+  const brands = useMemo(() => recurringBrands(items), [items])
   // The keyword thread is the signal gate — it only appears once enough items recur
   // (THREAD_MIN_ITEMS + RECUR_MIN), the same honest bar the old masthead used.
   const hasSignal = board.thread.length > 0
@@ -913,6 +917,26 @@ function TasteTab({ items, board, synthesis, onSave }: {
         {err && <div style={{ fontSize: 12, color: '#B4413C', marginTop: 8 }}>{err}</div>}
       </div>
 
+      {/* Always reaching for — brands that recur across the board (≥3 saves). The
+          makers' counterpart to the keyword thread; mirrors the media taste read's
+          "always loved" creators. */}
+      {brands.length > 0 && (
+        <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 30, paddingTop: 22 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED, marginBottom: 10 }}>
+            always reaching for
+          </div>
+          <div style={{ fontSize: 14, color: INK, lineHeight: 1.7 }}>
+            {brands.map((b, i) => (
+              <span key={b.brand}>
+                {i > 0 && <span style={{ color: MUTED }}> · </span>}
+                {b.brand}
+                <span style={{ color: MUTED, fontSize: 11 }}> ×{b.count}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Colour story — the real recurring hues, sampled from the board's images. */}
       {colors.length >= 3 && (
         <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 30, paddingTop: 22 }}>
@@ -970,11 +994,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>{children}</div>
 }
 
-// The deciding-zone card: a plan is a *question*, not a product, so it reads as a
-// compact TEXT box (Farah s75) — the need, a small status (N options / leaning /
-// decided), and the front-runner's name. No photo: a plan isn't a thing yet, so it
-// stays small and word-driven, clearly apart from the photo tiles in the saved grid.
-function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
+// The deciding-zone card. In LIST view a plan reads as a compact TEXT box (Farah
+// s75) — a plan is a *question*, not a thing yet, so it stays word-driven. But in
+// GRID view it reverts to a picture-cover card (Farah s78) so it sits in the same
+// visual family as the photo tiles below it: the front-runner's image as the cover,
+// the need as the title, and the status line beneath.
+function DecidingCard({ item, view, onOpen }: { item: Item; view: ViewMode; onOpen: () => void }) {
   const m = intentMeta(item)
   const resolved = m.winner != null
   const n = m.candidates.length
@@ -991,6 +1016,30 @@ function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
     : 'no options yet'
   const W = 168
 
+  // GRID — picture-cover, matching the saved ProductCards. The cover is the card
+  // the plan is "about": the winner, else what you're leaning to, else the first
+  // option with a photo. The pile cue (a card peeking behind) still rides along
+  // while you're choosing.
+  if (view === 'grid') {
+    const lead = winner ?? lean ?? m.candidates.find(c => c.image) ?? m.candidates[0] ?? null
+    return (
+      <button onClick={onOpen} style={{
+        position: 'relative', flexShrink: 0, width: W, scrollSnapAlign: 'start',
+        textAlign: 'left', color: INK, border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'block',
+      }}>
+        {!resolved && n > 1 && (
+          <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#E2E4E7', border: `1px solid ${LINE}`, borderRadius: 12, zIndex: -1 }} />
+        )}
+        <Thumb src={lead?.image ?? null} referer={lead?.url ?? null} />
+        <div style={{ marginTop: 6 }}>
+          <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+          <div style={{ fontSize: 11, color: MUTED, marginTop: 2, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{detail}</div>
+        </div>
+      </button>
+    )
+  }
+
+  // LIST — the compact text box.
   return (
     <button onClick={onOpen} style={{
       position: 'relative', flexShrink: 0, width: W, scrollSnapAlign: 'start',

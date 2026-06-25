@@ -1,4 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { LibraryIcon, TasteIcon, DiscoverIcon } from './navIcons'
 
 export function BottomNav() {
   const location = useLocation()
@@ -82,34 +83,5 @@ export function BottomNav() {
         </NavLink>
       </nav>
     </>
-  )
-}
-
-function LibraryIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <rect x="3" y="4" width="4" height="16" rx="1" />
-      <rect x="10" y="4" width="4" height="16" rx="1" />
-      <rect x="17" y="4" width="4" height="16" rx="1" />
-    </svg>
-  )
-}
-
-function DiscoverIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M12 3 L14.5 9.5 L21 12 L14.5 14.5 L12 21 L9.5 14.5 L3 12 L9.5 9.5 Z" />
-    </svg>
-  )
-}
-
-function TasteIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-      <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="3" />
-      <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="3" />
-    </svg>
   )
 }

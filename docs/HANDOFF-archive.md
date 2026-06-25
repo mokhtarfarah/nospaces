@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 78 (2026-06-24) — Things taste restructure + cross-domain consistency
+
+Discussion-led build session. Started on cross-domain consistency (taste/mood vs taste/discover), landed several concrete changes. All on `main`-ready working tree (not committed — Farah hadn't asked to push as of session end), 93 Vitest green, typecheck/eslint/build clean. **Nothing runtime-verified — board behind Google login** (see ROADMAP "Things taste restructure — runtime-verify").
+
+**The discussion (consistency).** Mapped both domains' 3-tab navs. Found the real asymmetry: media has a step *after* the taste mirror (discover, which eats the taste profile) so taste sits mid-nav; Things had no such step so taste sat last. Conclusion: don't force a 1:1 mirror — lock the shared spine instead. Farah then proposed the cleaner fix (built below): make Things **two main pages** (wishlist · taste) with taste split into **profile · moodboard** sub-tabs, exactly mirroring media's taste = profile · desert island. Product recommendations stay **parked** — Farah's blocker (can't cheaply tell a genuine rec from sponsored/hallucinated; products have no TMDB/RSS-style trustworthy source) is the right one.
+
+**Shipped:**
+- **`DecidingCard` grid revert** (`ThingsScreen.tsx`) — list view = compact text box (unchanged); grid view = picture-cover card using the front-runner's image (winner → leaning → first option with a photo), pile cue still peeking. Closes the s76 polish item.
+- **"Always reaching for" — recurring brands** on the taste profile. New `recurringBrands(items, min=3)` in `lib/things.ts` (products only, case-insensitive, ≥3 = a real pattern not coincidence; 3 unit tests). Rendered above the colour story, mirroring media's "always loved" creators. Threshold is one arg to tune.
+- **Taste icon now matches media**, then **nav icons pulled into one source of truth** — new `src/components/navIcons.tsx` exports `LibraryIcon / TasteIcon / DiscoverIcon / WishlistIcon`; both `BottomNav.tsx` and `ThingsScreen.tsx` import from it (local copies deleted). The taste smiley is now physically one icon across domains — no more sync-by-comment. (Farah: icons should match across domains; a future Things discover reuses the same sparkle.)
+- **The restructure itself** — `Tab` is now `'wishlist' | 'taste'`; new `TasteSub = 'profile' | 'moodboard'` (persisted, `nospaces.thingsTasteSub`). The old 3rd "mood" bottom tab is gone (`MoodIcon` deleted); moodboard content + its untagged-backfill/paste-link row moved under taste's moodboard sub-tab. FAB now shows on wishlist (speed-dial) and moodboard (image picker), hides on taste/profile. Paste-to-add and the post-add jump (`goMoodboard`) follow the moodboard one level down. Header kicker + `onMoodboard` derived flag updated throughout.
+
+**Trade-off accepted:** adding a mood image is now one tap deeper (taste → moodboard → +). Softened by keeping the add-FAB prominent on the moodboard sub-tab.
+
+---
+
 ### Session 77 (2026-06-24) — Taste synthesis for Things → the editorial taste tab
 
 Build session. Shipped the queued **taste synthesis** as a 3rd Things bottom-nav tab, then reworked it twice on Farah's feedback into an editorial spread, and fixed mood-image auto-tagging. All on `main`, 90 Vitest green, typecheck/eslint/build clean each push. **NOT runtime-verified** beyond Farah's live eyeballing (board behind Google login) — the colour ribbon especially (browser canvas) is unseen; see ROADMAP "Taste tab — runtime-verify the colour story".

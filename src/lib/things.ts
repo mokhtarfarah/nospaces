@@ -489,6 +489,29 @@ export function boardTasteSummary(items: Item[], topPerFacet = 5): BoardTasteSum
 }
 
 /**
+ * Brands you keep reaching for. The keyword thread reads the *aesthetic*; this
+ * reads the *makers* — a brand that recurs across saved products is a taste signal
+ * of its own. Only products carry a brand (mood images don't), and the default
+ * threshold of 3 keeps it to genuine patterns rather than coincidence. Brand
+ * names are matched case-insensitively but shown as first seen.
+ */
+export function recurringBrands(items: Item[], min = 3): { brand: string; count: number }[] {
+  const map = new Map<string, { brand: string; count: number }>()
+  for (const item of items) {
+    if (kindOf(item) !== 'product') continue
+    const b = productMeta(item).brand?.trim()
+    if (!b) continue
+    const key = b.toLowerCase()
+    const e = map.get(key) ?? { brand: b, count: 0 }
+    e.count++
+    map.set(key, e)
+  }
+  return Array.from(map.values())
+    .filter(e => e.count >= min)
+    .sort((a, b) => b.count - a.count)
+}
+
+/**
  * The per-item "how this fits your taste" one-liner (Haiku, text-only, ~$0.001).
  * Reads the item's already-extracted taste tags against the board summary — never
  * an image. Never auto-runs: called on an explicit tap, the result cached on
