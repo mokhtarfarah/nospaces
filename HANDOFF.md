@@ -21,7 +21,13 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ## ▶ Next session (76)
 
-**FIRST — eyeball the s75 Things polish on the live board** (couldn't drive it live this session — login wall). Specifically: does the **taste-fit voice** read better now (tap **re-read** on a product or two — old cached lines keep the wooden voice until then)? Do the **deciding card**, the **flat list rows**, and the **narrowed product sheet** look right? Farah's open worry: with a clear, narrow aesthetic the taste-fit line could get repetitive fast — watch for that.
+**FIRST — open by telling Farah what to eyeball** (s75 shipped a lot of Things polish that couldn't be driven live here — login wall). The checklist:
+
+1. **Taste-fit voice** — tap **re-read** on a couple of products (old cached lines keep the wooden voice until you do). Reads more *aesthetic* than *categorical* now? Less formulaic? **Open worry:** with a clear, narrow aesthetic the line could get repetitive fast — watch for it.
+2. **Deciding card** — compact text box: need leads, count/front-runner on the line below (no number pile-up under "DECIDING · N"). Looks neat in both grid and list?
+3. **Things list view** — flat hairline rows, like the media Library.
+4. **Product sheet** — narrowed so the panel hugs the column (no narrow strip floating in a wide white box); actions all one quiet-link style; the "read taste from photo" recovery for an untagged save.
+5. **Library** — the view (list/grid) switcher stays pinned when you scroll (no longer folds away).
 
 **Then build (queued, in order):**
 1. **Mood board** — a collection of pure-inspiration images (not purchasable); free (just saved images). Spec it the same way before building.
