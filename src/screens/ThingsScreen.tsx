@@ -525,7 +525,7 @@ export function ThingsScreen() {
                   ? (tasteSub === 'moodboard'
                       ? (moods.length === 0 ? 'mood board' : `${moods.length} image${moods.length === 1 ? '' : 's'}`)
                       : 'taste')
-                  : (things.length === 0 ? 'the board' : `${things.length} on the board`)}
+                  : (things.length === 0 ? 'wishlist' : `${things.length} on your wishlist`)}
               </div>
               <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>things</h1>
             </div>
@@ -2360,7 +2360,7 @@ function Empty() {
   return (
     <div style={{ textAlign: 'center', padding: '48px 20px', color: MUTED }}>
       <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-        your board is empty.<br />
+        your wishlist is empty.<br />
         tap <span style={{ fontWeight: 600, color: INK }}>+</span> to save a product you love, or plan a purchase you're weighing.
       </div>
     </div>
