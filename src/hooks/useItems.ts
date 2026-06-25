@@ -202,11 +202,14 @@ export function useItems() {
   }
 
   // Count duplicate items (same type + title + creator, ignoring case/punctuation).
+  // Media only — things (products, plans, mood images) live in their own domain and
+  // legitimately repeat titles (every mood image is titled "inspiration").
   function duplicateCount(): number {
     const norm = (s: string) => (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, '')
     const seen = new Set<string>()
     let dupes = 0
     for (const it of items) {
+      if (it.type === 'thing') continue
       const k = `${it.type}|${norm(it.title)}|${norm(it.creator ?? '')}`
       if (seen.has(k)) dupes++
       else seen.add(k)
@@ -221,6 +224,7 @@ export function useItems() {
     const norm = (s: string) => (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, '')
     const groups = new Map<string, Item[]>()
     for (const it of items) {
+      if (it.type === 'thing') continue
       const k = `${it.type}|${norm(it.title)}|${norm(it.creator ?? '')}`
       if (!groups.has(k)) groups.set(k, [])
       groups.get(k)!.push(it)

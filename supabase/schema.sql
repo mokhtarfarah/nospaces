@@ -177,3 +177,29 @@ create policy "cutouts owner update"
 create policy "cutouts owner delete"
   on storage.objects for delete
   using (bucket_id = 'thing-cutouts' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ---------------------------------------------------------------------------
+-- Storage bucket for mood-board images (s76). Pure-inspiration uploads (file
+-- pick / clipboard paste) are stored here at save (see src/lib/mood.ts); the
+-- mood wall renders them directly. Public read so a plain <img> can load them;
+-- writes are scoped to each user's own folder ("<uid>/<rand>.<ext>").
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+  values ('mood-images', 'mood-images', true)
+  on conflict (id) do nothing;
+
+create policy "mood public read"
+  on storage.objects for select
+  using (bucket_id = 'mood-images');
+
+create policy "mood owner insert"
+  on storage.objects for insert
+  with check (bucket_id = 'mood-images' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "mood owner update"
+  on storage.objects for update
+  using (bucket_id = 'mood-images' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "mood owner delete"
+  on storage.objects for delete
+  using (bucket_id = 'mood-images' and auth.uid()::text = (storage.foldername(name))[1]);

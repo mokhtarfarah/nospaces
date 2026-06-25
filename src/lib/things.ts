@@ -2,9 +2,11 @@
 //
 // Everything rides on the existing `Item` model (no migration): a thing is just an
 // item with `type:'thing'`. The shape lives in `metadata.kind`:
-//   - 'product' — a concrete thing you've saved (a specific coat, a specific lamp)
-//   - 'intent'  — a need with no chosen product yet ("black clogs"), holding the
-//                 candidates you're weighing in `metadata.candidates[]`
+//   - 'product'     — a concrete thing you've saved (a specific coat, a specific lamp)
+//   - 'intent'      — a need with no chosen product yet ("black clogs"), holding the
+//                     candidates you're weighing in `metadata.candidates[]`
+//   - 'inspiration' — a pure-inspiration image on the mood board (s76): not buyable,
+//                     no price/link, just a picture whose look feeds the taste read.
 //
 // Slice 0 (gut-check) is about whether the deliberation flow feels good, so the
 // star here is the intent → candidates → leaning → "pick this one" loop. Attribute
@@ -154,6 +156,26 @@ export type ProductFields = {
 export type Candidate = ProductFields & { id: string }
 
 export type ProductMeta = ProductFields & { kind: 'product' }
+
+/**
+ * A mood-board image (s76): pure inspiration, not a purchasable product. No price,
+ * no buy-link, no deliberation — just an image whose *look* feeds the taste read.
+ * `image` is either a Supabase Storage URL (an upload) or a pasted web image URL;
+ * `hosted` flags the former so the wall can show it directly (a pasted URL is shown
+ * through the same proxy products use, in case the source hotlink-blocks). The
+ * `attributes` are vision-read the same way a product photo is (palette/material/
+ * vibe), so a mood image contributes to the board's thread like any tagged thing.
+ */
+export type InspirationMeta = {
+  kind: 'inspiration'
+  image: string | null
+  /** Where the image came from, if pasted from a page — tappable on the detail. */
+  sourceUrl?: string | null
+  /** True when `image` is one of our Storage uploads (show it directly). */
+  hosted?: boolean
+  attributes?: Attribute[]
+  note?: string | null
+}
 export type IntentMeta = {
   kind: 'intent'
   candidates: Candidate[]
@@ -165,10 +187,12 @@ export type IntentMeta = {
   brief?: string | null
 }
 
-export function kindOf(item: Item): 'product' | 'intent' | null {
+export type Kind = 'product' | 'intent' | 'inspiration'
+
+export function kindOf(item: Item): Kind | null {
   if (item.type !== 'thing') return null
   const k = (item.metadata as { kind?: string })?.kind
-  return k === 'product' || k === 'intent' ? k : null
+  return k === 'product' || k === 'intent' || k === 'inspiration' ? k : null
 }
 
 export function isThing(item: Item): boolean {
@@ -200,11 +224,25 @@ export function productMeta(item: Item): ProductMeta {
   }
 }
 
+export function inspirationMeta(item: Item): InspirationMeta {
+  const m = (item.metadata ?? {}) as Partial<InspirationMeta>
+  return {
+    kind: 'inspiration',
+    image: m.image ?? null,
+    sourceUrl: m.sourceUrl ?? null,
+    hosted: m.hosted ?? false,
+    attributes: normAttributes(m.attributes),
+    note: m.note ?? null,
+  }
+}
+
 /**
  * The taste tags a thing contributes to the board's thread.
  * - a product → its own attributes
  * - a *decided* intent → the winning candidate's attributes (the committed choice)
  * - an undecided intent → nothing (not yet a settled signal)
+ * - an inspiration (mood-board image) → its vision-read attributes (Farah, s76:
+ *   the mood board feeds the same taste read, alongside the saved wishlist)
  *
  * Gated on `winner`, not status: the moment you pick a winner the plan is
  * "decided" and its choice counts, even before you mark it owned. (A decided plan
@@ -214,6 +252,7 @@ export function productMeta(item: Item): ProductMeta {
 export function itemAttributes(item: Item): Attribute[] {
   const k = kindOf(item)
   if (k === 'product') return productMeta(item).attributes ?? []
+  if (k === 'inspiration') return inspirationMeta(item).attributes ?? []
   if (k === 'intent') {
     const m = intentMeta(item)
     if (m.winner) return normAttributes(m.candidates.find(c => c.id === m.winner)?.attributes)

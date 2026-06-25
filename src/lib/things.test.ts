@@ -67,6 +67,11 @@ describe('itemAttributes', () => {
     expect(itemAttributes(thing({ type: 'film', metadata: {} }))).toEqual([])
   })
 
+  it('reads a mood-board image’s own attributes (it feeds the thread too)', () => {
+    const mood = thing({ metadata: { kind: 'inspiration', image: 'https://x/y.png', attributes: [a('palette', 'muted')] } })
+    expect(itemAttributes(mood)).toEqual([a('palette', 'muted')])
+  })
+
   it('returns nothing for an unresolved intent (not yet a settled signal)', () => {
     const intent = thing({
       status: 'want_to',

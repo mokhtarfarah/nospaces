@@ -4,6 +4,27 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 76 (2026-06-24) — Mood board (the inspiration half of Things)
+
+Eyeball-then-build session. Opened with Farah's s75 eyeball feedback (all logged to `docs/ROADMAP.md` → "Library + Things polish, s76" for a separate pass — deciding-card grid revert, product-sheet link rework, 7 Library tweaks incl. two flagged for-discussion: scroll-lock stickiness + music-library clutter; plus a parked note on the two big capture pain points — image-share + paywalled-article extraction). Then **built the mood board** (next queued Things build).
+
+**Shipped to `main`** (90 Vitest green — +1 inspiration `itemAttributes` case; typecheck/eslint/build clean). **NOT deployed, NOT runtime-verified** (board behind Google login) and **blocked on a one-time Supabase step** (see below).
+
+**Spec (locked with Farah before building):** a `wishlist | mood` toggle at the top of Things; mood board = pure-inspiration images, not buyable; per-image = image + optional source link (revert to pure-image if links get unwieldy); capture = upload / paste copied image / paste image link (**no email-in** — would collide with a future "email a product screenshot" router); **each image vision-tagged (~1¢) so it feeds the same taste read** as the wishlist. Cost answered for Farah: ~1¢/image, ~2000 images to reach the $20 cap — negligible at real use.
+
+**Build:**
+- `lib/things.ts` — new `metadata.kind: 'inspiration'` (`InspirationMeta`, `inspirationMeta()`); `kindOf` + `itemAttributes` extended; a mood image contributes its vision-read attributes to the thread like any tagged thing.
+- `lib/mood.ts` (new) — `uploadMoodImage()` (→ `mood-images` Storage bucket, per-user path, 12MB cap) + `moodSrc()` (uploads load direct; pasted URLs go through the `/api/thing-image` proxy so hotlink-protected sources still render).
+- `ThingsScreen.tsx` — `tab` state (persisted); `things` = product+intent only, `moods` = inspiration, **`tasteItems = things + moods`** feeds `boardTasteSummary`/`ThreadMasthead` (the masthead reads across both). `MoodWall` (CSS-columns masonry, natural aspect ratios — a pin-up, not cropped tiles), `MoodTile`, `MoodEmpty`, `MoodComposer` (file / clipboard-paste / link), `MoodSheet` (image + tags + source + note + remove + read-taste recovery). FAB is tab-aware (mood = one tap → composer; wishlist = the speed-dial). `addMood()` + `autoTagMood()` (vision read, no cutout).
+- `useItems.ts` — duplicate-finder now skips `type:'thing'` (mood images all share the title "inspiration"; products could also collide — fixes both).
+- `supabase/schema.sql` — `mood-images` public bucket + owner-scoped RLS (mirror of `thing-cutouts`).
+
+**⚠️ One-time before uploads work live:** run the `mood-images` block in `supabase/schema.sql` in Supabase. Until then file uploads fail; pasted image *links* still save.
+
+**Next (s77):** run that SQL + deploy + eyeball; then build **Taste synthesis for Things** (now unblocked — `boardTasteSummary(tasteItems)` already includes mood images); then the s76 polish session.
+
+---
+
 ### Session 75 (2026-06-24) — per-item taste-fit one-liner + a long Things polish pass
 
 All **shipped & deployed to `main`** (every step pushed + Vercel-built; 89 Vitest green — 4 new `boardTasteSummary` cases — typecheck/eslint/build clean throughout). Couldn't drive live (login wall); Farah reviewed on the deployed board between rounds.
