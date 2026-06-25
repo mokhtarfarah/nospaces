@@ -4,6 +4,27 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 79 (2026-06-25) — bug-fix + Things-board polish pass
+
+Bug-fixing session that worked through the s76 "Library + Things polish" queue plus a fresh image regression. **5 commits pushed to `main`** (`7302bf5`, `a95a08b`, `9b25ca7` are the substantive ones), 93 Vitest green, typecheck/eslint/build clean throughout. Most visual work is **behind the Google login wall, so verified by typecheck + the new no-auth harness only** — Farah confirmed the sneaker fix live; the rest is her eyeball next session.
+
+**First, a correction:** HANDOFF wrongly said s78 was uncommitted — it was committed + pushed at `9ee86e4`. Fixed.
+
+**New dev capability — no-auth preview.** `App.tsx` already had a `skipAuth` (DEV && no `VITE_SUPABASE_URL`). Wired it into a launch config: **`nospaces-noauth`** (`.claude/start-dev-noauth.sh`, port 5180) clears the Supabase URL so the UI is explorable without Google login. **Limit: no Supabase = empty data**, so it only verifies layout/render-safety, not anything data-driven (filter rows, the product sheet, scrolling). This is how the taste sub-tab fix below got truly verified.
+
+**Shipped:**
+- **Taste sub-tabs de-underlined** (`ThingsScreen.tsx` `TabChip`) — `profile · moodboard` now match the media taste page (bold+italic active, no rule). Caught a real bug in preview: `borderBottom: undefined` left the UA-default `2px outset` button border showing as a stray underline — fix is explicit `'none'`. Category chips keep their underline via a new `underline` prop.
+- **Capture URL-leak plugged** (`LibraryScreen.tsx`) — the media email-captures list showed Things/product forwards too; now filtered with `!isThingsCapture` (mirrors the board's own filter).
+- **Media filter control → Things' slider icon** (`LibraryScreen.tsx`) with a count pill. **Farah explicitly de-scoped the rest of the "library header redesign"** — she wanted *only* the filter card, NOT the jumpy-header refactor or the list/grid switcher relocation. Those are dropped from the queue.
+- **Deciding-card cutout regression fixed** (the black-background sneaker). Root cause: the s78 picture-cover revert showed each candidate's raw photo, and **deciding-plan candidates never had cutouts** — the polish backfill only ran on `kind === 'product'`. Fix: new `leadCandidate()` helper + `polishLead()` extend the manual **"polish images"** button to a plan's lead candidate (vision-read shot type if unknown, ~1¢/plan; cut out bare product shots; stored on the candidate at a `${itemId}-${candId}` storage key; lifestyle/model leads skipped). DecidingCard now passes the candidate cutout to `Thumb`. **Farah confirmed the sneaker shows on gray after polishing.**
+- **Product sheet restructured — "taste mirror, not a checkout"** (Farah-led step-back). The body now has **no boxed button**: the **title is the link out** (quiet ↗, redundant "view at…" button removed); **tags dropped the filled-pill look** for quiet text (tappable ones faintly underlined); **"mark as got it" demoted** into the bottom hairline admin row (reads "undo got it" when owned) with ownership mirrored as a calm `· got it` status by the price.
+- **Per-item hide for the taste read** — trailing controls are now `re-read · hide`; hide collapses to a quiet "show taste read" link (`metadata.tasteFitHidden`; un-hide is free, never re-runs the paid call). Chose per-item over a global setting (the feature is already opt-in). 
+- **Inline re-read** — new optional `trailing` slot on `NoteProse` puts the refresh at the END of the AI text (product-sheet taste read + taste-profile pull-quote) instead of a paragraph below.
+
+**Open for next session:** the empty-library copy (still parked, Farah's call); the two media *for-discussion* items (scroll-lock stickiness, music-library clutter). Farah may also give feedback on the product-card restructure / taste-read changes once she's seen them live.
+
+---
+
 ### Session 78 (2026-06-24) — Things taste restructure + cross-domain consistency
 
 Discussion-led build session. Started on cross-domain consistency (taste/mood vs taste/discover), landed several concrete changes. All on `main`-ready working tree (not committed — Farah hadn't asked to push as of session end), 93 Vitest green, typecheck/eslint/build clean. **Nothing runtime-verified — board behind Google login** (see ROADMAP "Things taste restructure — runtime-verify").

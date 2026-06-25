@@ -15,19 +15,23 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**Session 78 — Things taste page RESTRUCTURED + cross-domain consistency, committed + pushed to `main` (`9ee86e4`). 93 Vitest green, typecheck + eslint + build clean. NOTHING runtime-verified — board behind Google login.** Things is now **two bottom tabs** (`wishlist · taste`), and **taste splits into sub-tabs `profile · moodboard`** — mirroring media's taste = profile · desert island (the old 3rd "mood" tab is gone, moodboard moved under taste). Also shipped: the **`DecidingCard` grid revert** (picture-cover in grid, text-box in list — closes the s76 item); **"always reaching for"** recurring-brands on the taste profile (`recurringBrands(items, 3)` in `lib/things.ts`, mirrors media "always loved"); and the **taste icon now matches media** (smiley, kept in sync by comment with `BottomNav.tsx`). Product recommendations stay **parked** (no trustworthy non-sponsored/non-hallucinated source). Full detail → archive (s78).
+**Session 79 — bug-fix + Things-board polish pass, all pushed to `main` (latest `9b25ca7`). 93 Vitest green, typecheck + eslint + build clean.** Worked through the s76 polish queue + a fresh image regression. Shipped: **taste sub-tabs de-underlined** (now match media); **capture URL-leak plugged** (media list no longer shows Things forwards); **media filter control → Things' slider icon** (Farah de-scoped the rest of the header redesign — *only* the filter card, no jumpy-header/switcher work); the **deciding-card cutout fix** (the black sneaker — candidates now get cutouts via the "polish images" button, ~1¢/plan; **Farah confirmed it reads on gray**); a **product-sheet restructure** ("taste mirror, not a checkout" — title is the link, got-it demoted to the bottom row + `· got it` status by price, calmer tags, no body button); **per-item hide for the taste read**; and **inline re-read** at the end of AI text. New dev capability: **`nospaces-noauth`** launch config explores the UI without Google login (empty data — layout checks only). Most visual work verified by typecheck + no-auth harness only; the product sheet + taste profile need real data, so they're Farah's eyeball. Full detail → archive (s79).
 
 ---
 
-## ▶ Next session (79) — hear Farah's eyeball, then Library polish
+## ▶ Next session (80) — hear Farah's eyeball, then the remaining for-discussion items
 
-**s78 is committed + pushed (`9ee86e4`).** Hear what she found testing the **restructured Things taste page** live — full verify checklist in `docs/ROADMAP.md` → "Things taste restructure — runtime-verify" (sub-tab chips, moodboard add-FAB one level down, recurring-brands threshold, taste icon, deciding grid card). Still also open from s77: the **colour-story ribbon** (browser-canvas, never seen — likely a `mood-images` CORS block) + the **column-major masonry** order confirm (`docs/ROADMAP.md` → "runtime-verify the colour story").
+**First: hear what Farah found** testing the **s79 product-card restructure** (got-it demoted, calmer tags, title-as-link, per-item hide on the taste read, inline re-read) and the **deciding-card cutout** — all live, none but the sneaker confirmed. She said she'd give feedback this session if any.
 
-Then the queued **Library polish session** (`docs/ROADMAP.md`):
-- **Things:** product-sheet link rework (hyperlink the title, make tags less obtrusive — one calm hierarchy).
-- **Library (media):** failed-capture list leaks product URLs (filter to media-domain only); jumpy header on add (apply the Things fix); filter-icon consistency; list/grid switcher off the header line; **two for-discussion** — scroll-lock stickiness + music-library clutter (pair the latter with the parked media "verdict" reshape).
+Also still pending eyeball from before s79:
+- **s78 Things taste restructure** — verify checklist in `docs/ROADMAP.md` → "Things taste restructure — runtime-verify" (sub-tab chips, moodboard add-FAB one level down, recurring-brands threshold, taste icon).
+- **s77 colour-story ribbon** (browser-canvas, never seen — likely a `mood-images` CORS block) + the **column-major masonry** order confirm (`docs/ROADMAP.md` → "runtime-verify the colour story").
 
-**Carried:** the two big capture pain points (image-share + paywalled-article extraction — own session); iOS share-to-app Shortcut (email-auto-send path); beauty/home/misc taste-neutral products.
+Then the two remaining **for-discussion** items (`docs/ROADMAP.md` → "Library (media) polish"):
+- **scroll-lock stickiness** (don't auto-fix — needs a decision on switcher accessibility);
+- **music-library clutter** (pair with the parked media "verdict" reshape — same area, same session).
+
+**Carried:** the two big capture pain points (image-share + paywalled-article extraction — own session); iOS share-to-app Shortcut (email-auto-send path); beauty/home/misc taste-neutral products; empty-library copy (parked, Farah's call).
 
 **Carried (still open):**
 - Scraper-403 fingerprint wants a real-world check (does a previously-403 shop read now?).
