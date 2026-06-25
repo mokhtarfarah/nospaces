@@ -4,7 +4,6 @@ import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
-import { DomainSwitcher } from '../components/DomainSwitcher'
 import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption, type SortDir, type ReactionFilter } from '../components/ViewSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { DuplicatesSheet } from '../components/DuplicatesSheet'
@@ -567,7 +566,6 @@ export function LibraryScreen() {
           overflow: 'hidden', transition: 'max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease',
           maxHeight: collapsed ? 0 : 110, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 12,
         }}>
-          <DomainSwitcher current="media" />
           {/* Magazine header — small kicker + label + rule (shared treatment) */}
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ minWidth: 0 }}>
@@ -749,7 +747,7 @@ export function LibraryScreen() {
       </header>
 
       {/* List */}
-      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(150px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))' }}>
+      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(190px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))' }}>
         {/* Shows near you — lives in the music view (it's intrinsically music). */}
         {musicOnly && !reviewOnly && (
           <button
@@ -800,6 +798,7 @@ export function LibraryScreen() {
                       showType={categories.length !== 1}
                       onTap={() => (selectMode ? toggleSelect(item.id) : (setActionEdit(false), setActionItem(item)))}
                       onSaveArt={handleSaveArt}
+                      onSaveWiki={handleSaveWiki}
                       selectMode={selectMode}
                       selected={selectedIds.has(item.id)}
                     />
@@ -1085,9 +1084,9 @@ function FilterSheet({
         {/* Trailing spacer instead of container padding-bottom: mobile WebKit
             omits a scroll container's own padding-bottom from the scrollable
             area, clipping the last row. A real element is always scrollable to.
-            Height clears the fixed bottom tab bar (~80px) so the last row isn't
-            hidden behind it when the sheet is short (few tags / search active). */}
-        <div style={{ height: 'calc(88px + env(safe-area-inset-bottom))' }} />
+            Height clears the fixed bottom tab bar + domain-switcher strip (~120px)
+            so the last row isn't hidden behind them when the sheet is short. */}
+        <div style={{ height: 'calc(128px + env(safe-area-inset-bottom))' }} />
       </div>
     </>
   )
@@ -1147,7 +1146,7 @@ function EmptyState({ hasItems, onGuide }: { hasItems: boolean; onGuide: () => v
         {hasItems ? 'nothing matches' : 'your library is empty'}
       </div>
       <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.5 }}>
-        {hasItems ? 'try changing your filters' : 'add the first thing you can’t shut up about.'}
+        {hasItems ? 'try changing your filters' : <>tap <span style={{ fontWeight: 600, color: INK }}>+</span> to add the first thing you can’t shut up about.</>}
       </div>
       {!hasItems && (
         <button
@@ -1355,7 +1354,7 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
 }
 
 // Grid layout cover card. square=true for music (album covers are 1:1).
-function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; onTap: () => void; onSaveArt?: (id: string, url: string) => void; selectMode?: boolean; selected?: boolean }) {
+function GridCard({ item, square, showType, onTap, onSaveArt, onSaveWiki, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; onTap: () => void; onSaveArt?: (id: string, url: string) => void; onSaveWiki?: (id: string, wiki: WikiInfo) => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const artSaved = useRef(false)
@@ -1365,6 +1364,21 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
       onSaveArt?.(item.id, artwork)
     }
   }, [artwork]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Mirror the list row: when /api/art finds nothing, fall back to the Wikipedia
+  // thumbnail (books especially rely on this). Without it, grid covers go blank.
+  const metaWiki: WikiInfo | null = item.metadata?.wikiUrl
+    ? { url: item.metadata.wikiUrl as string, thumbnail: (item.metadata.wikiThumb as string) ?? null, summary: (item.metadata.wikiSummary as string) ?? null }
+    : null
+  const wikiSeed = metaWiki?.summary ? metaWiki : null
+  const { url: wikiUrl, thumbnail: wikiThumb, summary: wikiSummary } = useWikipediaInfo(item.type, item.title, item.creator, item.year, wikiSeed)
+  const wikiSaved = useRef(false)
+  useEffect(() => {
+    if (wikiUrl && !wikiSeed && !wikiSaved.current) {
+      wikiSaved.current = true
+      onSaveWiki?.(item.id, { url: wikiUrl, thumbnail: wikiThumb, summary: wikiSummary })
+    }
+  }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+  const thumbnail = artwork ?? wikiThumb
   const aspect = square ? '1 / 1' : '2 / 3'
   // Same subtitle fields as the list row: type · year · seasons · genre · reaction.
   const topGenre = (item.tags ?? []).find(isGenreTag) ?? null
@@ -1382,8 +1396,8 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
       <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : `1px solid ${HAIR}` }}>
-        {artwork
-          ? <img src={artwork} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: square && item.type !== 'music' ? 'top' : 'center', opacity: selectMode && !selected ? 0.55 : 1 }} />
+        {thumbnail
+          ? <img src={thumbnail} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: square && item.type !== 'music' ? 'top' : 'center', opacity: selectMode && !selected ? 0.55 : 1 }} />
           : <div style={{ fontSize: 18, color: color.border, opacity: 0.4 }}>✦</div>}
         {selectMode && (
           <div style={{
@@ -1407,13 +1421,15 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
           </div>
         )}
         {finished && (
-          <div title={item.reaction ? REACTION_LABELS[item.reaction] : 'done'} style={{
-            position: 'absolute', bottom: 5, right: 5,
-            width: 18, height: 18, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.92)', boxShadow: '0 1px 3px rgba(0,0,0,0.22)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 12, lineHeight: 1, color: INK,
-          }}>✓</div>
+          <div title={item.reaction ? REACTION_LABELS[item.reaction] : 'done'} aria-label="finished" style={{
+            position: 'absolute', bottom: 4, right: 4, width: 22, height: 22, color: INK,
+            filter: 'drop-shadow(0 0 1.5px #fff) drop-shadow(0 1px 1.5px rgba(0,0,0,0.25))',
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" fill="#fff" />
+              <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+            </svg>
+          </div>
         )}
       </div>
       <div style={{ marginTop: 5 }}>

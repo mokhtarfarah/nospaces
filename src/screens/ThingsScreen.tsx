@@ -1,5 +1,4 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
-import { DomainSwitcher } from '../components/DomainSwitcher'
 import { WishlistIcon, TasteIcon } from '../components/navIcons'
 import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
@@ -505,7 +504,7 @@ export function ThingsScreen() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
       {flash && (
         <div onClick={() => setFlash(null)} style={{
-          position: 'fixed', left: '50%', bottom: 'calc(80px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
+          position: 'fixed', left: '50%', bottom: 'calc(120px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
           background: INK, color: '#fff', fontSize: 12.5, padding: '9px 14px', borderRadius: 999, cursor: 'pointer',
           maxWidth: '90vw', textAlign: 'center', zIndex: 300, boxShadow: '0 4px 18px rgba(0,0,0,0.2)',
         }}>{flash}</div>
@@ -516,7 +515,6 @@ export function ThingsScreen() {
           sort + category bar is position:sticky, so it pins smoothly on its own. */}
       <div ref={listRef} style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '20px 16px 0' }}>
-          <DomainSwitcher current="things" />
           {/* Magazine header — small kicker + label + rule (shared treatment with Library) */}
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ minWidth: 0 }}>
@@ -582,7 +580,7 @@ export function ThingsScreen() {
           </div>
         )}
 
-        <div style={{ padding: '16px 16px 120px' }}>
+        <div style={{ padding: '16px 16px 160px' }}>
           {tab === 'taste' ? (
             <>
               {/* Sub-tabs — profile · moodboard, mirroring the media taste page's
@@ -834,7 +832,7 @@ export function ThingsScreen() {
           moodboard (one tap → image picker). The taste PROFILE is a read-only
           mirror — nothing to add there — so the FAB hides. */}
       {(tab === 'wishlist' || onMoodboard) && (
-      <div style={{ position: 'fixed', right: 20, bottom: 'calc(56px + env(safe-area-inset-bottom) + 18px)', zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+      <div style={{ position: 'fixed', right: 20, bottom: 'calc(96px + env(safe-area-inset-bottom) + 18px)', zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
         {tab === 'wishlist' && addMenu && (
           <>
             <FabAction label="save a product" onClick={() => { setAddMenu(false); setComposer('product') }} />
@@ -1441,7 +1439,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         // the image fetch, or it was an unsupported format) lands here with no taste
         // tags — offer a one-tap re-read right here instead of burying it in edit.
         p.image && !taste.some(a => a.facet !== 'category') && (
-          <button onClick={onRunTaste} style={{ ...quietLink, marginTop: 16 }}>read taste from photo</button>
+          <button onClick={onRunTaste} style={{ ...quietLink, marginTop: 28 }}>read taste from photo</button>
         )
       )}
 
@@ -2378,10 +2376,12 @@ function TabChip({ label, active, onClick, underline = true }: { label: string; 
 
 function Empty() {
   return (
-    <div style={{ textAlign: 'center', padding: '48px 20px', color: MUTED }}>
-      <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-        your wishlist is empty.<br />
-        tap <span style={{ fontWeight: 600, color: INK }}>+</span> to save a product you love, or plan a purchase you're weighing.
+    <div style={{ textAlign: 'center', padding: '64px 32px' }}>
+      <div style={{ fontSize: 16, fontWeight: 600, color: INK, marginBottom: 6 }}>
+        your board is empty
+      </div>
+      <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>
+        tap <span style={{ fontWeight: 600, color: INK }}>+</span> to save a product you love, or plan a purchase you’re weighing.
       </div>
     </div>
   )

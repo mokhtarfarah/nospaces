@@ -15,16 +15,16 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**Session 82 — mood masonry verified + per-surface AI voice, on `main`. 93 Vitest green, typecheck + eslint + build clean.** Farah eyeballed the s80 mood masonry live — good (deleted from roadmap). Then shipped **vary the AI voice by surface**: a `VOICE` map in `api/_humanizer.ts` with three registers (`warm`/`terse`/`decisive`) layered on top of the unchanged shared guardrails, wired to all 7 prose call sites (warm = taste reads; terse = discover why-lines + recommend blurbs; decisive = things-compare). Confirmed all Things prose endpoints already import the humanizer base. Negligible cost (no new calls). Prose itself not live-tested (respecting the $20 cap) — shows next run. Full detail → archive (s82).
+**Session 83 — s82 quick-polish batch + domain switcher moved to the bottom, on `main`. 93 Vitest green, typecheck + eslint clean; both domains eyeballed live in the noauth preview.** Closed the whole s82 "quick polish" list (grid covers now use the list row's Wikipedia-thumb fallback; finished `✓` got the smiley's feathered outline; both empty-states are header+small-line; uncramped the Things CTAs) **and** the nav-placement decision: the media/things `DomainSwitcher` is now a slim hairline strip pinned just above the bottom tab bar (rendered once in `App.tsx`, removed from all 5 screens), with every bottom-anchored offset shifted up by `SWITCHER_H=40`. Full detail → archive (s83). **Not yet seen with real data:** grid-covers + done-badge (need a populated library) and the +40px scrolled-content clearance — worth a glance live next login.
 
 ---
 
-## ▶ Next session (83) — open: pick from the roadmap
+## ▶ Next session (84) — open: pick from the roadmap
 
 No fixed queue. The big remaining taste item is gated on a decision with Farah:
 - **"What feeds the taste read"** — the consolidated design decision (self-defined taste + Things-taste reframe + beauty/home exclusion + a "got it"→worth-it signal). **Gated:** decide the feedback loop *with Farah first*, honouring the "saving is the signal" soul rule. No code until decided.
 
-Ungated alternatives if she's not ready to decide the above: the **capture pain points** (iOS share-shortcut email path, image-share, paywalled-article extraction — own session, mostly free); or the **scraper-403 fingerprint** real-world check (does a previously-403 shop read now?).
+Ungated alternatives if she's not ready to decide the above: the **user-guide overhaul** (stale + media-only — split into media/things tabs, refresh screenshots; own session, free); the **capture pain points** (iOS share-shortcut email path, image-share, paywalled-article extraction — own session, mostly free); or the **scraper-403 fingerprint** real-world check (does a previously-403 shop read now?).
 
 **For-discussion (parked, in `docs/ROADMAP.md` → "Media library polish"):** scroll-lock stickiness (needs a switcher-accessibility call); music-library clutter (pair with the verdict reshape).
 

@@ -8,7 +8,6 @@ import { useArtwork } from '../lib/artwork'
 import { useWikipediaInfo } from '../lib/wikipedia'
 import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
-import { DomainSwitcher } from '../components/DomainSwitcher'
 import { SheetHero } from '../components/SheetHero'
 
 // Editorial palette — matches taste + library pages
@@ -228,9 +227,7 @@ export function DiscoverScreen() {
   const streamLabel = moodActive ? 'in the mood' : stream === 'further' ? 'further afield' : 'for you'
 
   return (
-    <div style={{ padding: '20px 20px 100px', fontFamily: 'inherit' }}>
-      <DomainSwitcher current="media" />
-
+    <div style={{ padding: '20px 20px 140px', fontFamily: 'inherit' }}>
       {/* Shared magazine header */}
       <PageHeader kicker={`${streamLabel} · ${dateLabel}`} title="discover" />
 

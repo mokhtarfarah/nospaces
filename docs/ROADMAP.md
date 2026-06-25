@@ -14,15 +14,6 @@ When you finish an item: **delete it from here** (don't leave a ✅ — the sess
 
 ## Short term — next few sessions
 
-### Nav placement — a decision (Farah flagged priority, s82)
-- **Domain switcher + section tabs are split top/bottom — bring them together.** Today the media/things switcher floats at the **top** (`DomainSwitcher.tsx`) and the library/taste/discover tabs sit at the **bottom** (`BottomNav.tsx`) — two nav systems in two corners, reads disjointed. Options: move the section tabs up to the top, or move the domain switcher down to the bottom. **Recommended (Claude, s82): move the switcher DOWN to a slim row just above the bottom tab bar — don't move the tabs up.** Rationale: bottom is the thumb zone (a top nav was deliberately removed before); the two are *nested* (media/things = which world, library/taste/discover = where in it), so stacking them bottom reads as that hierarchy. Caution: two stacked bottom elements add weight — keep the switcher row hairline-thin (it already is). *Decide direction with Farah, then it's a small build.*
-
-### Quick polish & fixes (s82 feedback — mostly small)
-- **Empty-state copy is inconsistent across the two domains.** Media (`LibraryScreen.tsx`) uses a **header + smaller-font line** ("your library is empty." / "add the first thing you can't shut up about."); Things (`ThingsScreen.tsx`) puts it all in one small font. Make both the header + small-line shape: media = "your library is empty." / "tap + to add the first thing you can't shut up about." ; things = "your board is empty." / "tap + to save a product you love, or plan a purchase you're weighing."
-- **Done-badge styling is inconsistent (loved vs finished).** On grid cards the **loved smiley** (`LibraryScreen.tsx:1396`) has the cute feathered white outline (`drop-shadow(0 0 1.5px #fff)`) so it pops; the **finished check** (`:1409`) uses a different treatment (white-pill background + box-shadow, a plain `✓` glyph). Give the check the same feathered-outline look as the smiley so they're one family.
-- **Random covers don't load in grid/gallery view** in the library, even though the same items show artwork in list/card view. Likely a `GridCard` artwork-resolution gap vs `ItemRow` (`LibraryScreen.tsx` ~`:793` grid branch vs the row branch). Investigate which art field grid reads.
-- **"read taste from photo" is cramped against "add note"** — the two CTAs are squished together (Things board). Give them breathing room / fix the layout.
-
 ### User guide overhaul (s82)
 - **Guide is stale and media-only — needs screenshots refreshed + a Things half.** `GuideScreen.tsx` has out-of-date images and covers media only. **Split the guide into two tabs — media and things** — and bring all screenshots up to date. (Reuses the media/things framing the app already has.)
 

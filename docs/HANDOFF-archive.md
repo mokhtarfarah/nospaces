@@ -4,6 +4,24 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 83 (2026-06-25) — s82 quick polish batch + domain switcher moved to the bottom
+
+Farah picked the **ungated quick wins first**, then queued the nav move (decided direction: switcher **down**). Six items, all pure frontend (free, no API).
+
+**Polish batch (s82 feedback):**
+- **Grid covers not loading (the real bug):** `GridCard` only used `useArtwork` (→ `/api/art`: TMDB/iTunes/OpenLibrary); the **list row also falls back to the Wikipedia thumbnail** via `useWikipediaInfo` (`artwork ?? wikiThumb`). So any item whose cover comes from Wikipedia (books especially — OpenLibrary is spotty) went blank in grid. Fix: mirrored the list row's wiki fallback in `GridCard` (incl. the cached-seed + persist-via-`onSaveWiki` path; threaded `onSaveWiki={handleSaveWiki}` at the grid call site).
+- **Done-badge unified:** the finished `✓` was a white-pill + box-shadow; gave it the **same feathered-outline SVG** treatment as the loved smiley (circle + check, `drop-shadow(0 0 1.5px #fff)`) so they're one family.
+- **Empty-state copy:** both domains now **header + small-line**. Media: "your library is empty" / "tap **+** to add the first thing you can't shut up about." Things (`Empty`): rebuilt from one-font to "your board is empty" / "tap **+** to save a product you love, or plan a purchase you're weighing."
+- **Cramped Things CTAs:** bumped the recovery "read taste from photo" link's `marginTop` 16→28 so it isn't squished against "+ add a note".
+
+**Nav move (the bigger build):** the `DomainSwitcher` (media/things) was rendered at the **top** of each screen (twice in Taste) while the section tabs sat at the bottom — two nav systems, two corners. Reworked it into a **slim hairline fixed strip pinned just above the bottom tab bar**, so the two read as one nested stack (domain over section, both in the thumb zone).
+- `DomainSwitcher.tsx` rewritten as the fixed strip; exports `SWITCHER_H = 40`. Rendered **once** in `App.tsx` on the four tab routes (`/library /taste /discover /things`), `current` derived from the path. Removed all 5 in-screen renders + now-unused imports.
+- Everything bottom-anchored shifted up by the strip (56→96 baseline): media FAB, Things FAB + capture flash, the offline-sync banner, and content bottom-padding across Library (scroll 80→120, filter-sheet spacer 88→128, select-mode 150→190), Taste (80→120 ×2), Discover (100→140), Things (content 120→160). The select-mode bulk bar (zIndex 101) covers the strip, left as-is.
+
+**Verification:** typecheck + eslint + 93 Vitest all green. **Eyeballed live** in the noauth dev preview (mobile) — both domains: switcher strip reads clean above each bottom nav, FABs clear it, both new empty-states correct. (`[captures] fetch failed` console noise = noauth dev has no `/api` functions; unrelated.) **Not verified with real data:** grid-cover + done-badge need a populated library — logic mirrors the proven list-row path, but worth a glance live; and the +40px bottom clearance on scrolled content couldn't be exercised on empty screens.
+
+---
+
 ### Session 82 (2026-06-25) — mood masonry verified + per-surface AI voice
 
 Two roadmap items closed. **(1) Mood masonry (s80)** — Farah eyeballed it live behind login: good. Deleted from roadmap. **(2) Vary the AI voice by surface** — the s81 coherence finding that one shared humanizer block made every prose generator sound the same lyrical way.

@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth'
 import { useOfflineSync } from './hooks/useOfflineSync'
 import { LoginScreen } from './components/LoginScreen'
 import { BottomNav } from './components/BottomNav'
+import { DomainSwitcher } from './components/DomainSwitcher'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { AddScreen } from './screens/AddScreen'
 import { ImportScreen } from './screens/ImportScreen'
@@ -51,13 +52,17 @@ export default function App() {
           <Route path="/guide" element={<GuideScreen />} />
         </Routes>
       </div>
-      {/* Things is its own domain — the board carries its own capture buttons and
-          the DomainSwitcher gets you back, so the media nav + FAB step aside. */}
+      {/* Things is its own domain — the board carries its own capture buttons, so
+          the media nav + FAB step aside. The domain switcher is shared across both
+          and sits as a hairline strip just above whichever bottom nav is showing. */}
       {location.pathname !== '/things' && <BottomNav />}
+      {['/library', '/taste', '/discover', '/things'].includes(location.pathname) && (
+        <DomainSwitcher current={location.pathname === '/things' ? 'things' : 'media'} />
+      )}
       {(pendingCount > 0 || syncStatus !== 'idle') && (
         <div style={{
           position: 'fixed',
-          bottom: 'calc(56px + env(safe-area-inset-bottom))',
+          bottom: 'calc(96px + env(safe-area-inset-bottom))',
           left: 0, right: 0,
           background: '#1C1B19',
           color: '#ABA69C',
