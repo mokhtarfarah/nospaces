@@ -45,6 +45,14 @@ const COL_TARGET = 220
 // Persisted so the choice sticks.
 type ViewMode = 'grid' | 'list'
 const VIEW_KEY = 'nospaces.thingsView'
+// How much text sits under each grid tile — mirrors the media library. 'none' is
+// a clean wall (coverless tiles still show name+brand inside), 'title' is the
+// name only, 'full' is name + price · brand + taste line.
+type CardCaption = 'none' | 'title' | 'full'
+const CAPTION_KEY = 'nospaces.thingsCaption'
+function loadCaption(): CardCaption {
+  try { const c = localStorage.getItem(CAPTION_KEY); return c === 'none' || c === 'title' ? c : 'full' } catch { return 'full' }
+}
 function loadView(): ViewMode {
   try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
 }
@@ -160,6 +168,8 @@ export function ThingsScreen() {
   const [cols, setCols] = useState(2)
   const [view, setView] = useState<ViewMode>(loadView)
   useEffect(() => { try { localStorage.setItem(VIEW_KEY, view) } catch { /* private mode */ } }, [view])
+  const [caption, setCaption] = useState<CardCaption>(loadCaption)
+  useEffect(() => { try { localStorage.setItem(CAPTION_KEY, caption) } catch { /* private mode */ } }, [caption])
   useEffect(() => {
     const el = listRef.current
     if (!el) return
@@ -261,7 +271,7 @@ export function ThingsScreen() {
     </div>
   ) : (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, alignItems: 'start', gap: 12 }}>
-      {list.map(item => <ProductCard key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />)}
+      {list.map(item => <ProductCard key={item.id} item={item} caption={caption} onOpen={() => setOpenProductId(item.id)} />)}
     </div>
   )
   const openIntent = things.find(i => i.id === openIntentId) ?? null
@@ -800,6 +810,7 @@ export function ThingsScreen() {
       {filterSheet && (
         <FilterSheet
           view={view} onView={setView}
+          caption={caption} onCaption={setCaption}
           sort={sort} onSort={setSort}
           status={statusF} onStatus={setStatusF}
           polishCount={polishable.length + polishableLeads.length} polishing={polishing}
@@ -1020,34 +1031,47 @@ function TasteTab({ items, board, synthesis, onSave }: {
 // Tapping the card opens an internal detail sheet (like the media Library) — the
 // external buy link lives behind an explicit button inside, so a stray tap never
 // bounces you off the site.
-function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
+function ProductCard({ item, caption, onOpen }: { item: Item; caption: CardCaption; onOpen: () => void }) {
   const p = productMeta(item)
   const got = item.status === 'done'
   // The card's taste line shows material/palette/vibe only — category is already
   // the filter row above, so repeating it under the item reads redundant.
   const taste = (p.attributes ?? []).filter(a => a.facet !== 'category')
+  // No image + clean-wall mode → write name + brand into the tile so it stays
+  // identifiable (matches the media grid's coverless fallback).
+  const coverless = !p.image && !p.cutout
+  const tileFallback = caption === 'none' && coverless ? (
+    <div style={{ padding: '10px 9px', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', boxSizing: 'border-box', overflow: 'hidden' }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: INK, lineHeight: 1.25, textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.title}</div>
+      {p.brand && <div style={{ fontSize: 10, color: MUTED, marginTop: 3 }}>{p.brand}</div>}
+    </div>
+  ) : undefined
   return (
     <button onClick={onOpen}
       style={{ position: 'relative', textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: INK, display: 'block', width: '100%' }}>
-      <Thumb src={p.image} referer={p.url} cutout={p.cutoutHidden ? null : p.cutout} />
-      <div style={{ marginTop: 6 }}>
-        {/* Single line, ellipsis — consistent with the deciding card; open the item
-            for the full title. */}
-        <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'lowercase' }}>
-          {p.title}
-        </div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <PriceLine price={p.price} wasPrice={p.wasPrice} />
-          {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
-          {/* Status as a quiet caption mark, not a pill floating on the photo. */}
-          {got && <span style={{ color: INK, fontWeight: 600 }}>· got it</span>}
-        </div>
-        {taste.length > 0 && (
-          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 3, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {taste.map(a => a.value).join(' · ')}
+      <Thumb src={p.image} referer={p.url} cutout={p.cutoutHidden ? null : p.cutout} fallback={tileFallback} />
+      {caption !== 'none' && (
+        <div style={{ marginTop: 6 }}>
+          {/* Single line, ellipsis — consistent with the deciding card; open the item
+              for the full title. */}
+          <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'lowercase' }}>
+            {p.title}
           </div>
-        )}
-      </div>
+          {caption === 'full' && (
+            <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <PriceLine price={p.price} wasPrice={p.wasPrice} />
+              {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
+              {/* Status as a quiet caption mark, not a pill floating on the photo. */}
+              {got && <span style={{ color: INK, fontWeight: 600 }}>· got it</span>}
+            </div>
+          )}
+          {caption === 'full' && taste.length > 0 && (
+            <div style={{ fontSize: 10.5, color: MUTED, marginTop: 3, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {taste.map(a => a.value).join(' · ')}
+            </div>
+          )}
+        </div>
+      )}
     </button>
   )
 }
@@ -1478,11 +1502,13 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
 // to match the media Library's ViewSheet exactly — same drag-handle sheet, the same
 // label-left/segmented-buttons rows, and the same ✓ list rows — so flipping between
 // media and things feels like one app, not two.
-function FilterSheet({ sort, onSort, view, onView, status, onStatus, polishCount, polishing, onPolishAll, onClose }: {
+function FilterSheet({ sort, onSort, view, onView, caption, onCaption, status, onStatus, polishCount, polishing, onPolishAll, onClose }: {
   sort: SortKey
   onSort: (s: SortKey) => void
   view: ViewMode
   onView: (v: ViewMode) => void
+  caption: CardCaption
+  onCaption: (c: CardCaption) => void
   status: StatusFilter
   onStatus: (s: StatusFilter) => void
   polishCount: number
@@ -1502,6 +1528,9 @@ function FilterSheet({ sort, onSort, view, onView, status, onStatus, polishCount
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 18px' }} />
 
         <SegRow label="layout" options={[{ k: 'grid', l: 'grid' }, { k: 'list', l: 'list' }]} value={view} onChange={onView} />
+        {view === 'grid' && (
+          <SegRow label="captions" options={[{ k: 'none', l: 'none' }, { k: 'title', l: 'title' }, { k: 'full', l: 'full' }]} value={caption} onChange={onCaption} />
+        )}
 
         <SheetList label="sort" options={SORTS.map(s => ({ k: s.key, l: s.label }))} value={sort} onChange={onSort} />
         <SheetList label="show" options={STATUSES.map(s => ({ k: s.key, l: s.label }))} value={status} onChange={onStatus} />
@@ -2300,7 +2329,7 @@ function imgFallback(original: string | null | undefined) {
   }
 }
 
-function Thumb({ src, size, referer, cutout }: { src: string | null; size?: number; referer?: string | null; cutout?: string | null }) {
+function Thumb({ src, size, referer, cutout, fallback }: { src: string | null; size?: number; referer?: string | null; cutout?: string | null; fallback?: React.ReactNode }) {
   // Grid/hero thumbs: every photo is auto-trimmed to its product and re-framed to a
   // shared 4:5 by the server (api/thing-image), so the board reads as one catalog
   // (no more specks-in-grey-fields or blurred halos), sharp at any zoom. The endpoint
@@ -2326,7 +2355,7 @@ function Thumb({ src, size, referer, cutout }: { src: string | null; size?: numb
           : (thingImageRaw(src, referer) ?? src)
           ? <img src={thingImageRaw(src, referer) ?? src!} onError={imgFallback(src)} alt="" loading="lazy"
               style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
-          : <span style={{ color: MUTED, fontSize: 11 }}>no image</span>}
+          : (fallback ?? <span style={{ color: MUTED, fontSize: 11 }}>no image</span>)}
       </div>
     )
   }
