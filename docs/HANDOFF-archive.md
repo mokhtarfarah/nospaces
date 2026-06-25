@@ -4,6 +4,21 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 82 (2026-06-25) — mood masonry verified + per-surface AI voice
+
+Two roadmap items closed. **(1) Mood masonry (s80)** — Farah eyeballed it live behind login: good. Deleted from roadmap. **(2) Vary the AI voice by surface** — the s81 coherence finding that one shared humanizer block made every prose generator sound the same lyrical way.
+
+**What shipped:** added a `VOICE` map to `api/_humanizer.ts` — three named registers (`warm` / `terse` / `decisive`) that layer *on top of* the unchanged `HUMANIZER_GUARDRAILS` base (base = "don't sound like an AI"; register = "and here's the stance for this surface"). Wired to 7 call sites across 6 endpoints:
+- **warm** (perceptive friend reflecting your taste): `taste-profile.ts`, `things-taste.ts`, `things-taste-fit.ts`
+- **terse** (pointing you at something, fast): `recommend-feeds.ts` why-lines, `recommend.ts` blurbs (×2 — URL + PDF prompts)
+- **decisive** (helping you make the call): `things-compare.ts`
+
+Also confirmed the roadmap's open question: **all Things prose endpoints already import the humanizer base** — nothing to fix there.
+
+**Cost:** negligible — no new API calls, ~40-60 extra prompt tokens on calls that already run. **Verification:** 93 Vitest green, typecheck/eslint/build clean. The prose change itself is server-side prompt text; not live-tested to respect the $20/mo cap — it'll show the next time each surface runs. *If a register ever reads wrong in real output, the fix is one string in `_humanizer.ts`.*
+
+---
+
 ### Session 81 (2026-06-25) — holistic first-impression pass + cold-start/coherence ship
 
 Farah ran the planned holistic look: I read the app end-to-end from source, she fed screenshots in batches (library → taste/discover → things). Delivered a felt first-time-user reaction + an audit, then shipped the safe fixes. **4 commits on `main`** (`8e74782`, `d4573bd`, `d2c20cc` + docs), 93 Vitest green, typecheck/eslint/build clean. Empty states eyeballed in the noauth harness; data-driven bits flagged for live verify.

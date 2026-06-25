@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
 import { isSafePublicUrl } from './_ssrf.js'
-import { HUMANIZER_GUARDRAILS } from './_humanizer.js'
+import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
 
 export const config = { maxDuration: 60 }
 
@@ -310,6 +310,8 @@ Return ONLY valid JSON (no markdown, no preamble):
   const fullPrompt = `${prompt}
 
 A note on the "why" field — someone will actually read these, so they have to sound human:
+${VOICE.terse}
+
 ${HUMANIZER_GUARDRAILS}`
 
   try {

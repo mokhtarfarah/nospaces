@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
-import { HUMANIZER_GUARDRAILS } from './_humanizer.js'
+import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
 
 // The per-item "how this fits your taste" read: one honest line on how a single
 // saved thing rhymes with (or departs from) the rest of the board. The item-level
@@ -68,6 +68,8 @@ Rules that matter here:
 - Don't force a contrast. If it simply IS her aesthetic, say so with warmth and confidence in a few words — that's a better, truer read than inventing a difference. Only name a tension when it's a genuine aesthetic shift (a softer palette, a dressier mood, a sharper line than usual).
 - Vary the phrasing every time. Do NOT use a fixed template like "X and Y check the boxes, but Z…" — that reads robotic. Each line should be put freshly.
 - Be specific and human, never a checklist of the tags read back. No hype, no "this piece".
+
+${VOICE.warm}
 
 ${HUMANIZER_GUARDRAILS}
 

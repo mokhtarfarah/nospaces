@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
-import { HUMANIZER_GUARDRAILS } from './_humanizer.js'
+import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -37,6 +37,8 @@ Substance rules:
 - If an aspiration gap is provided (what they keep adding vs. what they actually finish), weave it in naturally if it adds something true.
 - The vibe words shown on the page are anchors — deepen them with something specific; do not restate or list them.
 - Private notes are evidence for you to reason from, not for publication. Never quote or echo a note's wording.
+
+${VOICE.warm}
 
 ${HUMANIZER_GUARDRAILS}
 

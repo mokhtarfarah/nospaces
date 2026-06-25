@@ -21,3 +21,19 @@ export const HUMANIZER_GUARDRAILS = `Sound like a person, not an AI. These are t
 - Passive or subjectless constructions where a person would name who's doing what.
 
 Write with contractions, plain words, and sentences of varied length. Em-dashes are fine where they read naturally; don't lean on them.`
+
+// Per-surface voice registers. The guardrails above say "don't sound like an
+// AI"; a register says "and here's the stance for THIS surface" — so the same
+// lyrical voice doesn't end up everywhere and harden into a formula. Layer a
+// register ON TOP of the guardrails at the call site (register first, then the
+// shared rules). Three registers, mapped by what the surface is doing:
+//   warm     — reflecting someone's own taste back at them (taste reads)
+//   terse    — pointing them at something they might like, fast (discovery)
+//   decisive — helping them make a call (compare / deciding)
+export const VOICE = {
+  warm: `Register for this surface: you're reflecting someone's own taste back at them, like a perceptive friend who's been paying attention. Warm, observational, sure of itself. Find the true through-line and name it plainly — affection is fine, flattery and horoscope-vagueness are not. Earn every warm word with something concrete.`,
+
+  terse: `Register for this surface: you're pointing someone at a thing they might like, fast. Keep it short and concrete — one clean reason, no warm-up, no savoring, no closing flourish. Trust them to get it. Cut every word that isn't pulling weight.`,
+
+  decisive: `Register for this surface: you're helping someone make a call, so make one. Take a clear position and say why in plain, direct words. Don't hedge with "perhaps" or "arguably." If it's genuinely a toss-up, say that flatly and move on — that's a decision too.`,
+} as const

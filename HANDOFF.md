@@ -15,21 +15,18 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**Session 81 — holistic first-impression pass + cold-start/coherence ship, on `main` (latest `d2c20cc`). 93 Vitest green, typecheck + eslint + build clean.** Read the app end-to-end from source, Farah fed screenshots in batches; delivered a first-time-user review + audit, then shipped the safe fixes: **warmer empty states** (dropped the "you loser" line, kept a wink), a blurred **locked preview** on the empty taste page, a **visible media/things switcher** (underlined inactive side), **Things chrome lowercased to one voice**, the **cover reaction badge** (smiley = loved / ✓ = done) replacing the undecodable dot, the **deciding-card grid cover** restored (overlaid title; a no-options plan now reads as a question, not a broken image), and **"wishlist"** as the board's single name. **Farah verified the badges + deciding card live — good.** The coherence audit reshaped the medium-term roadmap into one **"what feeds the taste read"** cluster + a **"vary the AI voice by surface"** item. Full detail → archive (s81).
+**Session 82 — mood masonry verified + per-surface AI voice, on `main`. 93 Vitest green, typecheck + eslint + build clean.** Farah eyeballed the s80 mood masonry live — good (deleted from roadmap). Then shipped **vary the AI voice by surface**: a `VOICE` map in `api/_humanizer.ts` with three registers (`warm`/`terse`/`decisive`) layered on top of the unchanged shared guardrails, wired to all 7 prose call sites (warm = taste reads; terse = discover why-lines + recommend blurbs; decisive = things-compare). Confirmed all Things prose endpoints already import the humanizer base. Negligible cost (no new calls). Prose itself not live-tested (respecting the $20 cap) — shows next run. Full detail → archive (s82).
 
 ---
 
-## ▶ Next session (82) — open: pick from the restructured roadmap
+## ▶ Next session (83) — open: pick from the roadmap
 
-No fixed queue. The s81 holistic pass reshaped the medium-term work in `docs/ROADMAP.md`. Two natural next moves:
-- **Vary the AI voice by surface** — ungated, cheap, can go first. One shared humanizer base → a per-surface register (warm on taste, terse on discover, decisive on compare). While there, confirm `api/things-taste.ts` / `things-compare.ts` import the humanizer base.
+No fixed queue. The big remaining taste item is gated on a decision with Farah:
 - **"What feeds the taste read"** — the consolidated design decision (self-defined taste + Things-taste reframe + beauty/home exclusion + a "got it"→worth-it signal). **Gated:** decide the feedback loop *with Farah first*, honouring the "saving is the signal" soul rule. No code until decided.
 
-**Still awaiting an eyeball (behind login):** the **mood masonry** (s80) — gapless + newest-first, and whether the column-shuffle as images load is distracting (`docs/ROADMAP.md` → "Awaiting Farah's eyeball"). (s81's badges + deciding card are verified and done.)
+Ungated alternatives if she's not ready to decide the above: the **capture pain points** (iOS share-shortcut email path, image-share, paywalled-article extraction — own session, mostly free); or the **scraper-403 fingerprint** real-world check (does a previously-403 shop read now?).
 
 **For-discussion (parked, in `docs/ROADMAP.md` → "Media library polish"):** scroll-lock stickiness (needs a switcher-accessibility call); music-library clutter (pair with the verdict reshape).
-
-**Carried:** the capture pain points (iOS share-shortcut email path, image-share, paywalled-article extraction — own session); scraper-403 fingerprint wants a real-world check (does a previously-403 shop read now?).
 
 **Things model facts:** all on `Item`; `type:'thing'`; `metadata.kind` = `product`|`intent`|`inspiration` (mood-board image); `metadata.attributes[]` (`{facet,value}`) is the composition engine; a promoted plan keeps `metadata.fromPlan` (reversible via `demoteProductToIntent`); resolve = `done` + winner flag, **no archive** (losers persist). The taste read runs over wishlist + mood together (`tasteItems`).
 

@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
 import { GENRE_VOCAB } from './_genres.js'
-import { HUMANIZER_GUARDRAILS } from './_humanizer.js'
+import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
 
 // Both text queries and URL input go through web_search_20250305. Direct
 // server-side fetch doesn't work for modern editorial sites (JS-rendered, e.g.
@@ -56,6 +56,8 @@ ${genreBlock}
 - Output the JSON object only.
 
 When you write a blurb from your own knowledge (rather than quoting the source), it still has to sound human:
+${VOICE.terse}
+
 ${HUMANIZER_GUARDRAILS}`
 }
 
@@ -107,6 +109,8 @@ ${genreBlock}
 - Output the JSON object only.
 
 When you write a blurb from your own knowledge (rather than quoting the document), it still has to sound human:
+${VOICE.terse}
+
 ${HUMANIZER_GUARDRAILS}`
 }
 

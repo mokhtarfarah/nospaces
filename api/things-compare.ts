@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
-import { HUMANIZER_GUARDRAILS } from './_humanizer.js'
+import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
 import { scrapeProduct } from './_scrape.js'
 
 // Opt-in "compare these" for a plan-a-purchase: weighs the candidates a person is
@@ -56,6 +56,8 @@ Options${anyDetail ? ' (with details and any rating pulled from each product pag
 ${lines}
 
 For each option, write ONE short, honest line on what stands out — value, price, what you're paying for, whether the sale is real${anyDetail ? ', what the product details and rating suggest about quality/fit' : ''}${context ? ', and how well it fits what they said matters' : ''}. Then a brief verdict: which you'd lean toward and why, in 1–2 sentences${context ? ', weighing what they told you matters' : ''}. Use only what's given — where a detail or rating is missing, don't invent it. If it's genuinely a toss-up or you can't really tell them apart, say that plainly instead of manufacturing differences.
+
+${VOICE.decisive}
 
 ${HUMANIZER_GUARDRAILS}
 
