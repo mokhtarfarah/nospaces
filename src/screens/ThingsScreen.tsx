@@ -805,8 +805,7 @@ function TasteFitBlock({ fit, onRun }: { fit: string | null; onRun: () => Promis
     return (
       <div style={{ marginTop: 16 }}>
         <NoteProse label="how this fits your taste">{fit}</NoteProse>
-        <button onClick={run} disabled={loading}
-          style={{ marginTop: 6, border: 'none', background: 'none', color: MUTED, fontSize: 11.5, cursor: loading ? 'default' : 'pointer', padding: 0 }}>
+        <button onClick={run} disabled={loading} style={{ ...quietLink, marginTop: 8 }}>
           {loading ? 'reading…' : 're-read'}
         </button>
         {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
@@ -855,7 +854,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
 
   if (editing) {
     return (
-      <Sheet onClose={onClose}>
+      <Sheet onClose={onClose} maxWidth={380}>
         <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 16px', color: INK }}>edit product</h2>
         <FieldsForm saveLabel="save" initial={p}
           onCancel={() => setEditing(false)}
@@ -884,11 +883,11 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
 
   const buyLabel = p.brand ? `view at ${p.brand}` : p.siteName ? `view at ${p.siteName}` : 'view at shop'
   return (
-    <Sheet onClose={onClose}>
-     {/* The whole card is capped to the photo's width and centred, so it reads as
-         one tidy column (photo + details same width) instead of a wide, sprawling
-         sheet. */}
-     <div style={{ maxWidth: 320, margin: '0 auto' }}>
+    <Sheet onClose={onClose} maxWidth={380}>
+     {/* The sheet itself hugs the column (maxWidth above), and the content fills it —
+         so it reads as one tidy column instead of a narrow strip floating in a wide
+         white panel. */}
+     <div style={{ maxWidth: 340, margin: '0 auto' }}>
       {/* Gallery layout: the photo leads (this is a taste mirror, not a checkout),
           actions recede to a quiet row. Close floats over the image. */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 5', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}` }}>
@@ -1736,14 +1735,14 @@ function Empty() {
   )
 }
 
-function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function Sheet({ children, onClose, maxWidth = 640 }: { children: React.ReactNode; onClose: () => void; maxWidth?: number }) {
   return (
     <div onClick={onClose} style={{
       position: 'fixed', inset: 0, background: 'rgba(28,27,25,0.4)', zIndex: 200,
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', width: '100%', maxWidth: 640, borderRadius: '20px 20px 0 0',
+        background: '#fff', width: '100%', maxWidth, borderRadius: '20px 20px 0 0',
         padding: '20px 18px calc(24px + env(safe-area-inset-bottom))',
         maxHeight: '88vh', overflowY: 'auto',
       }}>
