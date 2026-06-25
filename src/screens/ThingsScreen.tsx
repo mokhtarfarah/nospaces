@@ -12,10 +12,11 @@ import {
   parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, inspirationMeta, newCandidateId,
   promoteIntentToProduct, demoteProductToIntent, productPlan,
   EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, itemAttributes, THREAD_MIN_ITEMS, priceValue, formatPrice,
-  boardTasteSummary, readTasteFit, readTasteSynthesis, READ_FACETS,
+  boardTasteSummary, readTasteFit, readTasteSynthesis,
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord, type BoardTasteSummary,
 } from '../lib/things'
 import { uploadMoodImage, moodSrc } from '../lib/mood'
+import { sampleBoardColors } from '../lib/palette'
 import { usePrefs } from '../hooks/usePrefs'
 
 const INK = '#1C1B19'
@@ -477,7 +478,6 @@ export function ThingsScreen() {
               board={board}
               synthesis={thingsTaste ?? null}
               onSave={setThingsTaste}
-              onPickTag={(facet, value) => { setTagFilter({ facet, value }); setTab('wishlist') }}
             />
           ) : tab === 'mood' ? (
             <>
@@ -794,26 +794,39 @@ function TasteIcon() {
 /* ---------- the taste tab (the board read back as a taste mirror) ---------- */
 
 // The whole point of Things: the *set* speaks. The taste tab reads the WHOLE board
-// (wishlist + mood) back as one aesthetic, in three parts:
-//   1. the keyword thread — the short distillation (free, pure function)
-//   2. the synthesis — a 1–2 sentence "what you're reflecting" read (paid, on demand,
-//      cached; ~$0.001 a tap)
-//   3. the evidence — the recurring tags behind the read, each tappable to filter the
-//      wishlist by it (free)
+// (wishlist + mood) back as one aesthetic, editorial-spread style:
+//   - keywords as a small-caps kicker
+//   - the synthesis as the hero — a 1–2 sentence "what you're reflecting" pull-quote
+//     (paid, on demand, cached; ~$0.001 a tap)
+//   - a colour story: the real recurring hues sampled from the board's images
 // Stays a gentle nudge until there's real signal, so it never guesses on a sparse board.
-function TasteTab({ items, board, synthesis, onSave, onPickTag }: {
+function TasteTab({ items, board, synthesis, onSave }: {
   items: Item[]
   board: BoardTasteSummary
   synthesis: string | null
   onSave: (s: string) => void
-  onPickTag: (facet: Facet, value: string) => void
 }) {
   const [generating, setGenerating] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [colors, setColors] = useState<string[]>([])
   const tagged = useMemo(() => items.filter(t => itemAttributes(t).length > 0).length, [items])
   // The keyword thread is the signal gate — it only appears once enough items recur
   // (THREAD_MIN_ITEMS + RECUR_MIN), the same honest bar the old masthead used.
   const hasSignal = board.thread.length > 0
+
+  // Every board image's loadable src — mood images from Storage/proxy, product photos
+  // through the same-origin proxy — for the colour story sample.
+  const imageSrcs = useMemo(() => items.map(it => {
+    if (kindOf(it) === 'inspiration') { const m = inspirationMeta(it); return moodSrc(m.image, m.hosted) }
+    const p = productMeta(it); return thingImageRaw(p.image, p.url)
+  }).filter((s): s is string => !!s), [items])
+
+  useEffect(() => {
+    let cancelled = false
+    if (imageSrcs.length === 0) { setColors([]); return }
+    sampleBoardColors(imageSrcs).then(c => { if (!cancelled) setColors(c) })
+    return () => { cancelled = true }
+  }, [imageSrcs])
 
   async function generate() {
     if (generating) return
@@ -828,43 +841,37 @@ function TasteTab({ items, board, synthesis, onSave, onPickTag }: {
     return (
       <div style={{ margin: '12px 0', fontSize: 13, color: MUTED, lineHeight: 1.6 }}>
         Save a few things and add some mood images — once a thread recurs across your board,
-        your <em>taste read</em> surfaces here: your keywords, a line on what you’re reflecting, and the tags behind it.
+        your <em>taste read</em> surfaces here: your keywords, a line on what you’re reflecting, and your colour story.
         {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} so far.</span>}
       </div>
     )
   }
 
-  // Evidence: recurring values per aesthetic facet, in READ_FACETS order (palette,
-  // material, vibe). Category is excluded — it's inventory, not aesthetic.
-  const evidence = READ_FACETS
-    .map(f => [f, board.facets[f] ?? []] as const)
-    .filter(([, vals]) => vals.length > 0)
-
   return (
     <div>
-      {/* 1. Keyword thread — the short distillation, reads as the synthesis's headline. */}
-      <div style={{ marginTop: 4 }}>
-        <div style={{ fontSize: 22, fontWeight: 600, color: INK, lineHeight: 1.15, letterSpacing: '-0.01em' }}>
-          {board.thread.join('  ·  ')}
-        </div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: 8 }}>
-          your keywords — read across {tagged} tagged thing{tagged === 1 ? '' : 's'}, wishlist + mood
-        </div>
+      {/* Kicker — keywords in small caps, the quiet label above the read. */}
+      <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: '2px', textTransform: 'uppercase' }}>
+        {board.thread.join('   ·   ')}
+      </div>
+      <div style={{ fontSize: 11, color: MUTED, marginTop: 6 }}>
+        read across {tagged} tagged thing{tagged === 1 ? '' : 's'} — wishlist + mood
       </div>
 
-      {/* 2. The synthesis — paid, on demand, cached. */}
-      <div style={{ margin: '20px 0 4px' }}>
+      {/* Hero — the synthesis as a pull-quote, or the read CTA before it's generated. */}
+      <div style={{ margin: '22px 0 4px' }}>
         {synthesis ? (
           <>
-            <p style={{ fontSize: 15.5, lineHeight: 1.65, color: INK, letterSpacing: '-0.1px', margin: 0 }}>{synthesis}</p>
-            <button onClick={generate} disabled={generating} style={{ ...quietLink, marginTop: 10 }}>
+            <p style={{ fontSize: 25, lineHeight: 1.34, color: INK, letterSpacing: '-0.02em', fontWeight: 500, margin: 0 }}>
+              {synthesis}
+            </p>
+            <button onClick={generate} disabled={generating} style={{ ...quietLink, marginTop: 16 }}>
               {generating ? 'reading…' : 'read again'}
             </button>
           </>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14,
-            padding: '14px 16px', border: `1px solid ${LINE}`, borderRadius: 12, background: '#FBFAF8' }}>
-            <span style={{ fontSize: 13, color: MUTED, lineHeight: 1.45 }}>
+            padding: '16px 18px', border: `1px solid ${LINE}`, borderRadius: 12, background: '#FBFAF8' }}>
+            <span style={{ fontSize: 13.5, color: MUTED, lineHeight: 1.45 }}>
               Read your board back as one taste — a line on what you’re reflecting.
             </span>
             <button onClick={generate} disabled={generating} style={primaryBtn(generating)}>
@@ -875,28 +882,15 @@ function TasteTab({ items, board, synthesis, onSave, onPickTag }: {
         {err && <div style={{ fontSize: 12, color: '#B4413C', marginTop: 8 }}>{err}</div>}
       </div>
 
-      {/* 3. Evidence — the recurring tags behind the read; tap to filter the wishlist. */}
-      {evidence.length > 0 && (
-        <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 24, paddingTop: 18 }}>
-          <SectionLabel>what recurs</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {evidence.map(([facet, vals]) => (
-              <div key={facet}>
-                <div style={{ fontSize: 11, color: MUTED, marginBottom: 7 }}>{FACET_LABEL[facet].toLowerCase()}</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {vals.map(([value, n]) => (
-                    <button key={value} onClick={() => onPickTag(facet, value)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px',
-                        borderRadius: 999, border: `1px solid ${LINE}`, background: '#fff', cursor: 'pointer', color: INK, fontSize: 12.5 }}>
-                      {value}
-                      <span style={{ color: MUTED, fontSize: 11 }}>{n}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+      {/* Colour story — the real recurring hues, sampled from the board's images. */}
+      {colors.length >= 3 && (
+        <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 30, paddingTop: 22 }}>
+          <div style={{ display: 'flex', height: 56, borderRadius: 10, overflow: 'hidden' }}>
+            {colors.map((c, i) => <div key={i} style={{ flex: 1, background: c }} />)}
           </div>
-          <div style={{ fontSize: 11, color: MUTED, marginTop: 14 }}>tap a tag to filter your wishlist by it</div>
+          <div style={{ fontSize: 11, color: MUTED, marginTop: 10, letterSpacing: '0.04em' }}>
+            your colour story — drawn from the board
+          </div>
         </div>
       )}
     </div>
