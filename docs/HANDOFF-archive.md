@@ -4,21 +4,26 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
-### Session 74 (2026-06-24) — AI image cutout (subject-on-cream tiles)
+### Session 74 (2026-06-24) — AI image cutout, board polish, product-card value-add
 
-Built the planned AI subject cutout (spec: memory `things-image-cutout`). The heuristic trim was making "box-in-box" tiles on styled/lifestyle shots; the fix cuts the product out and floats it, centred, on one warm-cream tile so a mixed board reads as one catalog. **All on `main`, 85 Vitest green, typecheck + eslint + production build clean. NOT runtime-verified** (board is behind Google auth; the cutout, model download, and Supabase upload need the live authed board) — wants Farah's eye + **one SQL run** (below).
+Long session, all **shipped & deployed to `main`** (every step pushed + Vercel-built; 85 Vitest green, typecheck/eslint/build clean throughout). Farah ran the Supabase SQL, re-polished, and reviewed on the live board — **looks good**. Three arcs:
 
-**What landed:**
-- **Vision → shot type.** `api/_vision.ts` now also returns `shotType` (`product`|`onModel`|`lifestyle`) off the SAME Sonnet call (no extra spend); threaded through `api/things-vision.ts` and `api/email.ts`. Only bare `product` packshots get cut out — model/lifestyle shots stay full-bleed.
-- **Browser-side cutout** (`src/lib/cutout.ts`): lazy-imports `@imgly/background-removal` (web/WASM, ~40MB model from imgly's CDN, ~2–4s) at save, uploads the transparent PNG to a new `thing-cutouts` Supabase Storage bucket (public read, per-user folder), stores the URL on `metadata.cutout`. **Free** — browser compute + free-tier storage.
-- **Raw CORS proxy:** `api/thing-image?...&raw=1` re-encodes the (CORS-blocked) shop photo with a permissive header so the browser can read bytes to feed the model. Never 302s (a redirect would re-trip CORS).
-- **Render:** cutouts float on a cream tile (`object-fit:contain`, 12% padding) in the grid card AND the product sheet hero; `onError` falls back to the server-trim cover. New `CREAM = '#F2EEE4'`.
-- **Backfill:** "polish images (N to tidy)" button in the view sheet — learns shot type for legacy items (one ~1¢ vision read each, only items missing it) then cuts out the products, sequential. No silent auto-run (would trigger surprise 40MB downloads + spend).
-- **Build:** excluded the 24MB onnxruntime WASM from the SW precache (`injectManifest.globIgnores`) — it's lazy-loaded, must not precache. Engine is fully code-split out of the main bundle (first paint untouched).
+**1. AI subject cutout** (spec: memory `things-image-cutout`). Heuristic trim made "box-in-box" tiles on styled shots; the fix cuts the product out and floats it on one tile so a mixed board reads as one catalog.
+- **Vision → shot type.** `api/_vision.ts` also returns `shotType` (`product`|`onModel`|`lifestyle`) off the SAME Sonnet call (no extra spend); threaded through `things-vision.ts` + `email.ts`. Prompt is **strict**: any visible person ⇒ `onModel` (was letting full-body model shots through as `product` and cutting them — the overalls bug).
+- **Browser-side cutout** (`src/lib/cutout.ts`): lazy-imports `@imgly/background-removal` (web/WASM, ~40MB model from imgly CDN, ~2–4s) at save; **trims the transparent margins to the subject** (`CUTOUT_VERSION`, alpha-bbox crop) so products fill the tile instead of floating tiny; uploads the PNG to the `thing-cutouts` Supabase bucket; stores `metadata.cutout` + `cutoutV`. Free.
+- **Raw CORS proxy** `api/thing-image?...&raw=1` (`thingImageRaw`): re-encodes the CORS-blocked shop photo so the browser can read bytes for the model; never 302s. Also used to display model/lifestyle photos untrimmed.
+- **Build:** the 24MB onnxruntime WASM is excluded from the SW precache (`vite.config.ts` `injectManifest.globIgnores`) and code-split out of the main bundle.
+- **Backfill:** "polish images (N to tidy)" in the view sheet — re-polishes items missing a cutout OR on a stale `CUTOUT_VERSION` (free, no AI when shot type's known). Override: product sheet → edit → "show the full photo instead" (`metadata.cutoutHidden`) for a bad cutout; a re-read that flips to model/lifestyle clears a stale cutout.
 
-**⚠️ Action required before it works live:** run the new `thing-cutouts` block at the bottom of `supabase/schema.sql` in the Supabase SQL editor (creates the bucket + RLS policies).
+**2. Board palette → cool gray.** Warm `CREAM` replaced by `TILE = '#ECEDEF'` everywhere (grid, hero, deciding cards). Render rule settled: **product cutouts float on the gray; model/lifestyle photos fill the tile edge-to-edge (cover)** — never floated (floating a photo re-boxes its own bg). Deciding-card neutrals cooled to match.
 
-**Files:** `api/_vision.ts`, `api/things-vision.ts`, `api/email.ts`, `api/thing-image.ts`, `src/lib/things.ts`, `src/lib/cutout.ts` (new), `src/screens/ThingsScreen.tsx`, `vite.config.ts`, `supabase/schema.sql`, `package.json` (+`@imgly/background-removal`).
+**3. Product-card value-add** (the card was just "the tile, but bigger"). Now:
+- **Tappable taste tags** — tap one to filter the board to what shares it; "· N" = the true match count; one-offs aren't tappable; a removable pill shows the active `tagFilter` (generic facet+value, coexists with the category row).
+- **"why you saved it" note** (`metadata.note`) — the card becomes your memory of the item.
+- **Note styling** unified app-wide as `src/components/NoteProse.tsx`: the taste page's own voice — warm-graphite (#4A453E) **italic** prose, 13px, small uppercase label ("your note" / "thoughts"). Replaced the boxed Things note AND the media Library's italic block. (Rejected along the way: a big quote-mark pull-quote = cheesy; a serif+rule margin note = stock.)
+- **Card width:** the product sheet is capped to the photo's width (360px, centred) so it's one tidy column on laptop, not a small photo in a broad sheet.
+
+**Files:** `api/_vision.ts`, `api/things-vision.ts`, `api/email.ts`, `api/thing-image.ts`, `src/lib/things.ts`, `src/lib/thingImage.ts`, `src/lib/cutout.ts` (new), `src/components/NoteProse.tsx` (new), `src/components/ItemActionSheet.tsx`, `src/screens/ThingsScreen.tsx`, `vite.config.ts`, `supabase/schema.sql`, `package.json` (+`@imgly/background-removal`).
 
 ---
 

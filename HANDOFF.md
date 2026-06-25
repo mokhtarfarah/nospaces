@@ -15,15 +15,13 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**This session (74) — AI image cutout (subject-on-cream tiles). All on `main`, 85 Vitest green, typecheck + eslint + build clean. NOT runtime-verified (board behind Google auth) — wants Farah's eye + ONE SQL run.** The heuristic trim made box-in-box tiles on styled shots; now a bare `product` packshot is **cut out and floated on one warm-cream tile** so the mixed board reads as one catalog. Browser-side at save (`src/lib/cutout.ts`, `@imgly/background-removal`, free), stored as a transparent PNG in a new `thing-cutouts` Supabase bucket; model/lifestyle shots (read off the SAME vision call's new `shotType`) stay full-bleed. A "polish images" button in the view sheet backfills existing items. Full detail → archive (s74).
-
-> **⚠️ Before it works live:** run the new `thing-cutouts` block at the bottom of `supabase/schema.sql` in the Supabase SQL editor (bucket + RLS). Then load the live board and tap **view sheet → polish images** to backfill the ~10 existing items, and eyeball the cream tiles.
+**Session 74 — AI image cutout + board polish + product-card value-add. All shipped to `main` AND deployed; 85 Vitest green, typecheck + eslint + build clean. Farah ran the Supabase SQL, re-polished, reviewed live — looks good.** Products are now AI-subject-cutouts trimmed-to-fill, floated on one **cool-gray** tile (`TILE #ECEDEF`); model/lifestyle shots fill the tile edge-to-edge. The product card earned a job: **tappable taste tags** (tap → filter the board, "· N" match count), a **"why you saved it" note**, and a unified italic note style (`NoteProse`, matches the taste page) used on Things + the media Library. Card capped to the photo's width. Cutout backfill/override + strict person⇒onModel vision. Full detail → archive (s74).
 
 ---
 
 ## ▶ Next session (75)
 
-**First: verify s74 cutout on the live board** (run the SQL, polish the existing items, judge the cream tiles as a first-time user — do the cutouts look catalog-clean, or do any products get shredded / mis-classified as lifestyle?).
+**TOP — build the per-item "how this fits your taste" one-liner.** The last piece of the product-card value-add, deliberately deferred because it's the only part that costs anything. On the product sheet, a one-line read of how the item rhymes with the board (e.g. *"leans into your structured, monochrome streak — a touch dressier than usual"*). **Cheap Haiku, cached per item** (store on `metadata.tasteFit` so it's ~1¢ once, NOT per card-open — never auto-run on every open). Must import `HUMANIZER_GUARDRAILS`. Fold it into the same voice/work as the queued Things taste-synthesis (memory `things-taste-synthesis`) — they're the same muscle (item-level vs board-level). State cost before building.
 
 **Then build (queued, in order):**
 1. **Mood board** — a collection of pure-inspiration images (not purchasable); free (just saved images). Spec it the same way before building.
