@@ -105,7 +105,10 @@ export function ThingsScreen() {
   const { items, addItem, editItem, deleteItem, patchMetadata } = useItems()
   const { user } = useAuth()
   const [composer, setComposer] = useState<null | 'product' | 'intent'>(null)
-  const [moodComposer, setMoodComposer] = useState(false)
+  // Mood capture: the FAB shoots straight to the file picker (the mobile-first
+  // path); pasting a link is the soft, secondary path (mostly a desktop thing).
+  const [moodLink, setMoodLink] = useState(false)
+  const moodFileRef = useRef<HTMLInputElement>(null)
   const [openIntentId, setOpenIntentId] = useState<string | null>(null)
   const [openProductId, setOpenProductId] = useState<string | null>(null)
   const [openMoodId, setOpenMoodId] = useState<string | null>(null)
@@ -145,6 +148,19 @@ export function ThingsScreen() {
   const [captures, setCaptures] = useState<EmailCapture[]>([])
   const [capturesOpen, setCapturesOpen] = useState(false)
   useEffect(() => { fetchCaptures().then(cs => setCaptures(cs.filter(isThingsCapture))) }, [])
+  // Desktop nicety: paste a copied image anywhere on the mood tab to add it.
+  useEffect(() => {
+    if (tab !== 'mood') return
+    const onPaste = (e: ClipboardEvent) => {
+      const list = e.clipboardData?.items
+      if (!list) return
+      const files = Array.from(list).filter(i => i.type.startsWith('image/')).map(i => i.getAsFile()).filter((f): f is File => !!f)
+      if (files.length) { e.preventDefault(); void addMoodFiles(files) }
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab])
   const captureFailures = useMemo(() => captures.filter(isFailure).length, [captures])
   const [flash, setFlash] = useState<string | null>(null)
   // Toast for the vision auto-tag result. Success auto-fades; a failure stays put
@@ -159,6 +175,10 @@ export function ThingsScreen() {
   // Farah's call: the mood board feeds the same aesthetic mirror as the wishlist.
   const things = useMemo(() => items.filter(i => { const k = kindOf(i); return k === 'product' || k === 'intent' }), [items])
   const moods = useMemo(() => items.filter(i => kindOf(i) === 'inspiration'), [items])
+  // Newest first — most recent inspiration at the top of the wall.
+  const sortedMoods = useMemo(() =>
+    [...moods].sort((a, b) => (b.date_added ?? b.created_at ?? '').localeCompare(a.date_added ?? a.created_at ?? '')),
+    [moods])
   const tasteItems = useMemo(() => [...things, ...moods], [things, moods])
   const sorted = useMemo(() => sortThings(things, sort), [things, sort])
   // Distinct categories present across the board, for the filter row.
@@ -250,41 +270,53 @@ export function ThingsScreen() {
     }
   }
 
-  // Add a mood-board image. An upload goes to Storage first (then we keep the public
-  // URL, hosted); a pasted link is kept as-is. Either way one cheap vision read
-  // (~1¢) tags it so it feeds the taste thread — best-effort, in the background.
-  async function addMood(input: { file?: Blob; url?: string }) {
-    let image: string
-    let hosted = false
-    let sourceUrl: string | null = null
-    if (input.file) {
-      if (!user) return
-      setFlash('uploading the image…')
-      const up = await uploadMoodImage(user.id, input.file)
-      if (!up.ok) { showFlash(`couldn't upload — ${up.reason} (tap to dismiss)`, true); return }
-      image = up.url; hosted = true
-    } else {
-      const u = (input.url ?? '').trim()
-      if (!/^https?:\/\//i.test(u)) { showFlash('paste a full image link (https://…) or upload a file', true); return }
-      image = u; sourceUrl = u
-    }
-    const id = await addItem('inspiration', 'thing', null, null, { kind: 'inspiration', image, hosted, sourceUrl })
-    setMoodComposer(false)
+  // Upload one or more inspiration images (file pick / clipboard paste). Each goes to
+  // Storage, then becomes an inspiration item; a cheap vision read (~1¢) tags it in
+  // the background so it feeds the taste thread. Multi-select stays quiet per-image
+  // (one summary toast) so the loop doesn't flicker through a dozen flashes.
+  async function addMoodFiles(files: File[]) {
+    if (!user || files.length === 0) return
     setTab('mood')
-    if (id) void autoTagMood(id, image)
+    const single = files.length === 1
+    const saved: { id: string; url: string }[] = []
+    for (let i = 0; i < files.length; i++) {
+      setFlash(single ? 'uploading the image…' : `uploading ${i + 1}/${files.length}…`)
+      const up = await uploadMoodImage(user.id, files[i])
+      if (!up.ok) { showFlash(`couldn't upload — ${up.reason} (tap to dismiss)`, true); continue }
+      const id = await addItem('inspiration', 'thing', null, null, { kind: 'inspiration', image: up.url, hosted: true, sourceUrl: null })
+      if (id) saved.push({ id, url: up.url })
+    }
+    if (single && saved.length) {
+      void autoTagMood(saved[0].id, saved[0].url)
+    } else if (saved.length) {
+      showFlash(`added ${saved.length} image${saved.length === 1 ? '' : 's'} — reading taste…`)
+      for (const s of saved) void autoTagMood(s.id, s.url, { silent: true })
+    }
+  }
+
+  // Add a mood image from a pasted web link — kept as-is (proxied on display), not
+  // re-hosted. The secondary, mostly-desktop path.
+  async function addMoodUrl(url: string) {
+    const u = url.trim()
+    if (!/^https?:\/\//i.test(u)) { showFlash('paste a full image link (https://…)', true); return }
+    const id = await addItem('inspiration', 'thing', null, null, { kind: 'inspiration', image: u, hosted: false, sourceUrl: u })
+    setMoodLink(false)
+    setTab('mood')
+    if (id) void autoTagMood(id, u)
   }
 
   // Read taste tags off a mood image (palette/material/vibe) and store them, so the
   // image feeds the board's thread. Same ~1¢ vision path as a product photo, minus
-  // the cutout (an inspiration image is shown whole). Best-effort; never silent.
-  async function autoTagMood(id: string, image: string) {
-    setFlash('reading taste from the image…')
+  // the cutout (an inspiration image is shown whole). `silent` suppresses the toasts
+  // for a multi-image upload (which shows its own summary line).
+  async function autoTagMood(id: string, image: string, opts?: { silent?: boolean }) {
+    if (!opts?.silent) setFlash('reading taste from the image…')
     const r = await readImageAttributes(image, null)
-    if (!r.ok) { showFlash(`couldn't read the image — ${r.reason} (tap to dismiss)`, true); return }
+    if (!r.ok) { if (!opts?.silent) showFlash(`couldn't read the image — ${r.reason} (tap to dismiss)`, true); return }
     if (r.attributes.length) {
       await patchMetadata(id, { attributes: r.attributes })
-      showFlash(`added ${r.attributes.length} taste tag${r.attributes.length === 1 ? '' : 's'}: ${r.attributes.map(a => a.value).join(' · ')}`)
-    } else {
+      if (!opts?.silent) showFlash(`added ${r.attributes.length} taste tag${r.attributes.length === 1 ? '' : 's'}: ${r.attributes.map(a => a.value).join(' · ')}`)
+    } else if (!opts?.silent) {
       showFlash('no clear taste tags from that image')
     }
   }
@@ -382,13 +414,9 @@ export function ThingsScreen() {
             </div>
           </div>
           <div style={{ borderBottom: `1.5px solid ${INK}` }} />
-          {/* Wishlist | Mood — the two halves of the board. Same tab-chip language as
-              the rest of the app; both feed the one taste read below. */}
-          <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-            <TabChip label="wishlist" active={tab === 'wishlist'} onClick={() => setTab('wishlist')} />
-            <TabChip label="mood" active={tab === 'mood'} onClick={() => setTab('mood')} />
-          </div>
-          <ThreadMasthead things={tasteItems} />
+          {/* The wishlist/mood toggle lives in the bottom nav (mirrors the media
+              nav). Keywords (the thread) show on the mood tab only — same as the
+              media taste read living on the Taste tab, not the Library. */}
           {tab === 'wishlist' && captures.length > 0 && (
             <button onClick={() => setCapturesOpen(true)}
               style={{
@@ -439,7 +467,17 @@ export function ThingsScreen() {
 
         <div style={{ padding: '16px 16px 120px' }}>
           {tab === 'mood' ? (
-            <MoodWall moods={moods} cols={cols} onOpen={setOpenMoodId} onAdd={() => setMoodComposer(true)} />
+            <>
+              {/* The board's keywords (its taste read) live here on the mood tab. */}
+              <ThreadMasthead things={tasteItems} />
+              {moods.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                  <button onClick={() => setMoodLink(true)} style={quietLink}>paste a link</button>
+                </div>
+              )}
+              <MoodWall moods={sortedMoods} cols={cols} onOpen={setOpenMoodId}
+                onAddUpload={() => moodFileRef.current?.click()} onAddLink={() => setMoodLink(true)} />
+            </>
           ) : (
           <>
           {/* Active taste-tag filter (set from a product's tags) — a removable pill so
@@ -525,8 +563,13 @@ export function ThingsScreen() {
         />
       )}
 
-      {moodComposer && (
-        <MoodComposer onClose={() => setMoodComposer(false)} onAdd={addMood} />
+      {/* Mood upload — the FAB and the empty/wall buttons all trigger this one hidden
+          multi-file input, so adding an image is a single tap → picker on mobile. */}
+      <input ref={moodFileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+        onChange={e => { const fs = Array.from(e.target.files ?? []); e.target.value = ''; if (fs.length) void addMoodFiles(fs) }} />
+
+      {moodLink && (
+        <MoodLinkComposer onClose={() => setMoodLink(false)} onAdd={addMoodUrl} />
       )}
 
       {openMood && (
@@ -534,7 +577,6 @@ export function ThingsScreen() {
           item={openMood}
           onClose={() => setOpenMoodId(null)}
           onRunTaste={() => autoTagMood(openMood.id, inspirationMeta(openMood).image ?? '')}
-          onSaveNote={(note) => patchMetadata(openMood.id, { note })}
           onDelete={async () => { await deleteItem(openMood.id); setOpenMoodId(null) }}
         />
       )}
@@ -650,7 +692,7 @@ export function ThingsScreen() {
       {addMenu && (
         <div onClick={() => setAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 98 }} />
       )}
-      <div style={{ position: 'fixed', right: 20, bottom: 'calc(24px + env(safe-area-inset-bottom))', zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+      <div style={{ position: 'fixed', right: 20, bottom: 'calc(56px + env(safe-area-inset-bottom) + 18px)', zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
         {tab === 'wishlist' && addMenu && (
           <>
             <FabAction label="save a product" onClick={() => { setAddMenu(false); setComposer('product') }} />
@@ -658,7 +700,7 @@ export function ThingsScreen() {
           </>
         )}
         <button
-          onClick={() => tab === 'mood' ? setMoodComposer(true) : setAddMenu(m => !m)}
+          onClick={() => tab === 'mood' ? moodFileRef.current?.click() : setAddMenu(m => !m)}
           aria-label={tab === 'mood' ? 'add inspiration' : addMenu ? 'close add menu' : 'add'}
           style={{
             width: 50, height: 50, borderRadius: '50%', background: INK, color: '#fff', border: 'none',
@@ -672,7 +714,52 @@ export function ThingsScreen() {
           </svg>
         </button>
       </div>
+
+      {/* The Things bottom nav — the wishlist/mood toggle, mirroring the media nav
+          (library/taste/discover). The media BottomNav is hidden on /things (App.tsx),
+          so this is the only bar here. Grows to a 3rd 'taste' tab when synthesis ships. */}
+      <ThingsNav tab={tab} onTab={setTab} />
     </div>
+  )
+}
+
+// Things bottom nav — same chrome as the media BottomNav (fixed bar, icon + label,
+// ink-when-active), scoped to the two halves of the board.
+function ThingsNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
+  const base: React.CSSProperties = {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+    border: 'none', background: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, padding: '8px 24px',
+  }
+  return (
+    <nav style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0,
+      height: 'calc(56px + env(safe-area-inset-bottom))', paddingBottom: 'env(safe-area-inset-bottom)',
+      background: '#fff', borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-around', alignItems: 'center', zIndex: 100,
+    }}>
+      <button onClick={() => onTab('wishlist')} style={{ ...base, color: tab === 'wishlist' ? '#111' : '#999' }}>
+        <WishlistIcon /> wishlist
+      </button>
+      <button onClick={() => onTab('mood')} style={{ ...base, color: tab === 'mood' ? '#111' : '#999' }}>
+        <MoodIcon /> mood
+      </button>
+    </nav>
+  )
+}
+
+function WishlistIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
+    </svg>
+  )
+}
+
+function MoodIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="8" height="8" rx="1" /><rect x="13" y="3" width="8" height="8" rx="1" />
+      <rect x="3" y="13" width="8" height="8" rx="1" /><rect x="13" y="13" width="8" height="8" rx="1" />
+    </svg>
   )
 }
 
@@ -1522,12 +1609,15 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
 /* ---------- mood board (pure-inspiration images) ---------- */
 
 // A masonry wall of inspiration images — natural aspect ratios (a mood board, not a
-// uniform catalog), so the pictures read like a Pinterest pin-up rather than the
-// cropped product tiles. Uses the same measured column count as the wishlist grid.
-function MoodWall({ moods, cols, onOpen, onAdd }: { moods: Item[]; cols: number; onOpen: (id: string) => void; onAdd: () => void }) {
-  if (moods.length === 0) return <MoodEmpty onAdd={onAdd} />
+// uniform catalog), so the pictures read like a pin-up rather than the cropped
+// product tiles. Editorial: sharp corners, packed tight. Uses the measured column
+// count. (Later: a slight stagger/offset so it's not a neat 2×2 — noted in ROADMAP.)
+function MoodWall({ moods, cols, onOpen, onAddUpload, onAddLink }: {
+  moods: Item[]; cols: number; onOpen: (id: string) => void; onAddUpload: () => void; onAddLink: () => void
+}) {
+  if (moods.length === 0) return <MoodEmpty onAddUpload={onAddUpload} onAddLink={onAddLink} />
   return (
-    <div style={{ columnCount: cols, columnGap: 10 }}>
+    <div style={{ columnCount: cols, columnGap: 4 }}>
       {moods.map(item => <MoodTile key={item.id} item={item} onOpen={() => onOpen(item.id)} />)}
     </div>
   )
@@ -1538,83 +1628,64 @@ function MoodTile({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const src = moodSrc(m.image, m.hosted)
   return (
     <button onClick={onOpen}
-      style={{ display: 'block', width: '100%', border: 'none', background: 'none', padding: 0, margin: '0 0 10px', cursor: 'pointer', breakInside: 'avoid' }}>
+      style={{ display: 'block', width: '100%', border: 'none', background: 'none', padding: 0, margin: '0 0 4px', cursor: 'pointer', breakInside: 'avoid' }}>
       {src
-        ? <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block', borderRadius: 8, background: TILE }} />
-        : <div style={{ width: '100%', aspectRatio: '4 / 5', borderRadius: 8, background: TILE, border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 11 }}>no image</div>}
+        ? <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block', background: TILE }} />
+        : <div style={{ width: '100%', aspectRatio: '4 / 5', background: TILE, border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 11 }}>no image</div>}
     </button>
   )
 }
 
-function MoodEmpty({ onAdd }: { onAdd: () => void }) {
+function MoodEmpty({ onAddUpload, onAddLink }: { onAddUpload: () => void; onAddLink: () => void }) {
   return (
     <div style={{ textAlign: 'center', padding: '48px 20px', color: MUTED }}>
       <div style={{ fontSize: 13, lineHeight: 1.6 }}>
         Your mood board is empty.<br />
         Save images that capture the look you're after — they feed your taste, no price or link needed.
       </div>
-      <button onClick={onAdd} style={{ ...primaryBtn(false), marginTop: 18 }}>add an image</button>
+      <button onClick={onAddUpload} style={{ ...primaryBtn(false), marginTop: 18 }}>upload images</button>
+      <div style={{ marginTop: 12 }}>
+        <button onClick={onAddLink} style={quietLink}>or paste a link</button>
+      </div>
     </div>
   )
 }
 
-// Add an inspiration image: upload a file, paste a copied image, or paste a web
-// image link. The actual save + vision read happen in the parent (addMood).
-function MoodComposer({ onClose, onAdd }: { onClose: () => void; onAdd: (input: { file?: Blob; url?: string }) => void | Promise<void> }) {
+// Add a mood image from a web link — the soft, secondary path (mostly desktop; on a
+// phone the FAB goes straight to the photo picker). Upload + clipboard-paste live on
+// the FAB / wall, so this sheet is just the URL field.
+function MoodLinkComposer({ onClose, onAdd }: { onClose: () => void; onAdd: (url: string) => void | Promise<void> }) {
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
 
-  async function run(input: { file?: Blob; url?: string }) {
-    if (busy) return
+  async function run() {
+    if (busy || !url.trim()) return
     setBusy(true)
-    await onAdd(input)
+    await onAdd(url)
     setBusy(false)
-  }
-
-  // Paste a copied image straight in (a screenshot, a picture copied from a page).
-  function onPaste(e: React.ClipboardEvent) {
-    const img = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'))
-    if (img) { const f = img.getAsFile(); if (f) { e.preventDefault(); void run({ file: f }) } }
   }
 
   return (
     <Sheet onClose={onClose} maxWidth={420}>
-      <div onPaste={onPaste}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>add inspiration</h2>
-        <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>Save an image you love — no price, no link needed. Its look feeds your taste read.</p>
-
-        <button onClick={() => fileRef.current?.click()} disabled={busy}
-          style={{ width: '100%', padding: '12px', borderRadius: 12, border: `1px dashed ${MUTED}`, background: 'none', color: INK, fontSize: 13, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
-          {busy ? 'adding…' : 'upload an image'}
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) void run({ file: f }) }} />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0', color: MUTED, fontSize: 11.5 }}>
-          <div style={{ flex: 1, borderBottom: `1px solid ${LINE}` }} /> or paste a link <div style={{ flex: 1, borderBottom: `1px solid ${LINE}` }} />
-        </div>
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input autoFocus value={url} onChange={e => setUrl(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && url.trim()) void run({ url }) }}
-            placeholder="https://… image link" style={inputStyle} />
-          <button onClick={() => url.trim() && run({ url })} disabled={busy || !url.trim()} style={primaryBtn(busy || !url.trim())}>add</button>
-        </div>
-        <p style={{ fontSize: 11, color: MUTED, marginTop: 10 }}>tip: you can paste a copied image straight in.</p>
+      <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>paste an image link</h2>
+      <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>Drop a link to an image on the web — we'll save the picture. (On your phone, just tap + to upload.)</p>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input autoFocus value={url} onChange={e => setUrl(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') void run() }}
+          placeholder="https://… image link" style={inputStyle} />
+        <button onClick={run} disabled={busy || !url.trim()} style={primaryBtn(busy || !url.trim())}>{busy ? 'adding…' : 'add'}</button>
       </div>
     </Sheet>
   )
 }
 
-// Tap a mood image → its detail: the full picture, its taste tags, an optional note,
-// the source it came from, and remove. Lighter than the product sheet — an
-// inspiration image has no price, buy link, or "got it" state.
-function MoodSheet({ item, onClose, onRunTaste, onSaveNote, onDelete }: {
+// Tap a mood image → its detail: the full picture, its taste tags, the source it
+// came from, and remove. Lighter than the product sheet — an inspiration image has
+// no price, buy link, "got it" state, or note (it's a pure visual reference).
+function MoodSheet({ item, onClose, onRunTaste, onDelete }: {
   item: Item
   onClose: () => void
   onRunTaste: () => void | Promise<void>
-  onSaveNote: (note: string | null) => void | Promise<void>
   onDelete: () => void
 }) {
   const m = inspirationMeta(item)
@@ -1650,8 +1721,6 @@ function MoodSheet({ item, onClose, onRunTaste, onSaveNote, onDelete }: {
           </a>
         </div>
       )}
-
-      <NoteBlock note={m.note ?? null} onSave={onSaveNote} />
 
       {/* Recovery: an image whose look couldn't be auto-read lands here untagged —
           offer a one-tap re-read so it can still feed the taste thread. */}
