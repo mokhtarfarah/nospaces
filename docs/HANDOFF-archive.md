@@ -21,7 +21,9 @@ Farah ran the planned holistic look: I read the app end-to-end from source, she 
 
 **Coherence audit (the bigger ask):** mapped where media/Things diverge. Most "stapled-on" feeling was casing (fixed) + switcher visibility (fixed), not architecture — the two halves share one thesis (taste → mirror; collect → decide). Remaining divergences folded into the roadmap as **one cluster: "what feeds the taste read"** (self-defined taste + Things-taste reframe + beauty/home exclusion + a "got it"→worth-it signal — all one decision, gated on the "saving is the signal" soul rule) + a separate **"vary the AI voice by surface"** item (ungated, can go first). "thread"→"vibes" was a no-op (only in code/comments, never user-facing).
 
-**Next:** Batch-3 work is now the roadmap cluster above — needs the design decision before code; voice-by-surface can go anytime. Live-verify the badges + deciding card.
+**Verified live (Farah):** the cover badges + deciding-card cover look good. Two end-of-session refinements then shipped (`32505d4`): the loved badge redrawn as the taste-tab smiley SVG (fills the mark, won't render as a tiny/colored emoji), and a no-options deciding card now reads as a question ("add options" + a "+") instead of a broken "no image" tile.
+
+**Next:** the "what feeds the taste read" roadmap cluster — needs the design decision before code; "vary the AI voice by surface" can go anytime. Mood masonry (s80) still awaits an eyeball.
 
 ---
 
