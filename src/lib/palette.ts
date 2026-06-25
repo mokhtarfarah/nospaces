@@ -5,8 +5,10 @@
 // Reading canvas pixels needs CORS for cross-origin images: our Supabase uploads send
 // it and the product/pasted-image proxy is same-origin, so most images read fine. Any
 // image that taints the canvas is simply skipped — graceful: a few less swatches,
-// never a broken ribbon. Near-white, near-black, and near-neutral grey pixels are
-// dropped (studio/tile backdrops and packaging) so the story is real colour.
+// never a broken ribbon. The backdrop is found by sampling the image border (a product
+// sits centred) and dropped by colour — so white, grey, AND cream/kraft backdrops all go,
+// while a cream or grey *product* in the middle survives. Full-bleed shots with no clear
+// border fall back to dropping chromatically neutral pixels.
 
 export type Swatch = string // '#rrggbb'
 
@@ -39,6 +41,30 @@ function hue(r: number, g: number, b: number): number {
   return h < 0 ? h + 360 : h
 }
 
+// Estimate the backdrop colour by sampling the image's border. A product sits centred,
+// so the frame's edge pixels are almost always background — whatever its colour (white,
+// grey, cream, kraft). Returns the average edge colour only if the edge is *consistent*;
+// if the edges disagree (a full-bleed shot where the product reaches the frame), returns
+// null so the caller falls back to the neutral-colour drop rather than eating the product.
+function borderColor(data: Uint8ClampedArray, S: number): { r: number; g: number; b: number } | null {
+  const px: Array<[number, number, number]> = []
+  const take = (x: number, y: number) => {
+    const i = (y * S + x) * 4
+    if (data[i + 3] >= 200) px.push([data[i], data[i + 1], data[i + 2]])
+  }
+  for (let x = 0; x < S; x++) { take(x, 0); take(x, S - 1) }
+  for (let y = 1; y < S - 1; y++) { take(0, y); take(S - 1, y) }
+  if (px.length < 8) return null
+  let r = 0, g = 0, b = 0
+  for (const [pr, pg, pb] of px) { r += pr; g += pg; b += pb }
+  const n = px.length
+  const mr = r / n, mg = g / n, mb = b / n
+  let spread = 0
+  for (const [pr, pg, pb] of px) spread += Math.abs(pr - mr) + Math.abs(pg - mg) + Math.abs(pb - mb)
+  if (spread / n > 36) return null // edges disagree → not a clean backdrop
+  return { r: mr, g: mg, b: mb }
+}
+
 // The dominant colours of one image (averaged per bucket), or [] if it won't load /
 // taints the canvas.
 async function imageColors(src: string, top = 4): Promise<Bucket[]> {
@@ -59,14 +85,21 @@ async function imageColors(src: string, top = 4): Promise<Bucket[]> {
   try {
     ctx.drawImage(img, 0, 0, S, S)
     const data = ctx.getImageData(0, 0, S, S).data
+    const bg = borderColor(data, S)
     const buckets = new Map<number, Bucket>()
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3]
-      if (a < 200) continue
-      const mx = Math.max(r, g, b), mn = Math.min(r, g, b)
-      if (mn > 232) continue // near-white background
-      if (mx < 18) continue  // near-black
-      if ((mx - mn) / mx < 0.12) continue // near-neutral grey (studio/tile backdrop, not real colour)
+      if (a < 200) continue // transparent (e.g. an AI cutout) — already background-free
+      if (bg) {
+        // Backdrop located at the border — drop pixels matching it, whatever its colour.
+        // A cream *product* in the centre survives; a cream *backdrop* doesn't.
+        if (Math.abs(r - bg.r) + Math.abs(g - bg.g) + Math.abs(b - bg.b) < 50) continue
+      } else {
+        // No clean backdrop (full-bleed shot) — fall back to dropping chromatically
+        // neutral pixels (grey/white/black, channels nearly equal); tilted tones survive.
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b)
+        if (mx - mn < 10) continue
+      }
       const key = bucketKey(r, g, b)
       const e = buckets.get(key) ?? { r: 0, g: 0, b: 0, n: 0 }
       e.r += r; e.g += g; e.b += b; e.n++
