@@ -33,7 +33,7 @@ export function DomainSwitcher({ current }: { current: Domain }) {
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       zIndex: 99,
     }}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, fontSize: 14, letterSpacing: '0.01em' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontSize: 11.5, letterSpacing: '0.01em' }}>
         <Segment label="media" active={current === 'media'} onClick={() => go('media')} />
         <span style={{ color: '#CFCBC3' }}>/</span>
         <Segment label="things" active={current === 'things'} onClick={() => go('things')} />
@@ -49,7 +49,7 @@ function Segment({ label, active, onClick }: { label: string; active: boolean; o
   return (
     <button onClick={onClick} aria-pressed={active} style={{
       border: 'none', background: 'none', padding: 0, cursor: active ? 'default' : 'pointer',
-      fontSize: 14, fontWeight: active ? 700 : 500,
+      fontSize: 11.5, fontWeight: active ? 700 : 500,
       color: active ? INK : '#8A857C',
       textDecoration: active ? 'none' : 'underline',
       textDecorationColor: '#D5D1C9', textUnderlineOffset: 4,

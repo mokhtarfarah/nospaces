@@ -7,7 +7,7 @@
 // discover). Tune either height here and everything that clears it re-flows.
 
 export const NAV_H = 46       // tab bar height, px (above the safe-area inset)
-export const SWITCHER_H = 30  // domain-switcher row height, px
+export const SWITCHER_H = 22  // domain-switcher row — barely-there caption, not a bar
 export const BOTTOM_STACK = NAV_H + SWITCHER_H // full panel height, px
 
 // `calc(<px> + safe-area)` for something sitting just above the WHOLE panel.
