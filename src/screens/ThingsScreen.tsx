@@ -146,6 +146,7 @@ export function ThingsScreen() {
   const [statusF, setStatusF] = useState<StatusFilter>('all')
   const [filterSheet, setFilterSheet] = useState(false)
   const [polishing, setPolishing] = useState(false)
+  const [taggingMoods, setTaggingMoods] = useState(false)
   // Forwarded product links that didn't land (logged server-side by /api/email).
   // Surfaced here so a failed email capture isn't invisible from the board — the
   // same "review failed forwards" feed the Library has, scoped to things.
@@ -293,8 +294,14 @@ export function ThingsScreen() {
     if (single && saved.length) {
       void autoTagMood(saved[0].id, saved[0].url)
     } else if (saved.length) {
-      showFlash(`added ${saved.length} image${saved.length === 1 ? '' : 's'} — reading taste…`)
-      for (const s of saved) void autoTagMood(s.id, s.url, { silent: true })
+      // Sequential, not fired all at once — a batch of reads in parallel trips the
+      // vision rate-limit and the failures (silent here) leave images untagged.
+      let tagged = 0
+      for (let i = 0; i < saved.length; i++) {
+        setFlash(`reading taste… ${i + 1}/${saved.length}`)
+        if (await autoTagMood(saved[i].id, saved[i].url, { silent: true })) tagged++
+      }
+      showFlash(`added ${saved.length} image${saved.length === 1 ? '' : 's'}${tagged < saved.length ? ` — ${tagged} tagged` : ''}`)
     }
   }
 
@@ -313,16 +320,35 @@ export function ThingsScreen() {
   // image feeds the board's thread. Same ~1¢ vision path as a product photo, minus
   // the cutout (an inspiration image is shown whole). `silent` suppresses the toasts
   // for a multi-image upload (which shows its own summary line).
-  async function autoTagMood(id: string, image: string, opts?: { silent?: boolean }) {
+  async function autoTagMood(id: string, image: string, opts?: { silent?: boolean }): Promise<boolean> {
     if (!opts?.silent) setFlash('reading taste from the image…')
     const r = await readImageAttributes(image, null)
-    if (!r.ok) { if (!opts?.silent) showFlash(`couldn't read the image — ${r.reason} (tap to dismiss)`, true); return }
+    if (!r.ok) { if (!opts?.silent) showFlash(`couldn't read the image — ${r.reason} (tap to dismiss)`, true); return false }
     if (r.attributes.length) {
       await patchMetadata(id, { attributes: r.attributes })
       if (!opts?.silent) showFlash(`added ${r.attributes.length} taste tag${r.attributes.length === 1 ? '' : 's'}: ${r.attributes.map(a => a.value).join(' · ')}`)
-    } else if (!opts?.silent) {
-      showFlash('no clear taste tags from that image')
+      return true
     }
+    if (!opts?.silent) showFlash('no clear taste tags from that image')
+    return false
+  }
+
+  // Mood images that never got their taste read (a silent failure in a past batch, or
+  // saved before auto-tag). The backfill clears them in one tap so they join the
+  // taste thread — no opening each image and clicking. Sequential, like polishAll.
+  const untaggedMoods = useMemo(() => moods.filter(m => itemAttributes(m).length === 0 && inspirationMeta(m).image), [moods])
+  async function tagAllMoods() {
+    if (taggingMoods || untaggedMoods.length === 0) return
+    setTaggingMoods(true)
+    const todo = untaggedMoods.slice()
+    let done = 0
+    for (let i = 0; i < todo.length; i++) {
+      setFlash(`reading taste… ${i + 1}/${todo.length}`)
+      const img = inspirationMeta(todo[i]).image
+      if (img && await autoTagMood(todo[i].id, img, { silent: true })) done++
+    }
+    showFlash(done > 0 ? `tagged ${done} image${done === 1 ? '' : 's'}` : 'no clear taste tags found')
+    setTaggingMoods(false)
   }
 
   // Cut the product out of its photo and drop it on a cream tile (browser-side,
@@ -482,7 +508,12 @@ export function ThingsScreen() {
           ) : tab === 'mood' ? (
             <>
               {moods.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                  {untaggedMoods.length > 0
+                    ? <button onClick={tagAllMoods} disabled={taggingMoods} style={quietLink}>
+                        {taggingMoods ? 'reading taste…' : `read taste for ${untaggedMoods.length} untagged`}
+                      </button>
+                    : <span />}
                   <button onClick={() => setMoodLink(true)} style={quietLink}>paste a link</button>
                 </div>
               )}
@@ -587,7 +618,7 @@ export function ThingsScreen() {
         <MoodSheet
           item={openMood}
           onClose={() => setOpenMoodId(null)}
-          onRunTaste={() => autoTagMood(openMood.id, inspirationMeta(openMood).image ?? '')}
+          onRunTaste={async () => { await autoTagMood(openMood.id, inspirationMeta(openMood).image ?? '') }}
           onDelete={async () => { await deleteItem(openMood.id); setOpenMoodId(null) }}
         />
       )}
