@@ -1718,9 +1718,17 @@ function MoodWall({ moods, cols, onOpen, onAddUpload, onAddLink }: {
   moods: Item[]; cols: number; onOpen: (id: string) => void; onAddUpload: () => void; onAddLink: () => void
 }) {
   if (moods.length === 0) return <MoodEmpty onAddUpload={onAddUpload} onAddLink={onAddLink} />
+  // Masonry via CSS columns: tiles flow top-to-bottom and pack tightly, so a short
+  // image never leaves a gap before the next row (the rigid grid did — every row was
+  // locked to its tallest tile). Order is column-major (newest down the first column,
+  // like Pinterest) — the trade for a gapless wall with no JS / no stored dimensions.
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 4, alignItems: 'start' }}>
-      {moods.map(item => <MoodTile key={item.id} item={item} onOpen={() => onOpen(item.id)} />)}
+    <div style={{ columnCount: cols, columnGap: 4 }}>
+      {moods.map(item => (
+        <div key={item.id} style={{ breakInside: 'avoid', marginBottom: 4 }}>
+          <MoodTile item={item} onOpen={() => onOpen(item.id)} />
+        </div>
+      ))}
     </div>
   )
 }

@@ -53,6 +53,8 @@ What matters most here:
 - Be specific and true to the evidence. Don't invent a tension or a story the tags don't support. If the board is coherent, name the through-line with warmth and confidence.
 - Second person, present tense, no preamble, no title in quotes, no trailing list. Don't restate the keyword thread verbatim — it's shown right next to this; deepen it instead.
 - No hype, no "this board", no "your taste says". Just the read, like a perceptive friend who's seen everything you've saved.
+- CRITICAL — don't end on a tidy aphorism or a self-satisfied bow. Banned moves: "there's an X, but it's the X of someone who…", "the ease/confidence/restraint of someone who knows…", "it's not just X, it's Y", and any closing line that flatters the person's discernment in the abstract. These read instantly as AI. End on something concrete and specific, or just stop — a read can end without a neat conclusion.
+- Don't psychoanalyse or narrate motive ("you're drawn to things that feel earned" is borderline; "you gravitate to" / "you reach for" is fine). Describe what the taste IS, not what it says about them as a person.
 
 ${HUMANIZER_GUARDRAILS}
 
