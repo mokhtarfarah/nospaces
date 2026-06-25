@@ -676,11 +676,15 @@ function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const n = m.candidates.length
   const winner = resolved ? m.candidates.find(c => c.id === m.winner) ?? null : null
   const lean = !resolved && m.leaning ? m.candidates.find(c => c.id === m.leaning) ?? null : null
-  // The small kicker reads the state at a glance; the front-runner's name (winner
-  // while decided, leaning otherwise) sits under the need so the card carries the
-  // choice you're circling without a photo.
-  const status = resolved ? 'decided' : lean ? 'leaning' : n ? `${n} option${n === 1 ? '' : 's'}` : 'no options yet'
-  const front = winner ?? lean
+  // The need leads (words, not a number — the "DECIDING · N" header already carries a
+  // count, so a card that opened with "N options" stacked two numbers). One detail
+  // line sits below: the count while deciding, or the front-runner once you're
+  // leaning/decided.
+  const detail = resolved
+    ? (winner ? `✓ ${winner.title}` : 'decided')
+    : lean ? `leaning · ${lean.title}`
+    : n ? `${n} option${n === 1 ? '' : 's'}`
+    : 'no options yet'
   const W = 168
 
   return (
@@ -694,14 +698,9 @@ function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
       {!resolved && n > 1 && (
         <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#E2E4E7', border: `1px solid ${LINE}`, borderRadius: 12, zIndex: -1 }} />
       )}
-      <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{status}</div>
-      {/* Single line, always — long needs ellipsis; open the card for the full text. */}
+      {/* Title first, single line always — long needs ellipsis; open the card for the full text. */}
       <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
-      {front && (
-        <div style={{ fontSize: 11, color: MUTED, marginTop: 4, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {resolved ? '✓ ' : '→ '}{front.title}
-        </div>
-      )}
+      <div style={{ fontSize: 11, color: MUTED, marginTop: 5, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{detail}</div>
     </button>
   )
 }
