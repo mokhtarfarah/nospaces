@@ -698,21 +698,6 @@ export function LibraryScreen() {
               ))}
             </>
           )}
-          {/* Decide for me — promoted out of the overflow menu; all-media, picks from the backlog. */}
-          {items.length > 0 && (
-            <>
-              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-              <button
-                onClick={() => navigate('/decide')}
-                style={{
-                  flexShrink: 0, padding: '4px 2px 8px', border: 'none', background: 'none',
-                  color: '#1C1B19', fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
-                }}
-              >
-                decide for me
-              </button>
-            </>
-          )}
         </div>
       </header>
 
@@ -952,6 +937,7 @@ export function LibraryScreen() {
       {/* Overflow menu — occasional actions moved out of the header */}
       {overflowOpen && (
         <OverflowSheet
+          hasItems={items.length > 0}
           gapCount={gapCount}
           captureCount={captures.length}
           captureFailures={captureFailures}
@@ -959,6 +945,7 @@ export function LibraryScreen() {
           regionBusy={regionBusy}
           selectMode={selectMode}
           onClose={() => setOverflowOpen(false)}
+          onDecide={() => { setOverflowOpen(false); navigate('/decide') }}
           onGuide={() => { setOverflowOpen(false); navigate('/guide') }}
           onTidy={() => { setOverflowOpen(false); setGapsOpen(true) }}
           onCaptures={() => { setOverflowOpen(false); setCapturesOpen(true) }}
@@ -1506,7 +1493,8 @@ function HeaderControls({ filtersActive, onClear, onSearch, onMore }: {
 }
 
 // Overflow bottom sheet — holds the occasional actions pulled out of the header.
-function OverflowSheet({ gapCount, captureCount, captureFailures, regionPending, regionBusy, selectMode, onClose, onGuide, onTidy, onCaptures, onPullRegions, onSelect }: {
+function OverflowSheet({ hasItems, gapCount, captureCount, captureFailures, regionPending, regionBusy, selectMode, onClose, onDecide, onGuide, onTidy, onCaptures, onPullRegions, onSelect }: {
+  hasItems: boolean
   gapCount: number
   captureCount: number
   captureFailures: number
@@ -1514,6 +1502,7 @@ function OverflowSheet({ gapCount, captureCount, captureFailures, regionPending,
   regionBusy: boolean
   selectMode: boolean
   onClose: () => void
+  onDecide: () => void
   onGuide: () => void
   onTidy: () => void
   onCaptures: () => void
@@ -1535,6 +1524,7 @@ function OverflowSheet({ gapCount, captureCount, captureFailures, regionPending,
         padding: '12px 20px calc(28px + env(safe-area-inset-bottom))', zIndex: 201, maxWidth: 480, margin: '0 auto',
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 12px' }} />
+        {hasItems && <Row label="help me decide" sub="can’t choose? we’ll pick from your library" onClick={onDecide} />}
         <Row label="how to use" sub="a quick tour of nospaces" onClick={onGuide} />
         {gapCount > 0 && <Row label={`tidy · ${gapCount}`} sub="fill in missing details" onClick={onTidy} />}
         {captureCount > 0 && <Row label={captureFailures > 0 ? `email captures · ${captureFailures}` : 'email captures'} sub="forwards that didn’t save" onClick={onCaptures} />}
