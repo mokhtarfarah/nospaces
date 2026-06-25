@@ -1224,7 +1224,7 @@ function TasteFitBlock({ fit, hidden, onRun, onToggleHide }: { fit: string | nul
   // cost: it just un-hides the cached read, never re-runs it.
   if (fit && hidden) {
     return (
-      <button onClick={onToggleHide} style={{ ...quietLink, marginTop: 14 }}>show taste read</button>
+      <button onClick={onToggleHide} style={{ ...quietLink, display: 'block', marginTop: 14 }}>show taste read</button>
     )
   }
 
@@ -1874,38 +1874,58 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
 
 /* ---------- mood board (pure-inspiration images) ---------- */
 
-// A wall of inspiration images. Row-by-row, newest first (Farah s76: reads more
-// naturally than column-major masonry) — a CSS grid with `align-items: start`, so
-// images keep their natural aspect (never cropped — this is a mood board, not a
-// catalog) and rows fill left→right in chronological order. Editorial: sharp
-// corners, tight 4px gaps. (Later: a slight stagger/offset — noted in ROADMAP.)
+// A wall of inspiration images: gapless masonry, newest first (Farah s80: wants both
+// — a tight wall AND reading top-to-bottom newest-first across the row). CSS can't do
+// both at once (columns pack gaplessly but run column-major; a row grid reads right
+// but leaves gaps under short tiles), so we lay the columns out in JS: walk the items
+// newest-first and drop each into whichever column is currently shortest. Newest tiles
+// spread across the top, nothing leaves a gap. Heights aren't known until an image
+// loads, so each tile reports its aspect ratio on load and the layout settles in.
+// Images keep their natural aspect (never cropped — this is a mood board, not a
+// catalog). Editorial: sharp corners, tight 4px gaps.
 function MoodWall({ moods, cols, onOpen, onAddUpload, onAddLink }: {
   moods: Item[]; cols: number; onOpen: (id: string) => void; onAddUpload: () => void; onAddLink: () => void
 }) {
+  // ratio = rendered height / width per tile; all columns are equal width, so a tile's
+  // ratio is a fair proxy for the height it adds to its column. Unmeasured tiles use a
+  // 4:5 default (matches the "no image" placeholder) so the first paint is balanced.
+  const [ratios, setRatios] = useState<Record<string, number>>({})
+  const onMeasure = (id: string, r: number) =>
+    setRatios(prev => (prev[id] === r ? prev : { ...prev, [id]: r }))
+
   if (moods.length === 0) return <MoodEmpty onAddUpload={onAddUpload} onAddLink={onAddLink} />
-  // Masonry via CSS columns: tiles flow top-to-bottom and pack tightly, so a short
-  // image never leaves a gap before the next row (the rigid grid did — every row was
-  // locked to its tallest tile). Order is column-major (newest down the first column,
-  // like Pinterest) — the trade for a gapless wall with no JS / no stored dimensions.
+
+  const columns: Item[][] = Array.from({ length: cols }, () => [])
+  const heights = new Array(cols).fill(0)
+  for (const item of moods) {
+    const shortest = heights.indexOf(Math.min(...heights))
+    columns[shortest].push(item)
+    heights[shortest] += ratios[item.id] ?? 1.25
+  }
+
   return (
-    <div style={{ columnCount: cols, columnGap: 4 }}>
-      {moods.map(item => (
-        <div key={item.id} style={{ breakInside: 'avoid', marginBottom: 4 }}>
-          <MoodTile item={item} onOpen={() => onOpen(item.id)} />
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+      {columns.map((col, ci) => (
+        <div key={ci} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {col.map(item => (
+            <MoodTile key={item.id} item={item} onOpen={() => onOpen(item.id)} onMeasure={onMeasure} />
+          ))}
         </div>
       ))}
     </div>
   )
 }
 
-function MoodTile({ item, onOpen }: { item: Item; onOpen: () => void }) {
+function MoodTile({ item, onOpen, onMeasure }: { item: Item; onOpen: () => void; onMeasure: (id: string, ratio: number) => void }) {
   const m = inspirationMeta(item)
   const src = moodSrc(m.image, m.hosted)
   return (
     <button onClick={onOpen}
       style={{ display: 'block', width: '100%', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
       {src
-        ? <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block', background: TILE }} />
+        ? <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy"
+            onLoad={e => { const t = e.currentTarget; if (t.naturalWidth) onMeasure(item.id, t.naturalHeight / t.naturalWidth) }}
+            style={{ width: '100%', display: 'block', background: TILE }} />
         : <div style={{ width: '100%', aspectRatio: '4 / 5', background: TILE, border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 11 }}>no image</div>}
     </button>
   )
