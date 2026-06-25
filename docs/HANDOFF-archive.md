@@ -4,6 +4,26 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 75 (2026-06-24) — per-item taste-fit one-liner + a long Things polish pass
+
+All **shipped & deployed to `main`** (every step pushed + Vercel-built; 89 Vitest green — 4 new `boardTasteSummary` cases — typecheck/eslint/build clean throughout). Couldn't drive live (login wall); Farah reviewed on the deployed board between rounds.
+
+**1. The per-item "how this fits your taste" one-liner** (the deferred-because-paid piece of s74's product-card value-add; memory `things-taste-synthesis`).
+- `api/things-taste-fit.ts` — Haiku, **text-only** (reads the already-extracted taste tags, never an image), ~$0.001, imports `HUMANIZER_GUARDRAILS`. **Cached on `metadata.tasteFit`**, **explicit tap only** (never auto-runs), **gated** to a board with a real read (`thread.length > 0`) AND a tagged item.
+- `lib/things.ts`: `boardTasteSummary()` (pure; top recurring values per facet + thread) and `readTasteFit()`. UI = `TasteFitBlock` on the product sheet, with a `re-read`.
+- **Voice rework (Farah feedback — the first lines were wooden + category-driven):** dropped `category` from the read entirely; told the model a recurring material (leather) is usually accessories so it stops framing bag-vs-coat as a "departure"; **banned the "X and Y check the boxes, but Z" template**; let it simply affirm a clean match instead of manufacturing a contrast. (Existing cached lines keep the old voice until re-read.)
+
+**2. Things board polish (several feedback rounds):**
+- **Deciding card** is now a compact **text box** (no photo), single-line need + `…`, small status (N options / leaning / decided) + front-runner name. Always renders as the card in BOTH list and grid (a plan should look the same either way) — removed `IntentRow`. Product grid title also single-line. Removed now-unused `GRID_ASPECT` + `thingImage` import.
+- **Things list view** = flat hairline rows like the media Library (was boxed cards).
+- **Product sheet tightened:** narrowed (Sheet got an optional `maxWidth`, product sheet = 380, content 340) so the panel hugs the column instead of floating a narrow strip in a 640 box; **two primary actions only** (buy + got it), every other action a shared `quietLink` text-link (edit/note/taste/put-back/remove/re-read — one size/weight/colour); **one-tap "read taste from photo" recovery** on the main sheet when a product landed untagged. **Auto-tag confirmed working** by Farah after this.
+- **Library:** the view (list/grid) switcher now pins to the category row when the header collapses on scroll (was folding away) — matches the Things board's always-visible control row.
+- **Masthead copy:** no longer says "tag your things" (auto-tag does it) — points at *saving*.
+
+**3. Roadmap (parked, with decisions captured):** beauty/home/misc products (should be taste-neutral); the **iOS share-to-app Shortcut** (cleanest = a Shortcut that auto-sends an email to `things@nospaces.xyz`, compose-sheet off — NOT the authed API POST that confused Farah last time; iOS/WebKit has no Web Share Target in any browser, so Chrome doesn't help); media **"verdict" reshape** (it repeats the reaction; parked).
+
+---
+
 ### Session 74 (2026-06-24) — AI image cutout, board polish, product-card value-add
 
 Long session, all **shipped & deployed to `main`** (every step pushed + Vercel-built; 85 Vitest green, typecheck/eslint/build clean throughout). Farah ran the Supabase SQL, re-polished, and reviewed on the live board — **looks good**. Three arcs:
