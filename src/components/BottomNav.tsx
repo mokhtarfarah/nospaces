@@ -2,7 +2,10 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LibraryIcon, TasteIcon, DiscoverIcon } from './navIcons'
 import { NAV_H, NAV_ICON, navButtonBase, clearStack } from '../lib/layout'
 
-export function BottomNav() {
+// `attached` = the domain switcher is sitting right above us, so the two read as
+// one panel: drop our top border (the switcher's becomes the panel's single edge)
+// to erase the divider between the rows. Stand-alone screens keep the border.
+export function BottomNav({ attached = false }: { attached?: boolean }) {
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -55,7 +58,7 @@ export function BottomNav() {
         height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
         paddingBottom: 'env(safe-area-inset-bottom)',
         background: '#fff',
-        borderTop: '1px solid #E8E8E8',
+        borderTop: attached ? 'none' : '1px solid #E8E8E8',
         display: 'flex',
         justifyContent: 'space-around',
         alignItems: 'center',

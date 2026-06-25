@@ -21,6 +21,10 @@ export default function App() {
   const { user, loading } = useAuth()
   const location = useLocation()
   const { pendingCount, syncStatus } = useOfflineSync()
+  // The domain switcher (and so the one-cohesive-panel look) shows only where both
+  // worlds are reachable — the collection screens. Elsewhere the tab bar stands
+  // alone and keeps its own top border.
+  const hasSwitcher = ['/library', '/taste', '/discover', '/things'].includes(location.pathname)
 
   if (loading) {
     return (
@@ -56,8 +60,8 @@ export default function App() {
       {/* Things is its own domain — the board carries its own capture buttons, so
           the media nav + FAB step aside. The domain switcher is shared across both
           and sits as a hairline strip just above whichever bottom nav is showing. */}
-      {location.pathname !== '/things' && <BottomNav />}
-      {['/library', '/taste', '/discover', '/things'].includes(location.pathname) && (
+      {location.pathname !== '/things' && <BottomNav attached={hasSwitcher} />}
+      {hasSwitcher && (
         <DomainSwitcher current={location.pathname === '/things' ? 'things' : 'media'} />
       )}
       {(pendingCount > 0 || syncStatus !== 'idle') && (

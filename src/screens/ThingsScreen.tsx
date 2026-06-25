@@ -873,7 +873,7 @@ function ThingsNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     <nav style={{
       position: 'fixed', bottom: 0, left: 0, right: 0,
       height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom: 'env(safe-area-inset-bottom)',
-      background: '#fff', borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-around', alignItems: 'center', zIndex: 100,
+      background: '#fff', borderTop: 'none', display: 'flex', justifyContent: 'space-around', alignItems: 'center', zIndex: 100,
     }}>
       <button onClick={() => onTab('wishlist')} style={{ ...base, color: tab === 'wishlist' ? '#111' : '#999' }}>
         <WishlistIcon size={NAV_ICON} /> wishlist
