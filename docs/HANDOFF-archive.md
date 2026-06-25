@@ -4,6 +4,30 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 77 (2026-06-24) — Taste synthesis for Things → the editorial taste tab
+
+Build session. Shipped the queued **taste synthesis** as a 3rd Things bottom-nav tab, then reworked it twice on Farah's feedback into an editorial spread, and fixed mood-image auto-tagging. All on `main`, 90 Vitest green, typecheck/eslint/build clean each push. **NOT runtime-verified** beyond Farah's live eyeballing (board behind Google login) — the colour ribbon especially (browser canvas) is unseen; see ROADMAP "Taste tab — runtime-verify the colour story".
+
+**The build (`d6177a9` and 3 commits before it):**
+- `api/things-taste.ts` (new) — Haiku, text-only, ~$0.001, on-demand, **never auto-runs**, imports `HUMANIZER_GUARDRAILS`. Seeded from `boardTasteSummary(tasteItems)` (wishlist + mood). Prompt biased to **aesthetic register** (warm/lived-in/refined) over a materials dump — the s76 vibe/tone watch-item. Later hardened against the AI "tidy aphoristic closer" ("the ease of someone who knows…", "it's not just X, it's Y") + abstract psychoanalysing, after Farah flagged the first read felt AI-y.
+- `lib/things.ts` — `readTasteSynthesis(board, count)` client helper.
+- `usePrefs.ts` — `thingsTaste` + `thingsTasteGeneratedAt` cache (mirrors `tasteProfile`), so a read costs once and only re-runs on "read again".
+- `ThingsScreen.tsx` — 3rd `taste` tab (`wishlist · mood · taste`, `TasteIcon`); FAB hidden on it (read-only mirror). Old `ThreadMasthead` removed; the keyword thread **moved off the mood tab onto taste** (mood is now pure inspiration).
+
+**IA decision (was open from s76):** taste is its **own 3rd tab**, not folded into mood — Farah's call once she saw the synthesis warranted room. Easy to collapse later (shared components).
+
+**Two feedback rounds reshaped the taste tab:**
+1. *Chips were wrong.* v1 had "what recurs" frequency-count chips that tapped through to a filtered wishlist — Farah found the jump confusing (sets up a "why can't I filter from the wishlist directly?" expectation) and the counts un-editorial. Asked for alternatives, editorial hat on.
+2. *Editorial rework (combo of two options she picked):* keywords → small-caps **kicker**; the synthesis → the **hero pull-quote** (25px); a new **colour story** ribbon — real recurring hues **sampled from the board's images** client-side (`src/lib/palette.ts`: tiny-canvas quantise → aggregate → hue-ordered; near-white/black dropped; CORS-tainted images skipped; ribbon hidden below 3 colours). Chips + the taste→wishlist filter jump **dropped**.
+
+**Mood board fixes (also Farah feedback):**
+- **Masonry** — the s76 row-by-row grid left big gaps (each row locked to its tallest tile). Switched `MoodWall` to **CSS-columns masonry** (gapless, Pinterest-style). Trade: order is now **column-major** (newest down the left column) not strict left-to-right chronological — reverses the explicit s76 choice; flagged for Farah to confirm (ROADMAP). No JS, no stored dimensions.
+- **Mood auto-tag was leaking** — images *did* auto-tag on input, but batch uploads fired all vision reads **in parallel**, tripping the rate-limit; the failures were silent (`silent:true`), leaving images untagged (the "only 11 tagged" mystery). Fixed: batch reads run **sequentially**; `autoTagMood` returns success for honest summaries; new **one-tap backfill** ("read taste for N untagged" on the mood tab) clears the backlog + past silent failures (~1¢/image).
+
+**Live answer for Farah:** the keyword line + tagged-count are computed **live** every render; only the written paragraph is cached (refresh via "read again"). "11 tagged" was real — the rest were untagged (the batch leak above).
+
+---
+
 ### Session 76 (2026-06-24) — Mood board (the inspiration half of Things)
 
 Eyeball-then-build session. Opened with Farah's s75 eyeball feedback (all logged to `docs/ROADMAP.md` → "Library + Things polish, s76" for a separate pass — deciding-card grid revert, product-sheet link rework, 7 Library tweaks incl. two flagged for-discussion: scroll-lock stickiness + music-library clutter; plus a parked note on the two big capture pain points — image-share + paywalled-article extraction). Then **built the mood board** (next queued Things build).
