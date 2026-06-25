@@ -97,6 +97,18 @@ function thingPrice(item: Item): number | null {
   return priceValue(cover?.price ?? null)
 }
 
+// The candidate the board's deciding card shows (winner → leaning → first with a
+// photo → first). Kept as one helper so the image we polish a cutout for is the
+// same one the card renders.
+function leadCandidate(item: Item): Candidate | null {
+  const m = intentMeta(item)
+  return m.candidates.find(c => c.id === m.winner)
+    ?? m.candidates.find(c => c.id === m.leaning)
+    ?? m.candidates.find(c => c.image)
+    ?? m.candidates[0]
+    ?? null
+}
+
 function sortThings(things: Item[], sort: SortKey): Item[] {
   const arr = [...things]
   if (sort === 'name') {
@@ -385,6 +397,41 @@ export function ThingsScreen() {
     return true
   }
 
+  // Same treatment for a deciding plan's LEAD candidate — the one photo the board's
+  // deciding card shows. Candidates come from a link parse (no shot type), so we read
+  // it once if unknown (~1¢, like a product), then cut the bare product shots out so
+  // they float on the gray tile instead of carrying the shop's own background. The
+  // cutout is stored on the candidate (unique storage key per item+candidate), so it
+  // survives a leaning/winner change. Returns true if a cutout was made.
+  async function polishLead(item: Item, opts?: { silent?: boolean }): Promise<boolean> {
+    if (!user) return false
+    const m = intentMeta(item)
+    const lead = leadCandidate(item)
+    if (!lead?.image) return false
+    const patch: Partial<Candidate> = {}
+    let shot = lead.shotType
+    if (!shot) {
+      const r = await readImageAttributes(lead.image, lead.url)
+      if (r.ok) {
+        shot = r.shotType
+        if (r.shotType) patch.shotType = r.shotType
+        const have = new Set((lead.attributes ?? []).map(a => a.facet))
+        const fresh = r.attributes.filter(a => !have.has(a.facet))
+        if (fresh.length) patch.attributes = [...(lead.attributes ?? []), ...fresh]
+      }
+    }
+    if (shot === 'product') {
+      // Composite key keeps a candidate cutout from colliding with the parent item's.
+      const r = await makeCutout({ userId: user.id, itemId: `${item.id}-${lead.id}`, image: lead.image, referer: lead.url })
+      if (r.ok) { patch.cutout = r.url; patch.cutoutV = r.version; patch.cutoutHidden = false }
+      else if (!opts?.silent) showFlash(`couldn't clean up the photo — ${r.reason} (tap to dismiss)`, true)
+    }
+    if (Object.keys(patch).length === 0) return false
+    const candidates = m.candidates.map(c => c.id === lead.id ? { ...c, ...patch } : c)
+    await patchMetadata(item.id, { candidates })
+    return patch.cutout != null
+  }
+
   // Backfill — products with a photo whose cutout is missing OR stale (an older
   // pipeline version, e.g. the untrimmed too-small v1), skipping model/lifestyle
   // shots (those stay full-bleed) and any the user chose to show full-photo.
@@ -396,16 +443,30 @@ export function ThingsScreen() {
     return !p.cutout || p.cutoutV !== CUTOUT_VERSION
   }), [things])
 
+  // Same backfill, for deciding plans: the lead candidate's photo needs cutting out
+  // so the board's deciding card matches the saved cards. Skips model/lifestyle leads
+  // and any the user flipped to full-photo.
+  const polishableLeads = useMemo(() => things.filter(i => {
+    if (kindOf(i) !== 'intent') return false
+    const lead = leadCandidate(i)
+    if (!lead?.image || lead.cutoutHidden || lead.shotType === 'onModel' || lead.shotType === 'lifestyle') return false
+    return !lead.cutout || lead.cutoutV !== CUTOUT_VERSION
+  }), [things])
+
   // One-tap "polish images": for each backfill item, learn the shot type if we don't
   // know it yet (one vision read, ~1¢ — only for legacy items), then cut out the bare
   // product shots. Sequential so the model loads once and the board isn't hammered.
+  // Covers both saved products and deciding-plan leads.
   async function polishAllMissing() {
-    if (polishing || polishable.length === 0) return
+    if (polishing || (polishable.length === 0 && polishableLeads.length === 0)) return
     setPolishing(true)
     const todo = polishable.slice()
+    const leads = polishableLeads.slice()
+    const total = todo.length + leads.length
     let done = 0
+    let step = 0
     for (let i = 0; i < todo.length; i++) {
-      setFlash(`cleaning up photos… ${i + 1}/${todo.length}`)
+      setFlash(`cleaning up photos… ${++step}/${total}`)
       const p = productMeta(todo[i])
       if (!p.image) continue
       let shot = p.shotType
@@ -425,6 +486,10 @@ export function ThingsScreen() {
         }
       }
       if (shot === 'product' && await polishImage(todo[i].id, p.image, p.url, { silent: true })) done++
+    }
+    for (let i = 0; i < leads.length; i++) {
+      setFlash(`cleaning up photos… ${++step}/${total}`)
+      if (await polishLead(leads[i], { silent: true })) done++
     }
     setPolishing(false)
     showFlash(done > 0 ? `cleaned up ${done} photo${done === 1 ? '' : 's'}` : 'nothing new to clean up')
@@ -737,7 +802,7 @@ export function ThingsScreen() {
           view={view} onView={setView}
           sort={sort} onSort={setSort}
           status={statusF} onStatus={setStatusF}
-          polishCount={polishable.length} polishing={polishing}
+          polishCount={polishable.length + polishableLeads.length} polishing={polishing}
           onPolishAll={() => { setFilterSheet(false); void polishAllMissing() }}
           onClose={() => setFilterSheet(false)}
         />
@@ -1021,7 +1086,7 @@ function DecidingCard({ item, view, onOpen }: { item: Item; view: ViewMode; onOp
   // option with a photo. The pile cue (a card peeking behind) still rides along
   // while you're choosing.
   if (view === 'grid') {
-    const lead = winner ?? lean ?? m.candidates.find(c => c.image) ?? m.candidates[0] ?? null
+    const lead = leadCandidate(item)
     return (
       <button onClick={onOpen} style={{
         position: 'relative', flexShrink: 0, width: W, scrollSnapAlign: 'start',
@@ -1254,31 +1319,40 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: INK, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
+        {/* The title IS the link out to the shop (quiet ↗), so there's one clear way
+            through rather than a title plus a competing "view at…" button. The brand
+            on the meta line below says where the arrow goes. */}
+        {p.url ? (
+          <a href={p.url} target="_blank" rel="noreferrer" title={buyLabel}
+            style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, textDecoration: 'none', color: INK }}>
+            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
+            <span aria-hidden style={{ fontSize: 13, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
+          </a>
+        ) : (
+          <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: INK, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
+        )}
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6, display: 'flex', gap: 8, alignItems: 'baseline' }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
           {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
         </div>
-        {/* Taste tags as a way INTO the board: tap one to see what else shares it.
-            "· N" is how many OTHER things carry it; a one-off isn't tappable (nothing
-            to pull up). Category is left off — it's the inventory, not the vibe. */}
+        {/* Taste tags as a quiet way INTO the board: tap one to see what else shares it.
+            Plain text (no pills) so they recede below the title + price — tappable ones
+            carry a faint underline + "· N" (how many things the tag pulls up); a one-off
+            isn't tappable. Category is left off — it's the inventory, not the vibe. */}
         {taste.some(a => a.facet !== 'category') && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 11 }}>
             {taste.filter(a => a.facet !== 'category').map((a, i) => {
-              // The count is how many things the tag pulls up (this one included), so
-              // it matches the filtered board exactly. A one-off (count 1) isn't tappable.
               const count = countWithTag(a.facet, a.value)
               const tappable = count > 1
               return (
                 <button key={i} disabled={!tappable}
                   onClick={() => tappable && onFilterTag(a.facet, a.value)}
                   style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: INK,
-                    background: '#F0F1F3', border: `1px solid ${tappable ? '#E0E2E6' : 'transparent'}`,
-                    borderRadius: 999, padding: '5px 10px', cursor: tappable ? 'pointer' : 'default',
+                    border: 'none', background: 'none', padding: 0, cursor: tappable ? 'pointer' : 'default',
+                    fontSize: 12.5, lineHeight: 1.4, textTransform: 'lowercase', color: tappable ? INK : MUTED,
+                    textDecoration: tappable ? 'underline' : 'none', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3,
                   }}>
-                  {a.value}
-                  {tappable && <span style={{ color: MUTED }}>· {count}</span>}
+                  {a.value}{tappable && <span style={{ color: MUTED, textDecoration: 'none' }}> · {count}</span>}
                 </button>
               )
             })}
@@ -1286,16 +1360,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         )}
       </div>
 
-      {/* Two primary actions only — the buy link and "got it" (the state change).
-          Everything else (edit, note, taste, remove) is a quiet text link, grouped
-          below, so the sheet reads as one tidy set instead of scattered button styles. */}
+      {/* One primary action — "got it" (the state change). The buy link folded into
+          the title above; edit/note/taste/remove are quiet text links grouped below,
+          so the sheet reads as one tidy set instead of scattered button styles. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 16, flexWrap: 'wrap' }}>
-        {p.url && (
-          <a href={p.url} target="_blank" rel="noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: INK, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-            {buyLabel} <span style={{ fontSize: 12 }}>↗</span>
-          </a>
-        )}
         <button onClick={onToggleGot} style={{
           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 999,
           border: `1px solid ${got ? INK : LINE}`, background: got ? INK : '#fff', color: got ? '#fff' : INK,
