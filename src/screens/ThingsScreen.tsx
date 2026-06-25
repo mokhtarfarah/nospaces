@@ -1114,7 +1114,7 @@ function DecidingCard({ item, view, onOpen }: { item: Item; view: ViewMode; onOp
             backdropFilter: 'blur(6px)', borderTop: `1px solid ${resolved ? LINE : 'rgba(0,0,0,0.06)'}`,
           }}>
             {resolved && <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>decided</div>}
-            <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.25, textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
+            <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.25, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
             {resolved && winner && (
               <div style={{ fontSize: 11, color: MUTED, marginTop: 3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{winner.title}</div>
             )}

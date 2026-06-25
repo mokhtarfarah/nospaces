@@ -1374,11 +1374,11 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
     showType ? item.type : null, item.year, seasonsLabel, topGenre,
     item.status === 'done' && item.reaction ? REACTION_LABELS[item.reaction] : null,
   ].filter(Boolean).join(' · ')
-  // Corner badge on the cover: a heart for the ones you loved, a check for the rest
-  // you've finished. Reads at a glance — replaces the old ink-vs-grey dot, which
-  // carried the same meaning but was impossible to decode without a key.
+  // Corner badge on the cover: a smiley for the ones you loved (echoes the taste
+  // tab's face), a check for the rest you've finished. Reads at a glance — replaces
+  // the old ink-vs-grey dot, which carried the same meaning but was undecodable.
   const reactionBadge = item.status === 'done'
-    ? (item.reaction === 'loved_it' ? '♥' : '✓')
+    ? (item.reaction === 'loved_it' ? '☺' : '✓')
     : null
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
