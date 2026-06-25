@@ -504,7 +504,7 @@ export function ThingsScreen() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
       {flash && (
         <div onClick={() => setFlash(null)} style={{
-          position: 'fixed', left: '50%', bottom: 'calc(120px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
+          position: 'fixed', left: '50%', bottom: 'calc(108px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
           background: INK, color: '#fff', fontSize: 12.5, padding: '9px 14px', borderRadius: 999, cursor: 'pointer',
           maxWidth: '90vw', textAlign: 'center', zIndex: 300, boxShadow: '0 4px 18px rgba(0,0,0,0.2)',
         }}>{flash}</div>
@@ -832,7 +832,7 @@ export function ThingsScreen() {
           moodboard (one tap → image picker). The taste PROFILE is a read-only
           mirror — nothing to add there — so the FAB hides. */}
       {(tab === 'wishlist' || onMoodboard) && (
-      <div style={{ position: 'fixed', right: 20, bottom: 'calc(96px + env(safe-area-inset-bottom) + 18px)', zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+      <div style={{ position: 'fixed', right: 20, bottom: 'calc(84px + env(safe-area-inset-bottom) + 18px)', zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
         {tab === 'wishlist' && addMenu && (
           <>
             <FabAction label="save a product" onClick={() => { setAddMenu(false); setComposer('product') }} />

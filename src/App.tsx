@@ -62,7 +62,7 @@ export default function App() {
       {(pendingCount > 0 || syncStatus !== 'idle') && (
         <div style={{
           position: 'fixed',
-          bottom: 'calc(96px + env(safe-area-inset-bottom))',
+          bottom: 'calc(84px + env(safe-area-inset-bottom))',
           left: 0, right: 0,
           background: '#1C1B19',
           color: '#ABA69C',

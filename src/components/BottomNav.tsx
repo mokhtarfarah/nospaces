@@ -32,7 +32,7 @@ export function BottomNav() {
           aria-label="add"
           style={{
             position: 'fixed',
-            bottom: 'calc(96px + env(safe-area-inset-bottom) + 18px)',
+            bottom: 'calc(84px + env(safe-area-inset-bottom) + 18px)',
             right: 20,
             width: 50,
             height: 50,

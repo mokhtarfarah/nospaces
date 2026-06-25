@@ -747,7 +747,7 @@ export function LibraryScreen() {
       </header>
 
       {/* List */}
-      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(190px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))' }}>
+      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(178px + env(safe-area-inset-bottom))' : 'calc(108px + env(safe-area-inset-bottom))' }}>
         {/* Shows near you — lives in the music view (it's intrinsically music). */}
         {musicOnly && !reviewOnly && (
           <button
@@ -1084,9 +1084,9 @@ function FilterSheet({
         {/* Trailing spacer instead of container padding-bottom: mobile WebKit
             omits a scroll container's own padding-bottom from the scrollable
             area, clipping the last row. A real element is always scrollable to.
-            Height clears the fixed bottom tab bar + domain-switcher strip (~120px)
+            Height clears the fixed bottom tab bar + domain-switcher strip (~108px)
             so the last row isn't hidden behind them when the sheet is short. */}
-        <div style={{ height: 'calc(128px + env(safe-area-inset-bottom))' }} />
+        <div style={{ height: 'calc(116px + env(safe-area-inset-bottom))' }} />
       </div>
     </>
   )

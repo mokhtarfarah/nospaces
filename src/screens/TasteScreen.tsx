@@ -592,14 +592,14 @@ export function TasteScreen() {
   )
 
   if (!doneWithReaction.length) return (
-    <div style={{ padding: '20px 20px calc(120px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
+    <div style={{ padding: '20px 20px calc(108px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
       <PageHeader title="taste" />
       <TasteLockedPreview />
     </div>
   )
 
   return (
-    <div style={{ padding: '20px 20px calc(120px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
+    <div style={{ padding: '20px 20px calc(108px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
       {/* "taste" as a small section label, vibe words as the headline */}
       <PageHeader kicker={`shaped by ${doneWithReaction.length} ${doneWithReaction.length === 1 ? 'rating' : 'ratings'}`} title="taste" />
 

@@ -12,8 +12,10 @@ const INK = '#1C1B19'
 
 // Strip height, in px (above the safe-area inset). Every bottom-anchored element
 // (content padding, FABs, action bars, the sync banner) clears the tab bar PLUS
-// this, so the value is shared rather than re-derived.
-export const SWITCHER_H = 40
+// this, so the value is shared rather than re-derived. Kept slim (s84) so the
+// switcher reads as the top row of ONE bottom panel, not a second stacked slab —
+// its top border is the panel's outer edge, the tab bar's top border the divider.
+export const SWITCHER_H = 28
 
 type Domain = 'media' | 'things'
 
