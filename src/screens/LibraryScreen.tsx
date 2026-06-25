@@ -644,6 +644,16 @@ export function LibraryScreen() {
           </div>
           {collapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingLeft: 12, paddingBottom: 8 }}>
+              {/* Pin the view switcher here too — it normally lives in the title row
+                  that folds away on scroll, but it's a primary control, so it stays
+                  reachable (matches the Things board's always-visible control row). */}
+              <button
+                onClick={() => setViewSheetOpen(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: INK, padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
+              >
+                {VIEW_CONFIG[view].label}
+                <span style={{ fontSize: 11, color: MUTE }}>▾</span>
+              </button>
               <HeaderControls
                 filtersActive={filtersActive}
                 onClear={clearFilters}

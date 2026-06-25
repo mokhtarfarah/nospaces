@@ -608,17 +608,19 @@ function ThreadMasthead({ things }: { things: Item[] }) {
           {thread.tokens.join('  ·  ')}
         </div>
         <div style={{ fontSize: 11, color: MUTED, marginTop: 8 }}>
-          your keywords — read from {thread.basis} tagged thing{thread.basis === 1 ? '' : 's'}, shifts as you save and tag more
+          your keywords — read from {thread.basis} saved thing{thread.basis === 1 ? '' : 's'}, sharpens as you save more
         </div>
       </div>
     )
   }
 
   // Below the threshold (or nothing recurs yet) — a gentle nudge, never a nag.
+  // Tags are read automatically off each photo now, so this points at *saving*,
+  // not tagging: your keywords surface once a few things are on the board.
   return (
     <div style={{ margin: '16px 0 20px', fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>
-      Tag your things — material, palette, form — and your <em>keywords</em> show up here.
-      {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} tagged.</span>}
+      Save a few things and your <em>keywords</em> — palette, material, vibe — surface here, read from each photo.
+      {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} so far.</span>}
     </div>
   )
 }
@@ -856,7 +858,7 @@ function TasteFitBlock({ fit, onRun }: { fit: string | null; onRun: () => Promis
   return (
     <div style={{ marginTop: 14 }}>
       <button onClick={run} disabled={loading}
-        style={{ border: 'none', background: 'none', color: loading ? MUTED : INK, fontSize: 12.5, fontWeight: 600, cursor: loading ? 'default' : 'pointer', padding: 0 }}>
+        style={{ border: 'none', background: 'none', color: loading ? MUTED : INK, fontSize: 12.5, cursor: loading ? 'default' : 'pointer', padding: 0 }}>
         {loading ? 'reading your board…' : 'read how this fits your taste'}
       </button>
       {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
