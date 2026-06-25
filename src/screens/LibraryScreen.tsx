@@ -10,7 +10,7 @@ import { ItemActionSheet } from '../components/ItemActionSheet'
 import { DuplicatesSheet } from '../components/DuplicatesSheet'
 import { GapsSheet } from '../components/GapsSheet'
 import { CapturesSheet } from '../components/CapturesSheet'
-import { fetchCaptures, clearCaptures, clearCapture, isFailure, type EmailCapture } from '../lib/captures'
+import { fetchCaptures, clearCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
 import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
@@ -215,7 +215,9 @@ export function LibraryScreen() {
   // when there's something to show.
   const [captures, setCaptures] = useState<EmailCapture[]>([])
   const [capturesOpen, setCapturesOpen] = useState(false)
-  useEffect(() => { fetchCaptures().then(setCaptures) }, [])
+  // Mirror of ThingsScreen's filter: the media capture list shows media forwards
+  // only — product/Things forwards belong to the board's own capture feed.
+  useEffect(() => { fetchCaptures().then(cs => setCaptures(cs.filter(c => !isThingsCapture(c)))) }, [])
   const captureFailures = useMemo(() => captures.filter(isFailure).length, [captures])
   // Header collapse-on-scroll: the title row + view control fold away once the
   // user scrolls into the collection, leaving the category + status tab rows
@@ -677,19 +679,27 @@ export function LibraryScreen() {
           {(availableTags.vibes.length > 0 || availableTags.verdicts.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0 || musicOnly) && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+              {/* Slider icon mirroring the Things board's filter control. A count
+                  pill (rather than Things' plain dot) keeps the "filter · N" info
+                  the text button used to carry. */}
               <button
                 onClick={() => setFilterSheetOpen(true)}
+                aria-label={filterCount > 0 ? `filter · ${filterCount} active` : 'filter and sort'}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
                   padding: '4px 2px 8px', border: 'none', background: 'none',
-                  color: filterCount > 0 ? '#1C1B19' : '#888',
-                  fontSize: 13, fontWeight: filterCount > 0 ? 600 : 400,
-                  fontStyle: filterCount > 0 ? 'italic' : 'normal',
-                  cursor: 'pointer', whiteSpace: 'nowrap',
+                  color: filterCount > 0 ? '#1C1B19' : '#888', cursor: 'pointer',
                 }}
               >
-                {filterCount > 0 ? `filter · ${filterCount}` : 'filter'}
-                <span style={{ fontSize: 10, lineHeight: 1 }}>▾</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" fill="#fff" />
+                  <line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" fill="#fff" />
+                </svg>
+                {filterCount > 0 && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, fontStyle: 'italic', lineHeight: 1, color: '#1C1B19',
+                  }}>{filterCount}</span>
+                )}
               </button>
               {filterSheetOpen && (
                 <FilterSheet

@@ -9,6 +9,13 @@
       "autoPort": true
     },
     {
+      "name": "nospaces-noauth",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["/Users/farahmokhtar/nospaces/.claude/start-dev-noauth.sh"],
+      "port": 5180,
+      "autoPort": true
+    },
+    {
       "name": "preview",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "5174", "--directory", "/Users/farahmokhtar/nospaces"],

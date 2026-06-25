@@ -523,8 +523,8 @@ export function ThingsScreen() {
               {/* Sub-tabs — profile · moodboard, mirroring the media taste page's
                   profile · desert island split. */}
               <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 18 }}>
-                <TabChip label="profile" active={tasteSub === 'profile'} onClick={() => setTasteSub('profile')} />
-                <TabChip label="moodboard" active={tasteSub === 'moodboard'} onClick={() => setTasteSub('moodboard')} />
+                <TabChip label="profile" active={tasteSub === 'profile'} onClick={() => setTasteSub('profile')} underline={false} />
+                <TabChip label="moodboard" active={tasteSub === 'moodboard'} onClick={() => setTasteSub('moodboard')} underline={false} />
               </div>
               {tasteSub === 'moodboard' ? (
                 <>
@@ -1030,7 +1030,7 @@ function DecidingCard({ item, view, onOpen }: { item: Item; view: ViewMode; onOp
         {!resolved && n > 1 && (
           <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#E2E4E7', border: `1px solid ${LINE}`, borderRadius: 12, zIndex: -1 }} />
         )}
-        <Thumb src={lead?.image ?? null} referer={lead?.url ?? null} />
+        <Thumb src={lead?.image ?? null} referer={lead?.url ?? null} cutout={lead?.cutoutHidden ? null : lead?.cutout} />
         <div style={{ marginTop: 6 }}>
           <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
           <div style={{ fontSize: 11, color: MUTED, marginTop: 2, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{detail}</div>
@@ -2212,13 +2212,17 @@ function FabAction({ label, onClick }: { label: string; onClick: () => void }) {
 // Tab-chip for the status row: active reads ink + bold + italic AND carries a
 // 1.5px underline rule — the italic alone was too subtle to scan on a phone, so
 // the rule does the work the eye needs at a glance.
-function TabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function TabChip({ label, active, onClick, underline = true }: { label: string; active: boolean; onClick: () => void; underline?: boolean }) {
   return (
     <button onClick={onClick} style={{
       flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer', padding: '4px 1px 7px',
       whiteSpace: 'nowrap', fontSize: 13, color: active ? '#111' : '#888',
       fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal',
-      borderBottom: active ? '1.5px solid #111' : '1.5px solid transparent',
+      // Category chips keep the underline rule; the taste sub-tabs drop it to
+      // match the media taste page (bold+italic active state, no underline).
+      // Must be explicit 'none' — leaving it undefined lets the UA default
+      // button border (2px outset) show through as a stray underline.
+      borderBottom: underline ? (active ? '1.5px solid #111' : '1.5px solid transparent') : 'none',
     }}>{label}</button>
   )
 }
