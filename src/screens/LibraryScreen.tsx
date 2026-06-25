@@ -1374,12 +1374,11 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
     showType ? item.type : null, item.year, seasonsLabel, topGenre,
     item.status === 'done' && item.reaction ? REACTION_LABELS[item.reaction] : null,
   ].filter(Boolean).join(' · ')
-  // Corner badge on the cover: a smiley for the ones you loved (echoes the taste
-  // tab's face), a check for the rest you've finished. Reads at a glance — replaces
-  // the old ink-vs-grey dot, which carried the same meaning but was undecodable.
-  const reactionBadge = item.status === 'done'
-    ? (item.reaction === 'loved_it' ? '☺' : '✓')
-    : null
+  // Corner badge on the cover: the taste-tab smiley for the ones you loved (drawn
+  // as an SVG so it fills the mark and never renders as a tiny emoji), a small
+  // check for the rest you've finished. Replaces the old undecodable ink-vs-grey dot.
+  const loved = item.status === 'done' && item.reaction === 'loved_it'
+  const finished = item.status === 'done' && !loved
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
       <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : `1px solid ${HAIR}` }}>
@@ -1394,14 +1393,27 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
           }}>{selected ? '✓' : ''}</div>
         )}
-        {reactionBadge && (
+        {loved && (
+          <div title="loved it" aria-label="loved it" style={{
+            position: 'absolute', bottom: 4, right: 4, width: 22, height: 22, color: INK,
+            filter: 'drop-shadow(0 0 1.5px #fff) drop-shadow(0 1px 1.5px rgba(0,0,0,0.25))',
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="9" fill="#fff" />
+              <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+              <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="3" />
+              <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="3" />
+            </svg>
+          </div>
+        )}
+        {finished && (
           <div title={item.reaction ? REACTION_LABELS[item.reaction] : 'done'} style={{
             position: 'absolute', bottom: 5, right: 5,
-            minWidth: 17, height: 17, padding: '0 2px', borderRadius: '50%',
-            background: 'rgba(255,255,255,0.92)', boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+            width: 18, height: 18, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.92)', boxShadow: '0 1px 3px rgba(0,0,0,0.22)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 10, lineHeight: 1, color: INK,
-          }}>{reactionBadge}</div>
+            fontSize: 12, lineHeight: 1, color: INK,
+          }}>✓</div>
         )}
       </div>
       <div style={{ marginTop: 5 }}>

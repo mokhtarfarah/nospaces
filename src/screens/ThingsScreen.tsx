@@ -1090,6 +1090,7 @@ function DecidingCard({ item, view, onOpen }: { item: Item; view: ViewMode; onOp
   // Resolved settles: band goes solid + "decided", chip and stack drop away.
   if (view === 'grid') {
     const lead = leadCandidate(item)
+    const hasImage = !!lead?.image
     return (
       <button onClick={onOpen} style={{
         position: 'relative', flexShrink: 0, width: W, scrollSnapAlign: 'start',
@@ -1099,27 +1100,46 @@ function DecidingCard({ item, view, onOpen }: { item: Item; view: ViewMode; onOp
         {!resolved && n > 1 && (
           <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#E2E4E7', border: `1px solid ${LINE}`, zIndex: -1 }} />
         )}
-        <div style={{ position: 'relative' }}>
-          <Thumb src={lead?.image ?? null} referer={lead?.url ?? null} cutout={lead?.cutoutHidden ? null : lead?.cutout} />
-          {/* Count chip — only while deciding (a settled card doesn't need it). */}
-          {!resolved && n > 0 && (
-            <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 10, color: INK, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)', padding: '3px 8px', borderRadius: 999 }}>
-              {n} option{n === 1 ? '' : 's'}
-            </div>
-          )}
-          {/* Title band — frosted over the photo while deciding, solid once decided. */}
-          <div style={{
-            position: 'absolute', left: 0, right: 0, bottom: 0, padding: '9px 11px',
-            background: resolved ? 'rgba(255,255,255,0.95)' : 'rgba(248,246,242,0.9)',
-            backdropFilter: 'blur(6px)', borderTop: `1px solid ${resolved ? LINE : 'rgba(0,0,0,0.06)'}`,
-          }}>
-            {resolved && <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>decided</div>}
-            <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.25, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
-            {resolved && winner && (
-              <div style={{ fontSize: 11, color: MUTED, marginTop: 3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{winner.title}</div>
+        {hasImage ? (
+          <div style={{ position: 'relative' }}>
+            <Thumb src={lead?.image ?? null} referer={lead?.url ?? null} cutout={lead?.cutoutHidden ? null : lead?.cutout} />
+            {/* Count chip — only while deciding (a settled card doesn't need it). */}
+            {!resolved && n > 0 && (
+              <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 10, color: INK, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)', padding: '3px 8px', borderRadius: 999 }}>
+                {n} option{n === 1 ? '' : 's'}
+              </div>
             )}
+            {/* Title band — frosted over the photo while deciding, solid once decided. */}
+            <div style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0, padding: '9px 11px',
+              background: resolved ? 'rgba(255,255,255,0.95)' : 'rgba(248,246,242,0.9)',
+              backdropFilter: 'blur(6px)', borderTop: `1px solid ${resolved ? LINE : 'rgba(0,0,0,0.06)'}`,
+            }}>
+              {resolved && <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>decided</div>}
+              <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.25, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+              {resolved && winner && (
+                <div style={{ fontSize: 11, color: MUTED, marginTop: 3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{winner.title}</div>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          // No photo yet — a plan is a question, so show it as one: the need centered
+          // on the tile with its state below, instead of a broken-looking "no image"
+          // frame. A "+" hints that tapping is where you add options.
+          <div style={{
+            width: '100%', aspectRatio: '4 / 5', background: TILE, border: `1px solid ${LINE}`,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            textAlign: 'center', padding: '14px 12px', gap: 9, boxSizing: 'border-box',
+          }}>
+            {!resolved && (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="2" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            )}
+            <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.3, textTransform: 'lowercase', color: INK, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
+            <div style={{ fontSize: 11, color: MUTED, textTransform: 'lowercase' }}>{resolved ? 'decided' : n > 0 ? `${n} option${n === 1 ? '' : 's'}` : 'add options'}</div>
+          </div>
+        )}
       </button>
     )
   }
