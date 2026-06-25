@@ -791,6 +791,7 @@ export function ThingsScreen() {
             await patchMetadata(openProduct.id, { tasteFit: r.fit })
             return null
           }}
+          onToggleHideFit={() => patchMetadata(openProduct.id, { tasteFitHidden: !(openProduct.metadata as { tasteFitHidden?: boolean })?.tasteFitHidden })}
           countWithTag={countWithTag}
           onFilterTag={(facet, value) => { setTagFilter({ facet, value }); setOpenProductId(null) }}
           onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
@@ -960,14 +961,15 @@ function TasteTab({ items, board, synthesis, onSave }: {
       {/* Hero — the synthesis as a pull-quote, or the read CTA before it's generated. */}
       <div style={{ margin: '22px 0 4px' }}>
         {synthesis ? (
-          <>
-            <p style={{ fontSize: 25, lineHeight: 1.34, color: INK, letterSpacing: '-0.02em', fontWeight: 500, margin: 0 }}>
-              {synthesis}
-            </p>
-            <button onClick={generate} disabled={generating} style={{ ...quietLink, marginTop: 16 }}>
+          <p style={{ fontSize: 25, lineHeight: 1.34, color: INK, letterSpacing: '-0.02em', fontWeight: 500, margin: 0 }}>
+            {synthesis}
+            {/* The refresh rides at the end of the quote, not as a paragraph below —
+                same treatment as the product sheet's taste-fit re-read. */}
+            <button onClick={generate} disabled={generating}
+              style={{ ...quietLink, fontSize: 13, marginLeft: 12, whiteSpace: 'nowrap' }}>
               {generating ? 'reading…' : 'read again'}
             </button>
-          </>
+          </p>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14,
             padding: '16px 18px', border: `1px solid ${LINE}`, borderRadius: 12, background: '#FBFAF8' }}>
@@ -1205,7 +1207,7 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
 // departs from) the board. Item-level sibling of the masthead thread. Costs a paid
 // Haiku call, so it's a deliberate tap and the result is cached on metadata.tasteFit
 // (a re-read is offered, also explicit). Mirrors NoteBlock's quiet states.
-function TasteFitBlock({ fit, onRun }: { fit: string | null; onRun: () => Promise<string | null> }) {
+function TasteFitBlock({ fit, hidden, onRun, onToggleHide }: { fit: string | null; hidden: boolean; onRun: () => Promise<string | null>; onToggleHide: () => void }) {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -1218,13 +1220,27 @@ function TasteFitBlock({ fit, onRun }: { fit: string | null; onRun: () => Promis
     if (reason) setErr(reason)
   }
 
+  // Hidden by the user (not interested on this card) — leave one quiet way back, no
+  // cost: it just un-hides the cached read, never re-runs it.
+  if (fit && hidden) {
+    return (
+      <button onClick={onToggleHide} style={{ ...quietLink, marginTop: 14 }}>show taste read</button>
+    )
+  }
+
   if (fit) {
     return (
       <div style={{ marginTop: 16 }}>
-        <NoteProse label="how this fits your taste">{fit}</NoteProse>
-        <button onClick={run} disabled={loading} style={{ ...quietLink, marginTop: 8 }}>
-          {loading ? 'reading…' : 're-read'}
-        </button>
+        <NoteProse label="how this fits your taste"
+          trailing={
+            <>
+              <button onClick={run} disabled={loading} style={quietLink}>{loading ? 'reading…' : 're-read'}</button>
+              <span style={{ color: '#C9C4BB' }}>{' · '}</span>
+              <button onClick={onToggleHide} style={quietLink}>hide</button>
+            </>
+          }>
+          {fit}
+        </NoteProse>
         {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
       </div>
     )
@@ -1239,7 +1255,7 @@ function TasteFitBlock({ fit, onRun }: { fit: string | null; onRun: () => Promis
   )
 }
 
-function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onSaveNote, board, onRunFit, countWithTag, onFilterTag, onDelete }: {
+function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onSaveNote, board, onRunFit, onToggleHideFit, countWithTag, onFilterTag, onDelete }: {
   item: Item
   onClose: () => void
   onSave: (f: ProductFields) => void | Promise<void>
@@ -1251,6 +1267,8 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   board: BoardTasteSummary
   // Runs the per-item taste read and caches it; resolves to an error reason, or null on success.
   onRunFit: () => Promise<string | null>
+  // Toggles metadata.tasteFitHidden so an uninterested user can dismiss the read on this card.
+  onToggleHideFit: () => void
   countWithTag: (facet: Facet, value: string) => number
   onFilterTag: (facet: Facet, value: string) => void
   onDelete: () => void
@@ -1334,6 +1352,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6, display: 'flex', gap: 8, alignItems: 'baseline' }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
           {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
+          {/* Ownership reads as a calm status here, not a loud button — the toggle
+              lives down in the quiet admin row with edit/remove. */}
+          {got && <span style={{ color: INK, fontWeight: 600 }}>· got it</span>}
         </div>
         {/* Taste tags as a quiet way INTO the board: tap one to see what else shares it.
             Plain text (no pills) so they recede below the title + price — tappable ones
@@ -1360,17 +1381,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         )}
       </div>
 
-      {/* One primary action — "got it" (the state change). The buy link folded into
-          the title above; edit/note/taste/remove are quiet text links grouped below,
-          so the sheet reads as one tidy set instead of scattered button styles. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 16, flexWrap: 'wrap' }}>
-        <button onClick={onToggleGot} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 999,
-          border: `1px solid ${got ? INK : LINE}`, background: got ? INK : '#fff', color: got ? '#fff' : INK,
-          fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-        }}>{got ? '✓ got it' : 'mark as got it'}</button>
-      </div>
-
+      {/* No loud CTA in the body — this is a taste mirror, not a checkout. The two
+          things you'd actually do are already quiet: go to the shop (the title link)
+          and jot a note (below). Buying-state + admin all live in the hairline row at
+          the very bottom, so the photo and title carry the only emphasis. */}
       <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
 
       {/* How this one thing fits the board — the item-level read of the masthead's
@@ -1379,7 +1393,11 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           The line is a paid Haiku call, cached on metadata.tasteFit, so it's a tap,
           never automatic. */}
       {board.thread.length > 0 && taste.some(a => a.facet !== 'category') ? (
-        <TasteFitBlock fit={(item.metadata as { tasteFit?: string })?.tasteFit ?? null} onRun={onRunFit} />
+        <TasteFitBlock
+          fit={(item.metadata as { tasteFit?: string })?.tasteFit ?? null}
+          hidden={(item.metadata as { tasteFitHidden?: boolean })?.tasteFitHidden ?? false}
+          onRun={onRunFit}
+          onToggleHide={onToggleHideFit} />
       ) : (
         // Recovery: a product whose photo couldn't be auto-read (the retailer blocked
         // the image fetch, or it was an unsupported format) lands here with no taste
@@ -1402,6 +1420,11 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           </>
         ) : (
           <>
+            {/* The buying-state toggle now lives here, quiet, beside the other admin
+                links — when owned it's mirrored as a "· got it" status by the price. */}
+            <button onClick={onToggleGot} style={got ? { ...quietLink, color: INK, fontWeight: 600 } : quietLink}>
+              {got ? 'undo got it' : 'mark as got it'}
+            </button>
             <button onClick={() => setEditing(true)} style={quietLink}>edit</button>
             {plan && !got && (
               <button onClick={async () => { await onReopenPlan(); onClose() }} style={quietLink}>↩ put back in plan</button>
