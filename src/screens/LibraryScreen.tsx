@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef, type CSSProperties } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
-import { ViewSheet, VIEW_CONFIG, type ViewMode, type SortOption, type SortDir, type ReactionFilter } from '../components/ViewSheet'
+import { VIEW_CONFIG, ORDER, type ViewMode, type SortOption, type SortDir, type ReactionFilter } from '../components/ViewSheet'
 import { ItemActionSheet } from '../components/ItemActionSheet'
 import { DuplicatesSheet } from '../components/DuplicatesSheet'
 import { GapsSheet } from '../components/GapsSheet'
@@ -204,7 +204,6 @@ export function LibraryScreen() {
   const [gridCols, setGridCols] = useState<3 | 4>(() => loadPrefs().gridCols ?? 3)
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [viewSheetOpen, setViewSheetOpen] = useState(false)
   const [dupesOpen, setDupesOpen] = useState(false)
   const [gapsOpen, setGapsOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -405,16 +404,15 @@ export function LibraryScreen() {
   const sort: SortOption = VIEW_CONFIG[view].sort
   const group = VIEW_CONFIG[view].group
 
-  // Tapping a new view switches to it (in its default order) and closes the sheet.
-  // Tapping the already-active directional view just reverses the order, sheet stays open.
+  // Tapping a new view switches to it (in its default order); tapping the active
+  // directional view reverses the order. The combined card stays open either way
+  // (you may be adjusting sort + filters together).
   const selectView = (v: ViewMode) => {
     if (v === view) {
       if (VIEW_CONFIG[v].directional) setDir(d => (d === 'asc' ? 'desc' : 'asc'))
-      else setViewSheetOpen(false)
     } else {
       setView(v)
       setDir(VIEW_CONFIG[v].defaultDir)
-      setViewSheetOpen(false)
     }
   }
 
@@ -582,16 +580,8 @@ export function LibraryScreen() {
               />
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+          <div style={{ marginBottom: 10 }}>
             <span style={{ fontSize: 12.5, color: '#ABA69C' }}>{kicker}</span>
-            <span style={{ fontSize: 12, color: '#D5D1C9' }}>·</span>
-            <button
-              onClick={() => setViewSheetOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: '#6F6B64', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
-            >
-              {VIEW_CONFIG[view].label}
-              <span style={{ fontSize: 10, color: MUTE }}>▾</span>
-            </button>
           </div>
           <div style={{ borderBottom: '1.5px solid #1C1B19' }} />
         </div>
@@ -649,16 +639,9 @@ export function LibraryScreen() {
           </div>
           {collapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingLeft: 12, paddingBottom: 8 }}>
-              {/* Pin the view switcher here too — it normally lives in the title row
-                  that folds away on scroll, but it's a primary control, so it stays
-                  reachable (matches the Things board's always-visible control row). */}
-              <button
-                onClick={() => setViewSheetOpen(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: INK, padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
-              >
-                {VIEW_CONFIG[view].label}
-                <span style={{ fontSize: 11, color: MUTE }}>▾</span>
-              </button>
+              {/* While the title row is folded away, the search/overflow controls pin
+                  here. Sort/view/filter stay reachable via the filter button on the
+                  status row below, which never folds. */}
               <HeaderControls
                 filtersActive={filtersActive}
                 onClear={clearFilters}
@@ -679,47 +662,29 @@ export function LibraryScreen() {
               onClick={() => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
             />
           ))}
-          {(availableTags.vibes.length > 0 || availableTags.verdicts.length > 0 || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0 || musicOnly) && (
-            <>
-              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-              {/* Slider icon mirroring the Things board's filter control. A count
-                  pill (rather than Things' plain dot) keeps the "filter · N" info
-                  the text button used to carry. */}
-              <button
-                onClick={() => setFilterSheetOpen(true)}
-                aria-label={filterCount > 0 ? `filter · ${filterCount} active` : 'filter and sort'}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
-                  padding: '4px 2px 8px', border: 'none', background: 'none',
-                  color: filterCount > 0 ? '#1C1B19' : '#888', cursor: 'pointer',
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" fill="#fff" />
-                  <line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" fill="#fff" />
-                </svg>
-                {filterCount > 0 && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, fontStyle: 'italic', lineHeight: 1, color: '#1C1B19',
-                  }}>{filterCount}</span>
-                )}
-              </button>
-              {filterSheetOpen && (
-                <FilterSheet
-                  availableTags={availableTags}
-                  seriesRelevant={seriesRelevant}
-                  vibeFilter={vibeFilter} onToggleVibe={toggleFilter(setVibeFilter)}
-                  verdictFilter={verdictFilter} onToggleVerdict={toggleFilter(setVerdictFilter)}
-                  genreFilter={genreFilter} onToggleGenre={toggleFilter(setGenreFilter)}
-                  seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
-                  countryFilter={countryFilter} onToggleCountry={toggleFilter(setCountryFilter)}
-                  showNewMusic={musicOnly} newMusicOnly={newMusicOnly} onToggleNewMusic={() => setNewMusicOnly(v => !v)}
-                  onClearGroups={() => { setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([]); setNewMusicOnly(false) }}
-                  onClose={() => setFilterSheetOpen(false)}
-                />
-              )}
-            </>
-          )}
+          {/* View · sort · filter live in one card opened from this button, mirroring
+              the Things board. Always present (it always offers layout + sort), even
+              before there are tag groups to filter on. */}
+          <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+          <button
+            onClick={() => setFilterSheetOpen(true)}
+            aria-label={filterCount > 0 ? `view, sort, filter · ${filterCount} filters active` : 'view, sort and filter'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+              padding: '4px 2px 8px', border: 'none', background: 'none',
+              color: filterCount > 0 ? '#1C1B19' : '#888', cursor: 'pointer',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" fill="#fff" />
+              <line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" fill="#fff" />
+            </svg>
+            {filterCount > 0 && (
+              <span style={{
+                fontSize: 11, fontWeight: 600, fontStyle: 'italic', lineHeight: 1, color: '#1C1B19',
+              }}>{filterCount}</span>
+            )}
+          </button>
           {statusFilter === 'done' && (
             <>
               <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
@@ -941,16 +906,21 @@ export function LibraryScreen() {
       })()}
 
       {/* View sheet */}
-      {viewSheetOpen && (
-        <ViewSheet
-          current={view}
-          dir={dir}
-          onSelect={selectView}
-          onClose={() => setViewSheetOpen(false)}
-          layout={layout}
-          onLayout={l => setLayout(l)}
-          gridCols={gridCols}
-          onGridCols={c => { setGridCols(c); setViewSheetOpen(false) }}
+      {filterSheetOpen && (
+        <FilterSheet
+          availableTags={availableTags}
+          seriesRelevant={seriesRelevant}
+          vibeFilter={vibeFilter} onToggleVibe={toggleFilter(setVibeFilter)}
+          verdictFilter={verdictFilter} onToggleVerdict={toggleFilter(setVerdictFilter)}
+          genreFilter={genreFilter} onToggleGenre={toggleFilter(setGenreFilter)}
+          seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
+          countryFilter={countryFilter} onToggleCountry={toggleFilter(setCountryFilter)}
+          showNewMusic={musicOnly} newMusicOnly={newMusicOnly} onToggleNewMusic={() => setNewMusicOnly(v => !v)}
+          view={view} dir={dir} onSelectView={selectView}
+          layout={layout} onLayout={l => setLayout(l)}
+          gridCols={gridCols} onGridCols={c => setGridCols(c)}
+          onClearGroups={() => { setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([]); setNewMusicOnly(false) }}
+          onClose={() => setFilterSheetOpen(false)}
         />
       )}
 
@@ -1021,6 +991,9 @@ export function LibraryScreen() {
   )
 }
 
+// One card for the three "how is this list shown" controls — layout, sort, and
+// the tag filters — opened from the slider button next to the categories. Mirrors
+// the Things board's single view sheet (was three separate triggers before s84).
 function FilterSheet({
   availableTags, seriesRelevant,
   vibeFilter, onToggleVibe,
@@ -1029,6 +1002,8 @@ function FilterSheet({
   seriesFilter, onToggleSeries,
   countryFilter, onToggleCountry,
   showNewMusic, newMusicOnly, onToggleNewMusic,
+  view, dir, onSelectView,
+  layout, onLayout, gridCols, onGridCols,
   onClearGroups, onClose,
 }: {
   availableTags: { vibes: string[]; verdicts: string[]; genres: string[]; series: string[]; countries: string[] }
@@ -1039,11 +1014,18 @@ function FilterSheet({
   seriesFilter: string[]; onToggleSeries: (v: string) => void
   countryFilter: string[]; onToggleCountry: (v: string) => void
   showNewMusic: boolean; newMusicOnly: boolean; onToggleNewMusic: () => void
+  view: ViewMode; dir: SortDir; onSelectView: (v: ViewMode) => void
+  layout: 'list' | 'grid'; onLayout: (l: 'list' | 'grid') => void
+  gridCols: 3 | 4; onGridCols: (c: 3 | 4) => void
   onClearGroups: () => void
   onClose: () => void
 }) {
   const activeCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length + countryFilter.length
     + (showNewMusic && newMusicOnly ? 1 : 0)
+  const hasGroups = showNewMusic || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
+    || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0
+  const sectionLabel: CSSProperties = { fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '4px 0 8px', paddingTop: 16, borderTop: '1px solid #F0F0F0' }
+  const segBtn = (on: boolean): CSSProperties => ({ padding: '4px 14px', borderRadius: 6, border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0', background: on ? '#111' : '#fff', color: on ? '#fff' : '#888', fontSize: 13, fontWeight: on ? 600 : 400, cursor: 'pointer' })
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
@@ -1051,18 +1033,65 @@ function FilterSheet({
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#fff', borderRadius: '16px 16px 0 0',
         padding: '12px 20px 0', zIndex: 201, maxWidth: 480, margin: '0 auto',
-        maxHeight: '80dvh', overflowY: 'auto',
+        maxHeight: '85dvh', overflowY: 'auto',
       }}>
-        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 20px' }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: INK }}>filter</span>
-          {activeCount > 0 && (
+        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 14px' }} />
+
+        {activeCount > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
             <button
               onClick={onClearGroups}
               style={{ fontSize: 12, color: '#ABA69C', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
-            >clear all</button>
-          )}
+            >clear filters</button>
+          </div>
+        )}
+
+        {/* Layout — the most-toggled control, first. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <span style={{ fontSize: 13, color: '#555' }}>layout</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(['list', 'grid'] as const).map(l => (
+              <button key={l} onClick={() => onLayout(l)} style={segBtn(layout === l)}>{l}</button>
+            ))}
+          </div>
         </div>
+        {layout === 'grid' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, color: '#555' }}>columns</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {([3, 4] as const).map(n => (
+                <button key={n} onClick={() => onGridCols(n)} style={segBtn(gridCols === n)}>{n}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Sort */}
+        <p style={sectionLabel}>sort</p>
+        {ORDER.map(v => {
+          const cfg = VIEW_CONFIG[v]
+          const active = view === v
+          const arrow = cfg.directional ? (dir === 'asc' ? '↑' : '↓') : null
+          return (
+            <button
+              key={v}
+              onClick={() => onSelectView(v)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 0', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <span style={{ fontSize: 14, color: active ? '#111' : '#444', fontWeight: active ? 600 : 400 }}>{cfg.label}</span>
+              {active && (
+                <span style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {arrow && <span style={{ color: '#111', fontWeight: 600 }}>{arrow}</span>}
+                  <span style={{ fontSize: 15 }}>✓</span>
+                </span>
+              )}
+            </button>
+          )
+        })}
+        <p style={{ fontSize: 11, color: '#BBB', margin: '6px 0 0' }}>tap the selected sort again to reverse</p>
+
+        {/* Filter — the tag groups. */}
+        {hasGroups && <p style={sectionLabel}>filter</p>}
         {showNewMusic && (
           <FilterSection
             label="music"
