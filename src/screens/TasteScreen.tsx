@@ -16,6 +16,43 @@ const GRAPHITE = '#6F6B64'
 const MUTE = '#ABA69C'
 const HAIR = '#ECEAE6'
 
+// Empty-state for the taste page: instead of pointing the user off to another
+// screen, show a blurred skeleton in the *shape* of the real profile (vibe-word
+// headline + prose) under a veil, so the payoff is visible before it's earned.
+// Deliberately abstract grey bars — never fake data masquerading as a real read.
+function TasteLockedPreview() {
+  const proseLines = ['100%', '94%', '97%', '88%', '100%', '62%']
+  return (
+    <div style={{ position: 'relative', marginTop: 4 }}>
+      <div aria-hidden style={{ filter: 'blur(3px)', opacity: 0.7, pointerEvents: 'none', userSelect: 'none' }}>
+        {/* vibe-word headline */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+          {[96, 124, 78].map((w, i) => (
+            <div key={i} style={{ width: w, height: 26, borderRadius: 6, background: '#E7E4DF' }} />
+          ))}
+        </div>
+        {/* prose */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {proseLines.map((w, i) => (
+            <div key={i} style={{ width: w, height: 13, borderRadius: 7, background: HAIR }} />
+          ))}
+        </div>
+      </div>
+      {/* veil + the promise */}
+      <div style={{
+        position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 24px',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.15), rgba(255,255,255,0.9) 55%)',
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 6 }}>your taste, written back to you.</div>
+        <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.6, maxWidth: 280 }}>
+          this page fills in as you log reactions. mark a few things done — how it landed, the vibe, your take — and a profile builds here.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const WEIGHTS: Record<ItemReaction, number> = {
   loved_it: 2, liked_it: 1, eh: 0, not_for_me: -1,
 }
@@ -557,11 +594,9 @@ export function TasteScreen() {
 
   if (!doneWithReaction.length) return (
     <div style={{ padding: '20px 20px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh', color: INK }}>
+      <DomainSwitcher current="media" />
       <PageHeader title="taste" />
-      <div style={{ padding: '48px 0', textAlign: 'center' }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 6 }}>nothing to show yet</div>
-        <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.6 }}>mark items as done and add reactions — your taste profile builds up here.</div>
-      </div>
+      <TasteLockedPreview />
     </div>
   )
 

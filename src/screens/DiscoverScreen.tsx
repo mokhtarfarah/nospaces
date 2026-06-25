@@ -298,8 +298,8 @@ export function DiscoverScreen() {
       {!moodActive && usingEditorial && (
         <div style={{ marginBottom: 20, padding: '12px 14px', background: '#FAF9F7', borderRadius: 10 }}>
           <p style={{ fontSize: 12, color: GRAPHITE, lineHeight: 1.6, margin: 0 }}>
-            <strong style={{ color: INK, fontWeight: 600 }}>starter picks</strong> — a hand-picked shortlist of broadly loved films, music, books and tv while you get going. Not personalised.{' '}
-            <span style={{ color: GRAPHITE }}>Build a taste profile on the taste page for recommendations made for you.</span>
+            <strong style={{ color: INK, fontWeight: 600 }}>starter picks</strong> — a hand-picked shortlist of broadly loved films, music, books and tv while you get going. not personalised.{' '}
+            <span style={{ color: GRAPHITE }}>build a taste profile on the taste page for recommendations made for you.</span>
           </p>
         </div>
       )}

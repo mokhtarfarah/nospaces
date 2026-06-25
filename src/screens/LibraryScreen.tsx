@@ -1147,7 +1147,7 @@ function EmptyState({ hasItems, onGuide }: { hasItems: boolean; onGuide: () => v
         {hasItems ? 'nothing matches' : 'your library is empty'}
       </div>
       <div style={{ fontSize: 13, color: GRAPHITE, lineHeight: 1.5 }}>
-        {hasItems ? 'try changing your filters' : 'go listen to some music you loser'}
+        {hasItems ? 'try changing your filters' : 'add the first thing you can’t shut up about.'}
       </div>
       {!hasItems && (
         <button
@@ -1374,10 +1374,11 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
     showType ? item.type : null, item.year, seasonsLabel, topGenre,
     item.status === 'done' && item.reaction ? REACTION_LABELS[item.reaction] : null,
   ].filter(Boolean).join(' · ')
-  const reactionDot = item.status === 'done' && item.reaction === 'loved_it'
-    ? INK
-    : item.status === 'done'
-    ? MUTE
+  // Corner badge on the cover: a heart for the ones you loved, a check for the rest
+  // you've finished. Reads at a glance — replaces the old ink-vs-grey dot, which
+  // carried the same meaning but was impossible to decode without a key.
+  const reactionBadge = item.status === 'done'
+    ? (item.reaction === 'loved_it' ? '♥' : '✓')
     : null
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
@@ -1393,12 +1394,14 @@ function GridCard({ item, square, showType, onTap, onSaveArt, selectMode = false
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
           }}>{selected ? '✓' : ''}</div>
         )}
-        {reactionDot && (
-          <div style={{
+        {reactionBadge && (
+          <div title={item.reaction ? REACTION_LABELS[item.reaction] : 'done'} style={{
             position: 'absolute', bottom: 5, right: 5,
-            width: 7, height: 7, borderRadius: '50%',
-            background: reactionDot, border: '1px solid rgba(255,255,255,0.6)',
-          }} />
+            minWidth: 17, height: 17, padding: '0 2px', borderRadius: '50%',
+            background: 'rgba(255,255,255,0.92)', boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10, lineHeight: 1, color: INK,
+          }}>{reactionBadge}</div>
         )}
       </div>
       <div style={{ marginTop: 5 }}>

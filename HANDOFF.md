@@ -21,7 +21,9 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ## ▶ Next session (81) — holistic look at the whole app
 
-**Farah wants to step back from the polish queue and do a holistic pass over the app** — judge it as a first-time user with great taste, end to end (media + Things), not item-by-item. Flag anything that reads like a debug label, a dead end, an inside joke, or just doesn't earn its place.
+**Farah wants to step back from the polish queue and do a holistic pass over the app** — judge it as a first-time user with great taste, end to end (media + Things), not item-by-item. Flag anything that reads like a debug label, a dead end, an inside joke, or just doesn't earn its place. **This is a fresh chat — start by asking Farah how she wants to run it** (her walking the screens and narrating? you reading code + her screenshots? a screen-by-screen checklist she reacts to?) rather than diving in blind.
+
+**Seeing the app — the constraint:** the whole thing is **behind Google login**, so you can't browse it yourself. The `nospaces-noauth` harness (port 5180) only renders empty layout — useful for structure/render-safety, useless for anything data-driven (the taste reads, filled boards, the product sheet). So a real holistic pass leans on **Farah's eyes + screenshots**, with you reading the source to back it up. Don't claim a screen "looks fine" you haven't actually seen.
 
 **One thing to eyeball-confirm first** (shipped s80, behind login): the **mood wall** — gapless + newest spreading across the top, and whether the column-shuffle as images load is distracting (if so: store image dims at save time).
 

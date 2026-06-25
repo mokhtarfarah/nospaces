@@ -941,7 +941,7 @@ function TasteTab({ items, board, synthesis, onSave }: {
   if (items.length === 0 || !hasSignal) {
     return (
       <div style={{ margin: '12px 0', fontSize: 13, color: MUTED, lineHeight: 1.6 }}>
-        Save a few things and add some mood images — once a thread recurs across your board,
+        save a few things and add some mood images — once a thread recurs across your board,
         your <em>taste read</em> surfaces here: your keywords, a line on what you’re reflecting, and your colour story.
         {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} so far.</span>}
       </div>
@@ -974,7 +974,7 @@ function TasteTab({ items, board, synthesis, onSave }: {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14,
             padding: '16px 18px', border: `1px solid ${LINE}`, borderRadius: 12, background: '#FBFAF8' }}>
             <span style={{ fontSize: 13.5, color: MUTED, lineHeight: 1.45 }}>
-              Read your board back as one taste — a line on what you’re reflecting.
+              read your board back as one taste — a line on what you’re reflecting.
             </span>
             <button onClick={generate} disabled={generating} style={primaryBtn(generating)}>
               {generating ? 'reading…' : 'read'}
@@ -1083,10 +1083,11 @@ function DecidingCard({ item, view, onOpen }: { item: Item; view: ViewMode; onOp
     : 'no options yet'
   const W = 168
 
-  // GRID — picture-cover, matching the saved ProductCards. The cover is the card
-  // the plan is "about": the winner, else what you're leaning to, else the first
-  // option with a photo. The pile cue (a card peeking behind) still rides along
-  // while you're choosing.
+  // GRID — picture-cover with the question OVERLAID on the photo (Farah). The cover
+  // is the option the plan is "about" (winner → leaning → first with a photo); a
+  // frosted band over its base carries the need, a count chip says how many you're
+  // weighing, and a card peeking behind reads as "a pile you're choosing between".
+  // Resolved settles: band goes solid + "decided", chip and stack drop away.
   if (view === 'grid') {
     const lead = leadCandidate(item)
     return (
@@ -1094,13 +1095,30 @@ function DecidingCard({ item, view, onOpen }: { item: Item; view: ViewMode; onOp
         position: 'relative', flexShrink: 0, width: W, scrollSnapAlign: 'start',
         textAlign: 'left', color: INK, border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'block',
       }}>
+        {/* The "stack" — a faint card peeking out behind, only while still deciding. */}
         {!resolved && n > 1 && (
-          <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#E2E4E7', border: `1px solid ${LINE}`, borderRadius: 12, zIndex: -1 }} />
+          <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#E2E4E7', border: `1px solid ${LINE}`, zIndex: -1 }} />
         )}
-        <Thumb src={lead?.image ?? null} referer={lead?.url ?? null} cutout={lead?.cutoutHidden ? null : lead?.cutout} />
-        <div style={{ marginTop: 6 }}>
-          <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
-          <div style={{ fontSize: 11, color: MUTED, marginTop: 2, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{detail}</div>
+        <div style={{ position: 'relative' }}>
+          <Thumb src={lead?.image ?? null} referer={lead?.url ?? null} cutout={lead?.cutoutHidden ? null : lead?.cutout} />
+          {/* Count chip — only while deciding (a settled card doesn't need it). */}
+          {!resolved && n > 0 && (
+            <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 10, color: INK, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)', padding: '3px 8px', borderRadius: 999 }}>
+              {n} option{n === 1 ? '' : 's'}
+            </div>
+          )}
+          {/* Title band — frosted over the photo while deciding, solid once decided. */}
+          <div style={{
+            position: 'absolute', left: 0, right: 0, bottom: 0, padding: '9px 11px',
+            background: resolved ? 'rgba(255,255,255,0.95)' : 'rgba(248,246,242,0.9)',
+            backdropFilter: 'blur(6px)', borderTop: `1px solid ${resolved ? LINE : 'rgba(0,0,0,0.06)'}`,
+          }}>
+            {resolved && <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>decided</div>}
+            <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.25, textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
+            {resolved && winner && (
+              <div style={{ fontSize: 11, color: MUTED, marginTop: 3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{winner.title}</div>
+            )}
+          </div>
         </div>
       </button>
     )
@@ -1482,8 +1500,8 @@ function FilterSheet({ sort, onSort, view, onView, status, onStatus, polishCount
                 border: `1px solid ${LINE}`, borderRadius: 10, background: '#fff', padding: '11px 13px',
                 cursor: polishing ? 'default' : 'pointer', color: INK, opacity: polishing ? 0.6 : 1,
               }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>{polishing ? 'cleaning up…' : 'polish images'}</span>
-              <span style={{ fontSize: 11.5, color: MUTED }}>{polishCount} to tidy ›</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{polishing ? 'cleaning up…' : 'clean up photos'}</span>
+              <span style={{ fontSize: 11.5, color: MUTED }}>{polishCount} to fix ›</span>
             </button>
           </div>
         )}
@@ -1705,8 +1723,8 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
 
       {!resolved && m.candidates.length > 0 && (
         <p style={{ fontSize: 12, color: MUTED, margin: '10px 0 0' }}>
-          Star the one you're leaning toward. Pick when you're ready — the options you
-          pass on stay as part of the decision.
+          star the one you're leaning toward. pick when you're ready — the options you
+          pass on stay part of the decision.
         </p>
       )}
 
@@ -1774,7 +1792,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
 
         {m.candidates.length === 0 && !adding && (
           <p style={{ fontSize: 13, color: MUTED, textAlign: 'center', padding: '12px 0' }}>
-            No options yet. Paste a few product links to weigh them side by side.
+            no options yet. paste a few product links to weigh them side by side.
           </p>
         )}
       </div>
@@ -1784,7 +1802,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
         <div style={{ marginBottom: 16 }}>
           <button onClick={runCompare} disabled={comparing}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: `1px solid ${LINE}`, background: '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: comparing ? 'default' : 'pointer' }}>
-            ✨ {comparing ? 'thinking…' : compare ? 'Compare again' : 'Compare these'}
+            ✨ {comparing ? 'thinking…' : compare ? 'compare again' : 'compare these'}
           </button>
           {compare && (
             <button onClick={() => { setCompare(null); setCompareErr(null) }}
@@ -1834,7 +1852,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
         ) : (
           <button onClick={() => setAdding(true)}
             style={{ width: '100%', padding: '12px', borderRadius: 12, border: `1px dashed ${MUTED}`, background: 'none', color: INK, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-            + Add an option
+            + add an option
           </button>
         )
       )}
@@ -1865,7 +1883,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
       )}
 
       <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-between' }}>
-        <button onClick={onDelete} style={{ border: 'none', background: 'none', color: '#B4413C', fontSize: 12.5, cursor: 'pointer' }}>Delete this plan</button>
+        <button onClick={onDelete} style={{ border: 'none', background: 'none', color: '#B4413C', fontSize: 12.5, cursor: 'pointer' }}>delete this plan</button>
         {resolved && <span style={{ fontSize: 11.5, color: MUTED }}>chosen from {m.candidates.length} option{m.candidates.length === 1 ? '' : 's'}</span>}
       </div>
     </Sheet>
@@ -1935,8 +1953,8 @@ function MoodEmpty({ onAddUpload, onAddLink }: { onAddUpload: () => void; onAddL
   return (
     <div style={{ textAlign: 'center', padding: '48px 20px', color: MUTED }}>
       <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-        Your mood board is empty.<br />
-        Save images that capture the look you're after — they feed your taste, no price or link needed.
+        your mood board is empty.<br />
+        save images that capture the look you're after — they feed your taste, no price or link needed.
       </div>
       <button onClick={onAddUpload} style={{ ...primaryBtn(false), marginTop: 18 }}>upload images</button>
       <div style={{ marginTop: 12 }}>
@@ -2062,7 +2080,7 @@ function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f:
   return (
     <Sheet onClose={onClose}>
       <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>save a product</h2>
-      <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>Paste a link — we'll pull the image, name and price. You can tweak anything before saving.</p>
+      <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>paste a link — we'll pull the image, name and price. you can tweak anything before saving.</p>
 
       {!editing ? (
         <>
@@ -2149,15 +2167,15 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
       <div style={{ display: 'flex', gap: 12 }}>
         <Thumb src={f.image} size={72} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <input value={f.title} onChange={e => set({ title: e.target.value })} placeholder="Name" style={{ ...inputStyle, fontWeight: 500 }} />
+          <input value={f.title} onChange={e => set({ title: e.target.value })} placeholder="name" style={{ ...inputStyle, fontWeight: 500 }} />
           <input value={f.image ?? ''} onChange={e => set({ image: e.target.value })} placeholder="image url — paste to change the photo" style={inputStyle} />
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <input value={f.price ?? ''} onChange={e => set({ price: e.target.value })} placeholder="Price" style={inputStyle} />
+        <input value={f.price ?? ''} onChange={e => set({ price: e.target.value })} placeholder="price" style={inputStyle} />
         <input value={f.wasPrice ?? ''} onChange={e => set({ wasPrice: e.target.value })} placeholder="was (if on sale)" style={inputStyle} />
       </div>
-      <input value={f.brand ?? ''} onChange={e => set({ brand: e.target.value })} placeholder="Brand" style={inputStyle} />
+      <input value={f.brand ?? ''} onChange={e => set({ brand: e.target.value })} placeholder="brand" style={inputStyle} />
       <input value={f.url ?? ''} onChange={e => set({ url: e.target.value })} placeholder="buy link (kept even if it doesn't preview)" style={inputStyle} />
       <AttributesEditor value={f.attributes ?? []} onChange={attributes => set({ attributes })} />
       <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 2 }}>
@@ -2189,7 +2207,7 @@ function AttributesEditor({ value, onChange }: { value: Attribute[]; onChange: (
     return (
       <button type="button" onClick={() => setOpen(true)}
         style={{ alignSelf: 'flex-start', border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-        + Add taste tags
+        + add taste tags
       </button>
     )
   }
@@ -2342,8 +2360,8 @@ function Empty() {
   return (
     <div style={{ textAlign: 'center', padding: '48px 20px', color: MUTED }}>
       <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-        Your board is empty.<br />
-        Tap <span style={{ fontWeight: 600, color: INK }}>+</span> to save a product you love, or plan a purchase you're weighing.
+        your board is empty.<br />
+        tap <span style={{ fontWeight: 600, color: INK }}>+</span> to save a product you love, or plan a purchase you're weighing.
       </div>
     </div>
   )
