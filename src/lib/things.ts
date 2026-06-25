@@ -413,6 +413,76 @@ export async function readImageAttributes(
   return { ok: true, attributes, shotType }
 }
 
+/**
+ * A compact summary of the board's recurring taste, for the per-item "how this
+ * fits" read. For each aesthetic facet, the top recurring values with how many
+ * items carry each ([value, itemCount], like the thread but kept per-facet so the
+ * one-liner can name a specific streak). Counts items-per-value (one item can't
+ * inflate a tag), mirrors readThread's accounting. `category` is included here
+ * (the model can use "bag vs. your coats" as a real point of difference).
+ */
+export type BoardTasteSummary = { thread: string[]; facets: Partial<Record<Facet, [string, number][]>> }
+
+export function boardTasteSummary(items: Item[], topPerFacet = 5): BoardTasteSummary {
+  const sets = items.map(itemAttributes).filter(a => a.length > 0)
+  const counts: Partial<Record<Facet, Map<string, number>>> = {}
+  for (const attrs of sets) {
+    const seen = new Set<string>()
+    for (const a of attrs) {
+      const v = normValue(a.value)
+      if (!v) continue
+      const key = `${a.facet}:${v}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const m = (counts[a.facet] ??= new Map())
+      m.set(v, (m.get(v) ?? 0) + 1)
+    }
+  }
+  const facets: Partial<Record<Facet, [string, number][]>> = {}
+  for (const facet of Object.keys(counts) as Facet[]) {
+    const top = [...counts[facet]!.entries()]
+      .filter(([, n]) => n >= RECUR_MIN)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, topPerFacet)
+    if (top.length) facets[facet] = top
+  }
+  return { thread: readThread(items)?.tokens ?? [], facets }
+}
+
+/**
+ * The per-item "how this fits your taste" one-liner (Haiku, text-only, ~$0.001).
+ * Reads the item's already-extracted taste tags against the board summary — never
+ * an image. Never auto-runs: called on an explicit tap, the result cached on
+ * metadata.tasteFit so a product costs ~1¢ once.
+ */
+export async function readTasteFit(
+  item: { title: string; brand: string | null; price: string | null; attributes: Attribute[] },
+  board: BoardTasteSummary,
+): Promise<{ ok: true; fit: string } | { ok: false; reason: string }> {
+  let resp: Response
+  try {
+    resp = await fetch('/api/things-taste-fit', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        title: item.title,
+        brand: item.brand,
+        price: item.price,
+        attributes: item.attributes,
+        board,
+      }),
+    })
+  } catch {
+    return { ok: false, reason: "Couldn't reach the reader. Check your connection." }
+  }
+  if (resp.status === 429) return { ok: false, reason: 'That’s a lot of reads — try again next hour.' }
+  if (!resp.ok) return { ok: false, reason: 'Could not read that right now.' }
+  const data = await resp.json()
+  const fit = typeof data.fit === 'string' ? data.fit.trim() : ''
+  if (!fit) return { ok: false, reason: 'Could not read that right now.' }
+  return { ok: true, fit }
+}
+
 export type Comparison = { notes: string[]; lean: number | null; verdict: string }
 
 /**

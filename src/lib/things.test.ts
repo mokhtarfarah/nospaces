@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readThread, itemAttributes, promoteIntentToProduct, demoteProductToIntent, productPlan, normValue, priceValue, formatPrice, type Attribute } from './things'
+import { readThread, boardTasteSummary, itemAttributes, promoteIntentToProduct, demoteProductToIntent, productPlan, normValue, priceValue, formatPrice, type Attribute } from './things'
 import type { Item } from './database.types'
 
 // Minimal thing factory — only the fields the thread logic reads matter.
@@ -296,5 +296,46 @@ describe('readThread', () => {
       intentWinner,
     ]
     expect(readThread(items)?.tokens).toEqual(['wool'])
+  })
+})
+
+describe('boardTasteSummary', () => {
+  it('lists recurring values per facet, sorted by item count, with the thread', () => {
+    const items = [
+      product([a('palette', 'muted'), a('material', 'wool')]),
+      product([a('palette', 'muted'), a('material', 'wool')]),
+      product([a('palette', 'muted'), a('material', 'linen')]),
+      product([a('palette', 'earth'), a('material', 'wool')]),
+    ]
+    const s = boardTasteSummary(items)
+    // muted (3 items) leads earth (1, dropped — under RECUR_MIN); wool (3) leads linen (1, dropped)
+    expect(s.facets.palette).toEqual([['muted', 3]])
+    expect(s.facets.material).toEqual([['wool', 3]])
+    expect(s.thread).toEqual(['muted', 'wool'])
+  })
+
+  it('keeps category in the summary even though the thread leaves it out', () => {
+    const items = [
+      product([a('category', 'coat'), a('palette', 'muted')]),
+      product([a('category', 'coat'), a('palette', 'muted')]),
+      product([a('category', 'bag'), a('palette', 'muted')]),
+      product([a('category', 'bag'), a('palette', 'muted')]),
+    ]
+    const s = boardTasteSummary(items)
+    expect(s.facets.category).toEqual(expect.arrayContaining([['coat', 2], ['bag', 2]]))
+    expect(s.thread).not.toContain('coat')
+  })
+
+  it('drops one-off values (a value only one item carries)', () => {
+    const items = [
+      product([a('vibe', 'structured')]),
+      product([a('vibe', 'structured')]),
+      product([a('vibe', 'relaxed')]), // singleton
+    ]
+    expect(boardTasteSummary(items).facets.vibe).toEqual([['structured', 2]])
+  })
+
+  it('returns an empty thread on a sparse board (no read yet)', () => {
+    expect(boardTasteSummary([product([a('palette', 'muted')])]).thread).toEqual([])
   })
 })

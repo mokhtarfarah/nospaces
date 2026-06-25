@@ -12,7 +12,8 @@ import {
   parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, newCandidateId,
   promoteIntentToProduct, demoteProductToIntent, productPlan,
   EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, readThread, itemAttributes, THREAD_MIN_ITEMS, priceValue, formatPrice,
-  type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord,
+  boardTasteSummary, readTasteFit,
+  type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord, type BoardTasteSummary,
 } from '../lib/things'
 
 const INK = '#1C1B19'
@@ -166,6 +167,9 @@ export function ThingsScreen() {
   // card's tappable tags (and gates a tag from being tappable when it's a one-off).
   const countWithTag = (facet: Facet, value: string) =>
     things.filter(t => itemAttributes(t).some(a => a.facet === facet && normValue(a.value) === normValue(value))).length
+  // The board's recurring taste, summarised once for the per-item "how this fits"
+  // read. Empty thread = not enough signal yet, which gates the read off entirely.
+  const board = useMemo<BoardTasteSummary>(() => boardTasteSummary(things), [things])
   // Which sections the "show" filter exposes.
   const showDeciding = (statusF === 'all' || statusF === 'deciding') && decidingItems.length > 0
   const showSaved = statusF === 'all' || statusF === 'saved'
@@ -510,6 +514,17 @@ export function ThingsScreen() {
           onRunTaste={() => autoTagFromImage(openProduct.id, productMeta(openProduct))}
           onToggleCutout={() => patchMetadata(openProduct.id, { cutoutHidden: !productMeta(openProduct).cutoutHidden })}
           onSaveNote={(note) => patchMetadata(openProduct.id, { note })}
+          board={board}
+          // Reads how this one thing fits the board (Haiku, ~$0.001), then caches the
+          // line on metadata.tasteFit so it's a one-time cost. Returns the reason on
+          // failure so the sheet can show it. Only ever fired by an explicit tap.
+          onRunFit={async () => {
+            const p = productMeta(openProduct)
+            const r = await readTasteFit({ title: p.title, brand: p.brand, price: p.price, attributes: p.attributes ?? [] }, board)
+            if (!r.ok) return r.reason
+            await patchMetadata(openProduct.id, { tasteFit: r.fit })
+            return null
+          }}
           countWithTag={countWithTag}
           onFilterTag={(facet, value) => { setTagFilter({ facet, value }); setOpenProductId(null) }}
           onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
@@ -809,7 +824,47 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
   )
 }
 
-function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onSaveNote, countWithTag, onFilterTag, onDelete }: {
+// "How this fits your taste" — a one-line read of how the item rhymes with (or
+// departs from) the board. Item-level sibling of the masthead thread. Costs a paid
+// Haiku call, so it's a deliberate tap and the result is cached on metadata.tasteFit
+// (a re-read is offered, also explicit). Mirrors NoteBlock's quiet states.
+function TasteFitBlock({ fit, onRun }: { fit: string | null; onRun: () => Promise<string | null> }) {
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function run() {
+    if (loading) return
+    setErr(null)
+    setLoading(true)
+    const reason = await onRun()
+    setLoading(false)
+    if (reason) setErr(reason)
+  }
+
+  if (fit) {
+    return (
+      <div style={{ marginTop: 16 }}>
+        <NoteProse label="how this fits your taste">{fit}</NoteProse>
+        <button onClick={run} disabled={loading}
+          style={{ marginTop: 6, border: 'none', background: 'none', color: MUTED, fontSize: 11.5, cursor: loading ? 'default' : 'pointer', padding: 0 }}>
+          {loading ? 'reading…' : 're-read'}
+        </button>
+        {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
+      </div>
+    )
+  }
+  return (
+    <div style={{ marginTop: 14 }}>
+      <button onClick={run} disabled={loading}
+        style={{ border: 'none', background: 'none', color: loading ? MUTED : INK, fontSize: 12.5, fontWeight: 600, cursor: loading ? 'default' : 'pointer', padding: 0 }}>
+        {loading ? 'reading your board…' : 'read how this fits your taste'}
+      </button>
+      {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
+    </div>
+  )
+}
+
+function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onSaveNote, board, onRunFit, countWithTag, onFilterTag, onDelete }: {
   item: Item
   onClose: () => void
   onSave: (f: ProductFields) => void | Promise<void>
@@ -818,6 +873,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   onRunTaste: () => void | Promise<void>
   onToggleCutout: () => void | Promise<void>
   onSaveNote: (note: string | null) => void | Promise<void>
+  board: BoardTasteSummary
+  // Runs the per-item taste read and caches it; resolves to an error reason, or null on success.
+  onRunFit: () => Promise<string | null>
   countWithTag: (facet: Facet, value: string) => number
   onFilterTag: (facet: Facet, value: string) => void
   onDelete: () => void
@@ -936,6 +994,15 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
       </div>
 
       <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
+
+      {/* How this one thing fits the board — the item-level read of the masthead's
+          keyword thread. Only offered once the board has a real read (a non-empty
+          thread) AND this thing is tagged, so it never compares against nothing.
+          The line is a paid Haiku call, cached on metadata.tasteFit, so it's a tap,
+          never automatic. */}
+      {board.thread.length > 0 && taste.some(a => a.facet !== 'category') && (
+        <TasteFitBlock fit={(item.metadata as { tasteFit?: string })?.tasteFit ?? null} onRun={onRunFit} />
+      )}
 
       {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
 
