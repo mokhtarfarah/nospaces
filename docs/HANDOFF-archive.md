@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 80 (2026-06-25) — eyeball backlog: colour-story + mood masonry + product sheet
+
+Short verify-and-fix session. Cleared the s77–s79 eyeball backlog with Farah testing live (behind login) and reporting; 2 fixes shipped. **3 commits on `main`** (`97aef09`, `9451eaf`, `c082329`; `58b3283`/`3b691e7` docs), 93 Vitest green, typecheck/eslint/build clean.
+
+**Colour-story background fix (s77 carryover) — ✅ Farah confirmed live.** The ribbon read too gray because the sampler only dropped near-white/near-black backdrops, not gray/cream/kraft. Fixed in `src/lib/palette.ts`: detect the backdrop via the image **border** (`borderColor`) and drop pixels matching it *whatever its colour*, so any flat backdrop goes while a cream/gray *product* in the centre survives; full-bleed shots fall back to the chromatic-neutral drop (`mx − mn < 10`). Cream returned without warm-skew, balanced. Tuning knobs: border-spread `36`, backdrop-match tolerance `50`, fallback neutral `10`.
+
+**Eyeball results (Farah, live):**
+- **Product card (s79)** — "fine for now, will use it and see." One bug: with the taste read hidden, "show taste read" sat flush against "+ add a note" ("+ add a noteshow taste read"). Fixed — the button was inline-block; made it `display:block` (`ThingsScreen.tsx:1227`).
+- **Deciding-card cutout (s79)** — looks good across candidates. ✓
+- **Things taste restructure (s78)** — looks good. ✓ (verified, dropped from roadmap)
+- **Mood masonry order (s77/78)** — Farah wants **newest-first across rows AND gapless**. CSS can't do both (columns = gapless but column-major; row grid = right order but gaps). Rebuilt as **JS shortest-column masonry** (`MoodWall`, `ThingsScreen.tsx:1882`): walk items newest-first, drop each into the currently-shortest column → newest spreads across the top, no gaps. Tiles report aspect ratio on `onLoad`; layout settles in. **Caveat (told Farah):** tiles can shift columns as images stream in / lazy-load, settling after first view (cached). If it ever annoys, store image dims at save time. Not yet eyeballed live (shipped `c082329`).
+
+**Next:** Farah wants a **holistic look at the whole app** next session — step back from the polish queue.
+
+---
+
 ### Session 79 (2026-06-25) — bug-fix + Things-board polish pass
 
 Bug-fixing session that worked through the s76 "Library + Things polish" queue plus a fresh image regression. **5 commits pushed to `main`** (`7302bf5`, `a95a08b`, `9b25ca7` are the substantive ones), 93 Vitest green, typecheck/eslint/build clean throughout. Most visual work is **behind the Google login wall, so verified by typecheck + the new no-auth harness only** — Farah confirmed the sneaker fix live; the rest is her eyeball next session.

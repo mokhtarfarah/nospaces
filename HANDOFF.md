@@ -15,19 +15,17 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**Session 79 — bug-fix + Things-board polish pass, all pushed to `main` (latest `9b25ca7`). 93 Vitest green, typecheck + eslint + build clean.** Worked through the s76 polish queue + a fresh image regression. Shipped: **taste sub-tabs de-underlined** (now match media); **capture URL-leak plugged** (media list no longer shows Things forwards); **media filter control → Things' slider icon** (Farah de-scoped the rest of the header redesign — *only* the filter card, no jumpy-header/switcher work); the **deciding-card cutout fix** (the black sneaker — candidates now get cutouts via the "polish images" button, ~1¢/plan; **Farah confirmed it reads on gray**); a **product-sheet restructure** ("taste mirror, not a checkout" — title is the link, got-it demoted to the bottom row + `· got it` status by price, calmer tags, no body button); **per-item hide for the taste read**; and **inline re-read** at the end of AI text. New dev capability: **`nospaces-noauth`** launch config explores the UI without Google login (empty data — layout checks only). Most visual work verified by typecheck + no-auth harness only; the product sheet + taste profile need real data, so they're Farah's eyeball. Full detail → archive (s79).
+**Session 80 — eyeball backlog cleared (colour-story, mood masonry, product sheet), pushed to `main` (latest `c082329`). 93 Vitest green, typecheck + eslint + build clean.** Farah tested the s77–s79 shipped work live and reported; 2 fixes shipped. **Colour-story background fix confirmed live** (`palette.ts` — detect backdrop by image border, drop it whatever its colour; balanced cream, no warm-skew). **s78 taste restructure + s79 deciding-card cutout: both confirmed good.** Fixed: **"show taste read" button smash** (was inline-block, flush against "+ add a note" → `display:block`); **mood masonry rebuilt as JS shortest-column masonry** — Farah wanted newest-first across rows *and* gapless, which CSS can't do, so we lay columns out in JS (`MoodWall`, `ThingsScreen.tsx:1882`). Product card "fine for now," she'll use it and report. The mood-masonry rebuild is *not* yet eyeballed live (caveat: tiles can shift columns as images stream in, settling after first view). Full detail → archive (s80).
 
 ---
 
-## ▶ Next session (80) — hear Farah's eyeball, then the remaining for-discussion items
+## ▶ Next session (81) — holistic look at the whole app
 
-**First: hear what Farah found** testing the **s79 product-card restructure** (got-it demoted, calmer tags, title-as-link, per-item hide on the taste read, inline re-read) and the **deciding-card cutout** — all live, none but the sneaker confirmed. She said she'd give feedback this session if any.
+**Farah wants to step back from the polish queue and do a holistic pass over the app** — judge it as a first-time user with great taste, end to end (media + Things), not item-by-item. Flag anything that reads like a debug label, a dead end, an inside joke, or just doesn't earn its place.
 
-Also still pending eyeball from before s79:
-- **s78 Things taste restructure** — verify checklist in `docs/ROADMAP.md` → "Things taste restructure — runtime-verify" (sub-tab chips, moodboard add-FAB one level down, recurring-brands threshold, taste icon).
-- **s77 colour-story ribbon** (browser-canvas, never seen — likely a `mood-images` CORS block) + the **column-major masonry** order confirm (`docs/ROADMAP.md` → "runtime-verify the colour story").
+**One thing to eyeball-confirm first** (shipped s80, behind login): the **mood wall** — gapless + newest spreading across the top, and whether the column-shuffle as images load is distracting (if so: store image dims at save time).
 
-Then the two remaining **for-discussion** items (`docs/ROADMAP.md` → "Library (media) polish"):
+The two **for-discussion** items are still parked, pick up if the holistic pass surfaces them (`docs/ROADMAP.md` → "Media library polish"):
 - **scroll-lock stickiness** (don't auto-fix — needs a decision on switcher accessibility);
 - **music-library clutter** (pair with the parked media "verdict" reshape — same area, same session).
 
