@@ -868,11 +868,13 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const buyLabel = p.brand ? `view at ${p.brand}` : p.siteName ? `view at ${p.siteName}` : 'view at shop'
   return (
     <Sheet onClose={onClose}>
+     {/* The whole card is capped to the photo's width and centred, so on a wide
+         laptop it reads as one tidy column (photo + details same width) instead of
+         a small photo floating in a broad sheet. */}
+     <div style={{ maxWidth: 360, margin: '0 auto' }}>
       {/* Gallery layout: the photo leads (this is a taste mirror, not a checkout),
           actions recede to a quiet row. Close floats over the image. */}
-      {/* Height-capped + centred so the photo doesn't eat the whole viewport on a
-          laptop (the note/actions stay near the fold). Sized off height to keep 4:5. */}
-      <div style={{ position: 'relative', margin: '0 auto', maxWidth: '100%', height: 'min(54vh, 440px)', aspectRatio: '4 / 5', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}` }}>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 5', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}` }}>
         {hero
           ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: showCutout ? 'contain' : 'cover', padding: showCutout ? '8%' : 0, boxSizing: 'border-box', filter: showCutout ? undefined : 'saturate(0.95)' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
@@ -957,6 +959,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           <button onClick={() => setConfirmDel(true)} style={{ border: 'none', background: 'none', color: '#B4413C', fontSize: 12.5, cursor: 'pointer', padding: 0 }}>remove</button>
         )}
       </div>
+     </div>
     </Sheet>
   )
 }
