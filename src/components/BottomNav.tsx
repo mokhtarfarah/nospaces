@@ -1,23 +1,15 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LibraryIcon, TasteIcon, DiscoverIcon } from './navIcons'
+import { NAV_H, NAV_ICON, navButtonBase, clearStack } from '../lib/layout'
 
 export function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
 
   const base: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 4,
-    padding: '8px 24px',
-    fontSize: 11,
-    fontWeight: 500,
+    ...navButtonBase,
     color: '#999',
     textDecoration: 'none',
-    border: 'none',
-    background: 'none',
-    cursor: 'pointer',
     flex: 1,
   }
 
@@ -32,7 +24,7 @@ export function BottomNav() {
           aria-label="add"
           style={{
             position: 'fixed',
-            bottom: 'calc(84px + env(safe-area-inset-bottom) + 18px)',
+            bottom: clearStack(18),
             right: 20,
             width: 50,
             height: 50,
@@ -60,7 +52,7 @@ export function BottomNav() {
         bottom: 0,
         left: 0,
         right: 0,
-        height: 'calc(56px + env(safe-area-inset-bottom))',
+        height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
         paddingBottom: 'env(safe-area-inset-bottom)',
         background: '#fff',
         borderTop: '1px solid #E8E8E8',
@@ -70,15 +62,15 @@ export function BottomNav() {
         zIndex: 100,
       }}>
         <NavLink to="/library" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
-          <LibraryIcon />
+          <LibraryIcon size={NAV_ICON} />
           library
         </NavLink>
         <NavLink to="/taste" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
-          <TasteIcon />
+          <TasteIcon size={NAV_ICON} />
           taste
         </NavLink>
         <NavLink to="/discover" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
-          <DiscoverIcon />
+          <DiscoverIcon size={NAV_ICON} />
           discover
         </NavLink>
       </nav>

@@ -4,6 +4,7 @@ import { useOfflineSync } from './hooks/useOfflineSync'
 import { LoginScreen } from './components/LoginScreen'
 import { BottomNav } from './components/BottomNav'
 import { DomainSwitcher } from './components/DomainSwitcher'
+import { clearStack } from './lib/layout'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { AddScreen } from './screens/AddScreen'
 import { ImportScreen } from './screens/ImportScreen'
@@ -62,7 +63,7 @@ export default function App() {
       {(pendingCount > 0 || syncStatus !== 'idle') && (
         <div style={{
           position: 'fixed',
-          bottom: 'calc(84px + env(safe-area-inset-bottom))',
+          bottom: clearStack(),
           left: 0, right: 0,
           background: '#1C1B19',
           color: '#ABA69C',

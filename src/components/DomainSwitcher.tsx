@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { SWITCHER_H, clearNav } from '../lib/layout'
 
 // The top-level mode toggle (the settled IA): nospaces is two domains over one
 // shared library — Media (films/books/music/tv) and Things (the visual board).
@@ -10,12 +11,10 @@ import { useNavigate } from 'react-router-dom'
 
 const INK = '#1C1B19'
 
-// Strip height, in px (above the safe-area inset). Every bottom-anchored element
-// (content padding, FABs, action bars, the sync banner) clears the tab bar PLUS
-// this, so the value is shared rather than re-derived. Kept slim (s84) so the
-// switcher reads as the top row of ONE bottom panel, not a second stacked slab —
-// its top border is the panel's outer edge, the tab bar's top border the divider.
-export const SWITCHER_H = 28
+// SWITCHER_H + all the bottom-clearing math now live in lib/layout.ts (one source
+// of truth). Kept slim (s84) so the switcher reads as the top row of ONE bottom
+// panel, not a second stacked slab — its top border is the panel's outer edge,
+// the tab bar's top border the divider.
 
 type Domain = 'media' | 'things'
 
@@ -28,7 +27,7 @@ export function DomainSwitcher({ current }: { current: Domain }) {
   return (
     <div style={{
       position: 'fixed', left: 0, right: 0,
-      bottom: 'calc(56px + env(safe-area-inset-bottom))',
+      bottom: clearNav(),
       height: SWITCHER_H,
       background: '#fff', borderTop: '1px solid #EFEDE9',
       display: 'flex', justifyContent: 'center', alignItems: 'center',

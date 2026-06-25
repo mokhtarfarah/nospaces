@@ -17,6 +17,7 @@ import { VIBES, VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 import { inReview, reviewCount } from '../lib/review'
+import { clearStack, clearNav } from '../lib/layout'
 import { pullRegions, itemsNeedingRegion } from '../lib/regions'
 import { authHeaders } from '../lib/supabase'
 
@@ -747,7 +748,7 @@ export function LibraryScreen() {
       </header>
 
       {/* List */}
-      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? 'calc(178px + env(safe-area-inset-bottom))' : 'calc(108px + env(safe-area-inset-bottom))' }}>
+      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? clearStack(94) : clearStack(24) }}>
         {/* Shows near you — lives in the music view (it's intrinsically music). */}
         {musicOnly && !reviewOnly && (
           <button
@@ -832,7 +833,7 @@ export function LibraryScreen() {
         const n = selectedIds.size
         return (
           <div style={{
-            position: 'fixed', left: 0, right: 0, bottom: 'calc(56px + env(safe-area-inset-bottom))', zIndex: 101,
+            position: 'fixed', left: 0, right: 0, bottom: clearNav(), zIndex: 101,
             background: '#fff', borderTop: '1px solid #E8E8E8', boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
             padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 14,
           }}>
@@ -1086,7 +1087,7 @@ function FilterSheet({
             area, clipping the last row. A real element is always scrollable to.
             Height clears the fixed bottom tab bar + domain-switcher strip (~108px)
             so the last row isn't hidden behind them when the sheet is short. */}
-        <div style={{ height: 'calc(116px + env(safe-area-inset-bottom))' }} />
+        <div style={{ height: clearStack(32) }} />
       </div>
     </>
   )

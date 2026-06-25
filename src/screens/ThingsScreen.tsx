@@ -16,6 +16,7 @@ import {
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord, type BoardTasteSummary,
 } from '../lib/things'
 import { uploadMoodImage, moodSrc } from '../lib/mood'
+import { NAV_H, NAV_ICON, navButtonBase, clearStack } from '../lib/layout'
 import { sampleBoardColors } from '../lib/palette'
 import { usePrefs } from '../hooks/usePrefs'
 
@@ -504,7 +505,7 @@ export function ThingsScreen() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
       {flash && (
         <div onClick={() => setFlash(null)} style={{
-          position: 'fixed', left: '50%', bottom: 'calc(108px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
+          position: 'fixed', left: '50%', bottom: clearStack(24), transform: 'translateX(-50%)',
           background: INK, color: '#fff', fontSize: 12.5, padding: '9px 14px', borderRadius: 999, cursor: 'pointer',
           maxWidth: '90vw', textAlign: 'center', zIndex: 300, boxShadow: '0 4px 18px rgba(0,0,0,0.2)',
         }}>{flash}</div>
@@ -832,7 +833,7 @@ export function ThingsScreen() {
           moodboard (one tap → image picker). The taste PROFILE is a read-only
           mirror — nothing to add there — so the FAB hides. */}
       {(tab === 'wishlist' || onMoodboard) && (
-      <div style={{ position: 'fixed', right: 20, bottom: 'calc(84px + env(safe-area-inset-bottom) + 18px)', zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+      <div style={{ position: 'fixed', right: 20, bottom: clearStack(18), zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
         {tab === 'wishlist' && addMenu && (
           <>
             <FabAction label="save a product" onClick={() => { setAddMenu(false); setComposer('product') }} />
@@ -867,21 +868,18 @@ export function ThingsScreen() {
 // Things bottom nav — same chrome as the media BottomNav (fixed bar, icon + label,
 // ink-when-active), scoped to the two halves of the board.
 function ThingsNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
-  const base: React.CSSProperties = {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-    border: 'none', background: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, padding: '8px 24px',
-  }
+  const base: React.CSSProperties = { ...navButtonBase }
   return (
     <nav style={{
       position: 'fixed', bottom: 0, left: 0, right: 0,
-      height: 'calc(56px + env(safe-area-inset-bottom))', paddingBottom: 'env(safe-area-inset-bottom)',
+      height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom: 'env(safe-area-inset-bottom)',
       background: '#fff', borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-around', alignItems: 'center', zIndex: 100,
     }}>
       <button onClick={() => onTab('wishlist')} style={{ ...base, color: tab === 'wishlist' ? '#111' : '#999' }}>
-        <WishlistIcon /> wishlist
+        <WishlistIcon size={NAV_ICON} /> wishlist
       </button>
       <button onClick={() => onTab('taste')} style={{ ...base, color: tab === 'taste' ? '#111' : '#999' }}>
-        <TasteIcon /> taste
+        <TasteIcon size={NAV_ICON} /> taste
       </button>
     </nav>
   )
