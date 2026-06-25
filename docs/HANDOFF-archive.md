@@ -4,6 +4,27 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 81 (2026-06-25) — holistic first-impression pass + cold-start/coherence ship
+
+Farah ran the planned holistic look: I read the app end-to-end from source, she fed screenshots in batches (library → taste/discover → things). Delivered a felt first-time-user reaction + an audit, then shipped the safe fixes. **4 commits on `main`** (`8e74782`, `d4573bd`, `d2c20cc` + docs), 93 Vitest green, typecheck/eslint/build clean. Empty states eyeballed in the noauth harness; data-driven bits flagged for live verify.
+
+**The through-line (the review):** populated, the app is genuinely charming — the **media taste-profile prose** and the **Things "deciding" engine** are the standouts, and the deciding engine resolves the navel-gazing worry on the Things side (it's practical, not a mirror). The damage was all in the **first five minutes** (hostile/empty cold start) and a **coherence seam** (the two halves looked like different hands). The taste-profile arc, desert island, discover, decade grouping, faithful-creators, recommendation engine — all confirmed good, left untouched.
+
+**Shipped:**
+- **Empty-library copy** — dropped "go listen to some music you loser" for "add the first thing you can't shut up about." (kept a wink). *Dropped from roadmap parked list.*
+- **Empty taste page** — replaced the "go do it elsewhere" line with a blurred **locked preview** in the profile's shape (vibe-headline + prose skeleton under a veil) + the missing `DomainSwitcher`. Payoff visible before earned.
+- **Domain switcher** — bolder active, **underlined inactive** so it reads as the tappable bridge it is (was near-invisible). Discover cold-start explainer lowercased.
+- **One voice** — Things chrome lowercased throughout (buttons, empties, placeholders); "polish images · N to tidy" → "clean up photos · N to fix".
+- **Cover reaction badge** — the undecodable ink-vs-grey dot → ☺ (loved) / ✓ (done). *Note: my code-pass guesses that the list-row "w" circle = "want to" and the dot = "owned" were **wrong** — "w" is the Wikipedia link, the dot was reaction. Corrected, didn't churn the deliberate ones.*
+- **Deciding-card grid cover** — Farah asked to restore the older overlaid-title design: photo fills the tile, frosted question band over it, count chip, pile cue behind; title is **one line + ellipsis** (her call). Pulled from `5bb51bf`, adapted to the current `Thumb`/cutout path.
+- **Wishlist naming** — collection had two user-facing names (nav "wishlist" vs masthead "the board") and "board" collided with "mood board"; unified on **"wishlist"**.
+
+**Coherence audit (the bigger ask):** mapped where media/Things diverge. Most "stapled-on" feeling was casing (fixed) + switcher visibility (fixed), not architecture — the two halves share one thesis (taste → mirror; collect → decide). Remaining divergences folded into the roadmap as **one cluster: "what feeds the taste read"** (self-defined taste + Things-taste reframe + beauty/home exclusion + a "got it"→worth-it signal — all one decision, gated on the "saving is the signal" soul rule) + a separate **"vary the AI voice by surface"** item (ungated, can go first). "thread"→"vibes" was a no-op (only in code/comments, never user-facing).
+
+**Next:** Batch-3 work is now the roadmap cluster above — needs the design decision before code; voice-by-surface can go anytime. Live-verify the badges + deciding card.
+
+---
+
 ### Session 80 (2026-06-25) — eyeball backlog: colour-story + mood masonry + product sheet
 
 Short verify-and-fix session. Cleared the s77–s79 eyeball backlog with Farah testing live (behind login) and reporting; 2 fixes shipped. **3 commits on `main`** (`97aef09`, `9451eaf`, `c082329`; `58b3283`/`3b691e7` docs), 93 Vitest green, typecheck/eslint/build clean.

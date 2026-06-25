@@ -15,32 +15,27 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**Session 80 — eyeball backlog cleared (colour-story, mood masonry, product sheet), pushed to `main` (latest `c082329`). 93 Vitest green, typecheck + eslint + build clean.** Farah tested the s77–s79 shipped work live and reported; 2 fixes shipped. **Colour-story background fix confirmed live** (`palette.ts` — detect backdrop by image border, drop it whatever its colour; balanced cream, no warm-skew). **s78 taste restructure + s79 deciding-card cutout: both confirmed good.** Fixed: **"show taste read" button smash** (was inline-block, flush against "+ add a note" → `display:block`); **mood masonry rebuilt as JS shortest-column masonry** — Farah wanted newest-first across rows *and* gapless, which CSS can't do, so we lay columns out in JS (`MoodWall`, `ThingsScreen.tsx:1882`). Product card "fine for now," she'll use it and report. The mood-masonry rebuild is *not* yet eyeballed live (caveat: tiles can shift columns as images stream in, settling after first view). Full detail → archive (s80).
+**Session 81 — holistic first-impression pass + cold-start/coherence ship, on `main` (latest `d2c20cc`). 93 Vitest green, typecheck + eslint + build clean.** Read the app end-to-end from source, Farah fed screenshots in batches; delivered a first-time-user review + audit, then shipped the safe fixes: **warmer empty states** (dropped the "you loser" line, kept a wink), a blurred **locked preview** on the empty taste page, a **visible media/things switcher** (underlined inactive side), **Things chrome lowercased to one voice**, the **cover reaction badge** (☺ loved / ✓ done) replacing the undecodable dot, the **deciding-card grid cover** restored (overlaid title, one line + ellipsis), and **"wishlist"** as the board's single name. The coherence audit reshaped the medium-term roadmap into one **"what feeds the taste read"** cluster + a **"vary the AI voice by surface"** item. **Live-verify (behind login):** cover badges + deciding-card cover on real data — the noauth harness can't show them. Full detail → archive (s81).
 
 ---
 
-## ▶ Next session (81) — holistic look at the whole app
+## ▶ Next session (82) — open: pick from the restructured roadmap
 
-**Farah wants to step back from the polish queue and do a holistic pass over the app** — judge it as a first-time user with great taste, end to end (media + Things), not item-by-item. Flag anything that reads like a debug label, a dead end, an inside joke, or just doesn't earn its place. **This is a fresh chat — start by asking Farah how she wants to run it** (her walking the screens and narrating? you reading code + her screenshots? a screen-by-screen checklist she reacts to?) rather than diving in blind.
+No fixed queue. The s81 holistic pass reshaped the medium-term work in `docs/ROADMAP.md`. Two natural next moves:
+- **Vary the AI voice by surface** — ungated, cheap, can go first. One shared humanizer base → a per-surface register (warm on taste, terse on discover, decisive on compare). While there, confirm `api/things-taste.ts` / `things-compare.ts` import the humanizer base.
+- **"What feeds the taste read"** — the consolidated design decision (self-defined taste + Things-taste reframe + beauty/home exclusion + a "got it"→worth-it signal). **Gated:** decide the feedback loop *with Farah first*, honouring the "saving is the signal" soul rule. No code until decided.
 
-**Seeing the app — the constraint:** the whole thing is **behind Google login**, so you can't browse it yourself. The `nospaces-noauth` harness (port 5180) only renders empty layout — useful for structure/render-safety, useless for anything data-driven (the taste reads, filled boards, the product sheet). So a real holistic pass leans on **Farah's eyes + screenshots**, with you reading the source to back it up. Don't claim a screen "looks fine" you haven't actually seen.
+**Live-verify first (s81, behind login):** the cover reaction badges (☺/✓) and the deciding-card grid cover on a real account — the noauth harness can't show data. If good, drop the s81 line from `docs/ROADMAP.md` → "Awaiting Farah's eyeball." Mood masonry (s80) still awaits the same.
 
-**One thing to eyeball-confirm first** (shipped s80, behind login): the **mood wall** — gapless + newest spreading across the top, and whether the column-shuffle as images load is distracting (if so: store image dims at save time).
+**For-discussion (parked, in `docs/ROADMAP.md` → "Media library polish"):** scroll-lock stickiness (needs a switcher-accessibility call); music-library clutter (pair with the verdict reshape).
 
-The two **for-discussion** items are still parked, pick up if the holistic pass surfaces them (`docs/ROADMAP.md` → "Media library polish"):
-- **scroll-lock stickiness** (don't auto-fix — needs a decision on switcher accessibility);
-- **music-library clutter** (pair with the parked media "verdict" reshape — same area, same session).
+**Carried:** the capture pain points (iOS share-shortcut email path, image-share, paywalled-article extraction — own session); scraper-403 fingerprint wants a real-world check (does a previously-403 shop read now?).
 
-**Carried:** the two big capture pain points (image-share + paywalled-article extraction — own session); iOS share-to-app Shortcut (email-auto-send path); beauty/home/misc taste-neutral products; empty-library copy (parked, Farah's call).
+**Things model facts:** all on `Item`; `type:'thing'`; `metadata.kind` = `product`|`intent`|`inspiration` (mood-board image); `metadata.attributes[]` (`{facet,value}`) is the composition engine; a promoted plan keeps `metadata.fromPlan` (reversible via `demoteProductToIntent`); resolve = `done` + winner flag, **no archive** (losers persist). The taste read runs over wishlist + mood together (`tasteItems`).
 
-**Carried (still open):**
-- Scraper-403 fingerprint wants a real-world check (does a previously-403 shop read now?).
-- New parked items in `docs/ROADMAP.md`: beauty/home/misc products (taste-neutral), the iOS share-to-app Shortcut (email-auto-send path), the media "verdict" reshape.
-- **Things model facts:** all on `Item`; `type:'thing'`; `metadata.kind` = `product`|`intent`|`inspiration` (mood-board image, s76); `metadata.attributes[]` (`{facet,value}`) is the composition engine; a promoted plan keeps `metadata.fromPlan` (reversible via `demoteProductToIntent`); resolve = `done` + winner flag, **no archive** (losers persist). The taste read runs over wishlist + mood together (`tasteItems`).
+**Don't touch (genuinely good):** decade grouping; the taste page's vibe-headline → prose → gap → always-loved → desert-island arc; the editorial palette; the faithful-creators logic; **the recommendation engine itself.** (All re-confirmed in the s81 review.)
 
-**Don't touch (genuinely good):** decade grouping; the taste page's vibe-headline → prose → gap → always-loved → desert-island arc; the editorial palette; the faithful-creators logic; **the recommendation engine itself.**
-
-Backlog beyond this queue → `docs/ROADMAP.md`.
+Backlog beyond this → `docs/ROADMAP.md`.
 
 ---
 
