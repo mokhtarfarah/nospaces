@@ -177,7 +177,9 @@ export function ThingsScreen() {
   const anyShown = showGot ? gotItems.length > 0 : (showDeciding || (showSaved && savedItems.length > 0))
   // A grid (or list) of products — reused by the saved + got sections.
   const productGridOrList = (list: Item[]) => view === 'list' ? (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    // Flat hairline rows abut (gap 0) — the divider on each row is the separator,
+    // matching the media Library's list.
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {list.map(item => <ProductRow key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />)}
     </div>
   ) : (
@@ -396,15 +398,12 @@ export function ThingsScreen() {
               {showDeciding && (
                 <section style={{ marginBottom: 26 }}>
                   <SectionLabel>deciding · {decidingItems.length}</SectionLabel>
-                  {view === 'list' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {decidingItems.map(item => <IntentRow key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />)}
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x proximity' }}>
-                      {decidingItems.map(item => <DecidingCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />)}
-                    </div>
-                  )}
+                  {/* A plan is a *question* — always the portrait "deciding" card, in
+                      both list and grid view (Farah, s75). It never degrades to a flat
+                      row, so a plan reads the same however the saved items are laid out. */}
+                  <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x proximity' }}>
+                    {decidingItems.map(item => <DecidingCard key={item.id} item={item} onOpen={() => setOpenIntentId(item.id)} />)}
+                  </div>
                 </section>
               )}
 
@@ -736,11 +735,14 @@ function ProductRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const got = item.status === 'done'
   const taste = (p.attributes ?? []).filter(a => a.facet !== 'category')
   return (
+    // Flat hairline row — the same family as the media Library's list rows (no boxed
+    // card), so flipping domains reads as one app. The photo keeps a small rounded
+    // thumb; the divider is the row's only border.
     <button onClick={onOpen}
-      style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%', textAlign: 'left', border: `1px solid ${LINE}`, borderRadius: 12, background: '#fff', padding: 10, cursor: 'pointer', color: INK }}>
-      <Thumb src={p.image} size={64} />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</div>
+      style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%', textAlign: 'left', border: 'none', borderBottom: `1px solid ${LINE}`, borderRadius: 0, background: 'none', padding: '8px 2px', cursor: 'pointer', color: INK }}>
+      <Thumb src={p.image} size={56} />
+      <div style={{ minWidth: 0, flex: 1, alignSelf: 'center' }}>
+        <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</div>
         <div style={{ fontSize: 11, color: MUTED, marginTop: 3, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
           {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
@@ -751,30 +753,6 @@ function ProductRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
             {taste.map(a => a.value).join(' · ')}
           </div>
         )}
-      </div>
-    </button>
-  )
-}
-
-function IntentRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
-  const m = intentMeta(item)
-  const resolved = m.winner != null
-  const winner = resolved ? m.candidates.find(c => c.id === m.winner) : null
-  const lean = !resolved && m.leaning ? m.candidates.find(c => c.id === m.leaning) : null
-  const cover = winner ?? lean ?? m.candidates[0] ?? null
-  const n = m.candidates.length
-  const status = resolved
-    ? (winner ? `decided · ${winner.title.slice(0, 30)}${winner.title.length > 30 ? '…' : ''}` : 'decided')
-    : lean ? `leaning · ${lean.title.slice(0, 28)}${lean.title.length > 28 ? '…' : ''}`
-    : n ? `deciding · ${n} option${n === 1 ? '' : 's'}`
-    : 'tap to add options'
-  return (
-    <button onClick={onOpen}
-      style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%', textAlign: 'left', border: `1px solid ${LINE}`, borderRadius: 12, background: '#fff', padding: 10, cursor: 'pointer' }}>
-      <Thumb src={cover?.image ?? null} size={64} />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: INK, lineHeight: 1.3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>{status}</div>
       </div>
     </button>
   )
