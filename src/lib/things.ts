@@ -522,6 +522,34 @@ export async function readTasteFit(
   return { ok: true, fit }
 }
 
+/**
+ * The board-level taste synthesis (Haiku, text-only, ~$0.001). A 1–2 sentence "what
+ * you're reflecting" read across the whole board (wishlist + mood), seeded from the
+ * board summary. Never auto-runs: called on an explicit tap, the result cached in
+ * user_prefs so it only costs when you ask for a fresh read.
+ */
+export async function readTasteSynthesis(
+  board: BoardTasteSummary,
+  count: number,
+): Promise<{ ok: true; synthesis: string } | { ok: false; reason: string }> {
+  let resp: Response
+  try {
+    resp = await fetch('/api/things-taste', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ board, count }),
+    })
+  } catch {
+    return { ok: false, reason: "Couldn't reach the reader. Check your connection." }
+  }
+  if (resp.status === 429) return { ok: false, reason: 'That’s a lot of reads — try again next hour.' }
+  if (!resp.ok) return { ok: false, reason: 'Could not read that right now.' }
+  const data = await resp.json()
+  const synthesis = typeof data.synthesis === 'string' ? data.synthesis.trim() : ''
+  if (!synthesis) return { ok: false, reason: 'Could not read that right now.' }
+  return { ok: true, synthesis }
+}
+
 export type Comparison = { notes: string[]; lean: number | null; verdict: string }
 
 /**

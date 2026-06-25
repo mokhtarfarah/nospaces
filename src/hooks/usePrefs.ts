@@ -16,6 +16,8 @@ interface Prefs {
   cities?: City[]
   tasteProfile?: string
   tasteProfileGeneratedAt?: string
+  thingsTaste?: string
+  thingsTasteGeneratedAt?: string
   discoveryCache?: { intaste?: DiscoveryCache; divert?: DiscoveryCache }
   customFeeds?: FeedEntry[]
   dismissedDiscoverTitles?: string[]
@@ -65,6 +67,9 @@ export function usePrefs() {
   const setTasteProfile = (profile: string) =>
     patch({ tasteProfile: profile, tasteProfileGeneratedAt: new Date().toISOString() })
 
+  const setThingsTaste = (synthesis: string) =>
+    patch({ thingsTaste: synthesis, thingsTasteGeneratedAt: new Date().toISOString() })
+
   const setDiscoveryCache = (mode: 'intaste' | 'divert', results: DiscoveryResult[]) =>
     patch({ discoveryCache: { ...prefs.discoveryCache, [mode]: { results, cachedAt: new Date().toISOString() } } })
 
@@ -88,6 +93,9 @@ export function usePrefs() {
     tasteProfile: prefs.tasteProfile,
     tasteProfileGeneratedAt: prefs.tasteProfileGeneratedAt,
     setTasteProfile,
+    thingsTaste: prefs.thingsTaste,
+    thingsTasteGeneratedAt: prefs.thingsTasteGeneratedAt,
+    setThingsTaste,
     discoveryCache: prefs.discoveryCache,
     setDiscoveryCache,
     customFeeds: prefs.customFeeds ?? [],
