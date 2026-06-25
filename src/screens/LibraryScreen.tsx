@@ -42,9 +42,13 @@ const PREFS_KEY = 'nospaces.libraryPrefs'
 // window keeps us from restoring a stale position on a much-later cold open.
 const SCROLL_KEY = 'nospaces.libraryScroll'
 const SCROLL_MAX_AGE_MS = 6 * 60 * 60 * 1000 // 6h — long enough for a kill/reopen, short enough to feel intentional
+// How much text sits under each grid cover: nothing (a clean wall — coverless
+// tiles still show title+creator inside so they stay identifiable), the title
+// only, or the full title · creator · details line.
+type CardCaption = 'none' | 'title' | 'full'
 type LibraryPrefs = {
   categories: string[]; statusFilter: StatusFilter; reactionFilter: ReactionFilter
-  view: ViewMode; dir: SortDir; layout: 'list' | 'grid'; gridCols: 3 | 4
+  view: ViewMode; dir: SortDir; layout: 'list' | 'grid'; gridCols: 3 | 4; caption: CardCaption
 }
 function loadPrefs(): Partial<LibraryPrefs> {
   try { return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') } catch { return {} }
@@ -202,6 +206,9 @@ export function LibraryScreen() {
   // 3 vs 4 columns in grid view — 3 reads well on mobile, 4 is tighter for desktop.
   // Persisted per-device (localStorage), so each device keeps its own preference.
   const [gridCols, setGridCols] = useState<3 | 4>(() => loadPrefs().gridCols ?? 3)
+  // Grid caption density — defaults to 'full' so nothing changes for an existing
+  // library; toggle to 'title' or 'none' for a cleaner cover wall.
+  const [caption, setCaption] = useState<CardCaption>(() => loadPrefs().caption ?? 'full')
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [dupesOpen, setDupesOpen] = useState(false)
@@ -358,9 +365,9 @@ export function LibraryScreen() {
 
   // Persist filters/view so a refresh keeps the user where they were.
   useEffect(() => {
-    const prefs: LibraryPrefs = { categories, statusFilter, reactionFilter, view, dir, layout, gridCols }
+    const prefs: LibraryPrefs = { categories, statusFilter, reactionFilter, view, dir, layout, gridCols, caption }
     try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* ignore quota/private-mode */ }
-  }, [categories, statusFilter, reactionFilter, view, dir, layout, gridCols])
+  }, [categories, statusFilter, reactionFilter, view, dir, layout, gridCols, caption])
 
   // "New Music Tuesday" toggle only applies while viewing the Music category alone.
   const musicOnly = categories.length === 1 && categories[0] === 'music'
@@ -751,6 +758,7 @@ export function LibraryScreen() {
                       item={item}
                       square={categories.length !== 1 || categories[0] === 'music'}
                       showType={categories.length !== 1}
+                      caption={caption}
                       onTap={() => (selectMode ? toggleSelect(item.id) : (setActionEdit(false), setActionItem(item)))}
                       onSaveArt={handleSaveArt}
                       onSaveWiki={handleSaveWiki}
@@ -904,6 +912,7 @@ export function LibraryScreen() {
           view={view} dir={dir} onSelectView={selectView}
           layout={layout} onLayout={l => setLayout(l)}
           gridCols={gridCols} onGridCols={c => setGridCols(c)}
+          caption={caption} onCaption={setCaption}
           onClearGroups={() => { setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([]); setNewMusicOnly(false) }}
           onClose={() => setFilterSheetOpen(false)}
         />
@@ -990,7 +999,7 @@ function FilterSheet({
   countryFilter, onToggleCountry,
   showNewMusic, newMusicOnly, onToggleNewMusic,
   view, dir, onSelectView,
-  layout, onLayout, gridCols, onGridCols,
+  layout, onLayout, gridCols, onGridCols, caption, onCaption,
   onClearGroups, onClose,
 }: {
   availableTags: { vibes: string[]; verdicts: string[]; genres: string[]; series: string[]; countries: string[] }
@@ -1004,6 +1013,7 @@ function FilterSheet({
   view: ViewMode; dir: SortDir; onSelectView: (v: ViewMode) => void
   layout: 'list' | 'grid'; onLayout: (l: 'list' | 'grid') => void
   gridCols: 3 | 4; onGridCols: (c: 3 | 4) => void
+  caption: CardCaption; onCaption: (c: CardCaption) => void
   onClearGroups: () => void
   onClose: () => void
 }) {
@@ -1048,6 +1058,16 @@ function FilterSheet({
             <div style={{ display: 'flex', gap: 6 }}>
               {([3, 4] as const).map(n => (
                 <button key={n} onClick={() => onGridCols(n)} style={segBtn(gridCols === n)}>{n}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {layout === 'grid' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, color: '#555' }}>captions</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['none', 'title', 'full'] as const).map(c => (
+                <button key={c} onClick={() => onCaption(c)} style={segBtn(caption === c)}>{c}</button>
               ))}
             </div>
           </div>
@@ -1375,7 +1395,7 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
 }
 
 // Grid layout cover card. square=true for music (album covers are 1:1).
-function GridCard({ item, square, showType, onTap, onSaveArt, onSaveWiki, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; onTap: () => void; onSaveArt?: (id: string, url: string) => void; onSaveWiki?: (id: string, wiki: WikiInfo) => void; selectMode?: boolean; selected?: boolean }) {
+function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWiki, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; caption: CardCaption; onTap: () => void; onSaveArt?: (id: string, url: string) => void; onSaveWiki?: (id: string, wiki: WikiInfo) => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
   const artSaved = useRef(false)
@@ -1419,7 +1439,14 @@ function GridCard({ item, square, showType, onTap, onSaveArt, onSaveWiki, select
       <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : `1px solid ${HAIR}` }}>
         {thumbnail
           ? <img src={thumbnail} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: square && item.type !== 'music' ? 'top' : 'center', opacity: selectMode && !selected ? 0.55 : 1 }} />
-          : <div style={{ fontSize: 18, color: color.border, opacity: 0.4 }}>✦</div>}
+          : (
+            // No cover — write the title + creator into the tile so a coverless item
+            // stays identifiable even with captions turned off (the clean-wall mode).
+            <div style={{ padding: '10px 9px', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', boxSizing: 'border-box', overflow: 'hidden' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: color.border, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
+              {item.creator && <div style={{ fontSize: 10, color: color.border, opacity: 0.7, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.creator}</div>}
+            </div>
+          )}
         {selectMode && (
           <div style={{
             position: 'absolute', top: 6, left: 6, width: 20, height: 20, borderRadius: '50%',
@@ -1453,18 +1480,22 @@ function GridCard({ item, square, showType, onTap, onSaveArt, onSaveWiki, select
           </div>
         )}
       </div>
-      <div style={{ marginTop: 5 }}>
-        <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>
-          {!!item.metadata?.canon && <span style={{ fontSize: 9, marginRight: 3, color: INK }}>◆</span>}
-          {item.title}
+      {/* Caption density (s84 setting): 'none' = clean wall, the cover speaks for
+          itself; 'title' = just the title; 'full' = title + creator + details. */}
+      {caption !== 'none' && (
+        <div style={{ marginTop: 5 }}>
+          <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>
+            {!!item.metadata?.canon && <span style={{ fontSize: 9, marginRight: 3, color: INK }}>◆</span>}
+            {item.title}
+          </div>
+          {caption === 'full' && item.creator && (
+            <div style={{ fontSize: 10, color: MUTE, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>
+          )}
+          {caption === 'full' && (subtitle || item.note) && (
+            <div style={{ fontSize: 10, color: MUTE, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle}{item.note && <span style={{ fontStyle: 'italic' }}>{subtitle ? ' · ' : ''}noted</span>}</div>
+          )}
         </div>
-        {item.creator && (
-          <div style={{ fontSize: 10, color: MUTE, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.creator}</div>
-        )}
-        {(subtitle || item.note) && (
-          <div style={{ fontSize: 10, color: MUTE, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle}{item.note && <span style={{ fontStyle: 'italic' }}>{subtitle ? ' · ' : ''}noted</span>}</div>
-        )}
-      </div>
+      )}
     </div>
   )
 }
