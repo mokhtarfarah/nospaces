@@ -40,24 +40,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Not enough on the board yet to compare against.' })
   }
 
-  // Compact, readable board summary: each facet's recurring values with how many
-  // OTHER things carry them (e.g. "palette: muted (6), earth (3)").
+  // Category is "what it is" (bag, trousers), not the aesthetic — leave it out of
+  // the read entirely, both for the board context and the item, so the line goes by
+  // feeling, not inventory (Farah: insights should be aesthetic, not categorical).
+  const HIDE = new Set(['category'])
   const boardLines = Object.entries(facets)
-    .filter(([, vals]) => Array.isArray(vals) && vals.length)
-    .map(([facet, vals]) => `- ${FACET_LABEL[facet] ?? facet}: ${vals.map(([v, n]) => `${v} (${n})`).join(', ')}`)
+    .filter(([facet, vals]) => !HIDE.has(facet) && Array.isArray(vals) && vals.length)
+    .map(([facet, vals]) => `- ${FACET_LABEL[facet] ?? facet}: ${vals.map(([v]) => v).join(', ')}`)
     .join('\n')
 
-  const itemLine = attrs.map(a => `${FACET_LABEL[a.facet] ?? a.facet}: ${a.value}`).join(', ')
+  const itemAttrsShown = attrs.filter(a => !HIDE.has(a.facet))
+  const itemLine = (itemAttrsShown.length ? itemAttrsShown : attrs).map(a => `${FACET_LABEL[a.facet] ?? a.facet}: ${a.value}`).join(', ')
 
-  const prompt = `Someone keeps a personal "taste board" of things they've saved (clothes, objects, homeware). Across the board, these aesthetic tags keep recurring — the number in parens is how many saved things carry each value:
+  const prompt = `Someone keeps a personal "taste board" — things they've saved across clothes, bags, shoes, objects. The board has a recurring aesthetic; here's the gist:
+${thread.length ? `\nIn a phrase, it reads as: ${thread.join(' · ')}.\n` : ''}
+Recurring threads:
+${boardLines || '(nothing strongly recurring yet)'}
 
-${boardLines || '(no recurring facets)'}
-${thread.length ? `\nTheir board reads, in short, as: ${thread.join(' · ')}.\n` : ''}
-Now they've saved this one thing:
+They just saved:
 - ${title ? title : 'an item'}${brand ? ` — ${brand}` : ''}${price ? ` (${price})` : ''}
-- its taste tags: ${itemLine}
+- reads as: ${itemLine}
 
-Write ONE short line (second person, ~12–20 words, no period needed) on how THIS thing sits against the rest of their board — where it leans into a recurring streak, and, if there's a real one, the way it differs (dressier, bolder, a softer palette, an outlier). Be specific to the tags shown; name the actual values. If it's a clean match to their usual, say that simply — don't manufacture a contrast. If it genuinely departs from everything else, say so honestly rather than forcing a fit. No hype, no "this piece" filler.
+Write ONE short line (second person, ~12–18 words, no trailing period) on how this sits with the board — AESTHETICALLY. Read the *feeling*: palette, mood, silhouette, how relaxed or dressy, soft or sharp, quiet or bold.
+
+Rules that matter here:
+- Go by aesthetic, NOT category. The board mixes clothes, bags and objects, so a recurring material (e.g. leather) usually comes from accessories — never treat it as a wardrobe staple, and never frame a different category as a departure ("a bag, unlike your coats"). Bag-vs-trousers is not a taste observation.
+- Don't force a contrast. If it simply IS her aesthetic, say so with warmth and confidence in a few words — that's a better, truer read than inventing a difference. Only name a tension when it's a genuine aesthetic shift (a softer palette, a dressier mood, a sharper line than usual).
+- Vary the phrasing every time. Do NOT use a fixed template like "X and Y check the boxes, but Z…" — that reads robotic. Each line should be put freshly.
+- Be specific and human, never a checklist of the tags read back. No hype, no "this piece".
 
 ${HUMANIZER_GUARDRAILS}
 

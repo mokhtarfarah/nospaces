@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect } from 'react'
 import { DomainSwitcher } from '../components/DomainSwitcher'
 import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
-import { thingImage, thingImageRaw } from '../lib/thingImage'
+import { thingImageRaw } from '../lib/thingImage'
 import { makeCutout, CUTOUT_VERSION } from '../lib/cutout'
 import { NoteProse } from '../components/NoteProse'
 import { useItems } from '../hooks/useItems'
@@ -640,7 +640,9 @@ function ProductCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
       style={{ position: 'relative', textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: INK, display: 'block', width: '100%' }}>
       <Thumb src={p.image} referer={p.url} cutout={p.cutoutHidden ? null : p.cutout} />
       <div style={{ marginTop: 6 }}>
-        <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'lowercase' }}>
+        {/* Single line, ellipsis — consistent with the deciding card; open the item
+            for the full title. */}
+        <div style={{ fontSize: 12.5, lineHeight: 1.3, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'lowercase' }}>
           {p.title}
         </div>
         <div style={{ fontSize: 11, color: MUTED, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -665,62 +667,41 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 // The deciding-zone card: a plan is a *question*, not a product, so it reads as a
-// labelled box — the need headlined, a count, and a few option thumbs to signal the
-// deliberation. Distinct from the product tiles in the saved grid below.
+// compact TEXT box (Farah s75) — the need, a small status (N options / leaning /
+// decided), and the front-runner's name. No photo: a plan isn't a thing yet, so it
+// stays small and word-driven, clearly apart from the photo tiles in the saved grid.
 function DecidingCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const m = intentMeta(item)
   const resolved = m.winner != null
   const n = m.candidates.length
-  const front = resolved ? m.winner : m.leaning
-  // Lead with the front-runner (winner → leaning → first), so the cover photo shows
-  // the option you're actually circling.
-  const ordered = [...m.candidates]
-  const fi = ordered.findIndex(c => c.id === front)
-  if (fi > 0) ordered.unshift(ordered.splice(fi, 1)[0])
-  const cover = ordered[0] ?? null
   const winner = resolved ? m.candidates.find(c => c.id === m.winner) ?? null : null
-  // The card is a *question*: the front-runner photo fills it, a frosted band carries
-  // the question, and "N options" + a peeking card behind say "this is a pile you're
-  // choosing between" (the job the old thumb-row did). When it resolves it settles —
-  // the stack and count drop away, the band goes solid, it reads "decided".
-  const W = 188
+  const lean = !resolved && m.leaning ? m.candidates.find(c => c.id === m.leaning) ?? null : null
+  // The small kicker reads the state at a glance; the front-runner's name (winner
+  // while decided, leaning otherwise) sits under the need so the card carries the
+  // choice you're circling without a photo.
+  const status = resolved ? 'decided' : lean ? 'leaning' : n ? `${n} option${n === 1 ? '' : 's'}` : 'no options yet'
+  const front = winner ?? lean
+  const W = 168
 
   return (
     <button onClick={onOpen} style={{
       position: 'relative', flexShrink: 0, width: W, scrollSnapAlign: 'start',
-      textAlign: 'left', color: INK, border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'block',
+      textAlign: 'left', color: INK, border: `1px solid ${LINE}`, borderRadius: 12,
+      background: resolved ? '#fff' : TILE, padding: '12px 13px', cursor: 'pointer', display: 'block',
     }}>
-      {/* The "stack" — a faint card peeking out behind, only while still deciding. */}
+      {/* The "stack" — a faint card peeking out behind, only while still deciding,
+          to keep the "a pile you're choosing between" cue. */}
       {!resolved && n > 1 && (
-        <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#E2E4E7', border: `1px solid ${LINE}`, borderRadius: 14 }} />
+        <div aria-hidden style={{ position: 'absolute', top: -4, right: -4, width: W, height: '100%', background: '#E2E4E7', border: `1px solid ${LINE}`, borderRadius: 12, zIndex: -1 }} />
       )}
-      <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', border: `1px solid ${LINE}`, background: TILE, aspectRatio: String(GRID_ASPECT) }}>
-        {cover?.image
-          ? <img src={thingImage(cover.image, GRID_ASPECT, cover.url) ?? cover.image} onError={imgFallback(cover.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.95)' }} />
-          : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: MUTED }}>no options yet</div>}
-
-        {/* Count chip — only while deciding (a settled card doesn't need it). */}
-        {!resolved && n > 0 && (
-          <div style={{ position: 'absolute', top: 9, right: 9, fontSize: 10, color: INK, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)', padding: '3px 8px', borderRadius: 999 }}>
-            {n} option{n === 1 ? '' : 's'}
-          </div>
-        )}
-
-        {/* Title band — frosted while deciding (rides over any photo), solid once decided. */}
-        <div style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0, padding: '9px 11px',
-          background: resolved ? '#fff' : 'rgba(237,238,240,0.9)', backdropFilter: resolved ? undefined : 'blur(6px)',
-          borderTop: `1px solid ${resolved ? LINE : 'rgba(0,0,0,0.06)'}`,
-        }}>
-          {resolved && <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>decided</div>}
-          {/* Always reserve two lines so the band is the same height on every card,
-              whether the title wraps to one line or two. */}
-          <div style={{ fontSize: 13.5, fontWeight: 500, lineHeight: 1.25, height: '2.5em', textTransform: 'lowercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
-          {resolved && winner && (
-            <div style={{ fontSize: 11, color: MUTED, marginTop: 3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{winner.title}</div>
-          )}
+      <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{status}</div>
+      {/* Single line, always — long needs ellipsis; open the card for the full text. */}
+      <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+      {front && (
+        <div style={{ fontSize: 11, color: MUTED, marginTop: 4, textTransform: 'lowercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {resolved ? '✓ ' : '→ '}{front.title}
         </div>
-      </div>
+      )}
     </button>
   )
 }
@@ -797,8 +778,7 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
     )
   }
   return (
-    <button onClick={() => { setText(''); setEditing(true) }}
-      style={{ marginTop: 14, border: 'none', background: 'none', color: MUTED, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+    <button onClick={() => { setText(''); setEditing(true) }} style={{ ...quietLink, marginTop: 14 }}>
       + add a note
     </button>
   )
@@ -835,8 +815,7 @@ function TasteFitBlock({ fit, onRun }: { fit: string | null; onRun: () => Promis
   }
   return (
     <div style={{ marginTop: 14 }}>
-      <button onClick={run} disabled={loading}
-        style={{ border: 'none', background: 'none', color: loading ? MUTED : INK, fontSize: 12.5, cursor: loading ? 'default' : 'pointer', padding: 0 }}>
+      <button onClick={run} disabled={loading} style={quietLink}>
         {loading ? 'reading your board…' : 'read how this fits your taste'}
       </button>
       {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
@@ -906,10 +885,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const buyLabel = p.brand ? `view at ${p.brand}` : p.siteName ? `view at ${p.siteName}` : 'view at shop'
   return (
     <Sheet onClose={onClose}>
-     {/* The whole card is capped to the photo's width and centred, so on a wide
-         laptop it reads as one tidy column (photo + details same width) instead of
-         a small photo floating in a broad sheet. */}
-     <div style={{ maxWidth: 360, margin: '0 auto' }}>
+     {/* The whole card is capped to the photo's width and centred, so it reads as
+         one tidy column (photo + details same width) instead of a wide, sprawling
+         sheet. */}
+     <div style={{ maxWidth: 320, margin: '0 auto' }}>
       {/* Gallery layout: the photo leads (this is a taste mirror, not a checkout),
           actions recede to a quiet row. Close floats over the image. */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 5', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}` }}>
@@ -956,9 +935,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         )}
       </div>
 
-      {/* Quiet action row — understated links, not buttons shouting "BUY". The one
-          with a touch of weight is "got it" (the meaningful state change). */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 16, flexWrap: 'wrap' }}>
+      {/* Two primary actions only — the buy link and "got it" (the state change).
+          Everything else (edit, note, taste, remove) is a quiet text link, grouped
+          below, so the sheet reads as one tidy set instead of scattered button styles. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 16, flexWrap: 'wrap' }}>
         {p.url && (
           <a href={p.url} target="_blank" rel="noreferrer"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: INK, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
@@ -970,7 +950,6 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           border: `1px solid ${got ? INK : LINE}`, background: got ? INK : '#fff', color: got ? '#fff' : INK,
           fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
         }}>{got ? '✓ got it' : 'mark as got it'}</button>
-        <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 13, cursor: 'pointer', padding: 0, marginLeft: 'auto' }}>edit</button>
       </div>
 
       <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
@@ -980,30 +959,36 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           thread) AND this thing is tagged, so it never compares against nothing.
           The line is a paid Haiku call, cached on metadata.tasteFit, so it's a tap,
           never automatic. */}
-      {board.thread.length > 0 && taste.some(a => a.facet !== 'category') && (
+      {board.thread.length > 0 && taste.some(a => a.facet !== 'category') ? (
         <TasteFitBlock fit={(item.metadata as { tasteFit?: string })?.tasteFit ?? null} onRun={onRunFit} />
+      ) : (
+        // Recovery: a product whose photo couldn't be auto-read (the retailer blocked
+        // the image fetch, or it was an unsupported format) lands here with no taste
+        // tags — offer a one-tap re-read right here instead of burying it in edit.
+        p.image && !taste.some(a => a.facet !== 'category') && (
+          <button onClick={onRunTaste} style={{ ...quietLink, marginTop: 16 }}>read taste from photo</button>
+        )
       )}
 
       {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
 
-      {/* Undo the "save as product" step: a decided-but-not-owned product can go
-          back to being the plan it came from. Only while un-owned. */}
-      {plan && !got && (
-        <button onClick={async () => { await onReopenPlan(); onClose() }}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
-          <span style={{ fontSize: 13 }}>↩</span> put back in plan
-        </button>
-      )}
-
-      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'flex-end', gap: 12, alignItems: 'center' }}>
+      {/* One quiet utility row — every administrative action shares the same text-link
+          style, so the sheet reads as one set, not a scatter of button treatments. */}
+      <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', gap: 16 }}>
         {confirmDel ? (
           <>
             <span style={{ fontSize: 12.5, color: MUTED, marginRight: 'auto' }}>remove from the board?</span>
-            <button onClick={() => setConfirmDel(false)} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>
-            <button onClick={onDelete} style={{ border: 'none', background: '#B4413C', color: '#fff', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>remove</button>
+            <button onClick={() => setConfirmDel(false)} style={quietLink}>cancel</button>
+            <button onClick={onDelete} style={{ ...quietLink, color: '#B4413C', fontWeight: 600 }}>remove</button>
           </>
         ) : (
-          <button onClick={() => setConfirmDel(true)} style={{ border: 'none', background: 'none', color: '#B4413C', fontSize: 12.5, cursor: 'pointer', padding: 0 }}>remove</button>
+          <>
+            <button onClick={() => setEditing(true)} style={quietLink}>edit</button>
+            {plan && !got && (
+              <button onClick={async () => { await onReopenPlan(); onClose() }} style={quietLink}>↩ put back in plan</button>
+            )}
+            <button onClick={() => setConfirmDel(true)} style={{ ...quietLink, color: '#B4413C', marginLeft: 'auto' }}>remove</button>
+          </>
         )}
       </div>
      </div>
@@ -1662,13 +1647,6 @@ function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: strin
   )
 }
 
-// Auto-trim a product out of its background whitespace and re-frame it to `aspect`,
-// so photos from different shops read at a consistent size. Returns the trimmed
-// data URL when ready, else null — the caller falls back to the original, cover-
-// cropped (still uniform, just not zoomed). Null also covers shops that block pixel
-// access (CORS) and busy shots with nothing to trim.
-const GRID_ASPECT = 4 / 5
-
 // If the server trim/proxy can't be reached (offline dev, a transient 5xx), drop
 // back to the original photo URL so we never show a broken image. `data-fb` guards
 // against a fallback loop.
@@ -1778,6 +1756,13 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
 const inputStyle: React.CSSProperties = {
   flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 10, border: `1px solid ${LINE}`,
   fontSize: 13, color: INK, outline: 'none', background: '#fff',
+}
+
+// One shared treatment for every quiet text-link action on the product sheet (edit,
+// add a note, read taste, put back, remove…) so they read as a consistent set rather
+// than a scatter of one-off button styles.
+const quietLink: React.CSSProperties = {
+  border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', padding: 0, fontFamily: 'inherit',
 }
 
 function primaryBtn(disabled: boolean): React.CSSProperties {
