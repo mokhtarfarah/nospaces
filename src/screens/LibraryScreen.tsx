@@ -567,20 +567,13 @@ export function LibraryScreen() {
           overflow: 'hidden', transition: 'max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease',
           maxHeight: collapsed ? 0 : 110, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 12,
         }}>
-          {/* Magazine header — small kicker + label + rule (shared treatment) */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10, color: '#ABA69C', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>{kicker}</div>
-              <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingBottom: 1 }}>
-              <button
-                onClick={() => setViewSheetOpen(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: INK, padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
-              >
-                {VIEW_CONFIG[view].label}
-                <span style={{ fontSize: 11, color: MUTE }}>▾</span>
-              </button>
+          {/* Magazine header — title + search/overflow on top, then count + sort
+              folded into one quiet subline (s84 collapse). The standalone uppercase
+              kicker and the in-title sort button are gone: the title row now holds
+              only the title and the two icons, so the top reads calmer. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
               <HeaderControls
                 filtersActive={filtersActive}
                 onClear={clearFilters}
@@ -588,6 +581,17 @@ export function LibraryScreen() {
                 onMore={() => setOverflowOpen(true)}
               />
             </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+            <span style={{ fontSize: 12.5, color: '#ABA69C' }}>{kicker}</span>
+            <span style={{ fontSize: 12, color: '#D5D1C9' }}>·</span>
+            <button
+              onClick={() => setViewSheetOpen(true)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: '#6F6B64', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}
+            >
+              {VIEW_CONFIG[view].label}
+              <span style={{ fontSize: 10, color: MUTE }}>▾</span>
+            </button>
           </div>
           <div style={{ borderBottom: '1.5px solid #1C1B19' }} />
         </div>
