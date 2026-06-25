@@ -1608,16 +1608,17 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
 
 /* ---------- mood board (pure-inspiration images) ---------- */
 
-// A masonry wall of inspiration images — natural aspect ratios (a mood board, not a
-// uniform catalog), so the pictures read like a pin-up rather than the cropped
-// product tiles. Editorial: sharp corners, packed tight. Uses the measured column
-// count. (Later: a slight stagger/offset so it's not a neat 2×2 — noted in ROADMAP.)
+// A wall of inspiration images. Row-by-row, newest first (Farah s76: reads more
+// naturally than column-major masonry) — a CSS grid with `align-items: start`, so
+// images keep their natural aspect (never cropped — this is a mood board, not a
+// catalog) and rows fill left→right in chronological order. Editorial: sharp
+// corners, tight 4px gaps. (Later: a slight stagger/offset — noted in ROADMAP.)
 function MoodWall({ moods, cols, onOpen, onAddUpload, onAddLink }: {
   moods: Item[]; cols: number; onOpen: (id: string) => void; onAddUpload: () => void; onAddLink: () => void
 }) {
   if (moods.length === 0) return <MoodEmpty onAddUpload={onAddUpload} onAddLink={onAddLink} />
   return (
-    <div style={{ columnCount: cols, columnGap: 4 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 4, alignItems: 'start' }}>
       {moods.map(item => <MoodTile key={item.id} item={item} onOpen={() => onOpen(item.id)} />)}
     </div>
   )
@@ -1628,7 +1629,7 @@ function MoodTile({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const src = moodSrc(m.image, m.hosted)
   return (
     <button onClick={onOpen}
-      style={{ display: 'block', width: '100%', border: 'none', background: 'none', padding: 0, margin: '0 0 4px', cursor: 'pointer', breakInside: 'avoid' }}>
+      style={{ display: 'block', width: '100%', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
       {src
         ? <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block', background: TILE }} />
         : <div style={{ width: '100%', aspectRatio: '4 / 5', background: TILE, border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 11 }}>no image</div>}
