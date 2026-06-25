@@ -15,23 +15,19 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**Session 76 — Mood board SHIPPED (the pure-inspiration half of Things). On `main`, NOT yet deployed; 90 Vitest green, typecheck + eslint + build clean. NOT runtime-verified (board behind Google login) AND blocked on a one-time Supabase step (see ⚠️ below).** A `wishlist | mood` toggle at the top of Things (`tab` state, persisted) flips between the buyable board and a masonry wall of inspiration images. New `metadata.kind: 'inspiration'` (in `lib/things.ts`); capture = upload a file / paste a copied image / paste an image link (no email — would clash with a future product-screenshot router); stored in a new `mood-images` Supabase bucket via `lib/mood.ts` (uploads) or kept as a proxied URL (pastes). Each image gets **one ~1¢ vision read** (palette/material/vibe, no cutout) so the mood board **feeds the same taste thread** as the wishlist — `boardTasteSummary`/`readThread` now read across BOTH (`tasteItems = things + moods`). Also fixed: the library duplicate-finder now skips `type:'thing'` (mood images all share the title "inspiration"). Session 75's eyeball-checklist feedback (deciding-card grid revert, product-sheet link rework, + 7 Library/Things tweaks) is logged in `docs/ROADMAP.md` → "Library + Things polish, s76" for a separate polish session. Full detail → archive (s76).
-
-> **⚠️ ONE-TIME before mood uploads work live:** run the `mood-images` bucket block at the bottom of `supabase/schema.sql` in Supabase (bucket + RLS). Until then file uploads fail (pasted image *links* still work). Mirror of the s74 `thing-cutouts` step.
+**Session 76 — Mood board SHIPPED + a full feedback round, all deployed to `main`. 90 Vitest green, typecheck + eslint + build clean. NOT runtime-verified beyond Farah's live eyeballing (board behind Google login). The `mood-images` Supabase bucket has been created (Farah ran the SQL).** The mood board is the pure-inspiration half of Things: new `metadata.kind: 'inspiration'` (`lib/things.ts`), images in the `mood-images` bucket (`lib/mood.ts`) or proxied pasted URLs, each given **one ~1¢ vision read** (palette/material/vibe, no cutout) so the mood board **feeds the same taste thread** as the wishlist — `boardTasteSummary`/`readThread` read across BOTH (`tasteItems = things + moods`). **Feedback round shipped:** a `wishlist | mood` **bottom nav** (mirrors the media nav; replaces the top toggle; FAB lifted above it); keywords/thread now show on the **mood tab only** (like media keywords on Taste); **multi-select upload** + FAB-straight-to-photo-picker on mobile + a soft "paste a link" secondary + desktop clipboard-paste; **row-by-row chronological** grid (newest first, aspect preserved, never cropped, sharp 4px gaps); note removed from mood images. Library duplicate-finder now skips `type:'thing'`. s75 eyeball feedback + mood-board followups all logged in `docs/ROADMAP.md`. Full detail → archive (s76).
 
 ---
 
-## ▶ Next session (77)
+## ▶ Next session (77) — BUILD: Taste synthesis for Things
 
-**FIRST — two things to do/eyeball (s76 mood board couldn't be driven live here — login wall):**
+The mood board is done + deployed (Farah's been eyeballing live). Open straight on the next build:
 
-1. **Run the `mood-images` SQL** (the ⚠️ above) in Supabase, then **deploy**. Until the bucket exists, mood-image *uploads* fail (pasted links still save).
-2. **Eyeball the mood board** once deployed: the `wishlist | mood` toggle; add an image three ways (upload / paste a copied image / paste a link); confirm it tiles as a masonry wall, opens a detail sheet, and that a couple of saved images push fresh keywords into the thread masthead (mood feeds the same read). Watch the ~1¢-per-image vision toast fires once and caches.
-3. **Carried eyeball from s75** (still un-checked live): taste-fit re-read voice; deciding-card grid; list view; product-sheet links; pinned Library switcher.
+**Taste synthesis for Things** — a 1–2 sentence "what you're reflecting," shown like the media Taste page's vibe headline. **Combo of saved items + mood board, but works from saved alone too.** One cheap on-demand Haiku call (text-only, cached, **never auto-run**); must import `HUMANIZER_GUARDRAILS`. **Seed = `boardTasteSummary(tasteItems)`** — already reads wishlist + mood together. Match the per-item "how this fits" voice (`api/things-taste-fit.ts`). See memory `things-taste-synthesis`.
+- **When building, fix the vibe/tone skew (Farah s76):** the read must narrate *aesthetic register* (warm / refined / lived-in) over a pile of literal materials ("wood", "velvet"). Bias the prompt that way.
+- **Decide the open IA question with Farah:** does **taste** become a 3rd bottom-nav tab (wishlist | mood | taste, mirroring media) or **fold into the mood page**? She's leaning on "depends how minimal the synthesis is." The bottom nav currently has 2 tabs waiting for this answer.
 
-**Then build:**
-- **Taste synthesis for Things** — a 1–2 sentence "what you're reflecting." **Combo of saved items + mood board, but works from saved alone too.** One cheap on-demand Haiku call (cached, never auto-run); mirrors the media Taste page; must import `HUMANIZER_GUARDRAILS`. Seed = `boardTasteSummary()` (now reads wishlist + mood). See memory `things-taste-synthesis`.
-- **The s76 polish session** (`docs/ROADMAP.md` → "Library + Things polish, s76"): deciding-card grid revert, product-sheet link rework, + 7 Library tweaks (two flagged for discussion: scroll-lock stickiness, music-library clutter).
+**Other open Things work** (`docs/ROADMAP.md`): the s76 polish session (deciding-card grid revert, product-sheet link rework, 7 Library tweaks — two for-discussion: scroll-lock, music clutter); mood-board followups (offset masonry); carried s75 eyeball items.
 
 **Carried (still open):**
 - Scraper-403 fingerprint wants a real-world check (does a previously-403 shop read now?).

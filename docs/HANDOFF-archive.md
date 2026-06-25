@@ -19,9 +19,16 @@ Eyeball-then-build session. Opened with Farah's s75 eyeball feedback (all logged
 - `useItems.ts` — duplicate-finder now skips `type:'thing'` (mood images all share the title "inspiration"; products could also collide — fixes both).
 - `supabase/schema.sql` — `mood-images` public bucket + owner-scoped RLS (mirror of `thing-cutouts`).
 
-**⚠️ One-time before uploads work live:** run the `mood-images` block in `supabase/schema.sql` in Supabase. Until then file uploads fail; pasted image *links* still save.
+**One-time setup:** Farah ran the `mood-images` bucket block (`supabase/schema.sql`) — uploads work live.
 
-**Next (s77):** run that SQL + deploy + eyeball; then build **Taste synthesis for Things** (now unblocked — `boardTasteSummary(tasteItems)` already includes mood images); then the s76 polish session.
+**Feedback round (same session, all shipped + deployed):**
+- **Bottom nav** (`wishlist | mood`, `ThingsNav` in ThingsScreen) replaces the top toggle, mirroring the media BottomNav (which App.tsx hides on `/things`). FAB lifted to sit above the bar. 3rd "taste" tab vs. merge-with-mood left as an open IA question (Farah noodling — depends how minimal the synthesis is).
+- **Keywords/thread moved to the mood tab only** (off the wishlist) — mirrors media keywords living on Taste, not Library.
+- **Capture, mobile-first:** multi-select; the FAB on the mood tab goes straight to the photo picker (one tap); "paste a link" demoted to a soft quiet button (mostly desktop); clipboard image-paste works on the mood tab (window paste listener). `MoodComposer` → link-only `MoodLinkComposer`; a screen-level hidden multi-file input drives all upload entry points.
+- **Wall = row-by-row chronological** (Farah preferred over column-major masonry): CSS grid, `align-items:start`, newest first, natural aspect (never cropped), sharp corners, 4px gaps.
+- **Note removed from mood images** (pure visual reference) — also fixed a mashed "+ add a note / read taste" line.
+
+**Next (s77):** build **Taste synthesis for Things** (unblocked — `boardTasteSummary(tasteItems)` includes mood). When building: bias the prompt to aesthetic tone over literal materials; settle the taste-tab-vs-merge IA question. Then the s76 polish session.
 
 ---
 
