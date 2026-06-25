@@ -5,8 +5,8 @@
 // Reading canvas pixels needs CORS for cross-origin images: our Supabase uploads send
 // it and the product/pasted-image proxy is same-origin, so most images read fine. Any
 // image that taints the canvas is simply skipped — graceful: a few less swatches,
-// never a broken ribbon. Near-white (product/tile backgrounds) and near-black pixels
-// are dropped so the story is real colour, not packaging.
+// never a broken ribbon. Near-white, near-black, and near-neutral grey pixels are
+// dropped (studio/tile backdrops and packaging) so the story is real colour.
 
 export type Swatch = string // '#rrggbb'
 
@@ -66,6 +66,7 @@ async function imageColors(src: string, top = 4): Promise<Bucket[]> {
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b)
       if (mn > 232) continue // near-white background
       if (mx < 18) continue  // near-black
+      if ((mx - mn) / mx < 0.12) continue // near-neutral grey (studio/tile backdrop, not real colour)
       const key = bucketKey(r, g, b)
       const e = buckets.get(key) ?? { r: 0, g: 0, b: 0, n: 0 }
       e.r += r; e.g += g; e.b += b; e.n++
