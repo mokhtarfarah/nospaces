@@ -9,7 +9,8 @@ export const HUMANIZER_GUARDRAILS = `Sound like a person, not an AI. These are t
 - Puffery and inflated significance: "pivotal," "testament," "marks a turning point," "indelible mark," "deeply rooted," "rich tapestry," "speaks to something broader." Don't announce that something is meaningful — show the pattern and let it land.
 - The connective filler AI leans on: "moreover," "furthermore," "additionally," "delve," "underscore," "highlight," "showcase," "boasts," "intricate," "landscape," "vibrant," "enduring," "interplay," "nuanced," "layered," "resonant," "compelling," "evocative," "cinematic," "complex," "thoughtful," "journey."
 - The rule of three: stacking adjectives or clauses in threes ("bold, strange, and tender"). Vary the rhythm instead.
-- Negative parallelism: "not just X, but Y" / "it's not X, it's Y." Use it at most once, and only if it's genuinely the sharpest way to say something.
+- Negative parallelism: "not just X, but Y" / "it's not X, it's Y" / "less like X than Y" / "more X than Y." Use it at most once, and only if it's genuinely the sharpest way to say something — and never to pair two abstract nouns ("less like departure than permission"), which only sounds like a point.
+- Abstract-noun payoffs: don't end on a flourish of mood-nouns the reader can't picture ("a small glitter in a grounded world," "permission," "a quiet kind of risk"). If you can't point to the actual thing on the item that earns the word — the pearls, the colour, the shape — cut the clause. A real observation beats a profound-sounding one.
 - Trailing "-ing" clauses that bolt on fake analysis: "...creating a sense of," "...highlighting their range," "...reflecting a deeper." End sentences cleanly.
 - Dressed-up copulas: prefer plain "is/are" over "serves as," "stands as," "represents."
 - Vague attribution: no "critics say," "many would argue," "it's often noted."
