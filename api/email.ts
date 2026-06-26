@@ -116,11 +116,23 @@ async function logCapture(opts: {
 // Things-domain routing. An email sent to one of these address local-parts
 // (e.g. things@nospaces.xyz) is a product link for the board, NOT media — it's
 // handled by the free scraper, no Anthropic call. Everything else is media.
-const THINGS_LOCALPARTS = (cleanEnv(process.env.THINGS_EMAIL_LOCALPARTS) || 'things,shop,want,save')
+const THINGS_LOCALPARTS = (cleanEnv(process.env.THINGS_EMAIL_LOCALPARTS) || 'things,shop,want')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 function isThingsAddress(addr: string): boolean {
   const local = (addr.split('@')[0] ?? '').toLowerCase()
   return THINGS_LOCALPARTS.some(p => local.includes(p))
+}
+
+// "save@" is the ONE universal capture address — unlike things@ (products only,
+// no AI), it takes anything: a clear shop link short-circuits to the board with
+// no AI cost, and everything else goes through the full media reader (which also
+// catches products it can't read as media). So you only have one address to
+// remember. Exact-match the local-part so e.g. "saved-list@" doesn't qualify.
+const CAPTURE_LOCALPARTS = (cleanEnv(process.env.CAPTURE_EMAIL_LOCALPARTS) || 'save')
+  .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+function isCaptureAll(addr: string): boolean {
+  const local = (addr.split('@')[0] ?? '').toLowerCase()
+  return CAPTURE_LOCALPARTS.includes(local)
 }
 
 // Anthropic only accepts these image media types.
@@ -467,6 +479,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ saved: 0, error: r.kind })
   }
 
+  // Universal "save@" fast path: a clear product link saves straight to the board
+  // with no AI cost. Only CLEAR products short-circuit here (strict productLike) so
+  // a media link (a film/book page isn't productLike) skips this and gets read by
+  // the media pipeline below. Photos are media-leaning, so they skip this too. If
+  // it's not a clear product, fall through — the non-strict fallback at the end of
+  // the media pipeline still catches it for save@.
+  const universal = isCaptureAll(replyFrom)
+  const hasPhotos = (Attachments ?? []).some((a: Attachment) => imageType(a).startsWith('image/'))
+  if (universal && !hasPhotos) {
+    const t = await captureThing(matchedUser.id, extractEmailUrls(linkText, HtmlBody ?? ''), true)
+    if (t.kind === 'saved') {
+      await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
+        `Added to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}`)
+      return res.status(200).json({ saved: 1, domain: 'thing' })
+    }
+    if (t.kind === 'duplicate') {
+      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'duplicates', detail: 'thing already on board', snippet })
+      await sendReply(fromEmail, replyFrom, 'Nospaces: already on your board', `"${t.title}" is already on your board — nothing new to add.`)
+      return res.status(200).json({ saved: 0 })
+    }
+    // not a clear product (or unreadable) → fall through to the media reader
+  }
+
   // Identify media from any image attachments. Each image is normalized first (HEIC→JPEG,
   // media-type cleanup) so iPhone photos work. Errors are logged, never silently dropped.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -503,7 +538,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Fetch any URLs found in the email body so bare-link emails (e.g. a forwarded
   // Letterboxd review URL) produce useful metadata for the Claude extraction step.
-  const urls = extractUrls(body)
+  const urls = extractUrls(linkText)
   const urlMetas = (await Promise.all(urls.map(fetchPageMeta))).filter(Boolean)
   const urlContext = urlMetas.length > 0 ? urlMetas.join('\n\n') : undefined
   if (urlContext) console.log('[email] url context fetched for', urls.length, 'url(s)')
@@ -542,7 +577,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // product, not a newsletter. Save it to the board so the regular inbox "just
     // works" for things too. Strict (productLike only) so an article doesn't slip in.
     if (!hadPhotos) {
-      const t = await captureThing(matchedUser.id, extractEmailUrls(linkText, HtmlBody ?? ''), true)
+      // save@ is high-intent (you deliberately sent it here), so its fallback is
+      // lenient — any readable link lands. The regular media inbox stays strict so
+      // a forwarded newsletter's links don't turn into board cards.
+      const t = await captureThing(matchedUser.id, extractEmailUrls(linkText, HtmlBody ?? ''), !universal)
       if (t.kind === 'saved') {
         await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
           `That looked like a product, so I added it to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}`)
