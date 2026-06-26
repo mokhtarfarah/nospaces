@@ -63,6 +63,10 @@ const REACTION_LABELS: Record<ItemReaction, string> = {
 
 const REACTION_ORDER: ItemReaction[] = ['loved_it', 'liked_it', 'eh', 'not_for_me']
 
+// A filter tag plus how many items in the current base set carry it. count is
+// optional for the odd non-counted option (the music "new music tuesday" toggle).
+type TagCount = { value: string; count?: number }
+
 // Soft selectable tag — used for both the sort row and the filter groups. Quiet
 // grey fill instead of an outline (calmer than a wall of bordered pills); the
 // selected one fills ink. Shared so sort + filters read as one language.
@@ -505,36 +509,40 @@ export function LibraryScreen() {
     return sortItems(result, sort, dir)
   }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, sort, dir])
 
-  // Vibes and genres present in the current base-filtered set, for filter chips.
+  // Tags present in the current base-filtered set, each with how many items carry
+  // it — ranked biggest-first so the filter lists lead with what's worth tapping
+  // (and the long tail tucks behind "show all"). Counts reflect the base set
+  // (category/status/search context), not the tag narrowing, so they stay stable
+  // as you toggle tags.
   const availableTags = useMemo(() => {
-    const vibeSet = new Set<string>()
-    const verdictSet = new Set<string>()
-    const genreSet = new Set<string>()
-    const seriesSet = new Set<string>()
-    const countrySet = new Set<string>()
+    const vibe = new Map<string, number>()
+    const verdict = new Map<string, number>()
+    const genre = new Map<string, number>()
+    const series = new Map<string, number>()
+    const country = new Map<string, number>()
+    const bump = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) ?? 0) + 1)
     baseFiltered.forEach(i => {
+      const vibesSeen = new Set<string>()
       i.moods?.forEach(m => {
-        if (VIBES.includes(m)) vibeSet.add(m)
-        else if (VERDICTS.includes(m)) verdictSet.add(m)
+        if (VIBES.includes(m)) { bump(vibe, m); vibesSeen.add(m) }
+        else if (VERDICTS.includes(m)) bump(verdict, m)
       })
-      // unconfirmed vibes also show up in the vibe filter
+      // unconfirmed vibes also count toward the vibe filter — but don't double-count
+      // a vibe already confirmed in moods.
       if (Array.isArray(i.metadata?.unconfirmedVibes)) {
-        (i.metadata.unconfirmedVibes as string[]).forEach(v => { if (VIBES.includes(v)) vibeSet.add(v) })
+        (i.metadata.unconfirmedVibes as string[]).forEach(v => { if (VIBES.includes(v) && !vibesSeen.has(v)) bump(vibe, v) })
       }
-      i.tags?.forEach(t => genreSet.add(t))
+      i.tags?.forEach(t => { if (isGenreTag(t)) bump(genre, t) })
       const s = i.metadata?.series
-      if (typeof s === 'string' && s.trim()) seriesSet.add(s)
+      if (typeof s === 'string' && s.trim()) bump(series, s)
       if (Array.isArray(i.metadata?.countries)) {
-        (i.metadata.countries as string[]).forEach(c => { if (c.trim()) countrySet.add(c) })
+        (i.metadata.countries as string[]).forEach(c => { if (c.trim()) bump(country, c) })
       }
     })
-    return {
-      vibes:    VIBES.filter(v => vibeSet.has(v)),        // canonical order, vibes only
-      verdicts: VERDICTS.filter(v => verdictSet.has(v)),  // canonical order, verdicts only
-      genres:   [...genreSet].filter(isGenreTag).sort(),
-      series:   [...seriesSet].sort(),
-      countries:[...countrySet].sort(),
-    }
+    const ranked = (m: Map<string, number>): TagCount[] =>
+      [...m.entries()].map(([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
+    return { vibes: ranked(vibe), verdicts: ranked(verdict), genres: ranked(genre), series: ranked(series), countries: ranked(country) }
   }, [baseFiltered])
 
   // When base filters change, keep the vibe/verdict/genre/series selections that
@@ -549,11 +557,12 @@ export function LibraryScreen() {
   // Also scroll back to the top and expand the header — otherwise switching to a
   // short (non-scrollable) result set could leave the header stuck collapsed.
   useEffect(() => {
-    setVibeFilter(prev => prev.filter(v => availableTags.vibes.includes(v)))
-    setVerdictFilter(prev => prev.filter(v => availableTags.verdicts.includes(v)))
-    setGenreFilter(prev => prev.filter(v => availableTags.genres.includes(v)))
-    setSeriesFilter(prev => prev.filter(v => availableTags.series.includes(v)))
-    setCountryFilter(prev => prev.filter(v => availableTags.countries.includes(v)))
+    const has = (list: TagCount[], v: string) => list.some(t => t.value === v)
+    setVibeFilter(prev => prev.filter(v => has(availableTags.vibes, v)))
+    setVerdictFilter(prev => prev.filter(v => has(availableTags.verdicts, v)))
+    setGenreFilter(prev => prev.filter(v => has(availableTags.genres, v)))
+    setSeriesFilter(prev => prev.filter(v => has(availableTags.series, v)))
+    setCountryFilter(prev => prev.filter(v => has(availableTags.countries, v)))
     listRef.current?.scrollTo({ top: 0 })
     setCollapsed(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prune only on base-control change, not on every availableFilters recompute
@@ -913,7 +922,7 @@ export function LibraryScreen() {
           layout={layout} onLayout={l => setLayout(l)}
           gridCols={gridCols} onGridCols={c => setGridCols(c)}
           caption={caption} onCaption={setCaption}
-          filtersActive={filtersActive} onClearAll={clearFilters}
+          filtersActive={filtersActive} onClearAll={clearFilters} matchCount={filtered.length}
           onClose={() => setFilterSheetOpen(false)}
         />
       )}
@@ -1000,9 +1009,9 @@ function FilterSheet({
   showNewMusic, newMusicOnly, onToggleNewMusic,
   view, dir, onSelectView,
   layout, onLayout, gridCols, onGridCols, caption, onCaption,
-  filtersActive, onClearAll, onClose,
+  filtersActive, onClearAll, matchCount, onClose,
 }: {
-  availableTags: { vibes: string[]; verdicts: string[]; genres: string[]; series: string[]; countries: string[] }
+  availableTags: { vibes: TagCount[]; verdicts: TagCount[]; genres: TagCount[]; series: TagCount[]; countries: TagCount[] }
   seriesRelevant: boolean
   vibeFilter: string[]; onToggleVibe: (v: string) => void
   verdictFilter: string[]; onToggleVerdict: (v: string) => void
@@ -1016,8 +1025,19 @@ function FilterSheet({
   caption: CardCaption; onCaption: (c: CardCaption) => void
   filtersActive: boolean
   onClearAll: () => void
+  matchCount: number
   onClose: () => void
 }) {
+  // Everything selected across all axes, flattened into one removable list — the
+  // "active filters" tray. Selected tags live here, not duplicated in their group.
+  const activeFilters: { value: string; remove: () => void }[] = [
+    ...genreFilter.map(v => ({ value: v, remove: () => onToggleGenre(v) })),
+    ...vibeFilter.map(v => ({ value: v, remove: () => onToggleVibe(v) })),
+    ...verdictFilter.map(v => ({ value: v, remove: () => onToggleVerdict(v) })),
+    ...seriesFilter.map(v => ({ value: v, remove: () => onToggleSeries(v) })),
+    ...countryFilter.map(v => ({ value: v, remove: () => onToggleCountry(v) })),
+    ...(showNewMusic && newMusicOnly ? [{ value: 'new music tuesday', remove: onToggleNewMusic }] : []),
+  ]
   const hasGroups = showNewMusic || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
     || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0
   const sectionLabel: CSSProperties = { fontSize: 12, fontWeight: 700, color: '#6F6B64', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px', paddingTop: 13, borderTop: '1px solid #F0F0F0' }
@@ -1074,19 +1094,32 @@ function FilterSheet({
             })}
           </div>
         </div>
-        {/* Filter — the tag groups. Clear-all sits right-aligned on this heading
-            line as an × (it resets every active filter, not just the tags). */}
+        {/* Filter — the tag groups. The heading carries a live result count and a
+            plain-text clear-all on the right; the row below is the "active filters"
+            tray (everything selected across axes, each removable). */}
         {(hasGroups || filtersActive) && (
           <div style={{ ...sectionLabel, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>filter</span>
             {filtersActive && (
-              <button
-                onClick={onClearAll}
-                aria-label="clear all filters"
-                title="clear all filters"
-                style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ABA69C', fontSize: 16, lineHeight: 1, padding: 0 }}
-              >×</button>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 12, textTransform: 'none', letterSpacing: 'normal' }}>
+                <span style={{ fontSize: 12, fontWeight: 400, color: '#A8A39A' }}>{matchCount} match</span>
+                <button
+                  onClick={onClearAll}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#8A857C', fontSize: 12, fontWeight: 400, padding: 0, textDecoration: 'underline', textDecorationColor: '#D5D1C9', textUnderlineOffset: 3 }}
+                >clear</button>
+              </span>
             )}
+          </div>
+        )}
+        {activeFilters.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '2px 0 12px' }}>
+            {activeFilters.map(a => (
+              <button
+                key={a.value}
+                onClick={a.remove}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1C1B19', color: '#fff', fontSize: 12.5, fontWeight: 500, padding: '6px 10px 6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer' }}
+              >{a.value}<span style={{ fontSize: 14, opacity: 0.7, lineHeight: 1 }}>×</span></button>
+            ))}
           </div>
         )}
         {/* Order: genre · vibe · verdict · series · region (Farah, s85) — what/how
@@ -1110,7 +1143,7 @@ function FilterSheet({
         {showNewMusic && (
           <FilterSection
             label="music"
-            options={['new music tuesday']}
+            options={[{ value: 'new music tuesday' }]}
             selected={newMusicOnly ? ['new music tuesday'] : []}
             onSelect={onToggleNewMusic}
           />
@@ -1126,14 +1159,18 @@ function FilterSheet({
   )
 }
 
-// Collapsible group. Collapsed by default so the sheet is a short menu of
-// headers, not a wall of chips — opens on tap, and starts open if it already
-// has a selection (so active filters stay visible). The header shows the
-// selected count when collapsed.
+// Collapsible group. Collapsed by default so the sheet is a short menu of headers,
+// not a wall of chips — opens on tap, and starts open if it already has a
+// selection. Options are ranked by count and the long tail hides behind "show
+// all"; selected tags aren't repeated here (they sit in the active-filters tray).
+const FILTER_TOP_N = 8
 function FilterSection({ label, options, selected, onSelect }: {
-  label: string; options: string[]; selected: string[]; onSelect: (v: string) => void
+  label: string; options: TagCount[]; selected: string[]; onSelect: (v: string) => void
 }) {
   const [open, setOpen] = useState(selected.length > 0)
+  const [showAll, setShowAll] = useState(false)
+  const avail = options.filter(o => !selected.includes(o.value))
+  const shown = showAll ? avail : avail.slice(0, FILTER_TOP_N)
   return (
     <div>
       <button
@@ -1151,10 +1188,18 @@ function FilterSection({ label, options, selected, onSelect }: {
         <span style={{ fontSize: 10, color: '#ABA69C', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
       </button>
       {open && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '2px 0 11px' }}>
-          {options.map(opt => (
-            <button key={opt} onClick={() => onSelect(opt)} style={tagChipStyle(selected.includes(opt))}>{opt}</button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', padding: '2px 0 11px' }}>
+          {shown.map(o => (
+            <button key={o.value} onClick={() => onSelect(o.value)} style={tagChipStyle(false)}>
+              {o.value}{o.count != null && <span style={{ color: '#A8A39A' }}> {o.count}</span>}
+            </button>
           ))}
+          {avail.length > FILTER_TOP_N && (
+            <button
+              onClick={() => setShowAll(s => !s)}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#8A857C', fontSize: 12.5, padding: '6px 4px', textDecoration: 'underline', textDecorationColor: '#D5D1C9', textUnderlineOffset: 3 }}
+            >{showAll ? 'show less' : `show all ${avail.length}`}</button>
+          )}
         </div>
       )}
     </div>
