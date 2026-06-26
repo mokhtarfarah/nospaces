@@ -30,6 +30,16 @@ const LINE = '#E8E8E8'
 // grey studio photography most shops use.
 const TILE = '#ECEDEF'
 
+// Filter-sheet chip — identical to the media Library's tagChipStyle so sort/show
+// in Things read in the same chip language (not iOS ✓-list rows).
+const chipStyle = (on: boolean) => ({
+  padding: '6px 12px', borderRadius: 8, border: 'none',
+  background: on ? '#1C1B19' : '#F1EEE9',
+  color: on ? '#fff' : '#5F5E5A',
+  fontSize: 12.5, fontWeight: on ? 600 : 400,
+  cursor: 'pointer', whiteSpace: 'nowrap' as const,
+})
+
 type SortKey = 'recent' | 'price' | 'name'
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'recent', label: 'recent' },
@@ -1508,8 +1518,8 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
 
 // Layout, density, sort and status live here (category is the on-page row). Styled
 // to match the media Library's ViewSheet exactly — same drag-handle sheet, the same
-// label-left/segmented-buttons rows, and the same ✓ list rows — so flipping between
-// media and things feels like one app, not two.
+// label-left segmented rows, and the same right-aligned chip rows for sort/show — so
+// flipping between media and things feels like one app, not two.
 function FilterSheet({ sort, onSort, view, onView, caption, onCaption, status, onStatus, polishCount, polishing, onPolishAll, onClose }: {
   sort: SortKey
   onSort: (s: SortKey) => void
@@ -1540,8 +1550,8 @@ function FilterSheet({ sort, onSort, view, onView, caption, onCaption, status, o
           <SegRow label="captions" options={[{ k: 'none', l: 'none' }, { k: 'title', l: 'title' }, { k: 'full', l: 'full' }]} value={caption} onChange={onCaption} />
         )}
 
-        <SheetList label="sort" options={SORTS.map(s => ({ k: s.key, l: s.label }))} value={sort} onChange={onSort} />
-        <SheetList label="show" options={STATUSES.map(s => ({ k: s.key, l: s.label }))} value={status} onChange={onStatus} />
+        <ChipRow label="sort" options={SORTS.map(s => ({ k: s.key, l: s.label }))} value={sort} onChange={onSort} />
+        <ChipRow label="show" options={STATUSES.map(s => ({ k: s.key, l: s.label }))} value={status} onChange={onStatus} />
 
         {/* Tidy a mixed board: cut each bare product shot onto a cream tile so the
             set reads as one catalog. Only shows when there's something to do. */}
@@ -1588,26 +1598,21 @@ function SegRow<T extends string>({ label, options, value, onChange }: {
   )
 }
 
-// A titled list of full-width ✓ rows — the Library ViewSheet's "sort" section.
-function SheetList<T extends string>({ label, options, value, onChange }: {
+// Label-left + right-aligned chips — the Library ViewSheet's "sort" row. Replaces
+// the old ✓-list rows so sort/show match the media filter card's chip language
+// (and drops the iOS-blue ✓ that leaked from the button's default text colour).
+function ChipRow<T extends string>({ label, options, value, onChange }: {
   label: string; options: { k: T; l: string }[]; value: T; onChange: (v: T) => void
 }) {
   return (
-    <>
-      <p style={{ fontSize: 12, fontWeight: 700, color: '#6F6B64', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px', paddingTop: 13, borderTop: '1px solid #F0F0F0' }}>{label}</p>
-      {options.map(o => {
-        const on = value === o.k
-        return (
-          <button key={o.k} onClick={() => onChange(o.k)} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            width: '100%', padding: '8px 0', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left',
-          }}>
-            <span style={{ fontSize: 14, color: on ? '#111' : '#444', fontWeight: on ? 600 : 400 }}>{o.l}</span>
-            {on && <span style={{ fontSize: 15 }}>✓</span>}
-          </button>
-        )
-      })}
-    </>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+      <span style={{ fontSize: 14, color: '#3A3A3A', flexShrink: 0 }}>{label}</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6 }}>
+        {options.map(o => (
+          <button key={o.k} onClick={() => onChange(o.k)} style={chipStyle(value === o.k)}>{o.l}</button>
+        ))}
+      </div>
+    </div>
   )
 }
 
