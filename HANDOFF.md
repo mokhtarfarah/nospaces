@@ -15,11 +15,13 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**Session 83 — s82 quick-polish batch + domain switcher moved to the bottom, on `main`. 93 Vitest green, typecheck + eslint clean; both domains eyeballed live in the noauth preview.** Closed the whole s82 "quick polish" list (grid covers now use the list row's Wikipedia-thumb fallback; finished `✓` got the smiley's feathered outline; both empty-states are header+small-line; uncramped the Things CTAs) **and** the nav-placement decision: the media/things `DomainSwitcher` is now a slim hairline strip pinned just above the bottom tab bar (rendered once in `App.tsx`, removed from all 5 screens), with every bottom-anchored offset shifted up by `SWITCHER_H=40`. Full detail → archive (s83). **Not yet seen with real data:** grid-covers + done-badge (need a populated library) and the +40px scrolled-content clearance — worth a glance live next login.
+**Session 84 — bottom-nav + library-header declutter pass, all on `main`. 93 Vitest green + typecheck clean on every push; eyeballed live in the noauth preview.** One long iterative UI session (all frontend, free). Landed: the media/things switcher + tab bar now read as **one panel** (divider removed on collection screens), with **all bottom geometry centralized** in `src/lib/layout.ts` (`NAV_H`/`SWITCHER_H`/`clearStack`/`clearNav`) — both rows equal **36px**. Library header collapsed to title + search + `⋯` over a quiet count subline. **View · sort · filter unified into one card** opened from the slider button next to the categories (Things-pattern; `ViewSheet` deleted, sort folded into `FilterSheet`). `decide for me` moved back into `⋯` as "help me decide". New **grid caption-density setting** (`none`/`title`/`full`, default `full`) in both media + things view cards — `none` = clean cover wall, coverless tiles keep name+creator inside. Full detail → archive (s84). **On-phone tests for next login (preview was empty):** the caption modes against real covers, and the equal-height nav proportions on a full screen. **Open thread:** Things `full` caption still keeps the taste/material line — trim to strictly name+price+brand if Farah wants.
 
 ---
 
-## ▶ Next session (84) — open: pick from the roadmap
+## ▶ Next session (85) — open: pick from the roadmap
+
+**First: eyeball s84 on a real phone** — flip the new `captions` setting to `none` on a full library (media + things) and judge the cover-wall; sanity-check the equal-height bottom nav on a populated screen. Then decide the Things `full`-caption trim (open thread above). After that:
 
 No fixed queue. The big remaining taste item is gated on a decision with Farah:
 - **"What feeds the taste read"** — the consolidated design decision (self-defined taste + Things-taste reframe + beauty/home exclusion + a "got it"→worth-it signal). **Gated:** decide the feedback loop *with Farah first*, honouring the "saving is the signal" soul rule. No code until decided.

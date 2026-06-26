@@ -4,6 +4,27 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 84 (2026-06-25) — bottom-nav + library-header declutter pass (all frontend, free)
+
+One long iterative session, all pure frontend (no API, no cost). Farah drove it by reacting to live phone screenshots; lots of small course-corrections. Net theme: **make the library read calmer — let the covers be the loudest thing.** Eight commits to `main`.
+
+**Bottom nav (the s83 switcher kept drifting "chunky"):** iterated the media/things switcher + tab bar several times before landing.
+- Merged into **one panel**: the switcher's top border is the panel's outer edge, the tab bar's border the internal divider; then **removed that divider** on the collection screens so the two rows read as one bar (`BottomNav` takes `attached`; stand-alone screens like `/add` keep their border so they don't float; ThingsNav drops its border unconditionally since the switcher is always above it on `/things`).
+- **Centralized all the bottom geometry** into `src/lib/layout.ts` — `NAV_H`, `SWITCHER_H`, `BOTTOM_STACK`, and `clearStack()`/`clearNav()` helpers + `navButtonBase`/`NAV_ICON`. This was the key refactor: the ~10 bottom-anchored offsets (both FABs, both nav bars, content padding, select bar, sheet spacer, sync banner, Things toast) had been hand-computed literals (56/84/108/178…) across 6 files; now they derive from two numbers. Re-tuning heights after this was a 1-line change.
+- Final heights after several passes: Farah's call = **both rows equal at 36px** (switcher was briefly 28 then 22 "barely-there caption" — she found the skinny-caption-over-fat-bar disproportionate, so equal won). Tab icons shrunk 24→18 to fit. `navIcons` got an optional `size` prop.
+
+**Library header collapse:** the top was three stacked control rows before any film. Dropped the standalone uppercase kicker and pulled the `recent ▾` sort button out of the title row; folded count + sort into one quiet subline. Title row now holds only title + search + `⋯`. (Then sort moved entirely into the view card — see below — so the subline is just the count.)
+
+**Unified view·sort·filter card (the Things pattern):** the library had **three** separate triggers for "how is this list shown" — a `recent ▾` sort button, a filter-slider, and `⋯`. Farah's idea (weighed against a rejected hamburger-holds-everything drawer): merge **view + sort into the filter sheet**, opened from the slider button next to the categories — exactly how the Things board already works. So `FilterSheet` now renders layout · columns · sort · the tag-filter groups in one card; the filter button is **always present** (it always offers layout+sort); selecting a sort no longer closes the card. **Deleted the `ViewSheet` component** (its config/types + new exported `ORDER` stay). `⋯` keeps the actions.
+
+**`decide for me` → back into `⋯`:** it was an action stranded at the end of the status filter row, snagging the eye among the filter chips. Returned to `OverflowSheet` as "help me decide" (top row, gated on `hasItems`). Status row now holds only filters. *(Note: the code comment had said it was deliberately promoted OUT of `⋯` to be visible — this reverses that; Farah chose cleaner-over-prominent.)*
+
+**Grid caption-density setting (media AND things):** Farah's idea after we discussed a pure cover-wall — instead of removing card subtitles outright, make it a **per-device setting** so libraries with few covers can keep text. New `captions` control in each view card (grid only): **`none`** (clean wall) / **`title`** / **`full`** (default = unchanged). Coverless tiles now render title+creator (media) / name+brand (things) **inside** the tile, so `none` never leaves blank squares. Media: `caption` added to `LibraryPrefs` + `GridCard`. Things: `CAPTION_KEY` localStorage + `ProductCard` + `Thumb` got a `fallback` slot. **Open thread:** Things `full` still includes the taste/material line (Farah said "price + brand maybe" — kept the line, flagged it; trivial to strip to strictly name+price+brand if she wants).
+
+**Verification:** typecheck + 93 Vitest green on every push. Eyeballed live in the noauth dev preview (mobile) — nav panel, collapsed header, the unified view card (layout/columns/captions/sort all render), `⋯` menu, both domains render clean. **Not verified with real data** (preview is empty): the caption modes against real covers, and the equal-height nav proportions on a full screen — these are the **on-phone tests for next login.** `[captures] fetch failed` console noise = noauth has no `/api`; unrelated.
+
+---
+
 ### Session 83 (2026-06-25) — s82 quick polish batch + domain switcher moved to the bottom
 
 Farah picked the **ungated quick wins first**, then queued the nav move (decided direction: switcher **down**). Six items, all pure frontend (free, no API).
