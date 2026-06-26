@@ -1563,15 +1563,16 @@ function SegRow<T extends string>({ label, options, value, onChange }: {
   label: string; options: { k: T; l: string }[]; value: T; onChange: (v: T) => void
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-      <span style={{ fontSize: 13, color: '#555' }}>{label}</span>
-      <div style={{ display: 'flex', gap: 6 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+      <span style={{ fontSize: 14, color: '#3A3A3A' }}>{label}</span>
+      {/* Soft segmented control — mirrors the media library's filter card. */}
+      <div style={{ display: 'flex', gap: 3, background: '#F4F2EE', padding: 3, borderRadius: 9 }}>
         {options.map(o => {
           const on = value === o.k
           return (
             <button key={o.k} onClick={() => onChange(o.k)} style={{
-              padding: '4px 14px', borderRadius: 6, border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-              background: on ? '#111' : '#fff', color: on ? '#fff' : '#888',
+              padding: '5px 13px', borderRadius: 7, border: '1px solid ' + (on ? '#E2DED7' : 'transparent'),
+              background: on ? '#fff' : 'transparent', color: on ? '#1C1B19' : '#999',
               fontSize: 13, fontWeight: on ? 600 : 400, cursor: 'pointer',
             }}>{o.l}</button>
           )
@@ -1587,7 +1588,7 @@ function SheetList<T extends string>({ label, options, value, onChange }: {
 }) {
   return (
     <>
-      <p style={{ fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '4px 0 6px', paddingTop: 14, borderTop: '1px solid #F0F0F0' }}>{label}</p>
+      <p style={{ fontSize: 12, fontWeight: 700, color: '#6F6B64', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px', paddingTop: 13, borderTop: '1px solid #F0F0F0' }}>{label}</p>
       {options.map(o => {
         const on = value === o.k
         return (

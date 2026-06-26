@@ -63,6 +63,17 @@ const REACTION_LABELS: Record<ItemReaction, string> = {
 
 const REACTION_ORDER: ItemReaction[] = ['loved_it', 'liked_it', 'eh', 'not_for_me']
 
+// Soft selectable tag — used for both the sort row and the filter groups. Quiet
+// grey fill instead of an outline (calmer than a wall of bordered pills); the
+// selected one fills ink. Shared so sort + filters read as one language.
+const tagChipStyle = (on: boolean): CSSProperties => ({
+  padding: '6px 12px', borderRadius: 8, border: 'none',
+  background: on ? '#1C1B19' : '#F1EEE9',
+  color: on ? '#fff' : '#5F5E5A',
+  fontSize: 12.5, fontWeight: on ? 600 : 400,
+  cursor: 'pointer', whiteSpace: 'nowrap',
+})
+
 function formatMonthYear(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
@@ -382,7 +393,9 @@ export function LibraryScreen() {
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([])
-    setReviewOnly(false); setNewMusicOnly(false); setQuery(''); setFilterSheetOpen(false)
+    setReviewOnly(false); setNewMusicOnly(false); setQuery('')
+    // Note: deliberately does NOT close the filter card — clearing leaves you in
+    // the card to re-filter, not bounced back to the list.
   }
 
   // Region backfill — one-shot Wikidata pull (free) for media items not yet
@@ -1035,28 +1048,19 @@ function FilterSheet({
           </div>
         )}
 
-        {/* Sort */}
+        {/* Sort — one wrapping row of chips (each on its own row before s85). The
+            active chip fills ink; directional ones show ↑/↓ and reverse on re-tap. */}
         <p style={sectionLabel}>sort</p>
-        {ORDER.map(v => {
-          const cfg = VIEW_CONFIG[v]
-          const active = view === v
-          const arrow = cfg.directional ? (dir === 'asc' ? '↑' : '↓') : null
-          return (
-            <button
-              key={v}
-              onClick={() => onSelectView(v)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '5px 0', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <span style={{ fontSize: 14, color: active ? '#111' : '#444', fontWeight: active ? 600 : 400 }}>{cfg.label}</span>
-              {active && (
-                <span style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {arrow && <span style={{ color: '#111', fontWeight: 600 }}>{arrow}</span>}
-                  <span style={{ fontSize: 15 }}>✓</span>
-                </span>
-              )}
-            </button>
-          )
-        })}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {ORDER.map(v => {
+            const cfg = VIEW_CONFIG[v]
+            const active = view === v
+            const arrow = active && cfg.directional ? (dir === 'asc' ? ' ↑' : ' ↓') : ''
+            return (
+              <button key={v} onClick={() => onSelectView(v)} style={tagChipStyle(active)}>{cfg.label}{arrow}</button>
+            )
+          })}
+        </div>
         {/* Filter — the tag groups. Clear-all sits right-aligned on this heading
             line as an × (it resets every active filter, not just the tags). */}
         {(hasGroups || filtersActive) && (
@@ -1072,13 +1076,11 @@ function FilterSheet({
             )}
           </div>
         )}
-        {showNewMusic && (
-          <FilterSection
-            label="music"
-            options={['new music tuesday']}
-            selected={newMusicOnly ? ['new music tuesday'] : []}
-            onSelect={onToggleNewMusic}
-          />
+        {/* Order: genre · vibe · verdict · series · region (Farah, s85) — what/how
+            it feels/the take, then the structural facets. Music's niche "new music
+            tuesday" toggle trails at the end. */}
+        {availableTags.genres.length > 0 && (
+          <FilterSection label="genre" options={availableTags.genres} selected={genreFilter} onSelect={onToggleGenre} />
         )}
         {availableTags.vibes.length > 0 && (
           <FilterSection label="vibe" options={availableTags.vibes} selected={vibeFilter} onSelect={onToggleVibe} />
@@ -1086,14 +1088,19 @@ function FilterSheet({
         {availableTags.verdicts.length > 0 && (
           <FilterSection label="verdict" options={availableTags.verdicts} selected={verdictFilter} onSelect={onToggleVerdict} />
         )}
-        {availableTags.genres.length > 0 && (
-          <FilterSection label="genre" options={availableTags.genres} selected={genreFilter} onSelect={onToggleGenre} />
-        )}
         {seriesRelevant && availableTags.series.length > 0 && (
           <FilterSection label="series" options={availableTags.series} selected={seriesFilter} onSelect={onToggleSeries} />
         )}
         {availableTags.countries.length > 0 && (
           <FilterSection label="region" options={availableTags.countries} selected={countryFilter} onSelect={onToggleCountry} />
+        )}
+        {showNewMusic && (
+          <FilterSection
+            label="music"
+            options={['new music tuesday']}
+            selected={newMusicOnly ? ['new music tuesday'] : []}
+            onSelect={onToggleNewMusic}
+          />
         )}
         {/* Trailing spacer instead of container padding-bottom: mobile WebKit
             omits a scroll container's own padding-bottom from the scrollable
@@ -1132,23 +1139,9 @@ function FilterSection({ label, options, selected, onSelect }: {
       </button>
       {open && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '2px 0 11px' }}>
-          {options.map(opt => {
-            const on = selected.includes(opt)
-            return (
-              <button
-                key={opt}
-                onClick={() => onSelect(opt)}
-                style={{
-                  padding: '5px 12px', borderRadius: 20,
-                  border: on ? '1.5px solid #1C1B19' : '1.5px solid #ECEAE6',
-                  background: on ? '#1C1B19' : '#fff',
-                  color: on ? '#fff' : '#6F6B64',
-                  fontSize: 12, fontWeight: on ? 600 : 400,
-                  cursor: 'pointer', whiteSpace: 'nowrap',
-                }}
-              >{opt}</button>
-            )
-          })}
+          {options.map(opt => (
+            <button key={opt} onClick={() => onSelect(opt)} style={tagChipStyle(selected.includes(opt))}>{opt}</button>
+          ))}
         </div>
       )}
     </div>
