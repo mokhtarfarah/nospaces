@@ -116,7 +116,7 @@ async function logCapture(opts: {
 // Things-domain routing. An email sent to one of these address local-parts
 // (e.g. things@nospaces.xyz) is a product link for the board, NOT media — it's
 // handled by the free scraper, no Anthropic call. Everything else is media.
-const THINGS_LOCALPARTS = (cleanEnv(process.env.THINGS_EMAIL_LOCALPARTS) || 'things,shop,want')
+const THINGS_LOCALPARTS = (cleanEnv(process.env.THINGS_EMAIL_LOCALPARTS) || 'things,shop,want,save')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 function isThingsAddress(addr: string): boolean {
   const local = (addr.split('@')[0] ?? '').toLowerCase()
@@ -420,6 +420,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // "what did I send" without keeping the whole email.
   const snippet = body.slice(0, 400).trim() || null
 
+  // A quick-capture Shortcut (iOS "Send Email") often puts the link in the
+  // SUBJECT and leaves the body empty, so scan subject + body together for links.
+  // Subject is already sanitized above; URLs are SSRF-filtered + capped downstream.
+  const linkText = subject ? `${subject}\n${body}` : body
+
   // Resolve the sender's account up front — both so a failed capture can be logged
   // against the right user, and so an allowlisted-but-unmatched sender fails BEFORE
   // any paid Anthropic call rather than after it.
@@ -442,7 +447,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // shared scraper, no Anthropic call. Lenient (any readable link), since the
   // address signals clear intent. Returns before the paid media pipeline.
   if (isThingsAddress(replyFrom)) {
-    const r = await captureThing(matchedUser.id, extractEmailUrls(body, HtmlBody ?? ''), false)
+    const r = await captureThing(matchedUser.id, extractEmailUrls(linkText, HtmlBody ?? ''), false)
     if (r.kind === 'saved') {
       await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
         `Added to your board:\n\n• ${r.title}${r.price ? ` — ${r.price}` : ''}\n\n${tagNote(r.tagCount)}`)
@@ -537,7 +542,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // product, not a newsletter. Save it to the board so the regular inbox "just
     // works" for things too. Strict (productLike only) so an article doesn't slip in.
     if (!hadPhotos) {
-      const t = await captureThing(matchedUser.id, extractEmailUrls(body, HtmlBody ?? ''), true)
+      const t = await captureThing(matchedUser.id, extractEmailUrls(linkText, HtmlBody ?? ''), true)
       if (t.kind === 'saved') {
         await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
           `That looked like a product, so I added it to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}`)
