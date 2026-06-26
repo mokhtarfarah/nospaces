@@ -14,8 +14,8 @@ When you finish an item: **delete it from here** (don't leave a ✅ — the sess
 
 ## Short term — next few sessions
 
-### User guide overhaul (s82)
-- **Guide is stale and media-only — needs screenshots refreshed + a Things half.** `GuideScreen.tsx` has out-of-date images and covers media only. **Split the guide into two tabs — media and things** — and bring all screenshots up to date. (Reuses the media/things framing the app already has.)
+### User guide overhaul (s82) — PARKED (Farah, s86)
+- **Guide is stale and media-only — needs screenshots refreshed + a Things half.** `GuideScreen.tsx` has out-of-date images and covers media only. **Split the guide into two tabs — media and things** — and bring all screenshots up to date. (Reuses the media/things framing the app already has.) *Parked: the UI is still moving (nav, filters, taste read all in flux) — refreshing screenshots now means re-refreshing them next session. Trigger: the app reaches a more final shape (taste-read decided + nav/filter churn settled), then do the guide once.*
 
 ### Media library polish — for discussion (don't auto-fix)
 - **"all" tab de-confusion (Farah, s85 — decided to keep "all", fix the confusion).** "all" stays (it's the only home for cross-category recency — recency-across-everything needs an all-scope; "everything loved" is arguably Taste's job). The pain is the **cross-category tag soup**: in "all" the filter card pools film-genres + music-genres + book-vibes into one bloated, half-irrelevant set. Two-part fix: **(a) when category is "all", hide the per-medium facet filters** (genre/vibe/verdict/series) — leave only the universal ones (status, reaction, region); tag-filtering is a per-medium activity. **(b) default "all" to the recency sort** so it opens as the "what's alive lately, across everything" view. Free, frontend. *Now unblocked — just needs a session.*

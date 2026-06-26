@@ -206,6 +206,15 @@ export function LibraryScreen() {
     setVibeFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([]); setFilterSheetOpen(false)
     setCategories(prev => (prev.length === 1 && prev[0] === t ? [] : [t]))
   }
+  // "all" is the one cross-category view — so it opens on recency (what's alive
+  // lately across every medium), not by-year. Only nudge the sort when *arriving*
+  // at "all"; a deliberate re-sort while already there is left alone.
+  const selectAll = () => {
+    setReviewOnly(false)
+    setVibeFilter([]); setGenreFilter([]); setVerdictFilter([]); setSeriesFilter([]); setCountryFilter([])
+    if (categories.length > 0) { setView('recent'); setDir(VIEW_CONFIG.recent.defaultDir) }
+    setCategories([])
+  }
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => loadPrefs().statusFilter ?? 'all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>(() => loadPrefs().reactionFilter ?? 'all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
@@ -222,8 +231,10 @@ export function LibraryScreen() {
   // Guard against a view persisted before some options were removed — fall back
   // to 'year' so an old localStorage value can't index into a missing config.
   const [view, setView] = useState<ViewMode>(() => {
-    const v = loadPrefs().view
-    return v && v in VIEW_CONFIG ? v : 'year'
+    const p = loadPrefs()
+    if (p.view && p.view in VIEW_CONFIG) return p.view
+    // No saved view: "all" opens on recency, a single medium on by-year.
+    return (p.categories?.length ?? 0) === 0 ? 'recent' : 'year'
   })
   const [dir, setDir] = useState<SortDir>(() => loadPrefs().dir ?? VIEW_CONFIG.year.defaultDir)
   const [layout, setLayout] = useState<'list' | 'grid'>(() => loadPrefs().layout ?? 'grid')
@@ -542,8 +553,21 @@ export function LibraryScreen() {
     const ranked = (m: Map<string, number>): TagCount[] =>
       [...m.entries()].map(([value, count]) => ({ value, count }))
         .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
-    return { vibes: ranked(vibe), verdicts: ranked(verdict), genres: ranked(genre), series: ranked(series), countries: ranked(country) }
-  }, [baseFiltered])
+    // On "all" the per-medium facets (genre/vibe/verdict/series) pool film-genres,
+    // music-genres and book-vibes into one bloated, half-irrelevant list — tag
+    // filtering is a per-medium activity. Hide them on "all" by returning empty
+    // lists (the FilterSheet's `.length > 0` guards do the hiding, and the prune
+    // effect drops any selection that's no longer offered). Region stays — it's the
+    // one facet that reads the same across every medium. (Decided s85.)
+    const catAll = categories.length === 0
+    return {
+      vibes: catAll ? [] : ranked(vibe),
+      verdicts: catAll ? [] : ranked(verdict),
+      genres: catAll ? [] : ranked(genre),
+      series: catAll ? [] : ranked(series),
+      countries: ranked(country),
+    }
+  }, [baseFiltered, categories])
 
   // When base filters change, keep the vibe/verdict/genre/series selections that
   // still apply and drop only the ones that don't exist in the new set ("smart
@@ -671,7 +695,7 @@ export function LibraryScreen() {
                 onClick={() => selectCategory(t)}
               />
             ))}
-            <TabChip label="all" active={(categories.length === 0 || !!query.trim()) && !reviewOnly} onClick={() => { setCategories([]); setReviewOnly(false) }} />
+            <TabChip label="all" active={(categories.length === 0 || !!query.trim()) && !reviewOnly} onClick={selectAll} />
             {hasReview && (
               <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
             )}
