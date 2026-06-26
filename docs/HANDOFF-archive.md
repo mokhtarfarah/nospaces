@@ -4,6 +4,32 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 85 (2026-06-26) — library header + filter card overhaul, recency fix, one-line bottom nav (all frontend, free)
+
+Another long iterative phone-screenshot session, all pure frontend (no API, no cost). Nine commits to `main`; typecheck + 93 Vitest green on every push. Theme: **make the library's controls read like one calm, legible system** — and de-soup the filtering.
+
+**Library header → one nav line.** The category tabs + the status row were two stacked rows; merged into **one**: `music films books tv all │ status ▾` left, the view·sort·filter slider right. Status is now a **dropdown** (`StatusDropdown`) — all/want-to/in-progress/done, and the four **reactions only appear once "done" is the active status** (gated, not a permanent chip row). On scroll the header collapses to a **pure one line** (categories · status · filter); search + `⋯` live in the title row and return with a flick up — we removed the crammed collapsed control cluster. (Chose this over a slim-icon-strip / keep-search variants — mocked all three for Farah; she picked "pure one line.")
+
+**Filter card overhaul (the big work):**
+- **Soft segmented controls** — layout folded `list / grid 3 / grid 4` into one row (dropped the separate "columns" row); captions matched. Style softened from hard black/white to a quiet warm-grey track with the selected segment lifted as a white chip (`segGroup`/`segBtn`). Mirrored onto the **Things** card (`SegRow`).
+- **Type-hierarchy fix** — the `SORT`/`FILTER` headers were tinier/paler (11px) than the rows beneath them (inverted hierarchy). Headers now 12px/700 graphite uppercase; rows 14px/400 ink. (Mirrored to Things `SheetList`.)
+- **Sort → a right-aligned label row** matching layout/captions: `sort` left, the four options as right-aligned **chips** (kept as chips, NOT a segmented box — 4 longish options + a direction toggle don't fit a one-line box; active fills ink, directional show ↑/↓, re-tap reverses). This also retired the cramped SORT divider.
+- **Group reorder** to `genre · vibe · verdict · series · region` (music's niche new-music-tuesday toggle trails last). **Removed** the hairline dividers between collapsers.
+- **Clear** moved out of the header into the card: now reads `N match · clear` on the FILTER line, resets every active filter, and **no longer auto-closes** the card (clear-and-keep-filtering).
+- **Active-filters tray + counted, ranked tags (Farah picked ideas 1+2 from a 4-idea menu).** Diagnosis: the card let you *build* a filter but never showed *what you'd picked* or *what's worth picking*. Fix: (1) an **active tray** — everything selected across all axes shows as removable ink chips under the FILTER header; selected tags live **only** in the tray, not duplicated in their group. (2) **Counts** — each tag shows how many items carry it, ranked biggest-first, groups show **top 8** with `show all N` for the tail. `availableTags` now returns `{value,count}[]` per axis (counts computed from loaded items — free); `FilterSection` renders counts + show-all + excludes selected. Deferred: tag-search (idea 3) until `show all` lists feel long; verdict IA split (idea 4) parked.
+
+**Recency fix — "recent" = last meaningful moment.** It sorted purely by `date_added`, so finishing something you added long ago left it buried — and it *disagreed* with the month headers, which already bucket done items by their done-date. New shared `recencyDate(item)` (done-date if done, else add-date) drives **both** the sort and the grouping, so a freshly-finished item rises to the top AND files under this month's header. Deliberately avoids `updated_at` (it bumps on silent cover/wiki/region backfills → would reshuffle "recent" for things you never touched).
+
+**Bottom nav → one editorial bar.** Collapsed the two stacked rows (slim media/things switcher over a fat icon tab bar) into a **single row**: `media / things` as the bold editorial anchor (16px, active bold ink, inactive underlined) on the left, the sections (`library / taste / discover`, or the board's `wishlist / taste`) as smaller (13px) **slash-split text links** on the right — no icons. `DomainSwitcher` became a shared `DomainLinks` left-component embedded in both bars; the separate fixed switcher strip + `attached`/`hasSwitcher` plumbing are gone. `layout.ts` is now **one row** (`NAV_H = 46`, no `SWITCHER_H`/`BOTTOM_STACK`-stack). Deleted orphaned `navIcons.tsx`.
+
+**Things parity:** the 4px cover-wall gap (s84 `none`-caption) now also applies to the Things **grid** and the **deciding** strip; soft segmented buttons + stronger headers on the Things filter card; `ThingsNav` rebuilt as the merged bar.
+
+**"all" tab — discussed, KEPT.** Farah doesn't use it and the cross-category tag soup is confusing, BUT it's the **only home for cross-category recency** (recency-across-everything needs an all-scope; "everything loved" is arguably Taste's job already). Decision: keep it; the real fix is to **de-confuse it** (deferred — see roadmap).
+
+**Verification:** typecheck + 93 Vitest green every push. Eyeballed in the noauth preview (mobile): one-line header, status dropdown, soft filter card (layout/sort/captions), one-line sort chips, both domains' merged bars. **NOT verified with real data** (preview empty) — the **on-phone tests for next login:** the active-filters tray + counts/ranking/`show all`, the `N match` count, the recency re-sort (finished-long-ago item rising), and the merged bar not crowding the FAB on a full screen.
+
+---
+
 ### Session 84 (2026-06-25) — bottom-nav + library-header declutter pass (all frontend, free)
 
 One long iterative session, all pure frontend (no API, no cost). Farah drove it by reacting to live phone screenshots; lots of small course-corrections. Net theme: **make the library read calmer — let the covers be the loudest thing.** Eight commits to `main`.
