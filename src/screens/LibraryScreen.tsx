@@ -999,7 +999,10 @@ function FilterSheet({
   const hasGroups = showNewMusic || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
     || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0
   const sectionLabel: CSSProperties = { fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px', paddingTop: 10, borderTop: '1px solid #F0F0F0' }
-  const segBtn = (on: boolean): CSSProperties => ({ padding: '4px 14px', borderRadius: 6, border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0', background: on ? '#111' : '#fff', color: on ? '#fff' : '#888', fontSize: 13, fontWeight: on ? 600 : 400, cursor: 'pointer' })
+  // Soft segmented control: a quiet track with the selected segment lifted as a
+  // white chip — gentler than the old hard black/white toggle.
+  const segGroup: CSSProperties = { display: 'flex', gap: 3, background: '#F4F2EE', padding: 3, borderRadius: 9 }
+  const segBtn = (on: boolean): CSSProperties => ({ padding: '5px 13px', borderRadius: 7, border: '1px solid ' + (on ? '#E2DED7' : 'transparent'), background: on ? '#fff' : 'transparent', color: on ? '#1C1B19' : '#999', fontSize: 13, fontWeight: on ? 600 : 400, cursor: 'pointer' })
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
@@ -1011,38 +1014,20 @@ function FilterSheet({
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 12px' }} />
 
-        {filtersActive && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
-            <button
-              onClick={onClearAll}
-              style={{ fontSize: 12, color: '#ABA69C', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
-            >clear all filters</button>
-          </div>
-        )}
-
-        {/* Layout — the most-toggled control, first. */}
+        {/* Layout — the most-toggled control, first. List + the two grid densities
+            fold into one row (was layout + a separate "columns" row before s85). */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
           <span style={{ fontSize: 13, color: '#555' }}>layout</span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {(['list', 'grid'] as const).map(l => (
-              <button key={l} onClick={() => onLayout(l)} style={segBtn(layout === l)}>{l}</button>
-            ))}
+          <div style={segGroup}>
+            <button onClick={() => onLayout('list')} style={segBtn(layout === 'list')}>list</button>
+            <button onClick={() => { onLayout('grid'); onGridCols(3) }} style={segBtn(layout === 'grid' && gridCols === 3)}>grid 3</button>
+            <button onClick={() => { onLayout('grid'); onGridCols(4) }} style={segBtn(layout === 'grid' && gridCols === 4)}>grid 4</button>
           </div>
         </div>
         {layout === 'grid' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-            <span style={{ fontSize: 13, color: '#555' }}>columns</span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {([3, 4] as const).map(n => (
-                <button key={n} onClick={() => onGridCols(n)} style={segBtn(gridCols === n)}>{n}</button>
-              ))}
-            </div>
-          </div>
-        )}
-        {layout === 'grid' && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
             <span style={{ fontSize: 13, color: '#555' }}>captions</span>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={segGroup}>
               {(['none', 'title', 'full'] as const).map(c => (
                 <button key={c} onClick={() => onCaption(c)} style={segBtn(caption === c)}>{c}</button>
               ))}
@@ -1072,10 +1057,21 @@ function FilterSheet({
             </button>
           )
         })}
-        <p style={{ fontSize: 11, color: '#BBB', margin: '4px 0 0' }}>tap the selected sort again to reverse</p>
-
-        {/* Filter — the tag groups. */}
-        {hasGroups && <p style={sectionLabel}>filter</p>}
+        {/* Filter — the tag groups. Clear-all sits right-aligned on this heading
+            line as an × (it resets every active filter, not just the tags). */}
+        {(hasGroups || filtersActive) && (
+          <div style={{ ...sectionLabel, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>filter</span>
+            {filtersActive && (
+              <button
+                onClick={onClearAll}
+                aria-label="clear all filters"
+                title="clear all filters"
+                style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ABA69C', fontSize: 16, lineHeight: 1, padding: 0 }}
+              >×</button>
+            )}
+          </div>
+        )}
         {showNewMusic && (
           <FilterSection
             label="music"

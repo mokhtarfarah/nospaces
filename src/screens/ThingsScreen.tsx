@@ -659,7 +659,7 @@ export function ThingsScreen() {
                   {/* A plan is a *question* — always the portrait "deciding" card, in
                       both list and grid view (Farah, s75). It never degrades to a flat
                       row, so a plan reads the same however the saved items are laid out. */}
-                  <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x proximity' }}>
+                  <div style={{ display: 'flex', gap: caption === 'none' ? 4 : 12, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x proximity' }}>
                     {decidingItems.map(item => <DecidingCard key={item.id} item={item} view={view} onOpen={() => setOpenIntentId(item.id)} />)}
                   </div>
                 </section>
