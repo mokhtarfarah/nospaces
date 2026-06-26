@@ -7,7 +7,7 @@
 // the board's wishlist / taste), split by slashes. Was a two-row stack (a slim
 // switcher caption over a fat icon tab bar) through s84.
 
-export const NAV_H = 46            // single bottom-bar row height, px (above the safe-area inset)
+export const NAV_H = 54            // single bottom-bar row height, px (above the safe-area inset) — taller since s86 to seat the bigger media/things masthead
 export const BOTTOM_STACK = NAV_H  // the whole bottom panel is one row now
 
 // `calc(<px> + safe-area)` for something sitting just above the bottom bar.

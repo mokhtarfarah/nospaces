@@ -44,8 +44,8 @@ export function BottomNav() {
         height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
         paddingBottom: 'env(safe-area-inset-bottom)',
         background: '#fff', borderTop: '1px solid #E8E8E8',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-        padding: '10px 18px 0', boxSizing: 'border-box', zIndex: 100,
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+        padding: '14px 18px 0', boxSizing: 'border-box', zIndex: 100,
       }}>
         <DomainLinks current="media" />
         <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>

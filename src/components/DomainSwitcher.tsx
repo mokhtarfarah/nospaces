@@ -8,6 +8,10 @@ import { useNavigate } from 'react-router-dom'
 // links on the right so the bar reads "which world" › "where in it". The active
 // word is ink + bold; the other is muted + underlined ("tap to switch"). Embedded
 // in BottomNav / ThingsNav now, not its own fixed strip.
+//
+// s86: pushed to a real masthead — the words jump to 21px so the "which world"
+// switch reads with magazine confidence and gives the thumb a fat target, while
+// the section links stay small fine print. The bar's a touch taller to seat it.
 
 const INK = '#1C1B19'
 
@@ -19,7 +23,7 @@ export function DomainLinks({ current }: { current: Domain }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
       <Word label="media" active={current === 'media'} onClick={() => go('media')} />
-      <span style={{ color: '#CFCBC3', fontSize: 15 }}>/</span>
+      <span style={{ color: '#CFCBC3', fontSize: 18 }}>/</span>
       <Word label="things" active={current === 'things'} onClick={() => go('things')} />
     </div>
   )
@@ -31,7 +35,7 @@ function Word({ label, active, onClick }: { label: string; active: boolean; onCl
   return (
     <button onClick={onClick} aria-pressed={active} style={{
       border: 'none', background: 'none', padding: 0, cursor: active ? 'default' : 'pointer',
-      fontSize: 16, fontWeight: active ? 700 : 500, letterSpacing: '0.01em',
+      fontSize: 21, fontWeight: active ? 700 : 500, letterSpacing: '0.01em',
       color: active ? INK : '#8A857C',
       textDecoration: active ? 'none' : 'underline',
       textDecorationColor: '#D5D1C9', textUnderlineOffset: 4,
