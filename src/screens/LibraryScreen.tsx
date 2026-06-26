@@ -623,11 +623,14 @@ export function LibraryScreen() {
           </div>
         )}
 
-        {/* Filter row 1 — category tabs ordered by how much of each type is in the
-            library. While collapsed, the search + overflow controls pin to the
-            right of this row (the title row that normally holds them is hidden). */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 0, flex: 1, minWidth: 0 }}>
+        {/* Nav row — category tabs + a status dropdown on the left, the view·sort·
+            filter button (and, while collapsed, the search/overflow controls)
+            pinned to the right. Was two rows before s85; merged into one so the
+            header reads tighter. Status (and its done→reaction sub-filter) folds
+            into the dropdown instead of taking a whole row of chips. */}
+        <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 10 }}>
+          {/* category tabs — scroll horizontally when they overflow */}
+          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', flex: '0 1 auto', minWidth: 0 }}>
             {typeOrder.map(t => (
               <TabChip
                 key={t}
@@ -644,35 +647,19 @@ export function LibraryScreen() {
               <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
             )}
           </div>
-          {collapsed && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingLeft: 12, paddingBottom: 8 }}>
-              {/* While the title row is folded away, the search/overflow controls pin
-                  here. Sort/view/filter stay reachable via the filter button on the
-                  status row below, which never folds. */}
-              <HeaderControls
-                filtersActive={filtersActive}
-                onClear={clearFilters}
-                onSearch={() => setSearchOpen(v => !v)}
-                onMore={() => setOverflowOpen(true)}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Filter row 2 — status + vibe/genre dropdowns (+ reaction chips when on "done") */}
-        <div style={{ display: 'flex', gap: 6, paddingBottom: 10, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', marginTop: 2 }}>
-          {(['all', 'want_to', 'in_progress', 'done'] as StatusFilter[]).map(s => (
-            <TabChip
-              key={s}
-              label={s === 'all' ? 'all' : s === 'want_to' ? 'want to' : s === 'in_progress' ? 'in progress' : 'done'}
-              active={statusFilter === s}
-              onClick={() => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
-            />
-          ))}
-          {/* View · sort · filter live in one card opened from this button, mirroring
-              the Things board. Always present (it always offers layout + sort), even
-              before there are tag groups to filter on. */}
-          <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
+          {/* divider + status dropdown */}
+          <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0, margin: '0 12px' }} />
+          <StatusDropdown
+            statusFilter={statusFilter}
+            reactionFilter={reactionFilter}
+            onStatus={s => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
+            onReaction={setReactionFilter}
+          />
+          {/* spacer pushes the right-hand controls to the edge */}
+          <div style={{ flex: '1 1 0' }} />
+          {/* View · sort · filter live in one card opened from this button,
+              mirroring the Things board. Always present (it always offers layout +
+              sort), even before there are tag groups to filter on. */}
           <button
             onClick={() => setFilterSheetOpen(true)}
             aria-label={filterCount > 0 ? `view, sort, filter · ${filterCount} filters active` : 'view, sort and filter'}
@@ -692,18 +679,17 @@ export function LibraryScreen() {
               }}>{filterCount}</span>
             )}
           </button>
-          {statusFilter === 'done' && (
-            <>
-              <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0 }} />
-              {REACTION_ORDER.map(r => (
-                <TabChip
-                  key={r}
-                  label={REACTION_LABELS[r]}
-                  active={reactionFilter === r}
-                  onClick={() => setReactionFilter(reactionFilter === r ? 'all' : r)}
-                />
-              ))}
-            </>
+          {/* While the title row is folded away on scroll, the search + overflow
+              controls pin here next to the filter button. */}
+          {collapsed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingLeft: 14 }}>
+              <HeaderControls
+                filtersActive={filtersActive}
+                onClear={clearFilters}
+                onSearch={() => setSearchOpen(v => !v)}
+                onMore={() => setOverflowOpen(true)}
+              />
+            </div>
           )}
         </div>
       </header>
@@ -751,7 +737,10 @@ export function LibraryScreen() {
                 </div>
               )}
               {layout === 'grid' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: 10, padding: '4px 14px 12px' }}>
+                // Cover-wall: in 'none' caption mode the tiles tighten almost to a
+                // grid of touching covers (more editorial); with captions the looser
+                // 10px gap gives the text room to breathe.
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: caption === 'none' ? 4 : 10, padding: caption === 'none' ? '4px 12px 12px' : '4px 14px 12px' }}>
                   {monthItems.map(item => (
                     <GridCard
                       key={item.id}
@@ -1021,7 +1010,7 @@ function FilterSheet({
     + (showNewMusic && newMusicOnly ? 1 : 0)
   const hasGroups = showNewMusic || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
     || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0
-  const sectionLabel: CSSProperties = { fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '4px 0 8px', paddingTop: 16, borderTop: '1px solid #F0F0F0' }
+  const sectionLabel: CSSProperties = { fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '2px 0 6px', paddingTop: 12, borderTop: '1px solid #F0F0F0' }
   const segBtn = (on: boolean): CSSProperties => ({ padding: '4px 14px', borderRadius: 6, border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0', background: on ? '#111' : '#fff', color: on ? '#fff' : '#888', fontSize: 13, fontWeight: on ? 600 : 400, cursor: 'pointer' })
   return (
     <>
@@ -1044,7 +1033,7 @@ function FilterSheet({
         )}
 
         {/* Layout — the most-toggled control, first. */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <span style={{ fontSize: 13, color: '#555' }}>layout</span>
           <div style={{ display: 'flex', gap: 6 }}>
             {(['list', 'grid'] as const).map(l => (
@@ -1053,7 +1042,7 @@ function FilterSheet({
           </div>
         </div>
         {layout === 'grid' && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <span style={{ fontSize: 13, color: '#555' }}>columns</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {([3, 4] as const).map(n => (
@@ -1063,7 +1052,7 @@ function FilterSheet({
           </div>
         )}
         {layout === 'grid' && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <span style={{ fontSize: 13, color: '#555' }}>captions</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {(['none', 'title', 'full'] as const).map(c => (
@@ -1083,7 +1072,7 @@ function FilterSheet({
             <button
               key={v}
               onClick={() => onSelectView(v)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 0', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '6px 0', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
             >
               <span style={{ fontSize: 14, color: active ? '#111' : '#444', fontWeight: active ? 600 : 400 }}>{cfg.label}</span>
               {active && (
@@ -1147,11 +1136,13 @@ function FilterSection({ label, options, selected, onSelect }: {
         onClick={() => setOpen(o => !o)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-          padding: '13px 0', border: 'none', background: 'none', cursor: 'pointer',
+          padding: '11px 0', border: 'none', background: 'none', cursor: 'pointer',
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          {label}{selected.length > 0 && <span style={{ color: '#1C1B19' }}> · {selected.length}</span>}
+        {/* Sentence-case ink, distinct from the uppercase muted "filter" heading
+            above so the group rows read as tappable rows, not section titles. */}
+        <span style={{ fontSize: 14, fontWeight: 500, color: '#3A3A3A' }}>
+          {label}{selected.length > 0 && <span style={{ color: '#ABA69C', fontWeight: 400 }}> · {selected.length}</span>}
         </span>
         <span style={{ fontSize: 10, color: '#ABA69C', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
       </button>
@@ -1227,6 +1218,76 @@ function TabChip({ label, active, onClick }: { label: string; active: boolean; o
       }}
     >
       {label}
+    </button>
+  )
+}
+
+// Status filter as a single dropdown (was a row of chips). The done→reaction
+// sub-filter folds in below a divider: picking a reaction implies "done", so the
+// whole status+reaction choice lives in one short menu instead of two rows.
+function StatusDropdown({ statusFilter, reactionFilter, onStatus, onReaction }: {
+  statusFilter: StatusFilter
+  reactionFilter: ReactionFilter
+  onStatus: (s: StatusFilter) => void
+  onReaction: (r: ReactionFilter) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const active = statusFilter !== 'all' || reactionFilter !== 'all'
+  const label = reactionFilter !== 'all'
+    ? REACTION_LABELS[reactionFilter as ItemReaction]
+    : statusFilter === 'all' ? 'status'
+    : statusFilter === 'want_to' ? 'want to'
+    : statusFilter === 'in_progress' ? 'in progress' : 'done'
+  const pick = (s: StatusFilter, r: ReactionFilter = 'all') => { onStatus(s); onReaction(r); setOpen(false) }
+  const STATUS_ITEMS: [StatusFilter, string][] = [['all', 'all'], ['want_to', 'want to'], ['in_progress', 'in progress'], ['done', 'done']]
+  return (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 3, padding: '4px 2px 8px',
+          border: 'none', background: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+          color: active ? '#111' : '#888', fontSize: 13,
+          fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal',
+        }}
+      >
+        {label}
+        <span style={{ fontSize: 9, color: active ? '#111' : '#ABA69C', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, marginTop: 2, zIndex: 61,
+            background: '#fff', border: `1px solid ${HAIR}`, borderRadius: 8,
+            boxShadow: '0 6px 24px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 150,
+          }}>
+            {STATUS_ITEMS.map(([s, lbl]) => (
+              <MenuItem key={s} label={lbl} active={statusFilter === s && reactionFilter === 'all'} onClick={() => pick(s)} />
+            ))}
+            <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
+            {REACTION_ORDER.map(r => (
+              <MenuItem key={r} label={REACTION_LABELS[r]} active={reactionFilter === r} onClick={() => pick('done', r)} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function MenuItem({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        width: '100%', padding: '8px 14px', border: 'none', background: 'none',
+        cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap',
+        fontSize: 13, color: active ? '#111' : '#444', fontWeight: active ? 600 : 400,
+      }}
+    >
+      {label}{active && <span style={{ fontSize: 12 }}>✓</span>}
     </button>
   )
 }
