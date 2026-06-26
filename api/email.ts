@@ -479,16 +479,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ saved: 0, error: r.kind })
   }
 
-  // Universal "save@" fast path: a clear product link saves straight to the board
-  // with no AI cost. Only CLEAR products short-circuit here (strict productLike) so
-  // a media link (a film/book page isn't productLike) skips this and gets read by
-  // the media pipeline below. Photos are media-leaning, so they skip this too. If
-  // it's not a clear product, fall through — the non-strict fallback at the end of
-  // the media pipeline still catches it for save@.
+  // For the universal "save@" address, a LINK is the capture — decide that up front.
+  // Shop emails (and iOS Mail's rich-link expansion) arrive stuffed with decorative
+  // product thumbnails, swatches and tracking pixels; those aren't "your photos", so
+  // a link wins over them. When save@ has a link we ignore attachments entirely (no
+  // wasted vision calls on a clear.png) and treat it as a link capture below.
   const universal = isCaptureAll(replyFrom)
-  const hasPhotos = (Attachments ?? []).some((a: Attachment) => imageType(a).startsWith('image/'))
-  if (universal && !hasPhotos) {
-    const t = await captureThing(matchedUser.id, extractEmailUrls(linkText, HtmlBody ?? ''), true)
+  const links = extractEmailUrls(linkText, HtmlBody ?? '')
+  const linkCapture = universal && links.length > 0
+
+  // Universal save@ fast path: a CLEAR product link (strict productLike) saves
+  // straight to the board with no AI cost. A media link (a film/book page isn't
+  // productLike) falls through to the media reader; the non-strict fallback at the
+  // end still catches anything readable for save@.
+  if (linkCapture) {
+    const t = await captureThing(matchedUser.id, links, true)
     if (t.kind === 'saved') {
       await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
         `Added to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}`)
@@ -504,9 +509,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Identify media from any image attachments. Each image is normalized first (HEIC→JPEG,
   // media-type cleanup) so iPhone photos work. Errors are logged, never silently dropped.
+  // A save@ link capture skips this — its attachments are shop decoration, not media.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const imageResults: any[] = []
-  const imageAttachments: Attachment[] = (Attachments ?? []).filter((a: Attachment) =>
+  const imageAttachments: Attachment[] = linkCapture ? [] : (Attachments ?? []).filter((a: Attachment) =>
     imageType(a).startsWith('image/')
   )
   console.log('[email] image attachments:', imageAttachments.length,
