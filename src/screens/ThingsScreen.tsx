@@ -1479,7 +1479,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         // the image fetch, or it was an unsupported format) lands here with no taste
         // tags — offer a one-tap re-read right here instead of burying it in edit.
         p.image && !taste.some(a => a.facet !== 'category') && (
-          <button onClick={onRunTaste} style={{ ...quietLink, marginTop: 28 }}>read taste from photo</button>
+          <button onClick={onRunTaste} style={{ ...quietLink, display: 'block', marginTop: 28 }}>read taste from photo</button>
         )
       )}
 

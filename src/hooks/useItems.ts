@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase, authHeaders } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import type { Item, ItemReaction } from '../lib/database.types'
@@ -14,6 +14,14 @@ export function useItems() {
   const { user } = useAuth()
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Mirror of `items` that updates synchronously on every write. patchMetadata
+  // reads from this, NOT its captured `items` closure — so two back-to-back
+  // patches on the same item (e.g. taste tags then a cutout, in autoTagFromImage)
+  // each merge against the previous one instead of both merging against the stale
+  // pre-write snapshot, which would silently drop the first patch from the DB.
+  const itemsRef = useRef<Item[]>([])
+  useEffect(() => { itemsRef.current = items }, [items])
 
   // `silent` refetches (after edits) skip the loading flag so the list stays
   // mounted and keeps the user's scroll position.
@@ -247,10 +255,12 @@ export function useItems() {
   // full refetch, so callers like the Wikipedia cache-write don't fan out into
   // 50 round-trips when many items resolve at once.
   async function patchMetadata(id: string, patch: Record<string, unknown>) {
-    const item = items.find(i => i.id === id)
+    const item = itemsRef.current.find(i => i.id === id)
     if (!item) return
     const newMeta = { ...item.metadata, ...patch }
-    setItems(prev => prev.map(i => i.id === id ? { ...i, metadata: newMeta } : i))
+    // Update the ref synchronously so a second patch in the same tick sees this one.
+    itemsRef.current = itemsRef.current.map(i => i.id === id ? { ...i, metadata: newMeta } : i)
+    setItems(itemsRef.current)
     await db().from('items').update({ metadata: newMeta }).eq('id', id)
   }
 
