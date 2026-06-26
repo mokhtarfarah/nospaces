@@ -998,7 +998,7 @@ function FilterSheet({
 }) {
   const hasGroups = showNewMusic || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
     || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0
-  const sectionLabel: CSSProperties = { fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px', paddingTop: 10, borderTop: '1px solid #F0F0F0' }
+  const sectionLabel: CSSProperties = { fontSize: 12, fontWeight: 700, color: '#6F6B64', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px', paddingTop: 13, borderTop: '1px solid #F0F0F0' }
   // Soft segmented control: a quiet track with the selected segment lifted as a
   // white chip — gentler than the old hard black/white toggle.
   const segGroup: CSSProperties = { display: 'flex', gap: 3, background: '#F4F2EE', padding: 3, borderRadius: 9 }
@@ -1017,7 +1017,7 @@ function FilterSheet({
         {/* Layout — the most-toggled control, first. List + the two grid densities
             fold into one row (was layout + a separate "columns" row before s85). */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-          <span style={{ fontSize: 13, color: '#555' }}>layout</span>
+          <span style={{ fontSize: 14, color: '#3A3A3A' }}>layout</span>
           <div style={segGroup}>
             <button onClick={() => onLayout('list')} style={segBtn(layout === 'list')}>list</button>
             <button onClick={() => { onLayout('grid'); onGridCols(3) }} style={segBtn(layout === 'grid' && gridCols === 3)}>grid 3</button>
@@ -1026,7 +1026,7 @@ function FilterSheet({
         </div>
         {layout === 'grid' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-            <span style={{ fontSize: 13, color: '#555' }}>captions</span>
+            <span style={{ fontSize: 14, color: '#3A3A3A' }}>captions</span>
             <div style={segGroup}>
               {(['none', 'title', 'full'] as const).map(c => (
                 <button key={c} onClick={() => onCaption(c)} style={segBtn(caption === c)}>{c}</button>
@@ -1123,10 +1123,10 @@ function FilterSection({ label, options, selected, onSelect }: {
           padding: '9px 0', border: 'none', background: 'none', cursor: 'pointer',
         }}
       >
-        {/* Sentence-case ink, distinct from the uppercase muted "filter" heading
-            above so the group rows read as tappable rows, not section titles. */}
-        <span style={{ fontSize: 14, fontWeight: 500, color: '#3A3A3A' }}>
-          {label}{selected.length > 0 && <span style={{ color: '#ABA69C', fontWeight: 400 }}> · {selected.length}</span>}
+        {/* Sentence-case regular ink — clearly content beneath the uppercase
+            "filter" header, not competing with it. */}
+        <span style={{ fontSize: 14, fontWeight: 400, color: '#3A3A3A' }}>
+          {label}{selected.length > 0 && <span style={{ color: '#6F6B64', fontWeight: 600 }}> · {selected.length}</span>}
         </span>
         <span style={{ fontSize: 10, color: '#ABA69C', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
       </button>
