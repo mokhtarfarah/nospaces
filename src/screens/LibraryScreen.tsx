@@ -1057,18 +1057,22 @@ function FilterSheet({
           </div>
         )}
 
-        {/* Sort — one wrapping row of chips (each on its own row before s85). The
-            active chip fills ink; directional ones show ↑/↓ and reverse on re-tap. */}
-        <p style={sectionLabel}>sort</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {ORDER.map(v => {
-            const cfg = VIEW_CONFIG[v]
-            const active = view === v
-            const arrow = active && cfg.directional ? (dir === 'asc' ? ' ↑' : ' ↓') : ''
-            return (
-              <button key={v} onClick={() => onSelectView(v)} style={tagChipStyle(active)}>{cfg.label}{arrow}</button>
-            )
-          })}
+        {/* Sort — a label-left row matching the layout/captions controls, options
+            right-aligned to the same edge. Kept as chips (not a segmented box): four
+            longish options + a direction toggle don't fit a one-line box. Active
+            fills ink; directional ones show ↑/↓ and reverse on re-tap. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 7 }}>
+          <span style={{ fontSize: 14, color: '#3A3A3A', flexShrink: 0 }}>sort</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6 }}>
+            {ORDER.map(v => {
+              const cfg = VIEW_CONFIG[v]
+              const active = view === v
+              const arrow = active && cfg.directional ? (dir === 'asc' ? ' ↑' : ' ↓') : ''
+              return (
+                <button key={v} onClick={() => onSelectView(v)} style={tagChipStyle(active)}>{cfg.label}{arrow}</button>
+              )
+            })}
+          </div>
         </div>
         {/* Filter — the tag groups. Clear-all sits right-aligned on this heading
             line as an × (it resets every active filter, not just the tags). */}
@@ -1131,12 +1135,12 @@ function FilterSection({ label, options, selected, onSelect }: {
 }) {
   const [open, setOpen] = useState(selected.length > 0)
   return (
-    <div style={{ borderBottom: '1px solid #F0EEEA' }}>
+    <div>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-          padding: '9px 0', border: 'none', background: 'none', cursor: 'pointer',
+          padding: '10px 0', border: 'none', background: 'none', cursor: 'pointer',
         }}
       >
         {/* Sentence-case regular ink — clearly content beneath the uppercase
