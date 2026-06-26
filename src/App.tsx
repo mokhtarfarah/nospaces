@@ -3,7 +3,6 @@ import { useAuth } from './hooks/useAuth'
 import { useOfflineSync } from './hooks/useOfflineSync'
 import { LoginScreen } from './components/LoginScreen'
 import { BottomNav } from './components/BottomNav'
-import { DomainSwitcher } from './components/DomainSwitcher'
 import { clearStack } from './lib/layout'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { AddScreen } from './screens/AddScreen'
@@ -21,10 +20,6 @@ export default function App() {
   const { user, loading } = useAuth()
   const location = useLocation()
   const { pendingCount, syncStatus } = useOfflineSync()
-  // The domain switcher (and so the one-cohesive-panel look) shows only where both
-  // worlds are reachable — the collection screens. Elsewhere the tab bar stands
-  // alone and keeps its own top border.
-  const hasSwitcher = ['/library', '/taste', '/discover', '/things'].includes(location.pathname)
 
   if (loading) {
     return (
@@ -57,13 +52,10 @@ export default function App() {
           <Route path="/guide" element={<GuideScreen />} />
         </Routes>
       </div>
-      {/* Things is its own domain — the board carries its own capture buttons, so
-          the media nav + FAB step aside. The domain switcher is shared across both
-          and sits as a hairline strip just above whichever bottom nav is showing. */}
-      {location.pathname !== '/things' && <BottomNav attached={hasSwitcher} />}
-      {hasSwitcher && (
-        <DomainSwitcher current={location.pathname === '/things' ? 'things' : 'media'} />
-      )}
+      {/* Things is its own domain — the board carries its own capture buttons + its
+          own bottom bar, so the media nav + FAB step aside there. Both bars embed
+          the media/things switcher on their left now (no separate strip). */}
+      {location.pathname !== '/things' && <BottomNav />}
       {(pendingCount > 0 || syncStatus !== 'idle') && (
         <div style={{
           position: 'fixed',

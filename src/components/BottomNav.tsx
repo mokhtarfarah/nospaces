@@ -1,22 +1,21 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LibraryIcon, TasteIcon, DiscoverIcon } from './navIcons'
-import { NAV_H, NAV_ICON, navButtonBase, clearStack } from '../lib/layout'
+import { NAV_H, clearStack } from '../lib/layout'
+import { DomainLinks } from './DomainSwitcher'
 
-// `attached` = the domain switcher is sitting right above us, so the two read as
-// one panel: drop our top border (the switcher's becomes the panel's single edge)
-// to erase the divider between the rows. Stand-alone screens keep the border.
-export function BottomNav({ attached = false }: { attached?: boolean }) {
+// The media domain's bottom bar (s85): one editorial row — the domain switcher
+// (media / things) anchored left, the sections (library / taste / discover) as
+// slash-split text links on the right, smaller + quieter so the world outranks
+// the section. Icons + the separate switcher strip are gone.
+export function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
-
-  const base: React.CSSProperties = {
-    ...navButtonBase,
-    color: '#999',
-    textDecoration: 'none',
-    flex: 1,
-  }
-
   const showFab = location.pathname !== '/add'
+
+  const link = (isActive: boolean): React.CSSProperties => ({
+    textDecoration: 'none', fontSize: 13,
+    color: isActive ? '#1C1B19' : '#A8A39A', fontWeight: isActive ? 600 : 400,
+  })
+  const slash = <span style={{ color: '#D5D1C9', fontSize: 12 }}>/</span>
 
   return (
     <>
@@ -26,21 +25,11 @@ export function BottomNav({ attached = false }: { attached?: boolean }) {
           onClick={() => navigate('/add')}
           aria-label="add"
           style={{
-            position: 'fixed',
-            bottom: clearStack(18),
-            right: 20,
-            width: 50,
-            height: 50,
-            borderRadius: '50%',
-            background: '#1C1B19',
-            color: '#fff',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 99,
-            boxShadow: '0 2px 16px rgba(0,0,0,0.22)',
+            position: 'fixed', bottom: clearStack(18), right: 20,
+            width: 50, height: 50, borderRadius: '50%',
+            background: '#1C1B19', color: '#fff', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 99, boxShadow: '0 2px 16px rgba(0,0,0,0.22)',
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -51,31 +40,21 @@ export function BottomNav({ attached = false }: { attached?: boolean }) {
       )}
 
       <nav style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        position: 'fixed', bottom: 0, left: 0, right: 0,
         height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
         paddingBottom: 'env(safe-area-inset-bottom)',
-        background: '#fff',
-        borderTop: attached ? 'none' : '1px solid #E8E8E8',
-        display: 'flex',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        zIndex: 100,
+        background: '#fff', borderTop: '1px solid #E8E8E8',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 18px', boxSizing: 'border-box', zIndex: 100,
       }}>
-        <NavLink to="/library" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
-          <LibraryIcon size={NAV_ICON} />
-          library
-        </NavLink>
-        <NavLink to="/taste" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
-          <TasteIcon size={NAV_ICON} />
-          taste
-        </NavLink>
-        <NavLink to="/discover" style={({ isActive }) => ({ ...base, color: isActive ? '#111111' : '#999' })}>
-          <DiscoverIcon size={NAV_ICON} />
-          discover
-        </NavLink>
+        <DomainLinks current="media" />
+        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+          <NavLink to="/library" style={({ isActive }) => link(isActive)}>library</NavLink>
+          {slash}
+          <NavLink to="/taste" style={({ isActive }) => link(isActive)}>taste</NavLink>
+          {slash}
+          <NavLink to="/discover" style={({ isActive }) => link(isActive)}>discover</NavLink>
+        </div>
       </nav>
     </>
   )

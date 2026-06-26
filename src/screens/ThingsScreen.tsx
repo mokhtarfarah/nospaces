@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
-import { WishlistIcon, TasteIcon } from '../components/navIcons'
+import { DomainLinks } from '../components/DomainSwitcher'
 import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
 import { thingImageRaw } from '../lib/thingImage'
@@ -16,7 +16,7 @@ import {
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord, type BoardTasteSummary,
 } from '../lib/things'
 import { uploadMoodImage, moodSrc } from '../lib/mood'
-import { NAV_H, NAV_ICON, navButtonBase, clearStack } from '../lib/layout'
+import { NAV_H, clearStack } from '../lib/layout'
 import { sampleBoardColors } from '../lib/palette'
 import { usePrefs } from '../hooks/usePrefs'
 
@@ -878,22 +878,28 @@ export function ThingsScreen() {
   )
 }
 
-// Things bottom nav — same chrome as the media BottomNav (fixed bar, icon + label,
-// ink-when-active), scoped to the two halves of the board.
+// Things bottom bar — same merged row as the media BottomNav: media / things on
+// the left, the board's two sections (wishlist / taste) as slash-split text links
+// on the right.
 function ThingsNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
-  const base: React.CSSProperties = { ...navButtonBase }
+  const link = (on: boolean): React.CSSProperties => ({
+    border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 13,
+    color: on ? '#1C1B19' : '#A8A39A', fontWeight: on ? 600 : 400,
+  })
   return (
     <nav style={{
       position: 'fixed', bottom: 0, left: 0, right: 0,
       height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom: 'env(safe-area-inset-bottom)',
-      background: '#fff', borderTop: 'none', display: 'flex', justifyContent: 'space-around', alignItems: 'center', zIndex: 100,
+      background: '#fff', borderTop: '1px solid #E8E8E8',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 18px', boxSizing: 'border-box', zIndex: 100,
     }}>
-      <button onClick={() => onTab('wishlist')} style={{ ...base, color: tab === 'wishlist' ? '#111' : '#999' }}>
-        <WishlistIcon size={NAV_ICON} /> wishlist
-      </button>
-      <button onClick={() => onTab('taste')} style={{ ...base, color: tab === 'taste' ? '#111' : '#999' }}>
-        <TasteIcon size={NAV_ICON} /> taste
-      </button>
+      <DomainLinks current="things" />
+      <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+        <button onClick={() => onTab('wishlist')} style={link(tab === 'wishlist')}>wishlist</button>
+        <span style={{ color: '#D5D1C9', fontSize: 12 }}>/</span>
+        <button onClick={() => onTab('taste')} style={link(tab === 'taste')}>taste</button>
+      </div>
     </nav>
   )
 }
