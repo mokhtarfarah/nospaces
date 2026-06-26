@@ -78,12 +78,22 @@ function formatMonthYear(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
+// The date that drives the "recent" view: when you finished it if done, else when
+// you added it. Used by BOTH the sort and the month grouping so they always agree
+// — finish a long-ago add today and it surfaces to the top AND files under this
+// month's header, instead of staying buried at its add-date. (We avoid updated_at
+// here on purpose: that bumps on silent background writes — cover/wiki/region
+// backfills — which would reshuffle "recent" for things you never actually touched.)
+function recencyDate(item: Item): string {
+  return item.status === 'done' && item.date_done ? item.date_done : item.date_added
+}
+
 // Comparison in the *ascending* sense for each sort. Direction is applied on top
 // by sortItems, so 'asc'/'desc' is consistent across every view.
 function compareItems(a: Item, b: Item, sort: SortOption): number {
   switch (sort) {
     case 'date_added':
-      return new Date(a.date_added).getTime() - new Date(b.date_added).getTime()
+      return new Date(recencyDate(a)).getTime() - new Date(recencyDate(b)).getTime()
     case 'updated':
       return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
     case 'alpha':
@@ -112,8 +122,7 @@ function sortItems(items: Item[], sort: SortOption, dir: SortDir): Item[] {
 function groupByMonth(items: Item[]): Map<string, Item[]> {
   const map = new Map<string, Item[]>()
   for (const item of items) {
-    const dateStr = item.status === 'done' && item.date_done ? item.date_done : item.date_added
-    const key = formatMonthYear(dateStr)
+    const key = formatMonthYear(recencyDate(item))
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(item)
   }
