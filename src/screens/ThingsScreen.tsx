@@ -270,7 +270,9 @@ export function ThingsScreen() {
       {list.map(item => <ProductRow key={item.id} item={item} onOpen={() => setOpenProductId(item.id)} />)}
     </div>
   ) : (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, alignItems: 'start', gap: 12 }}>
+    // Cover-wall: tighten to a near-touching grid in 'none' caption mode (mirrors
+    // the media Library); keep the looser gap when captions need room for text.
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, alignItems: 'start', gap: caption === 'none' ? 4 : 12 }}>
       {list.map(item => <ProductCard key={item.id} item={item} caption={caption} onOpen={() => setOpenProductId(item.id)} />)}
     </div>
   )

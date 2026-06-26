@@ -580,8 +580,6 @@ export function LibraryScreen() {
             <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
               <HeaderControls
-                filtersActive={filtersActive}
-                onClear={clearFilters}
                 onSearch={() => setSearchOpen(v => !v)}
                 onMore={() => setOverflowOpen(true)}
               />
@@ -679,18 +677,9 @@ export function LibraryScreen() {
               }}>{filterCount}</span>
             )}
           </button>
-          {/* While the title row is folded away on scroll, the search + overflow
-              controls pin here next to the filter button. */}
-          {collapsed && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingLeft: 14 }}>
-              <HeaderControls
-                filtersActive={filtersActive}
-                onClear={clearFilters}
-                onSearch={() => setSearchOpen(v => !v)}
-                onMore={() => setOverflowOpen(true)}
-              />
-            </div>
-          )}
+          {/* While scrolled, the line stays pure — just categories · status ·
+              filter. Search + overflow live in the title row above; a small flick
+              up un-collapses it to reach them (and clear now lives in the card). */}
         </div>
       </header>
 
@@ -902,7 +891,7 @@ export function LibraryScreen() {
           layout={layout} onLayout={l => setLayout(l)}
           gridCols={gridCols} onGridCols={c => setGridCols(c)}
           caption={caption} onCaption={setCaption}
-          onClearGroups={() => { setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([]); setNewMusicOnly(false) }}
+          filtersActive={filtersActive} onClearAll={clearFilters}
           onClose={() => setFilterSheetOpen(false)}
         />
       )}
@@ -989,7 +978,7 @@ function FilterSheet({
   showNewMusic, newMusicOnly, onToggleNewMusic,
   view, dir, onSelectView,
   layout, onLayout, gridCols, onGridCols, caption, onCaption,
-  onClearGroups, onClose,
+  filtersActive, onClearAll, onClose,
 }: {
   availableTags: { vibes: string[]; verdicts: string[]; genres: string[]; series: string[]; countries: string[] }
   seriesRelevant: boolean
@@ -1003,14 +992,13 @@ function FilterSheet({
   layout: 'list' | 'grid'; onLayout: (l: 'list' | 'grid') => void
   gridCols: 3 | 4; onGridCols: (c: 3 | 4) => void
   caption: CardCaption; onCaption: (c: CardCaption) => void
-  onClearGroups: () => void
+  filtersActive: boolean
+  onClearAll: () => void
   onClose: () => void
 }) {
-  const activeCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length + countryFilter.length
-    + (showNewMusic && newMusicOnly ? 1 : 0)
   const hasGroups = showNewMusic || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
     || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0
-  const sectionLabel: CSSProperties = { fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '2px 0 6px', paddingTop: 12, borderTop: '1px solid #F0F0F0' }
+  const sectionLabel: CSSProperties = { fontSize: 11, fontWeight: 600, color: '#ABA69C', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px', paddingTop: 10, borderTop: '1px solid #F0F0F0' }
   const segBtn = (on: boolean): CSSProperties => ({ padding: '4px 14px', borderRadius: 6, border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0', background: on ? '#111' : '#fff', color: on ? '#fff' : '#888', fontSize: 13, fontWeight: on ? 600 : 400, cursor: 'pointer' })
   return (
     <>
@@ -1021,19 +1009,19 @@ function FilterSheet({
         padding: '12px 20px 0', zIndex: 201, maxWidth: 480, margin: '0 auto',
         maxHeight: '85dvh', overflowY: 'auto',
       }}>
-        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 14px' }} />
+        <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 12px' }} />
 
-        {activeCount > 0 && (
+        {filtersActive && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
             <button
-              onClick={onClearGroups}
+              onClick={onClearAll}
               style={{ fontSize: 12, color: '#ABA69C', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
-            >clear filters</button>
+            >clear all filters</button>
           </div>
         )}
 
         {/* Layout — the most-toggled control, first. */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
           <span style={{ fontSize: 13, color: '#555' }}>layout</span>
           <div style={{ display: 'flex', gap: 6 }}>
             {(['list', 'grid'] as const).map(l => (
@@ -1042,7 +1030,7 @@ function FilterSheet({
           </div>
         </div>
         {layout === 'grid' && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
             <span style={{ fontSize: 13, color: '#555' }}>columns</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {([3, 4] as const).map(n => (
@@ -1052,7 +1040,7 @@ function FilterSheet({
           </div>
         )}
         {layout === 'grid' && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
             <span style={{ fontSize: 13, color: '#555' }}>captions</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {(['none', 'title', 'full'] as const).map(c => (
@@ -1072,7 +1060,7 @@ function FilterSheet({
             <button
               key={v}
               onClick={() => onSelectView(v)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '6px 0', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '5px 0', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
             >
               <span style={{ fontSize: 14, color: active ? '#111' : '#444', fontWeight: active ? 600 : 400 }}>{cfg.label}</span>
               {active && (
@@ -1084,7 +1072,7 @@ function FilterSheet({
             </button>
           )
         })}
-        <p style={{ fontSize: 11, color: '#BBB', margin: '6px 0 0' }}>tap the selected sort again to reverse</p>
+        <p style={{ fontSize: 11, color: '#BBB', margin: '4px 0 0' }}>tap the selected sort again to reverse</p>
 
         {/* Filter — the tag groups. */}
         {hasGroups && <p style={sectionLabel}>filter</p>}
@@ -1136,7 +1124,7 @@ function FilterSection({ label, options, selected, onSelect }: {
         onClick={() => setOpen(o => !o)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-          padding: '11px 0', border: 'none', background: 'none', cursor: 'pointer',
+          padding: '9px 0', border: 'none', background: 'none', cursor: 'pointer',
         }}
       >
         {/* Sentence-case ink, distinct from the uppercase muted "filter" heading
@@ -1147,7 +1135,7 @@ function FilterSection({ label, options, selected, onSelect }: {
         <span style={{ fontSize: 10, color: '#ABA69C', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
       </button>
       {open && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '2px 0 14px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '2px 0 11px' }}>
           {options.map(opt => {
             const on = selected.includes(opt)
             return (
@@ -1265,10 +1253,16 @@ function StatusDropdown({ statusFilter, reactionFilter, onStatus, onReaction }: 
             {STATUS_ITEMS.map(([s, lbl]) => (
               <MenuItem key={s} label={lbl} active={statusFilter === s && reactionFilter === 'all'} onClick={() => pick(s)} />
             ))}
-            <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
-            {REACTION_ORDER.map(r => (
-              <MenuItem key={r} label={REACTION_LABELS[r]} active={reactionFilter === r} onClick={() => pick('done', r)} />
-            ))}
+            {/* Reactions only make sense on finished items — reveal them once
+                "done" is the active status, not before. */}
+            {statusFilter === 'done' && (
+              <>
+                <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
+                {REACTION_ORDER.map(r => (
+                  <MenuItem key={r} label={REACTION_LABELS[r]} active={reactionFilter === r} onClick={() => pick('done', r)} />
+                ))}
+              </>
+            )}
           </div>
         </>
       )}
@@ -1561,19 +1555,14 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
   )
 }
 
-// Compact header control cluster — clear-filters (when active) · search · overflow.
-// Rendered in the title row, and again pinned to the category row while collapsed.
-function HeaderControls({ filtersActive, onClear, onSearch, onMore }: {
-  filtersActive: boolean
-  onClear: () => void
+// Compact header control cluster — search · overflow. Lives in the title row;
+// clear-filters moved into the view·sort·filter card (s85).
+function HeaderControls({ onSearch, onMore }: {
   onSearch: () => void
   onMore: () => void
 }) {
   return (
     <>
-      {filtersActive && (
-        <button onClick={onClear} title="Clear all filters" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: MUTE, padding: 0, lineHeight: 1 }}>×</button>
-      )}
       <button onClick={onSearch} title="Search" style={{ background: 'none', border: 'none', cursor: 'pointer', color: INK, padding: 0, display: 'flex', alignItems: 'center' }}>
         <SearchIcon />
       </button>
