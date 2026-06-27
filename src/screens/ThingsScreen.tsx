@@ -1190,45 +1190,38 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
   )
 }
 
-// Your own words on your aesthetic + body type — the one taste input you write
-// rather than the app deriving. Stored on your account and fed into the compare +
-// per-item "how this fits" reads (never the editorial board read), so a weigh-up
-// can speak to fit and silhouette, not just price and reviews. Private to you.
+// Your own words on your aesthetic + body type — a back-end input for the AI, not
+// a taste-page feature. It feeds the compare + per-item "how this fits" reads
+// (never the editorial board read), so a weigh-up can speak to fit and silhouette,
+// not just price. Deliberately quiet: a small link on the taste page; the text
+// itself lives behind a sheet so the page stays editorial. Private to you.
 function StyleProfileBlock({ value, onSave }: { value: string | null; onSave: (s: string) => void }) {
-  const [editing, setEditing] = useState(false)
+  const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(value ?? '')
-  const start = () => { setDraft(value ?? ''); setEditing(true) }
-  const save = () => { onSave(draft.trim()); setEditing(false) }
+  const openEditor = () => { setDraft(value ?? ''); setOpen(true) }
+  const save = () => { onSave(draft.trim()); setOpen(false) }
 
   return (
-    <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 30, paddingTop: 22 }}>
-      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED, marginBottom: 4 }}>
-        about you
-      </div>
-      <div style={{ fontSize: 11.5, color: MUTED, lineHeight: 1.5, marginBottom: 10 }}>
-        your own words on your aesthetic + body type — fed into <em>compare</em> and a thing’s <em>how it fits</em>, so the reads speak to silhouette and fit, not just price. only you see this.
-      </div>
+    <div style={{ marginTop: 26 }}>
+      <button onClick={openEditor} style={{ ...quietLink, fontSize: 12 }}>
+        style profile{value ? ' · on' : ''} ›
+      </button>
 
-      {editing ? (
-        <>
+      {open && (
+        <Sheet onClose={() => setOpen(false)} maxWidth={420}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>style profile</h2>
+          <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 14px', lineHeight: 1.55 }}>
+            your own words on your aesthetic + body type. you won’t see this on your taste page — it quietly feeds <em>compare</em> and a thing’s <em>how it fits</em>, so those reads speak to silhouette and fit, not just price.
+          </p>
           <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)}
             placeholder="e.g. drawn to quiet, structured tailoring in earth tones. petite with a long torso — high-waisted cuts and cropped jackets flatter; oversized swamps me."
-            rows={5}
+            rows={6}
             style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 8 }}>
-            <button onClick={() => setEditing(false)} style={quietLink}>cancel</button>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 10 }}>
+            <button onClick={() => setOpen(false)} style={quietLink}>cancel</button>
             <button onClick={save} style={primaryBtn(false)}>save</button>
           </div>
-        </>
-      ) : value ? (
-        <>
-          <p style={{ fontSize: 14, color: INK, lineHeight: 1.6, margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{value}</p>
-          <button onClick={start} style={quietLink}>edit</button>
-        </>
-      ) : (
-        <button onClick={start} style={{ ...primaryBtn(false), background: '#fff', color: INK, border: `1px solid ${LINE}` }}>
-          + add your style profile
-        </button>
+        </Sheet>
       )}
     </div>
   )

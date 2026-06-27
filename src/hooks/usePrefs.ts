@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { HOME_CITIES, type City } from '../lib/shows'
@@ -44,11 +44,16 @@ export function usePrefs() {
 
   useEffect(() => { load() }, [load])
 
+  // A per-hook-instance suffix so two mounted usePrefs() (e.g. the Things board
+  // plus an open plan/sheet that also reads prefs) don't collide on one channel
+  // topic — Supabase throws "cannot add callbacks after subscribe()" otherwise.
+  const channelTag = useRef(Math.random().toString(36).slice(2))
+
   // Keep in sync if another device changes prefs.
   useEffect(() => {
     if (!user) return
     const channel = supabase
-      .channel(`user_prefs:${user.id}`)
+      .channel(`user_prefs:${user.id}:${channelTag.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_prefs', filter: `user_id=eq.${user.id}` },
         () => { load() })
       .subscribe()

@@ -47,13 +47,19 @@ export function useItems() {
 
   useEffect(() => { fetch() }, [fetch])
 
+  // A per-hook-instance suffix so two mounted useItems() (e.g. the library page
+  // with the add sheet open over it) don't collide on one channel topic — Supabase
+  // throws "cannot add postgres_changes callbacks after subscribe()" if a second
+  // subscription reuses an already-subscribed topic. Each instance gets its own.
+  const channelTag = useRef(Math.random().toString(36).slice(2))
+
   // Re-fetch whenever another device (or tab) writes to this user's items.
   // Keyed on the stable id (see fetch above) so a focus-driven token refresh
   // doesn't needlessly tear down and re-subscribe the channel on every resume.
   useEffect(() => {
     if (!userId) return
     const channel = supabase
-      .channel(`items:${userId}`)
+      .channel(`items:${userId}:${channelTag.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: `user_id=eq.${userId}` }, () => {
         fetch({ silent: true })
       })
