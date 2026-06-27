@@ -17,14 +17,15 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 **Session 87 — the screenshot-capture feature shipped (all 5 parts), on `main` pending Farah's eyeball. 98 Vitest green + typecheck + lint clean.** Built the whole locked spec in one session: **(1)** emailed NON-inline screenshots get one Sonnet vision read (`classifyEmailImage`) that routes **product→board / media→library** + pulls fields/look-tags in the same call; the save@ link still wins *if it yields a product*, else a screenshot rescues it. **(2)** **confidence-gated review** — `review = bulk(>1) || low-confidence` (was a blanket flag on all forwards); single confident captures land live; board gets a `for review · N` chip mirroring the Library's. **(3)** **media↔thing flip** (`src/lib/flip.ts` + 7 tests) — "actually media" picker in the ProductSheet, "actually a thing" in the ItemActionSheet; flipping clears review. **(4)** **"find online ↗"** on the ProductSheet (free google-search from brand+title) for linkless screenshot saves. **(5)** failure copy nudges "screenshot it and send that." Only new cost: ~1¢ vision per emailed screenshot. Full detail → archive (s87). *(Prior: s86 capture-failure fixes + the now-built spec; s85 library header/filter overhaul.)*
 
-## ▶ Next session (88) — eyeball s87 on a real phone, then pick up the backlog
+## ▶ Next session (88) — verify what we CAN (email path is blocked)
 
-**The screenshot feature is compile-verified only — the noauth preview is empty, so the interactive bits are UNVERIFIED.** First, eyeball with real captures on the phone:
-- **Email a screenshot of a walled shop (Farfetch/miista) to save@** → does it land on the board with look-tags? Email a **poster/book-cover screenshot** → does it land in the library?
-- **The flip** — open a board product → "actually media" → pick a type → does it move to the library (and vice-versa from a media item)?
-- **Review inbox** — does a low-confidence capture show under the board's `for review · N` chip? Does "looks right" clear it? Does the ProductSheet review banner read well?
-- **"find online ↗"** — on a linkless product, does the title link to a working Google search? **Decision for Farah:** I put it on the *sheet*, not the card tiles (her spec said "cards") — see `docs/ROADMAP.md` → Screenshot-capture follow-ups. Want it on the tiles too?
-- **Reply copy** — a single confident forward should say "Saved to your library", not "for review".
+**⛔ All email-in testing is PARKED.** Postmark hit its 100/mo free cap (s87 testing) AND won't let Farah buy the 10k plan until they **approve the account** — the same pending approval that gates talkback. So the **screenshot-capture email path + the review inbox are unverifiable until approval lands** (Farah pays for 10k then). Don't propose emailing screenshots until then. Detail → `docs/REFERENCE.md` → Postmark plan.
+
+**Still testable now on existing items (in the live app, no email needed) — do this first:**
+- **The flip** — open a board product → "actually media" → pick a type → does it move to the library? And a library item → "actually a thing → move to board" → back? (Watch the metadata reshape reads clean on both sides.)
+- **"find online ↗"** — flip a media item to a thing (that makes a linkless product), open it → does the title link to a working Google search? **Decision for Farah:** I put it on the *sheet*, not the card tiles (her spec said "cards") — want it on the tiles too?
+
+**Parked until Postmark approval:** the screenshot→board/library routing, the gated-review reply copy, and the board's `for review · N` chip + ProductSheet review banner (no way to make a real low-confidence capture without email-in).
 
 Also still open from s85/s84: eyeball the **filter tray / tag counts / recency re-sort** (preview was empty then too); the Things `full`-caption trim (keep the taste/material line or strip to name+price+brand?). After that:
 

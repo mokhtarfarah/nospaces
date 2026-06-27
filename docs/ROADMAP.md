@@ -31,7 +31,8 @@ The friction that still hurts, across both media and Things, is getting things *
 
 #### Screenshot-capture — follow-ups (feature shipped s87)
 The walled-shop screenshot rescue shipped (all 5 parts — see archive s87). Open threads from it:
-- **Verify the interactive bits on a real phone (data needed).** The noauth preview is empty, so the flip type-picker, the board `for review · N` filter, the ProductSheet review banner + "find online ↗", and the gated-review reply copy are all **compile-verified but not exercised**. Eyeball with real captures.
+- **⛔ Email-path verification BLOCKED on Postmark account approval (s87).** The screenshot→board/library routing, the gated-review reply copy, and the board `for review · N` chip + ProductSheet review banner can't be exercised until inbound email works again — Postmark hit its free 100/mo cap and won't sell the 10k plan until the account is approved (same approval that gates talkback; Farah will pay for 10k then). *Trigger: Postmark approves → buy the 10k plan → run the s87 email tests.* Detail → `docs/REFERENCE.md` → Postmark plan.
+- **Testable now without email:** the **flip** (any item) and **"find online ↗"** (any linkless product) work on existing data — verify these in the live app independently of the email block.
 - **"find online ↗" — sheet vs card.** Built on the product **sheet** (one tap from the card); Farah's spec said "on board cards". If she wants it literally on the tiles, add a small ↗ to `ProductCard` (watch the nested-interactive HTML — the tile is already a button).
 - *Optional later refinement:* a tiny known-walled-shops list (Farfetch, Net-a-Porter, miista) → reply "just screenshot it" immediately instead of attempting a scrape we know 403s.
 
@@ -67,7 +68,7 @@ The walled-shop screenshot rescue shipped (all 5 parts — see archive s87). Ope
 - **Want-to priority** — pin/tier system for backlog. Adds clutter to every row; help-me-decide + search cover the acute case. *Trigger: backlog grows genuinely unwieldy.*
 - **Regions: language axis (`P364`)** — country filter shipped s63; language deliberately deferred. *Trigger: in real use you reach for "French" and a Dardenne/Québécois film isn't there. Then re-pull `P364` (free, one extra `wikidataFields` query) as a second axis; watch for the variant rollup ("Quebec French" → "French").*
 - **Offline library cache** — full offline-first requires queuing mutations (markDone, edits, deletes) — different scope from the shipped capture queue. *Trigger: offline usage becomes a real pattern.*
-- **Email talkback** — code is live; waiting on Postmark approval for sending to Gmail (submitted 2026-06-02). *Trigger: Postmark approves; set `POSTMARK_SERVER_TOKEN` in Vercel.*
+- **Email talkback** — code is live; waiting on Postmark approval for sending to Gmail (submitted 2026-06-02, chased s87). *Trigger: Postmark approves; set `POSTMARK_SERVER_TOKEN` in Vercel.* **Note (s87):** this same account-approval also blocks buying the paid 10k-email plan — so approval unblocks BOTH talkback and the inbound quota in one go. Until then, all email-in is capped/parked (see `docs/REFERENCE.md` → Postmark plan).
 - **PR workflow + branch protection** — direct pushes to `main` are fine for a solo dev / 2 users. *Trigger: a 3rd user joins (memory `pr-workflow-at-3-users` will prompt).*
 
 ---
