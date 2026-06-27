@@ -20,6 +20,10 @@ Two things, both shipped on `main`, typecheck + lint clean, **98 Vitest green**.
 - **Cost:** no new AI calls, no new endpoints — just a few hundred extra prompt tokens on the two reads that already run (negligible). Editor + storage are free.
 - **Distinction Farah flagged (don't conflate):** this *style profile* ≠ the parked "**self-defined taste**" idea (picking your own 3 keywords). Keyword-picking would seed the **board read** (`things-taste`); it's still parked.
 
+**s88 follow-up (same day, after Farah tested on phone):**
+- **Crash fix — duplicate realtime channel topics.** Build B mounts `MediaComposer` (calls `useItems`) *over* the library (also `useItems`), and the new `usePrefs()` in `IntentSheet` ran alongside the board's `usePrefs()` — two hook instances sharing one channel topic made Supabase throw *"cannot add postgres_changes callbacks after subscribe()"*, white-screening media-add AND opening a plan. Fix: `useItems` + `usePrefs` now append a per-instance random suffix to the channel topic (`items:<uid>:<tag>`, `user_prefs:<uid>:<tag>`) so concurrent mounts coexist. **Not reproducible in noauth preview** (no signed-in user → no channels); fixed by logic + typecheck, proven on phone.
+- **Style profile demoted to a quiet link.** Farah: it's a back-end AI input, not a taste-page feature — default is you don't see it. Was a prominent "ABOUT YOU" block; now a small "style profile ›" link on the taste tab that opens the editor in a `Sheet`. The profile text never shows on the page itself.
+
 ### Session 87 (2026-06-27) — screenshot-capture feature, all 5 parts (one ~1¢/screenshot cost, rest free)
 
 Built the whole locked screenshot-capture spec in one session. Typecheck + lint clean; **98 Vitest green** (91 prior + 7 new flip tests). Verified compile/render in the noauth preview (board renders clean, no crash); the **interactive flip/review/find-online UI is unverified** because the noauth preview has no seed data (same s85 limitation) — needs an eyeball on Farah's real phone.
