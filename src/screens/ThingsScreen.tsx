@@ -207,8 +207,6 @@ export function ThingsScreen() {
   // path); pasting a link is the soft, secondary path (mostly a desktop thing).
   const [moodLink, setMoodLink] = useState(false)
   const moodFileRef = useRef<HTMLInputElement>(null)
-  // "Screenshot a product" file picker (the in-app twin of the email screenshot path).
-  const productShotRef = useRef<HTMLInputElement>(null)
   const [openIntentId, setOpenIntentId] = useState<string | null>(null)
   const [openProductId, setOpenProductId] = useState<string | null>(null)
   const [openMoodId, setOpenMoodId] = useState<string | null>(null)
@@ -425,53 +423,57 @@ export function ThingsScreen() {
     }
   }
 
-  // "Screenshot a product" — the in-app twin of the email screenshot path, with no
-  // Postmark in the loop. Each screenshot is downscaled (also normalizes iPhone HEIC)
-  // and uploaded to Storage so the board card has a real image + cutout, then ONE
-  // vision read (~1¢) pulls the product's name/brand/price + look-tags off the
-  // picture. Saves live to the board (no buy-link; "find online ↗" recovers buy-back).
-  // A deliberate in-app save IS the signal, so it lands live — no review gate; a
-  // misread is one tap to fix (edit, or "actually media"). Sequential per image so a
-  // batch doesn't trip the vision rate-limit.
-  async function addProductScreenshots(files: File[]) {
-    if (!user || files.length === 0) return
-    goWishlist()
-    const single = files.length === 1
-    let saved = 0
-    for (let i = 0; i < files.length; i++) {
-      setFlash(single ? 'reading your screenshot…' : `reading ${i + 1}/${files.length}…`)
-      const shot = await downscaleImage(files[i])
-      const up = await uploadMoodImage(user.id, shot)
-      if (!up.ok) { showFlash(`couldn't upload — ${up.reason} (tap to dismiss)`, true); continue }
-      const r = await readProductFromImage(up.url)
-      if (!r.ok) { showFlash(`couldn't read that screenshot — ${r.reason} (tap to dismiss)`, true); continue }
-      // Isolate the product: a screenshot of a whole shop page carries browser bars,
-      // the site header and price text — crop to the vision-read product box and host
-      // THAT, so the card is the product alone (like a link-saved one). If there's no
-      // box (already-tight shot) or the crop fails, fall back to the full screenshot.
-      let image = up.url
-      if (r.box) {
-        const cropped = await cropBlobToBox(shot, r.box)
-        if (cropped) {
-          const cropUp = await uploadMoodImage(user.id, cropped)
-          if (cropUp.ok) image = cropUp.url
-        }
-      }
-      // No name read → keep the image as a save-able card titled "untitled" rather
-      // than dropping it; the user can name it. The look-tags still feed the thread.
-      const title = r.title ?? 'untitled'
-      const id = await addItem(title, 'thing', r.brand, null, {
-        kind: 'product', title, image, price: r.price, brand: r.brand, url: null,
-        attributes: r.attributes, shotType: r.shotType,
-      })
-      if (!id) continue
-      saved++
-      // Cut a clean packshot onto the tile (model/lifestyle shots stay full-bleed).
-      // Runs on the cropped image, which now reads as a tight product photo.
-      if (r.shotType === 'product') void polishImage(id, image, null, { silent: true })
-      if (single) showFlash(r.title ? `saved “${title}” to your board` : 'saved to your board — add a name when you like')
+  // "Screenshot a shop page" — the in-app twin of the email screenshot path, with no
+  // Postmark in the loop. Reads ONE screenshot into prefilled product fields for the
+  // composer: downscale (also normalizes iPhone HEIC) → host → ONE vision read (~1¢)
+  // for name/brand/price + look-tags + a product crop box → crop to the product so the
+  // card is the item alone (not the whole page) → host the crop. Returns fields the
+  // composer shows for a tweak before saving (with an optional plan attachment).
+  async function readScreenshotToFields(file: File): Promise<{ ok: true; fields: ProductFields } | { ok: false; reason: string }> {
+    if (!user) return { ok: false, reason: 'not signed in' }
+    const shot = await downscaleImage(file)
+    const up = await uploadMoodImage(user.id, shot)
+    if (!up.ok) return { ok: false, reason: up.reason }
+    const r = await readProductFromImage(up.url)
+    if (!r.ok) return { ok: false, reason: r.reason }
+    // Isolate the product out of a full-page screenshot (browser bars, header, price
+    // text). Fall back to the whole shot if there's no box / the crop fails.
+    let image = up.url
+    if (r.box) {
+      const cropped = await cropBlobToBox(shot, r.box)
+      if (cropped) { const c = await uploadMoodImage(user.id, cropped); if (c.ok) image = c.url }
     }
-    if (!single && saved) showFlash(`saved ${saved} of ${files.length} to your board`)
+    return { ok: true, fields: { title: r.title ?? '', image, price: r.price, brand: r.brand, siteName: null, url: null, attributes: r.attributes, shotType: r.shotType } }
+  }
+
+  // Save a product from the composer, into wherever the plan selector points: a
+  // standalone board product, an option on an existing plan, or a new plan. A
+  // deliberate in-app save lands live (no review gate — saving is the signal).
+  async function saveComposedProduct(f: ProductFields, plan: PlanChoice) {
+    if (plan.kind === 'existing') {
+      const intent = items.find(i => i.id === plan.id)
+      if (!intent) return
+      const cand: Candidate = { id: newCandidateId(), ...f }
+      await patchMetadata(plan.id, { candidates: [...intentMeta(intent).candidates, cand] })
+      goWishlist(); setOpenIntentId(plan.id)
+      return
+    }
+    if (plan.kind === 'new') {
+      const name = (plan.name || f.title || 'new plan').trim()
+      const cand: Candidate = { id: newCandidateId(), ...f }
+      const id = await addItem(name, 'thing', null, null, { kind: 'intent', candidates: [cand], leaning: null, brief: null })
+      goWishlist(); if (id) setOpenIntentId(id)
+      return
+    }
+    // Standalone product.
+    const id = await addItem(f.title || 'Untitled', 'thing', f.brand, null, { kind: 'product', ...f })
+    goWishlist()
+    if (!id) return
+    // Auto-read taste off the image if the field set didn't already carry tags (a
+    // link save); a screenshot save arrives pre-tagged so this no-ops.
+    if (f.image && !(f.attributes && f.attributes.length)) void autoTagFromImage(id, f)
+    // Cut a clean packshot onto the tile (model/lifestyle stay full-bleed).
+    if (f.shotType === 'product' && f.image) void polishImage(id, f.image, f.url, { silent: true })
   }
 
   // Add a mood image from a pasted web link — kept as-is (proxied on display), not
@@ -827,17 +829,9 @@ export function ThingsScreen() {
       {composer === 'product' && (
         <ProductComposer
           onClose={() => setComposer(null)}
-          onSave={async (f) => {
-            const id = await addItem(f.title || 'Untitled', 'thing', f.brand, null, { kind: 'product', ...f })
-            setComposer(null)
-            // Slice 4 — auto-read taste tags off the image in the background, so the
-            // board mirrors you without manual tagging. Only when there's an image
-            // and the user hasn't already tagged it. Best-effort: a failure just
-            // leaves it untagged. ~$0.01 a call (Sonnet vision).
-            if (id && f.image && !(f.attributes && f.attributes.length)) {
-              void autoTagFromImage(id, f)
-            }
-          }}
+          intents={decidingItems.map(i => ({ id: i.id, title: i.title }))}
+          onReadScreenshot={readScreenshotToFields}
+          onSave={async (f, plan) => { await saveComposedProduct(f, plan); setComposer(null) }}
         />
       )}
 
@@ -858,10 +852,6 @@ export function ThingsScreen() {
       <input ref={moodFileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
         onChange={e => { const fs = Array.from(e.target.files ?? []); e.target.value = ''; if (fs.length) void addMoodFiles(fs) }} />
 
-      {/* "Screenshot a product" — the in-app twin of the email screenshot path. One
-          hidden input the FAB action triggers; reads the product off the picture. */}
-      <input ref={productShotRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
-        onChange={e => { const fs = Array.from(e.target.files ?? []); e.target.value = ''; if (fs.length) void addProductScreenshots(fs) }} />
 
       {moodLink && (
         <MoodLinkComposer onClose={() => setMoodLink(false)} onAdd={addMoodUrl} />
@@ -1006,7 +996,6 @@ export function ThingsScreen() {
         {tab === 'wishlist' && addMenu && (
           <>
             <FabAction label="save a product" onClick={() => { setAddMenu(false); setComposer('product') }} />
-            <FabAction label="screenshot a product" onClick={() => { setAddMenu(false); productShotRef.current?.click() }} />
             <FabAction label="plan a purchase" onClick={() => { setAddMenu(false); setComposer('intent') }} />
           </>
         )}
@@ -2313,12 +2302,26 @@ function MoodSheet({ item, onClose, onRunTaste, onDelete }: {
 
 /* ---------- composers ---------- */
 
-function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f: ProductFields) => void | Promise<void> }) {
+// Where a composed product lands: a standalone board product, an option inside an
+// existing plan, or the first option of a brand-new plan.
+type PlanChoice = { kind: 'none' } | { kind: 'existing'; id: string } | { kind: 'new'; name?: string }
+
+function ProductComposer({ onClose, onSave, onReadScreenshot, intents }: {
+  onClose: () => void
+  onSave: (f: ProductFields, plan: PlanChoice) => void | Promise<void>
+  // Reads a product off a screenshot (upload + crop + vision) — provided by the
+  // parent, which holds the auth/upload it needs. Returns prefilled fields.
+  onReadScreenshot: (file: File) => Promise<{ ok: true; fields: ProductFields } | { ok: false; reason: string }>
+  intents: { id: string; title: string }[]
+}) {
   const [link, setLink] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fields, setFields] = useState<ProductFields | null>(null)
   const [manual, setManual] = useState(false)
+  const [plan, setPlan] = useState<PlanChoice>({ kind: 'none' })
+  const [newPlanName, setNewPlanName] = useState('')
+  const shotRef = useRef<HTMLInputElement>(null)
 
   async function read() {
     const url = link.trim()
@@ -2329,12 +2332,27 @@ function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f:
     if (!r.ok) { setError(r.reason); return }
     setFields(r.fields)
   }
+  async function readShot(file: File) {
+    setBusy(true); setError(null)
+    const r = await onReadScreenshot(file)
+    setBusy(false)
+    if (!r.ok) { setError(r.reason); return }
+    setFields(r.fields)
+  }
+
+  const chip = (label: string, on: boolean, fn: () => void) => (
+    <button key={label} onClick={fn} style={{
+      padding: '4px 10px', borderRadius: 999, fontSize: 12, cursor: 'pointer', flexShrink: 0,
+      border: on ? `1px solid ${INK}` : `1px solid ${LINE}`, background: on ? INK : '#fff',
+      color: on ? '#fff' : MUTED, textTransform: 'lowercase',
+    }}>{label}</button>
+  )
 
   const editing = fields || manual
   return (
     <Sheet onClose={onClose}>
       <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>save a product</h2>
-      <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>paste a link — we'll pull the image, name and price. you can tweak anything before saving.</p>
+      <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 16px' }}>paste a link — or screenshot a shop page the link can't be read from. either way you can tweak it before saving.</p>
 
       {!editing ? (
         <>
@@ -2346,19 +2364,45 @@ function ProductComposer({ onClose, onSave }: { onClose: () => void; onSave: (f:
               {busy ? 'reading…' : 'read'}
             </button>
           </div>
-          {error && (
-            <div style={{ marginTop: 8 }}>
-              <span style={{ fontSize: 12, color: '#B4413C' }}>{error}</span>
-              <button onClick={() => setManual(true)}
-                style={{ marginLeft: 8, border: 'none', background: 'none', color: INK, fontSize: 12, fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>add it manually</button>
-            </div>
-          )}
+          {/* The screenshot path — folded in here (no longer a separate FAB button) so
+              the bot-walled-shop rescue lives right beside the link it backstops. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0' }}>
+            <div style={{ flex: 1, height: 1, background: LINE }} />
+            <span style={{ fontSize: 11, color: MUTED }}>or</span>
+            <div style={{ flex: 1, height: 1, background: LINE }} />
+          </div>
+          <button onClick={() => shotRef.current?.click()} disabled={busy}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${LINE}`, background: '#fff', color: INK, fontSize: 13, fontWeight: 500, cursor: busy ? 'default' : 'pointer' }}>
+            {busy ? 'reading your screenshot…' : 'screenshot a shop page'}
+          </button>
+          <input ref={shotRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void readShot(f) }} />
+          <button onClick={() => setManual(true)}
+            style={{ display: 'block', margin: '12px auto 0', border: 'none', background: 'none', color: MUTED, fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>add it manually</button>
+          {error && <div style={{ marginTop: 10, fontSize: 12, color: '#B4413C', textAlign: 'center' }}>{error}</div>}
         </>
       ) : (
-        <FieldsForm saveLabel="save to board"
-          initial={fields ?? { title: '', image: null, price: null, brand: null, siteName: null, url: link.trim() || null }}
-          onCancel={() => { setFields(null); setManual(false); setError(null) }}
-          onSave={onSave} />
+        <>
+          {/* Plan attachment — keep it standalone, slot it into a plan you're already
+              weighing, or start a new plan with it as the first option. */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>add to a plan?</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {chip('keep standalone', plan.kind === 'none', () => setPlan({ kind: 'none' }))}
+              {intents.map(it => chip(it.title, plan.kind === 'existing' && plan.id === it.id, () => setPlan({ kind: 'existing', id: it.id })))}
+              {chip('+ new plan', plan.kind === 'new', () => setPlan({ kind: 'new' }))}
+            </div>
+            {plan.kind === 'new' && (
+              <input autoFocus value={newPlanName} onChange={e => setNewPlanName(e.target.value)}
+                placeholder="what are you deciding? e.g. black clogs"
+                style={{ ...inputStyle, marginTop: 8 }} />
+            )}
+          </div>
+          <FieldsForm saveLabel={plan.kind === 'none' ? 'save to board' : 'add to plan'}
+            initial={fields ?? { title: '', image: null, price: null, brand: null, siteName: null, url: link.trim() || null }}
+            onCancel={() => { setFields(null); setManual(false); setError(null); setPlan({ kind: 'none' }) }}
+            onSave={(f) => onSave({ ...f, shotType: fields?.shotType ?? null }, plan.kind === 'new' ? { kind: 'new', name: newPlanName.trim() || undefined } : plan)} />
+        </>
       )}
     </Sheet>
   )
