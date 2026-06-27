@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 88 (2026-06-27) — Build B (media Add → bottom-sheet card) + self-authored style profile (free + ~free)
+
+Two things, both shipped on `main`, typecheck + lint clean, **98 Vitest green**. Verified the new UI in the noauth preview (screenshots); the live AI behaviour of the profile injection is **unverified by design** (didn't burn API test calls) — Farah confirms on a real compare.
+
+**Build B — media Add is a card now, not a page.** Converted the full-page `/add` route into a bottom-sheet composer matching the Things `ProductComposer`. The identify/search logic is unchanged — pure presentation refactor.
+- New `src/components/MediaComposer.tsx` — the whole add flow (type-to-identify, photo, bulk, picker, save-as-note, other-ways-to-add) wrapped in a shared `Sheet`. When a sub-sheet (confirm/bulk/picker) opens, the composer card hides so we never stack two dimmed sheets.
+- Extracted the sheet chrome to `src/components/Sheet.tsx` (shared by media + Things; deleted ThingsScreen's private `function Sheet`).
+- `App.tsx` owns open/close state; the FAB in `BottomNav.tsx` opens the sheet (takes an `onAdd` prop) instead of routing. The legacy `/add` route still works (iOS shortcut deep-links + the import/recommend/spotify "← back to add" links) — it renders the **library behind** the sheet so there's never a blank page. Deleted the old `src/screens/AddScreen.tsx`.
+- Verified: FAB → card over library, backdrop-tap dismiss, `/add` deep-link opens over library, no console errors from new code.
+
+**Self-authored style profile (Farah's idea).** A free-text "about you" — her own words on aesthetic + body type — stored in `user_prefs.styleProfile`, fed into the **compare** (`things-compare`) and **per-item "how it fits"** (`things-taste-fit`) reads so the weigh-up can speak to fit/silhouette, not just price/reviews. Scope = option 2 (compare + per-item fit), her pick. **Deliberately kept OUT of the editorial board read** (`things-taste`) — body type is a fit constraint, not aesthetic, and Farah's own past guidance says the board read stays aesthetic.
+- Editor lives in the Things **taste tab** (`StyleProfileBlock`, an "ABOUT YOU" section under the colour story / in the empty-state), shown in both states. Edit/save/cancel; private to the user.
+- New shared `api/_profile.ts` (`sanitizeProfile` 800-char cap + `profilePromptBlock`) injected into both prompts; threaded through `readTasteFit` / `compareCandidates` (`src/lib/things.ts`) + `usePrefs` (`styleProfile` + `setStyleProfile`).
+- **Cost:** no new AI calls, no new endpoints — just a few hundred extra prompt tokens on the two reads that already run (negligible). Editor + storage are free.
+- **Distinction Farah flagged (don't conflate):** this *style profile* ≠ the parked "**self-defined taste**" idea (picking your own 3 keywords). Keyword-picking would seed the **board read** (`things-taste`); it's still parked.
+
 ### Session 87 (2026-06-27) — screenshot-capture feature, all 5 parts (one ~1¢/screenshot cost, rest free)
 
 Built the whole locked screenshot-capture spec in one session. Typecheck + lint clean; **98 Vitest green** (91 prior + 7 new flip tests). Verified compile/render in the noauth preview (board renders clean, no crash); the **interactive flip/review/find-online UI is unverified** because the noauth preview has no seed data (same s85 limitation) — needs an eyeball on Farah's real phone.

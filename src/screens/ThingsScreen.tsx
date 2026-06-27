@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { DomainLinks } from '../components/DomainSwitcher'
 import { CapturesSheet } from '../components/CapturesSheet'
+import { Sheet } from '../components/Sheet'
 import { fetchCaptures, clearCapture, isFailure, type EmailCapture } from '../lib/captures'
 import { thingImageRaw } from '../lib/thingImage'
 import { makeCutout, CUTOUT_VERSION } from '../lib/cutout'
@@ -201,7 +202,7 @@ function sortThings(things: Item[], sort: SortKey): Item[] {
 export function ThingsScreen() {
   const { items, addItem, editItem, deleteItem, patchMetadata } = useItems()
   const { user } = useAuth()
-  const { thingsTaste, setThingsTaste } = usePrefs()
+  const { thingsTaste, setThingsTaste, styleProfile, setStyleProfile } = usePrefs()
   const [composer, setComposer] = useState<null | 'product' | 'intent'>(null)
   // Mood capture: the FAB shoots straight to the file picker (the mobile-first
   // path); pasting a link is the soft, secondary path (mostly a desktop thing).
@@ -756,6 +757,8 @@ export function ThingsScreen() {
                   board={board}
                   synthesis={thingsTaste ?? null}
                   onSave={setThingsTaste}
+                  styleProfile={styleProfile ?? null}
+                  onSaveProfile={setStyleProfile}
                 />
               )}
             </>
@@ -934,7 +937,7 @@ export function ThingsScreen() {
           // failure so the sheet can show it. Only ever fired by an explicit tap.
           onRunFit={async () => {
             const p = productMeta(openProduct)
-            const r = await readTasteFit({ title: p.title, brand: p.brand, price: p.price, attributes: p.attributes ?? [] }, board)
+            const r = await readTasteFit({ title: p.title, brand: p.brand, price: p.price, attributes: p.attributes ?? [] }, board, styleProfile)
             if (!r.ok) return r.reason
             await patchMetadata(openProduct.id, { tasteFit: r.fit })
             return null
@@ -1060,11 +1063,13 @@ function ThingsNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
 //     (paid, on demand, cached; ~$0.001 a tap)
 //   - a colour story: the real recurring hues sampled from the board's images
 // Stays a gentle nudge until there's real signal, so it never guesses on a sparse board.
-function TasteTab({ items, board, synthesis, onSave }: {
+function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile }: {
   items: Item[]
   board: BoardTasteSummary
   synthesis: string | null
   onSave: (s: string) => void
+  styleProfile: string | null
+  onSaveProfile: (s: string) => void
 }) {
   const [generating, setGenerating] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -1101,11 +1106,14 @@ function TasteTab({ items, board, synthesis, onSave }: {
 
   if (items.length === 0 || !hasSignal) {
     return (
-      <div style={{ margin: '12px 0', fontSize: 13, color: MUTED, lineHeight: 1.6 }}>
-        save a few things and add some mood images — once a thread recurs across your board,
-        your <em>taste read</em> surfaces here: your keywords, a line on what you’re reflecting, and your colour story.
-        {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} so far.</span>}
-      </div>
+      <>
+        <div style={{ margin: '12px 0', fontSize: 13, color: MUTED, lineHeight: 1.6 }}>
+          save a few things and add some mood images — once a thread recurs across your board,
+          your <em>taste read</em> surfaces here: your keywords, a line on what you’re reflecting, and your colour story.
+          {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} so far.</span>}
+        </div>
+        <StyleProfileBlock value={styleProfile} onSave={onSaveProfile} />
+      </>
     )
   }
 
@@ -1175,6 +1183,52 @@ function TasteTab({ items, board, synthesis, onSave }: {
             your colour story — drawn from the board
           </div>
         </div>
+      )}
+
+      <StyleProfileBlock value={styleProfile} onSave={onSaveProfile} />
+    </div>
+  )
+}
+
+// Your own words on your aesthetic + body type — the one taste input you write
+// rather than the app deriving. Stored on your account and fed into the compare +
+// per-item "how this fits" reads (never the editorial board read), so a weigh-up
+// can speak to fit and silhouette, not just price and reviews. Private to you.
+function StyleProfileBlock({ value, onSave }: { value: string | null; onSave: (s: string) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+  const start = () => { setDraft(value ?? ''); setEditing(true) }
+  const save = () => { onSave(draft.trim()); setEditing(false) }
+
+  return (
+    <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 30, paddingTop: 22 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED, marginBottom: 4 }}>
+        about you
+      </div>
+      <div style={{ fontSize: 11.5, color: MUTED, lineHeight: 1.5, marginBottom: 10 }}>
+        your own words on your aesthetic + body type — fed into <em>compare</em> and a thing’s <em>how it fits</em>, so the reads speak to silhouette and fit, not just price. only you see this.
+      </div>
+
+      {editing ? (
+        <>
+          <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)}
+            placeholder="e.g. drawn to quiet, structured tailoring in earth tones. petite with a long torso — high-waisted cuts and cropped jackets flatter; oversized swamps me."
+            rows={5}
+            style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 8 }}>
+            <button onClick={() => setEditing(false)} style={quietLink}>cancel</button>
+            <button onClick={save} style={primaryBtn(false)}>save</button>
+          </div>
+        </>
+      ) : value ? (
+        <>
+          <p style={{ fontSize: 14, color: INK, lineHeight: 1.6, margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{value}</p>
+          <button onClick={start} style={quietLink}>edit</button>
+        </>
+      ) : (
+        <button onClick={start} style={{ ...primaryBtn(false), background: '#fff', color: INK, border: `1px solid ${LINE}` }}>
+          + add your style profile
+        </button>
       )}
     </div>
   )
@@ -1863,6 +1917,9 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
   onDelete: () => void
 }) {
   const m = intentMeta(item)
+  // Your self-described aesthetic + body type, fed into the compare so the weigh-up
+  // can speak to fit/silhouette, not just price + reviews.
+  const { styleProfile } = usePrefs()
   // One editor for the plan's name + context together (opened from near the
   // context — a fiddly inline title tap read messy).
   const [editingDetails, setEditingDetails] = useState(false)
@@ -1892,7 +1949,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
   async function runCompare() {
     if (comparing) return
     setComparing(true); setCompareErr(null)
-    const r = await compareCandidates(item.title, m.candidates, m.brief)
+    const r = await compareCandidates(item.title, m.candidates, m.brief, styleProfile)
     setComparing(false)
     if (!r.ok) { setCompareErr(r.reason); return }
     setCompare(r.result)
@@ -2662,23 +2719,6 @@ function Empty() {
       </div>
       <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>
         tap <span style={{ fontWeight: 600, color: INK }}>+</span> to save a product you love, or plan a purchase you’re weighing.
-      </div>
-    </div>
-  )
-}
-
-function Sheet({ children, onClose, maxWidth = 640 }: { children: React.ReactNode; onClose: () => void; maxWidth?: number }) {
-  return (
-    <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, background: 'rgba(28,27,25,0.4)', zIndex: 200,
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-    }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        background: '#fff', width: '100%', maxWidth, borderRadius: '20px 20px 0 0',
-        padding: '20px 18px calc(24px + env(safe-area-inset-bottom))',
-        maxHeight: '88vh', overflowY: 'auto',
-      }}>
-        {children}
       </div>
     </div>
   )

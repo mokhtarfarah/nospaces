@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useItems } from '../hooks/useItems'
-import { ConfirmSheet, type AiResult } from '../components/ConfirmSheet'
-import { BulkConfirmSheet, type BulkItem } from '../components/BulkConfirmSheet'
+import { ConfirmSheet, type AiResult } from './ConfirmSheet'
+import { BulkConfirmSheet, type BulkItem } from './BulkConfirmSheet'
+import { Sheet } from './Sheet'
 import type { ItemReaction } from '../lib/database.types'
 import { authHeaders } from '../lib/supabase'
-import { PageHeader } from '../components/PageHeader'
 
 // Editorial palette — matches taste / discover / library
 const INK = '#1C1B19'
@@ -98,7 +98,12 @@ async function identifyImage(file: File, typeHint?: string | null): Promise<AiRe
   return res.json()
 }
 
-export function AddScreen() {
+// The media "add" composer — a bottom-sheet card (matching the Things product
+// composer) so adding a film/book/album/show feels like a card over the page, not
+// a navigation away. The identify/search logic is unchanged from the old full-page
+// AddScreen; this is the same flow wrapped in a Sheet. `onDone` fires after a save
+// so the caller can route to the library.
+export function MediaComposer({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const { addItem } = useItems()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -118,7 +123,7 @@ export function AddScreen() {
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
-  // Handle results pre-filled from iOS Shortcut via URL params
+  // Handle results pre-filled from iOS Shortcut via URL params (deep-link into /add)
   useEffect(() => {
     const t = searchParams.get('title')
     if (!t) return
@@ -136,8 +141,6 @@ export function AddScreen() {
     setAiSource('photo')
     setAiResult(result)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Clipboard reading is handled by the "From Shortcut" button only — no auto-read on mount
 
   // Handle images shared via iOS share sheet (Web Share Target)
   useEffect(() => {
@@ -221,7 +224,7 @@ export function AddScreen() {
     // Revoke object URLs to free memory
     bulkItems?.forEach(i => URL.revokeObjectURL(i.preview))
     setBulkItems(null)
-    navigate('/library')
+    onDone()
   }
 
   async function handleSubmit(e: React.FormEvent | React.KeyboardEvent) {
@@ -254,7 +257,7 @@ export function AddScreen() {
         setError(navigator.onLine ? 'Could not reach AI — saved as typed.' : 'offline — saved locally, will sync when back online.')
         await addItem(title.trim())
         setTitle('')
-        navigate('/library')
+        onDone()
       }
     } finally {
       setLoading(false)
@@ -296,13 +299,12 @@ export function AddScreen() {
         setError('Could not reach AI — saved as typed.')
         await addItem(title.trim())
         setTitle('')
-        navigate('/library')
+        onDone()
       }
     } finally {
       setLoading(false)
     }
   }
-
 
   async function handleConfirm(item: AiResult, done: { reaction: ItemReaction | null; note: string } | null) {
     const metadata = item.blurb ? { ...item.metadata, capturedBlurb: item.blurb } : item.metadata
@@ -310,7 +312,7 @@ export function AddScreen() {
     navigator.clipboard?.writeText('').catch(() => {})
     setAiResult(null)
     setTitle('')
-    navigate('/library')
+    onDone()
   }
 
   async function handleSaveAsScratch() {
@@ -318,120 +320,117 @@ export function AddScreen() {
     if (!title.trim()) { inputRef.current?.focus(); return }
     await addItem(title.trim(), 'other', null, null, { scratch: true, review: true }, [])
     setTitle('')
-    navigate('/library')
+    onDone()
   }
 
+  // Secondary "other ways to add" routes still navigate — close the sheet first.
+  function go(path: string) { onClose(); navigate(path) }
+
+  // When a sub-sheet (confirm / bulk / picker) is up, hide the composer card so we
+  // don't stack two dimmed sheets — each sub-sheet brings its own chrome.
+  const subSheetOpen = !!(aiResult || bulkItems || pickerCandidates)
 
   return (
-    <div style={{ padding: '16px 16px calc(80px + env(safe-area-inset-bottom))', background: '#fff', minHeight: '100dvh' }}>
+    <>
+      {!subSheetOpen && (
+        <Sheet onClose={onClose}>
+          <p style={{ margin: 0, fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE }}>to your library</p>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: '4px 0 16px', color: INK }}>add</h2>
 
-      {/* Shared magazine header — kicker + label + rule, with close in the right slot */}
-      <PageHeader
-        kicker="to your library"
-        title="add"
-        right={
-          <button
-            onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTE, padding: 0, lineHeight: 1, fontSize: 20 }}
-            aria-label="close"
-          >
-            ×︎
-          </button>
-        }
-      />
+          <form onSubmit={handleSubmit}>
+            <textarea
+              ref={inputRef}
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) }
+              }}
+              placeholder="a film, book, album, or show — or describe it"
+              rows={2}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                padding: '12px 14px', fontSize: 15, color: INK,
+                border: `1.5px solid ${HAIR}`, borderRadius: 8,
+                resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
+              }}
+            />
 
-      <form onSubmit={handleSubmit}>
-        <textarea
-          ref={inputRef}
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) }
-          }}
-          placeholder="a film, book, album, or show — or describe it"
-          rows={2}
-          style={{
-            width: '100%', boxSizing: 'border-box',
-            padding: '12px 14px', fontSize: 15, color: INK,
-            border: `1.5px solid ${HAIR}`, borderRadius: 8,
-            resize: 'none', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
-          }}
-        />
+            <button
+              type="submit"
+              disabled={!title.trim() || loading}
+              style={{
+                width: '100%', marginTop: 10, padding: '12px',
+                background: title.trim() && !loading ? INK : HAIR,
+                color: title.trim() && !loading ? '#fff' : MUTE, border: 'none', borderRadius: 8,
+                fontSize: 14, fontWeight: 600, letterSpacing: '0.2px',
+                cursor: title.trim() && !loading ? 'pointer' : 'default',
+                transition: 'background 0.15s ease',
+              }}
+            >
+              {loading ? 'identifying…' : 'identify & save'}
+            </button>
 
-        <button
-          type="submit"
-          disabled={!title.trim() || loading}
-          style={{
-            width: '100%', marginTop: 10, padding: '12px',
-            background: title.trim() && !loading ? INK : HAIR,
-            color: title.trim() && !loading ? '#fff' : MUTE, border: 'none', borderRadius: 8,
-            fontSize: 14, fontWeight: 600, letterSpacing: '0.2px',
-            cursor: title.trim() && !loading ? 'pointer' : 'default',
-            transition: 'background 0.15s ease',
-          }}
-        >
-          {loading ? 'identifying…' : 'identify & save'}
-        </button>
+            {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
 
-        {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
+            {sonnetPrompt && !loading && (
+              <div style={{ marginTop: 14, padding: '14px 16px', background: '#FAF9F7', borderRadius: 10, textAlign: 'center' }}>
+                <p style={{ margin: '0 0 10px', fontSize: 13, color: GRAPHITE, lineHeight: 1.6 }}>
+                  nothing found in the catalog — let ai identify it instead?
+                </p>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                  <button
+                    onClick={handleFallbackIdentify}
+                    style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: INK, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    identify with ai
+                  </button>
+                  <button
+                    onClick={() => setSonnetPrompt(false)}
+                    style={{ padding: '7px 16px', borderRadius: 6, border: `1px solid ${HAIR}`, background: 'none', color: MUTE, fontSize: 13, cursor: 'pointer' }}
+                  >
+                    cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </form>
 
-        {sonnetPrompt && !loading && (
-          <div style={{ marginTop: 14, padding: '14px 16px', background: '#FAF9F7', borderRadius: 10, textAlign: 'center' }}>
-            <p style={{ margin: '0 0 10px', fontSize: 13, color: GRAPHITE, lineHeight: 1.6 }}>
-              nothing found in the catalog — let ai identify it instead?
-            </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+          {/* Utility row — photo + note */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 18 }}>
+            <button
+              type="button"
+              onClick={() => !bulkLoading && imageRef.current?.click()}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6F6B64', padding: 0 }}
+            >
+              <CameraIcon />
+              {bulkLoading ? 'identifying…' : 'add from photos'}
+            </button>
+            <span style={{ color: HAIR, fontSize: 12 }}>·</span>
+            {!loading && (
               <button
-                onClick={handleFallbackIdentify}
-                style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: INK, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                type="button"
+                onClick={handleSaveAsScratch}
+                style={{ border: 'none', background: 'none', color: '#6F6B64', fontSize: 13, cursor: 'pointer', padding: 0 }}
               >
-                identify with ai
+                save as note
               </button>
-              <button
-                onClick={() => setSonnetPrompt(false)}
-                style={{ padding: '7px 16px', borderRadius: 6, border: `1px solid ${HAIR}`, background: 'none', color: MUTE, fontSize: 13, cursor: 'pointer' }}
-              >
-                cancel
-              </button>
+            )}
+          </div>
+
+          {/* Other ways to add */}
+          <div style={{ marginTop: 28, borderTop: `1px solid ${HAIR}`, paddingTop: 18 }}>
+            <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE }}>other ways to add</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button type="button" onClick={() => go('/recommend')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>find recommendations</button>
+              <button type="button" onClick={() => go('/import')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>import from letterboxd</button>
+              <button type="button" onClick={() => go('/spotify')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>sync from spotify</button>
             </div>
           </div>
-        )}
-      </form>
+        </Sheet>
+      )}
 
-      {/* Utility row — photo + note */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 18 }}>
-        <button
-          type="button"
-          onClick={() => !bulkLoading && imageRef.current?.click()}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6F6B64', padding: 0 }}
-        >
-          <CameraIcon />
-          {bulkLoading ? 'identifying…' : 'add from photos'}
-        </button>
-        <span style={{ color: HAIR, fontSize: 12 }}>·</span>
-        {!loading && (
-          <button
-            type="button"
-            onClick={handleSaveAsScratch}
-            style={{ border: 'none', background: 'none', color: '#6F6B64', fontSize: 13, cursor: 'pointer', padding: 0 }}
-          >
-            save as note
-          </button>
-        )}
-      </div>
-
-      {/* Other ways to add */}
-      <div style={{ marginTop: 28, borderTop: `1px solid ${HAIR}`, paddingTop: 18 }}>
-        <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE }}>other ways to add</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button type="button" onClick={() => navigate('/recommend')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>find recommendations</button>
-          <button type="button" onClick={() => navigate('/import')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>import from letterboxd</button>
-          <button type="button" onClick={() => navigate('/spotify')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>sync from spotify</button>
-        </div>
-      </div>
-
-
-      {/* Image input — single pick → single confirm, multi-pick → bulk confirm */}
+      {/* Image input — single pick → single confirm, multi-pick → bulk confirm.
+          Kept outside the conditional so the click handler always has a target. */}
       <input ref={imageRef} type="file" accept="image/*" multiple
         onChange={e => {
           const files = Array.from(e.target.files ?? [])
@@ -469,15 +468,13 @@ export function AddScreen() {
           onClose={() => setPickerCandidates(null)}
         />
       )}
-    </div>
+    </>
   )
 }
-
 
 function CameraIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
 }
-
 
 function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
   query: string
@@ -541,4 +538,3 @@ function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
     </>
   )
 }
-

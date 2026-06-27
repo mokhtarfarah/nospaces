@@ -560,6 +560,7 @@ export function recurringBrands(items: Item[], min = 3): { brand: string; count:
 export async function readTasteFit(
   item: { title: string; brand: string | null; price: string | null; attributes: Attribute[] },
   board: BoardTasteSummary,
+  styleProfile?: string | null,
 ): Promise<{ ok: true; fit: string } | { ok: false; reason: string }> {
   let resp: Response
   try {
@@ -572,6 +573,7 @@ export async function readTasteFit(
         price: item.price,
         attributes: item.attributes,
         board,
+        styleProfile: styleProfile || undefined,
       }),
     })
   } catch {
@@ -623,6 +625,7 @@ export async function compareCandidates(
   intent: string,
   candidates: Candidate[],
   brief?: string | null,
+  styleProfile?: string | null,
 ): Promise<{ ok: true; result: Comparison } | { ok: false; reason: string }> {
   let resp: Response
   try {
@@ -633,6 +636,7 @@ export async function compareCandidates(
         intent,
         brief: brief || undefined,
         candidates: candidates.map(c => ({ title: c.title, brand: c.brand, price: c.price, wasPrice: c.wasPrice, url: c.url })),
+        styleProfile: styleProfile || undefined,
       }),
     })
   } catch {

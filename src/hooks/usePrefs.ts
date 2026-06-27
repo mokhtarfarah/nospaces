@@ -18,6 +18,10 @@ interface Prefs {
   tasteProfileGeneratedAt?: string
   thingsTaste?: string
   thingsTasteGeneratedAt?: string
+  // A user-authored "style profile" — their own words on their aesthetic + body
+  // type. Feeds the Things compare + per-item taste-fit reads (not the editorial
+  // board read). Self-described, never inferred.
+  styleProfile?: string
   discoveryCache?: { intaste?: DiscoveryCache; divert?: DiscoveryCache }
   customFeeds?: FeedEntry[]
   dismissedDiscoverTitles?: string[]
@@ -70,6 +74,8 @@ export function usePrefs() {
   const setThingsTaste = (synthesis: string) =>
     patch({ thingsTaste: synthesis, thingsTasteGeneratedAt: new Date().toISOString() })
 
+  const setStyleProfile = (profile: string) => patch({ styleProfile: profile.trim() || undefined })
+
   const setDiscoveryCache = (mode: 'intaste' | 'divert', results: DiscoveryResult[]) =>
     patch({ discoveryCache: { ...prefs.discoveryCache, [mode]: { results, cachedAt: new Date().toISOString() } } })
 
@@ -96,6 +102,8 @@ export function usePrefs() {
     thingsTaste: prefs.thingsTaste,
     thingsTasteGeneratedAt: prefs.thingsTasteGeneratedAt,
     setThingsTaste,
+    styleProfile: prefs.styleProfile,
+    setStyleProfile,
     discoveryCache: prefs.discoveryCache,
     setDiscoveryCache,
     customFeeds: prefs.customFeeds ?? [],

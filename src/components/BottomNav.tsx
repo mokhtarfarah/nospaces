@@ -1,4 +1,4 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { NAV_H, clearStack } from '../lib/layout'
 import { DomainLinks } from './DomainSwitcher'
 
@@ -6,11 +6,9 @@ import { DomainLinks } from './DomainSwitcher'
 // (media / things) anchored left, the sections (library / taste / discover) as
 // slash-split text links on the right, smaller + quieter so the world outranks
 // the section. Icons + the separate switcher strip are gone.
-export function BottomNav() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const showFab = location.pathname !== '/add'
-
+// The floating + opens the add sheet (s88) — adding is a card over the page now,
+// not a navigation, so the FAB calls onAdd rather than routing to /add.
+export function BottomNav({ onAdd }: { onAdd: () => void }) {
   const link = (isActive: boolean): React.CSSProperties => ({
     textDecoration: 'none', fontSize: 13,
     color: isActive ? '#1C1B19' : '#A8A39A', fontWeight: isActive ? 600 : 400,
@@ -19,11 +17,10 @@ export function BottomNav() {
 
   return (
     <>
-      {/* Floating add button — hidden on the add screen itself */}
-      {showFab && (
-        <button
-          onClick={() => navigate('/add')}
-          aria-label="add"
+      {/* Floating add button — opens the add sheet over the current page */}
+      <button
+        onClick={onAdd}
+        aria-label="add"
           style={{
             position: 'fixed', bottom: clearStack(18), right: 20,
             width: 50, height: 50, borderRadius: '50%',
@@ -37,7 +34,6 @@ export function BottomNav() {
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
-      )}
 
       <nav style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,

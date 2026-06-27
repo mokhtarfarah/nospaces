@@ -1,11 +1,12 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { useOfflineSync } from './hooks/useOfflineSync'
 import { LoginScreen } from './components/LoginScreen'
 import { BottomNav } from './components/BottomNav'
+import { MediaComposer } from './components/MediaComposer'
 import { clearStack } from './lib/layout'
 import { LibraryScreen } from './screens/LibraryScreen'
-import { AddScreen } from './screens/AddScreen'
 import { ImportScreen } from './screens/ImportScreen'
 import { SpotifyScreen } from './screens/SpotifyScreen'
 import { TasteScreen } from './screens/TasteScreen'
@@ -19,7 +20,18 @@ import { GuideScreen } from './screens/GuideScreen'
 export default function App() {
   const { user, loading } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const { pendingCount, syncStatus } = useOfflineSync()
+
+  // "add" is now a bottom-sheet card, not a page. The FAB opens it over whatever
+  // screen you're on; the legacy /add route (iOS shortcut deep-links, the "back to
+  // add" links in import/recommend/spotify) opens it over the library so there's a
+  // real page behind the sheet instead of a blank screen.
+  const [fabAdd, setFabAdd] = useState(false)
+  const isAddRoute = location.pathname === '/add'
+  const addOpen = fabAdd || isAddRoute
+  const closeAdd = () => { setFabAdd(false); if (isAddRoute) navigate('/library', { replace: true }) }
+  const doneAdd = () => { setFabAdd(false); navigate('/library', { replace: isAddRoute }) }
 
   if (loading) {
     return (
@@ -40,7 +52,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/library" replace />} />
           <Route path="/library" element={<LibraryScreen />} />
-          <Route path="/add" element={<AddScreen />} />
+          {/* /add keeps the library behind the add sheet (see addOpen below). */}
+          <Route path="/add" element={<LibraryScreen />} />
           <Route path="/import" element={<ImportScreen />} />
           <Route path="/spotify" element={<SpotifyScreen />} />
           <Route path="/taste" element={<TasteScreen />} />
@@ -55,7 +68,8 @@ export default function App() {
       {/* Things is its own domain — the board carries its own capture buttons + its
           own bottom bar, so the media nav + FAB step aside there. Both bars embed
           the media/things switcher on their left now (no separate strip). */}
-      {location.pathname !== '/things' && <BottomNav />}
+      {location.pathname !== '/things' && <BottomNav onAdd={() => setFabAdd(true)} />}
+      {addOpen && <MediaComposer onClose={closeAdd} onDone={doneAdd} />}
       {(pendingCount > 0 || syncStatus !== 'idle') && (
         <div style={{
           position: 'fixed',

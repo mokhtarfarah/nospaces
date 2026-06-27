@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
 import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
 import { scrapeProduct } from './_scrape.js'
+import { sanitizeProfile, profilePromptBlock } from './_profile.js'
 
 // Opt-in "compare these" for a plan-a-purchase: weighs the candidates a person is
 // deliberating between and returns a short, honest take. Reads each option's own
@@ -24,11 +25,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return res.status(401).end()
   if (!await checkRateLimit(userId, 'things-compare', 30)) return res.status(429).json({ error: 'That’s a lot of comparing — try again next hour.' })
 
-  const { intent, brief, candidates } = req.body as { intent?: string; brief?: string; candidates?: InCandidate[] }
+  const { intent, brief, candidates, styleProfile } = req.body as { intent?: string; brief?: string; candidates?: InCandidate[]; styleProfile?: string }
   if (!intent || !Array.isArray(candidates) || candidates.length < 2) {
     return res.status(400).json({ error: 'Need a goal and at least two options.' })
   }
   const context = typeof brief === 'string' ? brief.trim().slice(0, 600) : ''
+  const profile = sanitizeProfile(styleProfile)
   // Cap to keep the payload (and cost) tiny.
   const list = candidates.slice(0, 8)
 
@@ -54,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }).join('\n')
 
   const prompt = `Someone is choosing between options they're weighing for: "${intent}".
-${context ? `\nWhat matters to them: ${context}\n` : ''}
+${context ? `\nWhat matters to them: ${context}\n` : ''}${profilePromptBlock(profile)}
 Options${anyDetail ? ' (with details and any rating pulled from each product page)' : ''}:
 ${lines}
 

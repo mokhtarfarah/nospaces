@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
 import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
+import { sanitizeProfile, profilePromptBlock } from './_profile.js'
 
 // The per-item "how this fits your taste" read: one honest line on how a single
 // saved thing rhymes with (or departs from) the rest of the board. The item-level
@@ -26,9 +27,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return res.status(401).end()
   if (!await checkRateLimit(userId, 'things-taste-fit', 40)) return res.status(429).json({ error: 'That’s a lot of reads — try again next hour.' })
 
-  const { title, brand, price, attributes, board } = req.body as {
-    title?: string; brand?: string | null; price?: string | null; attributes?: InAttr[]; board?: InBoard
+  const { title, brand, price, attributes, board, styleProfile } = req.body as {
+    title?: string; brand?: string | null; price?: string | null; attributes?: InAttr[]; board?: InBoard; styleProfile?: string
   }
+  const profile = sanitizeProfile(styleProfile)
   const attrs = (Array.isArray(attributes) ? attributes : [])
     .filter(a => a && typeof a.value === 'string' && a.value.trim())
     .map(a => ({ facet: String(a.facet ?? ''), value: String(a.value).trim() }))
@@ -60,7 +62,7 @@ ${boardLines || '(nothing strongly recurring yet)'}
 They just saved:
 - ${title ? title : 'an item'}${brand ? ` — ${brand}` : ''}${price ? ` (${price})` : ''}
 - reads as: ${itemLine}
-
+${profilePromptBlock(profile)}
 Write ONE short line (second person, ~12–18 words, no trailing period) on how this sits with the board — AESTHETICALLY. Read the *feeling*: palette, mood, silhouette, how relaxed or dressy, soft or sharp, quiet or bold.
 
 Rules that matter here:
