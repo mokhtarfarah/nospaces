@@ -34,6 +34,9 @@ interface Props {
   // Triage an item out of the "for review" inbox. No reaction = keep as want_to;
   // a reaction logs it as done. Either way the review flag is cleared.
   onKeep?: (reaction?: ItemReaction) => void
+  // Misroute fix: this isn't media, it's a thing — move it to the board. The mirror
+  // of the board's "actually media" flip.
+  onFlipToThing?: () => void
   // Open straight into the edit view (e.g. deep-linked from the data-gaps list).
   initialEdit?: boolean
   // Tidy-queue walk-through: when present, the edit view shows "save & next" /
@@ -102,7 +105,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext, seriesOptions }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, onFlipToThing, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext, seriesOptions }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -807,6 +810,16 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     style={{ background: 'none', border: 'none', fontSize: 11, color: '#ABA69C', cursor: 'pointer', padding: '0 0 2px', width: '100%', textAlign: 'center' }}
                   >
                     move back to want to
+                  </button>
+                )}
+                {/* Misroute fix: this is really a product, not media — move it to the
+                    board. The mirror of the board's "actually media" flip. */}
+                {onFlipToThing && (
+                  <button
+                    onClick={onFlipToThing}
+                    style={{ background: 'none', border: 'none', fontSize: 11, color: '#ABA69C', cursor: 'pointer', padding: '6px 0 2px', width: '100%', textAlign: 'center' }}
+                  >
+                    actually a thing → move to board
                   </button>
                 )}
               </div>

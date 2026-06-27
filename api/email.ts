@@ -5,7 +5,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { genreBlock } from './_genres.js'
 import { isSafePublicUrl } from './_ssrf.js'
 import { scrapeProduct, type ScrapedFields } from './_scrape.js'
-import { readImageAttributes } from './_vision.js'
+import { readImageAttributes, FACET_VOCAB, FACETS, type Attribute, type ShotType } from './_vision.js'
 
 // Strip any non-ASCII chars that may have crept in via copy-paste
 const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
@@ -138,7 +138,16 @@ function isCaptureAll(addr: string): boolean {
 // Anthropic only accepts these image media types.
 const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
-type Attachment = { ContentType?: string; Content?: string; Name?: string }
+type Attachment = { ContentType?: string; Content?: string; Name?: string; ContentID?: string }
+
+// An inline image (ContentID set, referenced by `cid:` in the HTML) is shop-email
+// decoration — product thumbnails, swatches, tracking pixels, a sender's logo. It's
+// never "your photo", so we skip it: reading it would burn a vision call on clutter
+// and could misfire a swatch into the library. A real attachment a human chose to
+// attach (a screenshot, a poster photo) has no ContentID, so it survives this filter.
+function isInlineImage(att: Attachment): boolean {
+  return !!(att.ContentID && att.ContentID.trim())
+}
 
 // Figure out the real image type from the MIME type (params stripped) or the filename.
 function imageType(att: Attachment): string {
@@ -273,6 +282,96 @@ async function captureThing(userId: string, urls: string[], strict: boolean): Pr
   })
   if (error) return { kind: 'error', message: error.message }
   return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length }
+}
+
+type Confidence = 'high' | 'medium' | 'low'
+const asConfidence = (v: unknown): Confidence => (v === 'high' || v === 'low' ? v : 'medium')
+
+// What ONE Sonnet vision read of an emailed image returns: either a product (for the
+// board) or a piece of media (for the library), with the fields each side needs —
+// product look-tags ride the SAME call (no second vision spend). `null` title = the
+// image had nothing identifiable.
+type ClassifiedImage =
+  | { kind: 'product'; title: string; brand: string | null; price: string | null; attributes: Attribute[]; shotType: ShotType | null; confidence: Confidence }
+  | { kind: 'media'; title: string; creator: string | null; type: string; year: number | null; blurb: string | null; tags: string[]; confidence: Confidence }
+  | null
+
+// Clean a raw vision attribute list down to one well-formed tag per known facet.
+function cleanVisionAttributes(raw: unknown): Attribute[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  return raw
+    .map(a => a as { facet?: string; value?: string })
+    .filter(a => a && FACETS.includes(a.facet as (typeof FACETS)[number]) && typeof a.value === 'string' && a.value.trim())
+    .map(a => ({ facet: a.facet as string, value: a.value!.trim().toLowerCase().slice(0, 24) }))
+    .filter(a => !seen.has(a.facet) && seen.add(a.facet))
+}
+
+// The screenshot-capture brain. A deliberately-attached image (a walled-shop
+// screenshot, a poster photo) gets ONE vision read that decides product vs media
+// and extracts the fields for whichever it is — so a shop a scraper can't reach
+// still lands by photographing it. Never throws: a failure returns null and the
+// caller carries on. ~1¢ per image (Sonnet vision).
+const FACET_HINT = FACETS.map(f => `${f} (e.g. ${FACET_VOCAB[f].slice(0, 4).join(', ')})`).join('; ')
+async function classifyEmailImage(prepped: { mediaType: string; data: string }): Promise<ClassifiedImage> {
+  try {
+    const r = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 400,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: prepped.mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: prepped.data } },
+          { type: 'text', text: `This image was emailed to be saved. Decide what it is, then extract its fields.
+
+If it shows something to BUY — clothing, an accessory, a bag, shoes, an object, or a screenshot of a shop / product page — it's a PRODUCT.
+If it shows a film, book, music album, or TV show (a poster, cover, still, or shop/streaming page for one) — it's MEDIA.
+
+Return JSON only.
+- PRODUCT: {"kind":"product","title":"the product name, no marketing fluff","brand":"the label/maker or null","price":"display price with currency symbol e.g. £240, or null","confidence":"high|medium|low","attributes":[{"facet":"material|palette|vibe|category","value":"one or two words, lowercase"}]}. For attributes, read the LOOK only (never the brand/logo) on these facets — ${FACET_HINT}. Only tag a facet you can genuinely see; fewer honest tags beat padding.
+- MEDIA: {"kind":"media","title":"exact canonical title","creator":"director/author/artist/showrunner or null","type":"film|book|music|tv|other","year":1234,"confidence":"high|medium|low","blurb":"any visible caption/note/review text about it, verbatim or close, else null"}
+- NOTHING identifiable: {"kind":"none","title":null}
+
+Set confidence to how sure you are of the identification. If the image is blurry, ambiguous, or you're guessing, say "low".` },
+        ],
+      }],
+    })
+    const txt = r.content[0].type === 'text' ? r.content[0].text : ''
+    const p = JSON.parse(txt.replace(/```json\n?|\n?```/g, '').trim())
+    if (!p?.title || p.kind === 'none') return null
+    if (p.kind === 'product') {
+      return { kind: 'product', title: String(p.title), brand: p.brand ?? null, price: p.price ?? null,
+        attributes: cleanVisionAttributes(p.attributes), shotType: null, confidence: asConfidence(p.confidence) }
+    }
+    return { kind: 'media', title: String(p.title), creator: p.creator ?? null, type: p.type ?? 'other',
+      year: typeof p.year === 'number' ? p.year : null, blurb: p.blurb?.trim() ? String(p.blurb).trim() : null,
+      tags: Array.isArray(p.tags) ? p.tags : [], confidence: asConfidence(p.confidence) }
+  } catch (err) {
+    console.error('[email] image classify failed:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
+// Save a board thing read from a SCREENSHOT (no scrape, no link, no clean product
+// image — the look-tags came from the screenshot itself). Linkless by design: the
+// board card's "find online ↗" recovers the buy path. A low-confidence read lands
+// flagged for review; a confident one lands live (saving is the signal).
+async function saveScreenshotProduct(
+  userId: string, p: Extract<ClassifiedImage, { kind: 'product' }>,
+): Promise<{ kind: 'saved'; title: string; price: string | null; tagCount: number } | { kind: 'error'; message: string }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('items').insert({
+    user_id: userId, title: p.title, creator: p.brand, type: 'thing', status: 'want_to', source: 'email',
+    metadata: {
+      kind: 'product', title: p.title, image: null, price: p.price, brand: p.brand, url: null,
+      attributes: p.attributes, shotType: p.shotType,
+      // Deliberate single capture lands live; only the machine's own uncertainty
+      // (a low-confidence read) gets parked for review.
+      ...(p.confidence === 'low' ? { review: true } : {}),
+    },
+  })
+  if (error) return { kind: 'error', message: error.message }
+  return { kind: 'saved', title: p.title, price: p.price, tagCount: p.attributes.length }
 }
 
 // Pull a usable product image URL out of a shop email's HTML — og:image first
@@ -545,15 +644,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t add that',
       r.kind === 'no-link'
         ? `I didn't find a product link in that email. Forward one with the shop link in it and I'll add it to your board.`
-        : `I found a link but couldn't read the product from it. Some shops block this — paste the link in the app and add it by hand, or try a different link.`)
+        : `I found a link but the shop blocks me from reading it. Easiest fix: open the page, screenshot it, and email the screenshot here — I'll read the product right off the picture.`)
     return res.status(200).json({ saved: 0, error: r.kind })
   }
 
-  // For the universal "save@" address, a LINK is the capture — decide that up front.
-  // Shop emails (and iOS Mail's rich-link expansion) arrive stuffed with decorative
-  // product thumbnails, swatches and tracking pixels; those aren't "your photos", so
-  // a link wins over them. When save@ has a link we ignore attachments entirely (no
-  // wasted vision calls on a clear.png) and treat it as a link capture below.
+  // For the universal "save@" address, a LINK is the capture — try it first. Shop
+  // emails (and iOS Mail's rich-link expansion) arrive stuffed with decorative
+  // product thumbnails, swatches and tracking pixels, but those are INLINE images
+  // (filtered out below by ContentID), so the link still wins over them. The link
+  // wins outright ONLY if it yields a product; if the shop 403s the scraper, we fall
+  // through and a deliberately-attached screenshot gets its turn (the rescue path).
   const universal = isCaptureAll(replyFrom)
   const links = extractEmailUrls(linkText, HtmlBody ?? '')
   const linkCapture = universal && links.length > 0
@@ -577,38 +677,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // not a clear product (or unreadable) → fall through to the media reader
   }
 
-  // Identify media from any image attachments. Each image is normalized first (HEIC→JPEG,
-  // media-type cleanup) so iPhone photos work. Errors are logged, never silently dropped.
-  // A save@ link capture skips this — its attachments are shop decoration, not media.
+  // Read any deliberately-attached images. NON-INLINE only (inline = shop decoration,
+  // see isInlineImage): a photo or screenshot a human chose to attach. Each gets ONE
+  // vision read (classifyEmailImage) that decides product-vs-media and pulls fields —
+  // so a screenshot of a bot-walled shop lands on the board, and a poster photo lands
+  // in the library, from the same gesture. This runs even when a link is present (the
+  // link's first crack already happened above) so a screenshot survives a 403'd link.
+  // Each image is normalized first (HEIC→JPEG) so iPhone photos work.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const imageResults: any[] = []
-  const imageAttachments: Attachment[] = linkCapture ? [] : (Attachments ?? []).filter((a: Attachment) =>
-    imageType(a).startsWith('image/')
+  // Products read off screenshots, saved to the board as we go (reported in the reply).
+  const screenshotThings: { title: string; price: string | null; tagCount: number }[] = []
+  const imageAttachments: Attachment[] = (Attachments ?? []).filter((a: Attachment) =>
+    imageType(a).startsWith('image/') && !isInlineImage(a)
   )
-  console.log('[email] image attachments:', imageAttachments.length,
+  console.log('[email] non-inline image attachments:', imageAttachments.length,
     JSON.stringify(imageAttachments.map(a => ({ type: a.ContentType, name: a.Name }))))
 
   for (const att of imageAttachments) {
     try {
       const prepped = await prepImage(att)
       if (!prepped) { console.log('[email] image skipped (unusable):', att.ContentType, att.Name); continue }
-      const imgRes = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: prepped.mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: prepped.data } },
-            { type: 'text', text: 'Identify the film, book, music album, or TV show shown in this image (e.g. a screenshot, poster, or cover). Use your own knowledge to give the exact canonical title, creator (director/author/artist/showrunner), and release year. If the image contains visible descriptive text about the item — a caption, a list annotation, back-cover copy, a review excerpt, a friend\'s note — capture it verbatim or closely paraphrased in "blurb"; otherwise null. Do not invent a description. Return JSON only: {"title":"...","creator":"...","type":"film|book|music|tv|other","year":1234,"confidence":"high|medium|low","blurb":null,"metadata":{},"tags":[]}. If no media is identifiable, return {"title":null}.' },
-          ],
-        }],
-      })
-      const txt = imgRes.content[0].type === 'text' ? imgRes.content[0].text : ''
-      const result = JSON.parse(txt.replace(/```json\n?|\n?```/g, '').trim())
-      if (result?.title) imageResults.push(result)
-      else console.log('[email] image had no identifiable media')
+      const c = await classifyEmailImage(prepped)
+      if (!c) { console.log('[email] image had nothing identifiable'); continue }
+      if (c.kind === 'product') {
+        const s = await saveScreenshotProduct(matchedUser.id, c)
+        if (s.kind === 'saved') {
+          screenshotThings.push({ title: s.title, price: s.price, tagCount: s.tagCount })
+          console.log('[email] screenshot → board:', s.title, '· conf:', c.confidence)
+        } else console.error('[email] screenshot product save failed:', s.message)
+      } else {
+        // Media from a screenshot — single deliberate capture, so it lands live unless
+        // the read itself was shaky (low confidence → review). `blurb` shows on the card.
+        imageResults.push({ title: c.title, creator: c.creator, type: c.type, year: c.year,
+          blurb: c.blurb, tags: c.tags, confidence: c.confidence })
+        console.log('[email] screenshot → library:', c.title, '· conf:', c.confidence)
+      }
     } catch (err) {
-      console.error('[email] image identify failed:', err instanceof Error ? err.message : err)
+      // A single bad image (e.g. HEIC decode failure) must never sink the whole
+      // email — log it and move on so the rest of the capture still runs.
+      console.error('[email] image processing failed:', err instanceof Error ? err.message : err)
     }
   }
 
@@ -648,6 +756,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[email] items found:', allItems.length, JSON.stringify(allItems.map((i: {title: string}) => i.title)))
 
   if (allItems.length === 0) {
+    // A screenshot already landed on the board — report that and stop (the photo WAS
+    // the capture, so don't fall through to "nothing saved").
+    if (screenshotThings.length > 0) {
+      const list = screenshotThings.map(s => `• ${s.title}${s.price ? ` — ${s.price}` : ''}`).join('\n')
+      await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
+        `${screenshotThings.length > 1 ? 'Read those off your screenshots' : 'Read that off your screenshot'} and added to your board:\n\n${list}\n\n${tagNote(screenshotThings.reduce((n, s) => n + s.tagCount, 0))}`)
+      return res.status(200).json({ saved: screenshotThings.length, domain: 'thing' })
+    }
+    // Only count NON-product photos toward "couldn't read a photo" — a screenshot we
+    // routed to the board isn't a failed read.
     const hadPhotos = imageAttachments.length > 0
     // No media found — but if there's a clear *shop* link, this was probably a
     // product, not a newsletter. Save it to the board so the regular inbox "just
@@ -686,9 +804,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'nothing_found',
       detail: hadPhotos ? 'no media read from photo(s)' : 'no media found in text', snippet })
+    // A save@ email that carried a link we couldn't turn into anything was most
+    // likely a bot-walled shop — point at the screenshot rescue, the one fix that
+    // always works (we read the product right off the picture).
+    const hadFailedLink = universal && links.length > 0
     await sendReply(fromEmail, replyFrom, 'Nospaces: nothing saved',
       hadPhotos
         ? `I got your email but couldn't read any film/book/music/TV from the photo${imageAttachments.length > 1 ? 's' : ''} attached. Clear screenshots, posters, or covers work best — try sending it again.`
+        : hadFailedLink
+        ? `That link points somewhere I can't read — a lot of shops block me. Easiest fix: open the page, screenshot it, and email the screenshot here. I'll read the product straight off the picture.`
         : `I went through "${subject}" but didn't spot any films, books, music, or TV to save. If something's there, forward it again with the title in the note.`)
     return res.status(200).json({ saved: 0 })
   }
@@ -710,6 +834,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   console.log('[email] itemsToSave:', itemsToSave.length, JSON.stringify(itemsToSave))
 
+  // Review is for the MACHINE's uncertainty, not yours. A bulk extraction (a
+  // newsletter listing several items) or a shaky single read (low confidence) lands
+  // in the "for review" inbox to triage. A single confident capture — one forwarded
+  // article, one screenshot we read cleanly — lands live, because saving is the
+  // signal and a deliberate save shouldn't be taxed with a gate.
+  const bulk = itemsToSave.length > 1
   // Save items. The model's per-item `summary` (e.g. the newsletter's blurb on that album)
   // is stored as a recommendation-style blurb attributed to the newsletter, so the action
   // card shows it under a "via [newsletter]" toggle — same as recommendation-list items.
@@ -720,6 +850,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     year?: number
     summary?: string
     blurb?: string
+    confidence?: string
     metadata?: Record<string, unknown>
     tags?: string[]
   }) => ({
@@ -734,9 +865,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     recommended_by: parsed.newsletter_name ?? null,
     metadata: {
       ...(item.metadata ?? {}),
-      // Forwarded items land in the "for review" inbox to triage in-app, rather
-      // than dropping silently into the library.
-      review: true,
+      // Flag for review only on the machine's own uncertainty — bulk batches, or a
+      // low-confidence read. Confident single captures skip the inbox and land live.
+      review: bulk || item.confidence === 'low',
       ...(item.summary?.trim() ? { recommendationBlurb: item.summary.trim() } : {}),
       // Visible blurb text read off an emailed screenshot/photo — stored like the
       // in-app photo path so the action card shows it (beats the Wikipedia fallback).
@@ -769,12 +900,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const skipped = rows.length - dedupedRows.length
   console.log('[email] dedup: saving', dedupedRows.length, 'skipped (already in library):', skipped)
 
+  // A note appended to the reply when screenshots ALSO landed products on the board
+  // in the same email (so a mixed forward reports both halves).
+  const boardNote = screenshotThings.length > 0
+    ? `\n\nAlso added to your board:\n${screenshotThings.map(s => `• ${s.title}${s.price ? ` — ${s.price}` : ''}`).join('\n')}`
+    : ''
+
   if (dedupedRows.length === 0) {
     await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'duplicates',
       detail: `${rows.length} item${rows.length > 1 ? 's' : ''} already in library`, snippet })
     await sendReply(fromEmail, replyFrom, 'Nospaces: nothing new to save',
-      `I found ${rows.length} item${rows.length > 1 ? 's' : ''} in "${subject}", but ${rows.length > 1 ? "they're" : "it's"} already in your library — nothing new to add.`)
-    return res.status(200).json({ saved: 0, skipped })
+      `I found ${rows.length} item${rows.length > 1 ? 's' : ''} in "${subject}", but ${rows.length > 1 ? "they're" : "it's"} already in your library — nothing new to add.${boardNote}`)
+    return res.status(200).json({ saved: screenshotThings.length, skipped })
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -788,11 +925,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
       `I found ${rows.length} item${rows.length > 1 ? 's' : ''} but hit an error saving them — nothing was added. (Tech note: ${insertError.message})`)
   } else {
+    // Copy follows where things actually landed: confident captures go live to the
+    // library; only the ones flagged for review mention the inbox.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const reviewN = dedupedRows.filter(r => (r.metadata as any).review).length
     const list = dedupedRows.map(r => `• ${r.title}${r.year ? ` (${r.year})` : ''}`).join('\n')
     const skippedNote = skipped > 0 ? `\n\n(${skipped} already in your library, skipped.)` : ''
-    await sendReply(fromEmail, replyFrom, `Nospaces: saved ${dedupedRows.length} for review`,
-      `Added to your review inbox:\n\n${list}${skippedNote}`)
+    const where = reviewN === dedupedRows.length ? 'Added to your review inbox'
+      : reviewN === 0 ? 'Saved to your library'
+      : `Saved to your library (${reviewN} flagged for review)`
+    await sendReply(fromEmail, replyFrom, `Nospaces: saved ${dedupedRows.length}`,
+      `${where}:\n\n${list}${skippedNote}${boardNote}`)
   }
 
-  return res.status(200).json({ saved: insertError ? 0 : dedupedRows.length, skipped, error: insertError?.message })
+  return res.status(200).json({ saved: insertError ? 0 : dedupedRows.length + screenshotThings.length, skipped, error: insertError?.message })
 }

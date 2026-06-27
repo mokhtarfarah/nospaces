@@ -17,6 +17,7 @@ import { VIBES, VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
 import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 import { inReview, reviewCount } from '../lib/review'
+import { flipMediaToThing } from '../lib/flip'
 import { clearStack, clearNav } from '../lib/layout'
 import { pullRegions, itemsNeedingRegion } from '../lib/regions'
 import { authHeaders } from '../lib/supabase'
@@ -927,6 +928,11 @@ export function LibraryScreen() {
               if (reaction) markDone(fresh.id, reaction, fresh.note ?? '', fresh.moods ?? [])
               patchMetadata(fresh.id, { review: false })
               goToReview(reviewIndex + 1)
+            }}
+            onFlipToThing={async () => {
+              // Misroute fix: move this media item to the Things board as a product.
+              await editItem(fresh.id, flipMediaToThing(fresh))
+              inReview(fresh) ? goToReview(reviewIndex + 1) : setActionItem(null)
             }}
             onClose={() => { setActionItem(null); setActionEdit(false); setTidyQueue(null); setReviewQueue(null) }}
           />

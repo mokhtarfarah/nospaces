@@ -4,6 +4,24 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 87 (2026-06-27) — screenshot-capture feature, all 5 parts (one ~1¢/screenshot cost, rest free)
+
+Built the whole locked screenshot-capture spec in one session. Typecheck + lint clean; **98 Vitest green** (91 prior + 7 new flip tests). Verified compile/render in the noauth preview (board renders clean, no crash); the **interactive flip/review/find-online UI is unverified** because the noauth preview has no seed data (same s85 limitation) — needs an eyeball on Farah's real phone.
+
+**1 — screenshot → live capture (`api/email.ts`).** A NON-inline image attachment (`isInlineImage` = has a `ContentID`; inline = shop decoration/swatches/pixels, skipped) now gets ONE Sonnet vision read (`classifyEmailImage`) that decides **product vs media** and pulls the right fields in one call — product: name/brand/price + look-tags (`material/palette/vibe/category`) read off the screenshot itself; media: title/creator/type/year + blurb. Products route to the board (`saveScreenshotProduct` — linkless/imageless by design, `find online` recovers buy-back); media joins the library path. **Softened "link wins → discard attachments"** to "link wins *only if it yields a product*": the save@ link still gets first crack, but a 403'd link now falls through and a deliberately-attached screenshot gets read (the rescue).
+
+**2 — confidence-gated review, both domains.** Was: every forwarded media item got `metadata.review=true` (blanket). Now: **`review = bulk(>1 items) || confidence==='low'`** — a single confident capture (one forwarded article, one cleanly-read screenshot) lands **live**; only bulk newsletters + shaky reads get flagged. Screenshot products gate the same way (low-conf → review). Reply copy now adapts ("Saved to your library" vs "Added to your review inbox" vs mixed). **Board review filter** mirrors the Library's: a `for review · N` chip on the Things control bar; in-review things stay OUT of the clean sections until triaged; the chip reveals them as a flat grid. (`src/lib/review.ts` reused as-is.)
+
+**3 — media↔thing flip (CRITICAL safety net).** New `src/lib/flip.ts` (`flipThingToMedia(item, type)` / `flipMediaToThing(item)`) + 7 tests: reshapes the row across domains, brand↔creator, drops the other domain's shell, **clears `review` (flipping IS the triage)**. Things side: a "**actually media**" action in the ProductSheet admin row → a 4-type picker (film/book/music/tv) → moves to library + flash. Media side: "**actually a thing → move to board**" in the ItemActionSheet footer. Plus a for-review **banner** in the ProductSheet ("does this look right? [looks right] [it's actually media →]").
+
+**4 — "find online ↗".** A screenshot/flipped product has no stored URL, so its ProductSheet title now links to a free `google.com/search?q=brand+title` (no scrape, no API). **Decision to confirm:** Farah's spec said "on board *cards*" — I put it on the product **sheet** (one tap from the card) because nesting a link inside the card's open-button is bad HTML/clutters the wall. Easy to also add to the tiles if she wants it literally there.
+
+**5 — failure copy nudges the rescue.** The things@ "couldn't read the link" reply and the save@ "link points somewhere I can't read" reply both now say *"open the page, screenshot it, and email the screenshot here."*
+
+**Only new cost:** ~1¢ Sonnet vision per emailed screenshot (one classify call, fallback-only feeling — most captures are still free link scrapes). All UI work free. **Next:** eyeball the interactive bits on a real phone with data (see HANDOFF).
+
+---
+
 ### Session 85 (2026-06-26) — library header + filter card overhaul, recency fix, one-line bottom nav (all frontend, free)
 
 Another long iterative phone-screenshot session, all pure frontend (no API, no cost). Nine commits to `main`; typecheck + 93 Vitest green on every push. Theme: **make the library's controls read like one calm, legible system** — and de-soup the filtering.

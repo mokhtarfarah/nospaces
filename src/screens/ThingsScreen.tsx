@@ -16,6 +16,8 @@ import {
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord, type BoardTasteSummary,
 } from '../lib/things'
 import { uploadMoodImage, moodSrc } from '../lib/mood'
+import { inReview } from '../lib/review'
+import { flipThingToMedia, MEDIA_TYPES, type MediaType } from '../lib/flip'
 import { NAV_H, clearStack } from '../lib/layout'
 import { sampleBoardColors } from '../lib/palette'
 import { usePrefs } from '../hooks/usePrefs'
@@ -196,6 +198,10 @@ export function ThingsScreen() {
   // the rest of your taste, not just a label. Any facet/value; coexists with `cat`.
   const [tagFilter, setTagFilter] = useState<{ facet: Facet; value: string } | null>(null)
   const [statusF, setStatusF] = useState<StatusFilter>('all')
+  // The board's "for review" inbox (mirrors the Library's). Low-confidence
+  // screenshot captures land flagged; this chip is the ignorable filter that reveals
+  // them — never a gate. Off by default so the clean board stays clean.
+  const [reviewOnly, setReviewOnly] = useState(false)
   const [filterSheet, setFilterSheet] = useState(false)
   const [polishing, setPolishing] = useState(false)
   const [taggingMoods, setTaggingMoods] = useState(false)
@@ -248,19 +254,25 @@ export function ThingsScreen() {
   // Two-section board: active plans up top (deciding), the wishlist below (saved),
   // owned things hidden by default. Category filters the saved/got grids; the
   // deciding strip always shows (a plan usually isn't categorised yet).
-  const decidingItems = useMemo(() => sorted.filter(t => kindOf(t) === 'intent'), [sorted])
+  // In-review things stay OUT of the clean sections until triaged (mirrors the
+  // Library) — the "for review" chip below is the only place they surface.
+  const decidingItems = useMemo(() => sorted.filter(t => kindOf(t) === 'intent' && !inReview(t)), [sorted])
   const savedItems = useMemo(() => {
-    let r = sorted.filter(t => kindOf(t) === 'product' && t.status !== 'done')
+    let r = sorted.filter(t => kindOf(t) === 'product' && t.status !== 'done' && !inReview(t))
     if (cat) r = r.filter(t => categoriesOf(t).includes(cat))
     if (tagFilter) r = r.filter(t => itemAttributes(t).some(a => a.facet === tagFilter.facet && normValue(a.value) === normValue(tagFilter.value)))
     return r
   }, [sorted, cat, tagFilter])
   const gotItems = useMemo(() => {
-    let r = sorted.filter(t => kindOf(t) === 'product' && t.status === 'done')
+    let r = sorted.filter(t => kindOf(t) === 'product' && t.status === 'done' && !inReview(t))
     if (cat) r = r.filter(t => categoriesOf(t).includes(cat))
     if (tagFilter) r = r.filter(t => itemAttributes(t).some(a => a.facet === tagFilter.facet && normValue(a.value) === normValue(tagFilter.value)))
     return r
   }, [sorted, cat, tagFilter])
+  // Everything awaiting review — products from low-confidence screenshot reads. The
+  // chip badge counts these; the review view shows them as a flat grid.
+  const reviewThings = useMemo(() => sorted.filter(t => kindOf(t) === 'product' && inReview(t)), [sorted])
+  const reviewN = reviewThings.length
   // How many board things carry a given tag — powers the "N others" count on the
   // card's tappable tags (and gates a tag from being tappable when it's a one-off).
   const countWithTag = (facet: Facet, value: string) =>
@@ -577,7 +589,7 @@ export function ThingsScreen() {
         {/* Sticky control bar — one quiet row. Status filters scroll on the left;
             category + sort tuck behind the filter icon so they don't compete with
             the masthead. Full-bleed bg so content scrolls cleanly under it. */}
-        {tab === 'wishlist' && statusRow && (
+        {tab === 'wishlist' && (statusRow || reviewN > 0) && (
           <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: `1px solid ${LINE}`, padding: '6px 16px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingBottom: 8 }}>
               <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', flex: 1, minWidth: 0 }}>
@@ -585,11 +597,17 @@ export function ThingsScreen() {
                     the view sheet. Only show chips once there's a category to filter. */}
                 {categories.length > 0 && (
                   <>
-                    <TabChip label="all" active={cat === null} onClick={() => setCat(null)} />
+                    <TabChip label="all" active={cat === null && !reviewOnly} onClick={() => { setCat(null); setReviewOnly(false) }} />
                     {categories.map(c => (
-                      <TabChip key={c} label={c} active={cat === c} onClick={() => setCat(cat === c ? null : c)} />
+                      <TabChip key={c} label={c} active={cat === c && !reviewOnly} onClick={() => { setReviewOnly(false); setCat(cat === c ? null : c) }} />
                     ))}
                   </>
+                )}
+                {/* For-review inbox — the ignorable filter that reveals low-confidence
+                    screenshot captures. Mirrors the Library's "for review · N" chip. */}
+                {reviewN > 0 && (
+                  <TabChip label={`for review · ${reviewN}`} active={reviewOnly}
+                    onClick={() => { setReviewOnly(v => !v); setCat(null); setTagFilter(null) }} />
                 )}
               </div>
               <button onClick={() => setFilterSheet(true)} aria-label="filter and sort"
@@ -652,6 +670,17 @@ export function ThingsScreen() {
           )}
           {things.length === 0 ? (
             <Empty />
+          ) : reviewOnly ? (
+            // For-review view — a flat grid of the screenshot captures the read wasn't
+            // sure about. Open one to confirm or fix it (or flip it to media).
+            reviewThings.length > 0 ? (
+              <section>
+                <SectionLabel>for review · {reviewThings.length}</SectionLabel>
+                {productGridOrList(reviewThings)}
+              </section>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '32px 20px', color: MUTED, fontSize: 13 }}>nothing to review.</div>
+            )
           ) : !anyShown ? (
             <div style={{ textAlign: 'center', padding: '32px 20px', color: MUTED, fontSize: 13 }}>
               {cat ? <>nothing tagged “{cat}” yet.</>
@@ -817,6 +846,15 @@ export function ThingsScreen() {
           countWithTag={countWithTag}
           onFilterTag={(facet, value) => { setTagFilter({ facet, value }); setOpenProductId(null) }}
           onDelete={async () => { await deleteItem(openProduct.id); setOpenProductId(null) }}
+          // Misroute fix: move this thing into the media library as the chosen type.
+          // Closes the sheet (it's no longer a thing) and flashes where it went.
+          onFlipToMedia={async (t) => {
+            await editItem(openProduct.id, flipThingToMedia(openProduct, t))
+            setOpenProductId(null)
+            showFlash(`moved to your library (${t})`)
+          }}
+          // "This read is right" — clear the review flag so it leaves the inbox.
+          onClearReview={async () => { await patchMetadata(openProduct.id, { review: false }); setOpenProductId(null) }}
         />
       )}
 
@@ -1050,6 +1088,14 @@ function TasteTab({ items, board, synthesis, onSave }: {
 // Tapping the card opens an internal detail sheet (like the media Library) — the
 // external buy link lives behind an explicit button inside, so a stray tap never
 // bounces you off the site.
+// A plain Google search link from what we know (brand + title) — the buy-back path
+// for a screenshot-captured thing that has no stored URL. No scraping, no API, no
+// cost: just a search URL the user taps to find the item online.
+function findOnlineUrl(brand: string | null, title: string): string {
+  const q = [brand, title].filter(Boolean).join(' ').trim()
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`
+}
+
 function ProductCard({ item, caption, onOpen }: { item: Item; caption: CardCaption; onOpen: () => void }) {
   const p = productMeta(item)
   const got = item.status === 'done'
@@ -1332,7 +1378,7 @@ function TasteFitBlock({ fit, hidden, onRun, onToggleHide }: { fit: string | nul
   )
 }
 
-function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onSaveNote, board, onRunFit, onToggleHideFit, countWithTag, onFilterTag, onDelete }: {
+function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onSaveNote, board, onRunFit, onToggleHideFit, countWithTag, onFilterTag, onDelete, onFlipToMedia, onClearReview }: {
   item: Item
   onClose: () => void
   onSave: (f: ProductFields) => void | Promise<void>
@@ -1349,12 +1395,18 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   countWithTag: (facet: Facet, value: string) => number
   onFilterTag: (facet: Facet, value: string) => void
   onDelete: () => void
+  // Flip this thing into the media library as the chosen type (the misroute fix).
+  onFlipToMedia: (t: MediaType) => void | Promise<void>
+  // Clear the review flag — "this read is right", leave the for-review inbox.
+  onClearReview: () => void | Promise<void>
 }) {
   const p = productMeta(item)
   const got = item.status === 'done'
+  const needsReview = inReview(item)
   const [editing, setEditing] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [showPlan, setShowPlan] = useState(false)
+  const [flipping, setFlipping] = useState(false)
   // Hero photo — same treatment as the grid: a product cutout floats on the gray
   // tile; a model/lifestyle photo (or one the user flipped to full-photo) fills it.
   const showCutout = !p.cutoutHidden && !!p.cutout
@@ -1424,7 +1476,14 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
             <span aria-hidden style={{ fontSize: 13, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
           </a>
         ) : (
-          <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: INK, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
+          // No stored URL (a screenshot capture, or a flipped item) — the title still
+          // links OUT, but to a Google search built from brand + title, so there's a
+          // one-tap path back to buy. Free: just a search link, no scrape, no API.
+          <a href={findOnlineUrl(p.brand, p.title)} target="_blank" rel="noreferrer" title="find online"
+            style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, textDecoration: 'none', color: INK }}>
+            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
+            <span aria-hidden style={{ fontSize: 13, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
+          </a>
         )}
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6, display: 'flex', gap: 8, alignItems: 'baseline' }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
@@ -1458,6 +1517,19 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         )}
       </div>
 
+      {/* For-review nudge — only when the read wasn't sure. An ignorable prompt, not
+          a gate: confirm it's right (clears the flag) or flip it to media if we
+          misread it. Either way it leaves the inbox. */}
+      {needsReview && (
+        <div style={{ marginTop: 16, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
+          <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>Read off your screenshot — does this look right?</div>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <button onClick={onClearReview} style={{ ...quietLink, color: INK, fontWeight: 600 }}>looks right</button>
+            <button onClick={() => setFlipping(true)} style={quietLink}>it&rsquo;s actually media →</button>
+          </div>
+        </div>
+      )}
+
       {/* No loud CTA in the body — this is a taste mirror, not a checkout. The two
           things you'd actually do are already quiet: go to the shop (the title link)
           and jot a note (below). Buying-state + admin all live in the hairline row at
@@ -1488,12 +1560,22 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
 
       {/* One quiet utility row — every administrative action shares the same text-link
           style, so the sheet reads as one set, not a scatter of button treatments. */}
-      <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         {confirmDel ? (
           <>
             <span style={{ fontSize: 12.5, color: MUTED, marginRight: 'auto' }}>remove from the board?</span>
             <button onClick={() => setConfirmDel(false)} style={quietLink}>cancel</button>
             <button onClick={onDelete} style={{ ...quietLink, color: '#B4413C', fontWeight: 600 }}>remove</button>
+          </>
+        ) : flipping ? (
+          // The misroute fix: this isn't a thing, it's media — pick which kind and it
+          // moves to the library (type set, product shell dropped, review cleared).
+          <>
+            <span style={{ fontSize: 12.5, color: MUTED, marginRight: 'auto' }}>move to library as…</span>
+            {MEDIA_TYPES.map(t => (
+              <button key={t} onClick={() => { setFlipping(false); onFlipToMedia(t) }} style={{ ...quietLink, color: INK, fontWeight: 600 }}>{t}</button>
+            ))}
+            <button onClick={() => setFlipping(false)} style={quietLink}>cancel</button>
           </>
         ) : (
           <>
@@ -1503,6 +1585,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
               {got ? 'undo got it' : 'mark as got it'}
             </button>
             <button onClick={() => setEditing(true)} style={quietLink}>edit</button>
+            {/* Flip to media — the safety net for a screenshot we read as a product but
+                that's really a film/book/album/show. Hidden behind the review banner
+                when flagged; available here always. */}
+            {!needsReview && <button onClick={() => setFlipping(true)} style={quietLink}>actually media</button>}
             {plan && !got && (
               <button onClick={async () => { await onReopenPlan(); onClose() }} style={quietLink}>↩ put back in plan</button>
             )}
