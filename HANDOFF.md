@@ -19,7 +19,11 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ---
 
-## ▶ Next session (86) — open: pick from the roadmap
+**Session 86 — capture-failure fixes + the screenshot-capture design (mostly free).** Shipped: **one shared "didn't land" inbox** (both Library + board now show every failed forward, same count — killed the fragile per-domain `isThingsCapture` split); **email-body product rescue** (when a shop link 403s — Farfetch/Net-a-Porter/miista — read the product from the forwarded email's own body + tag from an in-email image, so a bot-walled shop still lands; ~1–2¢, fallback only); **stale-chunk self-heal** (`main.tsx` auto-reloads once on `vite:preloadError` after a deploy; the cutout's raw "Failed to fetch …js" is now "the app just updated — try again"). Then a long design thread landed the **screenshot-capture spec** — see `docs/ROADMAP.md` → "Screenshot-capture for the walled shops — DECIDED, ready to build". Confirmed Farfetch = 403 even with a real-browser UA.
+
+## ▶ Next session (87) — build the screenshot-capture feature (spec is locked)
+
+**The whole design is decided and written up in `docs/ROADMAP.md` → "Screenshot-capture for the walled shops — DECIDED, ready to build (s86)".** Five parts, one feature: (1) screenshot→live capture via email with product-vs-media routing; (2) a confidence-gated **review flag across BOTH domains** (deliberate single captures land live; only bulk/low-confidence get flagged; ignorable filter, never a gate); (3) the **media↔thing flip** — critical, ship with it; (4) a free **"find online ↗"** link on board cards; (5) failure copy that nudges "screenshot it and send that". Only new cost: ~1¢ vision per emailed screenshot. **Start fresh — this is a meaty build and shouldn't ride a long design chat.** Other open items below if priorities shift:
 
 **First: eyeball s85 on a real phone (preview was empty, so the new filter logic is unverified):** the **active-filters tray** + tag **counts/ranking/`show all`** + the `N match` count; the **recency re-sort** (an item you added long ago but recently marked done should rise to the top under this month's header); and the **merged bottom bar** not crowding the FAB on a populated screen. Also still open from s84: the Things `full`-caption trim (keep the taste/material line or strip to name+price+brand?). After that:
 

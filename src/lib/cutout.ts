@@ -125,6 +125,13 @@ export async function makeCutout(opts: {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
     return { ok: true, url: `${data.publicUrl}?v=${Date.now()}`, version: CUTOUT_VERSION }
   } catch (err) {
-    return { ok: false, reason: err instanceof Error ? err.message : 'cutout-failed' }
+    const msg = err instanceof Error ? err.message : 'cutout-failed'
+    // The engine is lazy-loaded; right after a deploy its chunk can 404 (old page,
+    // renamed file). main.tsx auto-reloads on that — so surface a calm, human reason
+    // here instead of leaking a raw "Failed to fetch dynamically imported module …js".
+    if (/dynamically imported module|importing a module script failed|failed to fetch/i.test(msg)) {
+      return { ok: false, reason: 'the app just updated — try again' }
+    }
+    return { ok: false, reason: msg }
   }
 }

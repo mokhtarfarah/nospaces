@@ -19,6 +19,20 @@ if (dsn) {
   })
 }
 
+// Self-heal after a deploy. Code-split chunks are hashed (index-AbC123.js), so a
+// new deploy renames them — a phone holding the old page open then reaches for a
+// chunk that no longer exists and a lazy import() fails ("Failed to fetch
+// dynamically imported module"). Vite fires `vite:preloadError` for exactly this;
+// reload once to pick up the new build. The sessionStorage guard stops a reload
+// loop if the failure is something else (a genuinely missing/broken chunk).
+window.addEventListener('vite:preloadError', () => {
+  if (sessionStorage.getItem('reloaded-for-chunk') === '1') return
+  sessionStorage.setItem('reloaded-for-chunk', '1')
+  window.location.reload()
+})
+// Clear the guard once the app boots cleanly, so a *future* stale-deploy can heal too.
+window.addEventListener('load', () => sessionStorage.removeItem('reloaded-for-chunk'))
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>

@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { DomainLinks } from '../components/DomainSwitcher'
 import { CapturesSheet } from '../components/CapturesSheet'
-import { fetchCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
+import { fetchCaptures, clearCapture, isFailure, type EmailCapture } from '../lib/captures'
 import { thingImageRaw } from '../lib/thingImage'
 import { makeCutout, CUTOUT_VERSION } from '../lib/cutout'
 import { NoteProse } from '../components/NoteProse'
@@ -199,12 +199,13 @@ export function ThingsScreen() {
   const [filterSheet, setFilterSheet] = useState(false)
   const [polishing, setPolishing] = useState(false)
   const [taggingMoods, setTaggingMoods] = useState(false)
-  // Forwarded product links that didn't land (logged server-side by /api/email).
-  // Surfaced here so a failed email capture isn't invisible from the board — the
-  // same "review failed forwards" feed the Library has, scoped to things.
+  // Forwarded captures that didn't land (logged server-side by /api/email).
+  // One shared inbox: the board shows EVERY failed forward, same as the Library —
+  // a bounced link has no reliable domain, so there's one tray reached from either
+  // side rather than a per-domain split that guesses (and guesses wrong).
   const [captures, setCaptures] = useState<EmailCapture[]>([])
   const [capturesOpen, setCapturesOpen] = useState(false)
-  useEffect(() => { fetchCaptures().then(cs => setCaptures(cs.filter(isThingsCapture))) }, [])
+  useEffect(() => { fetchCaptures().then(setCaptures) }, [])
   // Desktop nicety: paste a copied image anywhere on the mood tab to add it.
   useEffect(() => {
     if (!onMoodboard) return

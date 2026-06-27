@@ -9,7 +9,7 @@ import { ItemActionSheet } from '../components/ItemActionSheet'
 import { DuplicatesSheet } from '../components/DuplicatesSheet'
 import { GapsSheet } from '../components/GapsSheet'
 import { CapturesSheet } from '../components/CapturesSheet'
-import { fetchCaptures, clearCaptures, clearCapture, isFailure, isThingsCapture, type EmailCapture } from '../lib/captures'
+import { fetchCaptures, clearCaptures, clearCapture, isFailure, type EmailCapture } from '../lib/captures'
 import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
 import { useArtwork } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
@@ -256,9 +256,11 @@ export function LibraryScreen() {
   // when there's something to show.
   const [captures, setCaptures] = useState<EmailCapture[]>([])
   const [capturesOpen, setCapturesOpen] = useState(false)
-  // Mirror of ThingsScreen's filter: the media capture list shows media forwards
-  // only — product/Things forwards belong to the board's own capture feed.
-  useEffect(() => { fetchCaptures().then(cs => setCaptures(cs.filter(c => !isThingsCapture(c)))) }, [])
+  // One shared "didn't land" inbox: both Library and the board show every failed
+  // forward (not a per-domain slice). A bounced link often has no knowable domain
+  // — when a shop 403s us we can't tell a handbag from a documentary — so there's
+  // one tray, reached from either side, rather than a guess-which-tab split.
+  useEffect(() => { fetchCaptures().then(setCaptures) }, [])
   const captureFailures = useMemo(() => captures.filter(isFailure).length, [captures])
   // Header collapse-on-scroll: the title row + view control fold away once the
   // user scrolls into the collection, leaving the category + status tab rows

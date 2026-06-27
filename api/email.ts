@@ -275,6 +275,76 @@ async function captureThing(userId: string, urls: string[], strict: boolean): Pr
   return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length }
 }
 
+// Pull a usable product image URL out of a shop email's HTML — og:image first
+// (the canonical product shot), then twitter:image. These are hosted CDN URLs
+// (cdn.shop.com/…), which usually serve fine even when the product *page* itself
+// 403s our scraper. Returns null if none / unsafe.
+function productImageFromHtml(html: string): string | null {
+  const get = (re: RegExp) => re.exec(html)?.[1]?.replace(/&amp;/g, '&').trim() ?? null
+  const url =
+    get(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ??
+    get(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ??
+    get(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i)
+  return url && isSafePublicUrl(url) ? url : null
+}
+
+// Last-resort rescue when a shop LINK can't be scraped (Farfetch, Net-a-Porter and
+// other luxury sites 403 any non-human visitor, so scrapeProduct returns nothing).
+// The product details are sitting right there in the forwarded email body — read
+// them with one cheap Sonnet call instead of re-fetching the walled page, and tag
+// the look from an image in the email if there is one. Saves the thing to the board
+// so a bot-walled shop still "just works". Returns null if it isn't a real product.
+async function rescueProductFromEmail(
+  userId: string, body: string, htmlBody: string, url: string | null,
+): Promise<ThingCapture | null> {
+  // Dedup up front so a re-forward of the same walled link doesn't double up.
+  if (url) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (supabase as any)
+      .from('items').select('metadata').eq('user_id', userId).eq('type', 'thing')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (((existing ?? []) as any[]).some(t => (t.metadata?.url ?? '') === url)) {
+      return { kind: 'duplicate', title: 'That item' }
+    }
+  }
+  // (A) Read the product out of the email's own text — authoritative, no re-fetch.
+  let fields: { title: string | null; brand: string | null; price: string | null }
+  try {
+    const r = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 256,
+      messages: [{ role: 'user', content:
+        `This is a shopping email whose product page we couldn't load. Read the single product it's about from the text below.\n\n${body.slice(0, 6000)}\n\nReturn JSON only: {"title": "the product name, no marketing or site fluff", "brand": "the label/maker or null", "price": "display price with its currency symbol, e.g. £632, or null"}. If this is NOT one purchasable product (e.g. a newsletter, an order receipt, an article), return {"title": null}.` }],
+    })
+    const txt = r.content[0].type === 'text' ? r.content[0].text : ''
+    fields = JSON.parse(txt.replace(/```json\n?|\n?```/g, '').trim())
+  } catch (err) {
+    console.error('[email] product rescue read failed:', err instanceof Error ? err.message : err)
+    return null
+  }
+  if (!fields?.title) return null
+
+  // (B) Tag the look from a product image in the email (CDN URL usually serves even
+  // when the page 403s). Best-effort — a vision miss never blocks the save.
+  const image = productImageFromHtml(htmlBody)
+  let attributes: { facet: string; value: string }[] = []
+  let shotType: string | null = null
+  if (image) {
+    const v = await readImageAttributes(image, url ?? undefined)
+    if (v.ok) { attributes = v.attributes; shotType = v.shotType }
+    else console.warn('[email] rescue vision read failed (saving untagged):', v.reason)
+  }
+
+  const title = fields.title
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('items').insert({
+    user_id: userId, title, creator: fields.brand, type: 'thing', status: 'want_to', source: 'email',
+    metadata: { kind: 'product', title, image, price: fields.price, brand: fields.brand, url, attributes, shotType },
+  })
+  if (error) return { kind: 'error', message: error.message }
+  return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length }
+}
+
 // Fetch a URL and return a compact summary of its OpenGraph / title metadata,
 // or null if unreachable or metadata-free. Used to make bare-URL emails work.
 async function fetchPageMeta(url: string): Promise<string | null> {
@@ -586,7 +656,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // save@ is high-intent (you deliberately sent it here), so its fallback is
       // lenient — any readable link lands. The regular media inbox stays strict so
       // a forwarded newsletter's links don't turn into board cards.
-      const t = await captureThing(matchedUser.id, extractEmailUrls(linkText, HtmlBody ?? ''), !universal)
+      const fallbackLinks = extractEmailUrls(linkText, HtmlBody ?? '')
+      const t = await captureThing(matchedUser.id, fallbackLinks, !universal)
       if (t.kind === 'saved') {
         await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
           `That looked like a product, so I added it to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}`)
@@ -595,6 +666,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (t.kind === 'duplicate') {
         await sendReply(fromEmail, replyFrom, 'Nospaces: already on your board', `"${t.title}" is already on your board — nothing new to add.`)
         return res.status(200).json({ saved: 0 })
+      }
+      // Scrape struck out, but a save@ link is a deliberate "save this" — the shop
+      // probably just 403'd us (Farfetch, Net-a-Porter…). Read the product from the
+      // email body itself + tag from an in-email image, so a bot-walled shop lands.
+      if (universal && fallbackLinks.length > 0) {
+        const r = await rescueProductFromEmail(matchedUser.id, body, HtmlBody ?? '', fallbackLinks[0])
+        if (r?.kind === 'saved') {
+          await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
+            `That shop blocks link-reading, so I pulled it from your email instead:\n\n• ${r.title}${r.price ? ` — ${r.price}` : ''}\n\n${tagNote(r.tagCount)}`)
+          return res.status(200).json({ saved: 1, domain: 'thing' })
+        }
+        if (r?.kind === 'duplicate') {
+          await sendReply(fromEmail, replyFrom, 'Nospaces: already on your board', `That item is already on your board — nothing new to add.`)
+          return res.status(200).json({ saved: 0 })
+        }
+        // r null (not a product) / error → fall through to the nothing_found log.
       }
     }
     await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'nothing_found',
