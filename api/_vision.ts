@@ -129,6 +129,22 @@ function cleanAttributes(raw: unknown[]): Attribute[] {
 export type Confidence = 'high' | 'medium' | 'low'
 const asConfidence = (v: unknown): Confidence => (v === 'high' || v === 'low' ? v : 'medium')
 
+// A normalized crop rectangle (fractions of the image, 0–1). Used to isolate the
+// product out of a full-page screenshot before we host + cut it out.
+export type Box = { x: number; y: number; w: number; h: number }
+// Validate + sanitize the model's box: 4 finite numbers, a real (non-tiny) area
+// inside the frame. A near-full box (it returned the whole page) is treated as "no
+// crop" since cropping to it does nothing useful. Returns null on anything off.
+function cleanBox(raw: unknown): Box | null {
+  const b = raw as Partial<Box> | null
+  if (!b || ![b.x, b.y, b.w, b.h].every(n => typeof n === 'number' && isFinite(n))) return null
+  const x = Math.min(Math.max(b.x!, 0), 1), y = Math.min(Math.max(b.y!, 0), 1)
+  const w = Math.min(Math.max(b.w!, 0), 1 - x), h = Math.min(Math.max(b.h!, 0), 1 - y)
+  if (w < 0.08 || h < 0.08) return null            // too small to be the product
+  if (w > 0.94 && h > 0.94) return null            // basically the whole frame → no crop
+  return { x, y, w, h }
+}
+
 // Read a PRODUCT off a screenshot — its identity (name/brand/price) AND its look
 // (the same taste tags + shot type readImageAttributes reads), in one vision call.
 // Unlike readImageAttributes (which deliberately ignores text/identity), this DOES
@@ -146,14 +162,16 @@ const PRODUCT_PROMPT = (() => {
 ${vocab}
 Only tag a facet you can genuinely see; skip the rest. Fewer honest tags beat padding.
 
-Also classify how the product is SHOWN as "shotType" (this gates a clean cutout, so be strict):
+3) CROP BOX — this is a screenshot of a whole page (browser bars, site header, price text, other clutter), but we only want THE PRODUCT IN ITS PHOTO. Return "box": the bounding box of just the product's image, as normalized coordinates {"x":0-1,"y":0-1,"w":0-1,"h":0-1} where x,y is the top-left corner and w,h are width/height as fractions of the full image. Tight to the product photo, excluding the browser chrome, site header, navigation, price/description text, and any "you may also like" thumbnails. If the screenshot is ALREADY just the product (no page around it), return null.
+
+Also classify how the product is SHOWN as "shotType" — judging the PRODUCT'S PHOTO inside the box, not the page around it (this gates a clean cutout, so be strict):
 - "onModel": ANY person visible (worn, held, even a hand or legs). If you see a person at all, it's "onModel".
 - "lifestyle": no person, but staged in a scene / among objects / on a real surface.
 - "product": ONLY the item, alone on a plain studio background (a clean packshot).
 When in doubt, do NOT say "product".
 
 Return JSON only:
-{ "title": "product name or null", "brand": "label or null", "price": "display price or null", "confidence": "high|medium|low", "shotType": "product|onModel|lifestyle", "attributes": [ { "facet": "material|palette|vibe|category", "value": "<one or two words>" } ] }
+{ "title": "product name or null", "brand": "label or null", "price": "display price or null", "confidence": "high|medium|low", "shotType": "product|onModel|lifestyle", "box": {"x":0,"y":0,"w":1,"h":1} or null, "attributes": [ { "facet": "material|palette|vibe|category", "value": "<one or two words>" } ] }
 
 Set confidence to how sure you are of the IDENTITY (the name). If the screenshot is blurry, cropped, or you're guessing the product, say "low".`
 })()
@@ -162,7 +180,7 @@ export async function readProductFromImage(
   imageUrl: string,
   referer?: string,
 ): Promise<
-  | { ok: true; title: string | null; brand: string | null; price: string | null; attributes: Attribute[]; shotType: ShotType | null; confidence: Confidence }
+  | { ok: true; title: string | null; brand: string | null; price: string | null; attributes: Attribute[]; shotType: ShotType | null; confidence: Confidence; box: Box | null }
   | { ok: false; reason: string }
 > {
   const img = await fetchImageBase64(imageUrl, referer)
@@ -184,7 +202,7 @@ export async function readProductFromImage(
     const attributes = cleanAttributes(Array.isArray(parsed.attributes) ? parsed.attributes : [])
     const shotType = SHOT_TYPES.includes(parsed.shotType) ? (parsed.shotType as ShotType) : null
     const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
-    return { ok: true, title: str(parsed.title), brand: str(parsed.brand), price: str(parsed.price), attributes, shotType, confidence: asConfidence(parsed.confidence) }
+    return { ok: true, title: str(parsed.title), brand: str(parsed.brand), price: str(parsed.price), attributes, shotType, confidence: asConfidence(parsed.confidence), box: cleanBox(parsed.box) }
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : 'vision-error' }
   }

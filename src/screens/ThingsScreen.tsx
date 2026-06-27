@@ -120,6 +120,33 @@ async function downscaleImage(file: File): Promise<Blob> {
   }
 }
 
+// Crop a screenshot down to just the product, using the vision-read box (normalized
+// 0–1). This is what strips the browser bars / shop header / price text out of a
+// full-page screenshot so the saved card is the product alone — like a link-saved
+// one. A little padding guards against a slightly-tight box clipping the item.
+// Returns null (keep the whole image) if the box is unusable or the crop fails.
+async function cropBlobToBox(blob: Blob, box: { x: number; y: number; w: number; h: number }): Promise<Blob | null> {
+  try {
+    const bitmap = await createImageBitmap(blob)
+    const PAD = 0.04
+    const x0 = Math.max(0, box.x - PAD), y0 = Math.max(0, box.y - PAD)
+    const x1 = Math.min(1, box.x + box.w + PAD), y1 = Math.min(1, box.y + box.h + PAD)
+    const sx = Math.round(x0 * bitmap.width), sy = Math.round(y0 * bitmap.height)
+    const sw = Math.round((x1 - x0) * bitmap.width), sh = Math.round((y1 - y0) * bitmap.height)
+    if (sw < 8 || sh < 8) { bitmap.close?.(); return null }
+    const canvas = document.createElement('canvas')
+    canvas.width = sw
+    canvas.height = sh
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('no 2d context')
+    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh)
+    bitmap.close?.()
+    return await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.9))
+  } catch {
+    return null
+  }
+}
+
 // The "show" filter exposes the board's zones: everything (deciding + saved),
 // just plans, just the wishlist, or owned things. The board renders deciding and
 // saved as separate sections; this just picks which are visible (see ThingsScreen).
@@ -413,22 +440,35 @@ export function ThingsScreen() {
     let saved = 0
     for (let i = 0; i < files.length; i++) {
       setFlash(single ? 'reading your screenshot…' : `reading ${i + 1}/${files.length}…`)
-      const blob = await downscaleImage(files[i])
-      const up = await uploadMoodImage(user.id, blob)
+      const shot = await downscaleImage(files[i])
+      const up = await uploadMoodImage(user.id, shot)
       if (!up.ok) { showFlash(`couldn't upload — ${up.reason} (tap to dismiss)`, true); continue }
       const r = await readProductFromImage(up.url)
       if (!r.ok) { showFlash(`couldn't read that screenshot — ${r.reason} (tap to dismiss)`, true); continue }
+      // Isolate the product: a screenshot of a whole shop page carries browser bars,
+      // the site header and price text — crop to the vision-read product box and host
+      // THAT, so the card is the product alone (like a link-saved one). If there's no
+      // box (already-tight shot) or the crop fails, fall back to the full screenshot.
+      let image = up.url
+      if (r.box) {
+        const cropped = await cropBlobToBox(shot, r.box)
+        if (cropped) {
+          const cropUp = await uploadMoodImage(user.id, cropped)
+          if (cropUp.ok) image = cropUp.url
+        }
+      }
       // No name read → keep the image as a save-able card titled "untitled" rather
       // than dropping it; the user can name it. The look-tags still feed the thread.
       const title = r.title ?? 'untitled'
       const id = await addItem(title, 'thing', r.brand, null, {
-        kind: 'product', title, image: up.url, price: r.price, brand: r.brand, url: null,
+        kind: 'product', title, image, price: r.price, brand: r.brand, url: null,
         attributes: r.attributes, shotType: r.shotType,
       })
       if (!id) continue
       saved++
       // Cut a clean packshot onto the tile (model/lifestyle shots stay full-bleed).
-      if (r.shotType === 'product') void polishImage(id, up.url, null, { silent: true })
+      // Runs on the cropped image, which now reads as a tight product photo.
+      if (r.shotType === 'product') void polishImage(id, image, null, { silent: true })
       if (single) showFlash(r.title ? `saved “${title}” to your board` : 'saved to your board — add a name when you like')
     }
     if (!single && saved) showFlash(`saved ${saved} of ${files.length} to your board`)

@@ -43,5 +43,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({
     title: result.title, brand: result.brand, price: result.price,
     attributes: result.attributes, shotType: result.shotType, confidence: result.confidence,
+    box: result.box,
   })
 }

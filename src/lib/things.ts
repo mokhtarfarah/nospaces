@@ -459,11 +459,12 @@ export async function readImageAttributes(
  * still lands by photographing it. `image` is a hosted URL (we upload the shot
  * first). Mirrors readImageAttributes' shape; never throws.
  */
+export type CropBox = { x: number; y: number; w: number; h: number }
 export async function readProductFromImage(
   image: string,
   referer?: string | null,
 ): Promise<
-  | { ok: true; title: string | null; brand: string | null; price: string | null; attributes: Attribute[]; shotType: ShotType | null; confidence: 'high' | 'medium' | 'low' }
+  | { ok: true; title: string | null; brand: string | null; price: string | null; attributes: Attribute[]; shotType: ShotType | null; confidence: 'high' | 'medium' | 'low'; box: CropBox | null }
   | { ok: false; reason: string }
 > {
   let resp: Response
@@ -485,7 +486,10 @@ export async function readProductFromImage(
   const attributes = normAttributes(Array.isArray(data.attributes) ? data.attributes : [])
   const shotType = SHOT_TYPES.includes(data.shotType) ? (data.shotType as ShotType) : null
   const conf = data.confidence === 'high' || data.confidence === 'low' ? data.confidence : 'medium'
-  return { ok: true, title: data.title ?? null, brand: data.brand ?? null, price: data.price ?? null, attributes, shotType, confidence: conf }
+  const b = data.box
+  const box: CropBox | null = b && [b.x, b.y, b.w, b.h].every((n: unknown) => typeof n === 'number')
+    ? { x: b.x, y: b.y, w: b.w, h: b.h } : null
+  return { ok: true, title: data.title ?? null, brand: data.brand ?? null, price: data.price ?? null, attributes, shotType, confidence: conf, box }
 }
 
 /**
