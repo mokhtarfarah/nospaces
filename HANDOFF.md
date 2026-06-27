@@ -19,13 +19,14 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ## ▶ Next session (88) — verify what we CAN (email path is blocked)
 
-**⛔ All email-in testing is PARKED.** Postmark hit its 100/mo free cap (s87 testing) AND won't let Farah buy the 10k plan until they **approve the account** — the same pending approval that gates talkback. So the **screenshot-capture email path + the review inbox are unverifiable until approval lands** (Farah pays for 10k then). Don't propose emailing screenshots until then. Detail → `docs/REFERENCE.md` → Postmark plan.
+**🎉 In-app "screenshot a product" shipped (s87) — the Postmark-free path, testable NOW.** Because email-in is blocked (below), we added an in-app capture that sidesteps Postmark entirely: **Things FAB → "screenshot a product"** → pick/take a screenshot → it uploads + hosts the image, one vision read pulls name/brand/price + look-tags, saves **live** to the board with a real image + cutout. This is the *better* version (hosted image, no quota) and works on Farah's phone today. **Test this first** (live app, real captures of a Farfetch/miista page): does it read the product cleanly? Is the card image + cutout good? If a read is junky, tell me the shop and I'll tune `readProductFromImage`'s prompt.
 
-**Still testable now on existing items (in the live app, no email needed) — do this first:**
-- **The flip** — open a board product → "actually media" → pick a type → does it move to the library? And a library item → "actually a thing → move to board" → back? (Watch the metadata reshape reads clean on both sides.)
-- **"find online ↗"** — flip a media item to a thing (that makes a linkless product), open it → does the title link to a working Google search? **Decision for Farah:** I put it on the *sheet*, not the card tiles (her spec said "cards") — want it on the tiles too?
+**⛔ Email-in testing is still PARKED.** Postmark hit its 100/mo free cap AND won't let Farah buy the 10k plan until they **approve the account** (same approval that gates talkback). So the *email* screenshot path + the email-driven review inbox wait for approval (Farah pays for 10k then). Don't propose emailing screenshots until then. Detail → `docs/REFERENCE.md` → Postmark plan.
 
-**Parked until Postmark approval:** the screenshot→board/library routing, the gated-review reply copy, and the board's `for review · N` chip + ProductSheet review banner (no way to make a real low-confidence capture without email-in).
+**Also testable now on existing items (no email, no screenshot needed):**
+- **The flip** — board product → "actually media" → pick a type → moves to library? And a library item → "actually a thing → move to board" → back?
+- **"find online ↗"** — open a screenshot-saved (or flipped) linkless product → does the title link to a working Google search? **Decision for Farah:** I put it on the *sheet*, not the card tiles (her spec said "cards") — want it on the tiles too?
+- **Note:** in-app screenshot saves land **live** (no review gate by design), so the board's `for review · N` chip + ProductSheet review banner only fill from *email* captures — they stay unverified until email-in returns.
 
 Also still open from s85/s84: eyeball the **filter tray / tag counts / recency re-sort** (preview was empty then too); the Things `full`-caption trim (keep the taste/material line or strip to name+price+brand?). After that:
 

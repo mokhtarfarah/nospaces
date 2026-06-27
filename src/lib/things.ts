@@ -453,6 +453,42 @@ export async function readImageAttributes(
 }
 
 /**
+ * Read a product off a SCREENSHOT (in-app "add by screenshot"). Hits the
+ * /api/screenshot-product endpoint, which pulls identity (name/brand/price) AND
+ * look-tags + shot type in one vision read — so a walled shop a scraper can't reach
+ * still lands by photographing it. `image` is a hosted URL (we upload the shot
+ * first). Mirrors readImageAttributes' shape; never throws.
+ */
+export async function readProductFromImage(
+  image: string,
+  referer?: string | null,
+): Promise<
+  | { ok: true; title: string | null; brand: string | null; price: string | null; attributes: Attribute[]; shotType: ShotType | null; confidence: 'high' | 'medium' | 'low' }
+  | { ok: false; reason: string }
+> {
+  let resp: Response
+  try {
+    resp = await fetch('/api/screenshot-product', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ image, referer: referer || undefined }),
+    })
+  } catch {
+    return { ok: false, reason: "Couldn't reach the reader." }
+  }
+  if (!resp.ok) {
+    let reason = 'Could not read that screenshot.'
+    try { const e = await resp.json(); if (e?.reason) reason = `image: ${e.reason}` } catch { /* keep default */ }
+    return { ok: false, reason }
+  }
+  const data = await resp.json()
+  const attributes = normAttributes(Array.isArray(data.attributes) ? data.attributes : [])
+  const shotType = SHOT_TYPES.includes(data.shotType) ? (data.shotType as ShotType) : null
+  const conf = data.confidence === 'high' || data.confidence === 'low' ? data.confidence : 'medium'
+  return { ok: true, title: data.title ?? null, brand: data.brand ?? null, price: data.price ?? null, attributes, shotType, confidence: conf }
+}
+
+/**
  * A compact summary of the board's recurring taste, for the per-item "how this
  * fits" read. For each aesthetic facet, the top recurring values with how many
  * items carry each ([value, itemCount], like the thread but kept per-facet so the

@@ -9,7 +9,7 @@ import { useItems } from '../hooks/useItems'
 import { useAuth } from '../hooks/useAuth'
 import type { Item } from '../lib/database.types'
 import {
-  parseProductLink, compareCandidates, readImageAttributes, kindOf, intentMeta, productMeta, inspirationMeta, newCandidateId,
+  parseProductLink, compareCandidates, readImageAttributes, readProductFromImage, kindOf, intentMeta, productMeta, inspirationMeta, newCandidateId,
   promoteIntentToProduct, demoteProductToIntent, productPlan,
   EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, itemAttributes, THREAD_MIN_ITEMS, priceValue, formatPrice,
   boardTasteSummary, readTasteFit, readTasteSynthesis, recurringBrands,
@@ -97,6 +97,29 @@ function categoriesOf(item: Item): string[] {
   return itemAttributes(item).filter(a => a.facet === 'category').map(a => normValue(a.value))
 }
 
+// Shrink a screenshot in the browser before upload — keeps Storage light, speeds up
+// the vision read, and re-encodes to JPEG (which also normalizes iPhone HEIC, a
+// format the vision API rejects). No resolution loss that matters for reading a
+// product. Falls back to the raw file if the browser can't decode it.
+async function downscaleImage(file: File): Promise<Blob> {
+  const MAX_EDGE = 1600
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bitmap.width * scale)
+    canvas.height = Math.round(bitmap.height * scale)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('no 2d context')
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close?.()
+    const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.85))
+    return blob ?? file
+  } catch {
+    return file
+  }
+}
+
 // The "show" filter exposes the board's zones: everything (deciding + saved),
 // just plans, just the wishlist, or owned things. The board renders deciding and
 // saved as separate sections; this just picks which are visible (see ThingsScreen).
@@ -157,6 +180,8 @@ export function ThingsScreen() {
   // path); pasting a link is the soft, secondary path (mostly a desktop thing).
   const [moodLink, setMoodLink] = useState(false)
   const moodFileRef = useRef<HTMLInputElement>(null)
+  // "Screenshot a product" file picker (the in-app twin of the email screenshot path).
+  const productShotRef = useRef<HTMLInputElement>(null)
   const [openIntentId, setOpenIntentId] = useState<string | null>(null)
   const [openProductId, setOpenProductId] = useState<string | null>(null)
   const [openMoodId, setOpenMoodId] = useState<string | null>(null)
@@ -171,6 +196,7 @@ export function ThingsScreen() {
   const onMoodboard = tab === 'taste' && tasteSub === 'moodboard'
   // Jump straight to the moodboard (e.g. right after adding an image).
   const goMoodboard = () => { setTab('taste'); setTasteSub('moodboard') }
+  const goWishlist = () => setTab('wishlist')
   // Speed-dial for the floating +: open reveals the two capture paths.
   const [addMenu, setAddMenu] = useState(false)
   // Responsive grid: more columns as the board gets wider (≈2 on a phone, up to
@@ -370,6 +396,42 @@ export function ThingsScreen() {
       }
       showFlash(`added ${saved.length} image${saved.length === 1 ? '' : 's'}${tagged < saved.length ? ` — ${tagged} tagged` : ''}`)
     }
+  }
+
+  // "Screenshot a product" — the in-app twin of the email screenshot path, with no
+  // Postmark in the loop. Each screenshot is downscaled (also normalizes iPhone HEIC)
+  // and uploaded to Storage so the board card has a real image + cutout, then ONE
+  // vision read (~1¢) pulls the product's name/brand/price + look-tags off the
+  // picture. Saves live to the board (no buy-link; "find online ↗" recovers buy-back).
+  // A deliberate in-app save IS the signal, so it lands live — no review gate; a
+  // misread is one tap to fix (edit, or "actually media"). Sequential per image so a
+  // batch doesn't trip the vision rate-limit.
+  async function addProductScreenshots(files: File[]) {
+    if (!user || files.length === 0) return
+    goWishlist()
+    const single = files.length === 1
+    let saved = 0
+    for (let i = 0; i < files.length; i++) {
+      setFlash(single ? 'reading your screenshot…' : `reading ${i + 1}/${files.length}…`)
+      const blob = await downscaleImage(files[i])
+      const up = await uploadMoodImage(user.id, blob)
+      if (!up.ok) { showFlash(`couldn't upload — ${up.reason} (tap to dismiss)`, true); continue }
+      const r = await readProductFromImage(up.url)
+      if (!r.ok) { showFlash(`couldn't read that screenshot — ${r.reason} (tap to dismiss)`, true); continue }
+      // No name read → keep the image as a save-able card titled "untitled" rather
+      // than dropping it; the user can name it. The look-tags still feed the thread.
+      const title = r.title ?? 'untitled'
+      const id = await addItem(title, 'thing', r.brand, null, {
+        kind: 'product', title, image: up.url, price: r.price, brand: r.brand, url: null,
+        attributes: r.attributes, shotType: r.shotType,
+      })
+      if (!id) continue
+      saved++
+      // Cut a clean packshot onto the tile (model/lifestyle shots stay full-bleed).
+      if (r.shotType === 'product') void polishImage(id, up.url, null, { silent: true })
+      if (single) showFlash(r.title ? `saved “${title}” to your board` : 'saved to your board — add a name when you like')
+    }
+    if (!single && saved) showFlash(`saved ${saved} of ${files.length} to your board`)
   }
 
   // Add a mood image from a pasted web link — kept as-is (proxied on display), not
@@ -756,6 +818,11 @@ export function ThingsScreen() {
       <input ref={moodFileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
         onChange={e => { const fs = Array.from(e.target.files ?? []); e.target.value = ''; if (fs.length) void addMoodFiles(fs) }} />
 
+      {/* "Screenshot a product" — the in-app twin of the email screenshot path. One
+          hidden input the FAB action triggers; reads the product off the picture. */}
+      <input ref={productShotRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+        onChange={e => { const fs = Array.from(e.target.files ?? []); e.target.value = ''; if (fs.length) void addProductScreenshots(fs) }} />
+
       {moodLink && (
         <MoodLinkComposer onClose={() => setMoodLink(false)} onAdd={addMoodUrl} />
       )}
@@ -899,6 +966,7 @@ export function ThingsScreen() {
         {tab === 'wishlist' && addMenu && (
           <>
             <FabAction label="save a product" onClick={() => { setAddMenu(false); setComposer('product') }} />
+            <FabAction label="screenshot a product" onClick={() => { setAddMenu(false); productShotRef.current?.click() }} />
             <FabAction label="plan a purchase" onClick={() => { setAddMenu(false); setComposer('intent') }} />
           </>
         )}

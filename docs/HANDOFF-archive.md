@@ -18,7 +18,11 @@ Built the whole locked screenshot-capture spec in one session. Typecheck + lint 
 
 **5 — failure copy nudges the rescue.** The things@ "couldn't read the link" reply and the save@ "link points somewhere I can't read" reply both now say *"open the page, screenshot it, and email the screenshot here."*
 
-**Only new cost:** ~1¢ Sonnet vision per emailed screenshot (one classify call, fallback-only feeling — most captures are still free link scrapes). All UI work free. **Next:** eyeball the interactive bits on a real phone with data (see HANDOFF).
+**Only new cost:** ~1¢ Sonnet vision per emailed screenshot (one classify call, fallback-only feeling — most captures are still free link scrapes). All UI work free.
+
+**Then Postmark blocked us → added the in-app screenshot path (the Postmark-free twin).** Mid-session the free Postmark plan hit its 100/mo cap (counts ALL inbound, incl. junk/notifications), and Farah **can't upgrade to the 10k plan until Postmark approves her account** — the same approval that's gated talkback since 2026-06-02. So the *email* screenshot path is unverifiable for now. Rather than wait, we built an **in-app "screenshot a product"** on the Things FAB that needs no email at all: pick/take a screenshot → `downscaleImage` (also normalizes HEIC) → `uploadMoodImage` hosts it → `/api/screenshot-product` (`readProductFromImage` in `_vision.ts`) does ONE vision read for **identity (name/brand/price) + look-tags + shot type** → saves **live** to the board with a real hosted image + cutout. Linkless ("find online ↗" recovers buy-back); lands live (no review gate — a deliberate in-app save is the signal). This is *better* than email (hosted image + cutout, no quota) and **works today**. New: `api/screenshot-product.ts`, `readProductFromImage`/`Confidence` in `api/_vision.ts`, client `readProductFromImage` in `src/lib/things.ts`, the FAB action + `downscaleImage` + `addProductScreenshots` in ThingsScreen. ~1¢/screenshot, storage free. Verified the add-menu entry renders (noauth preview); the upload+vision flow needs real auth → Farah's phone.
+
+**Postmark gotcha logged** (`docs/REFERENCE.md` → Postmark plan): the cap counts every email that *arrives*, so spam/notifications drain it too; approval unblocks talkback AND the paid plan in one go. **Next:** test the in-app screenshot path on a real phone (the email path waits on Postmark approval).
 
 ---
 

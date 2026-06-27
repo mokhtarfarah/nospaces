@@ -126,6 +126,70 @@ function cleanAttributes(raw: unknown[]): Attribute[] {
     .filter(a => !seen.has(a.facet) && seen.add(a.facet))
 }
 
+export type Confidence = 'high' | 'medium' | 'low'
+const asConfidence = (v: unknown): Confidence => (v === 'high' || v === 'low' ? v : 'medium')
+
+// Read a PRODUCT off a screenshot — its identity (name/brand/price) AND its look
+// (the same taste tags + shot type readImageAttributes reads), in one vision call.
+// Unlike readImageAttributes (which deliberately ignores text/identity), this DOES
+// read the visible product name, brand and price, because the whole point of a
+// screenshot capture is to recover a product from a shop page a scraper can't reach.
+// Powers the in-app "add by screenshot" path (api/screenshot-product.ts). One Sonnet
+// vision call, ~1¢. Never throws — returns a reason so the caller can surface it.
+const PRODUCT_PROMPT = (() => {
+  const vocab = FACETS.map(f => `- ${f}: e.g. ${FACET_VOCAB[f].join(', ')}`).join('\n')
+  return `This is a screenshot of a product — clothing, an accessory, a bag, shoes, or some object to buy. Read it two ways:
+
+1) IDENTITY — the visible text: the product name (no marketing fluff), the brand/label, and the price (with its currency symbol, e.g. £240). Leave any you genuinely can't see as null.
+
+2) LOOK — the taste, the same way you'd read any product photo. Tag these facets (one or two words each, lowercase), reading only what the eye sees, never inventing:
+${vocab}
+Only tag a facet you can genuinely see; skip the rest. Fewer honest tags beat padding.
+
+Also classify how the product is SHOWN as "shotType" (this gates a clean cutout, so be strict):
+- "onModel": ANY person visible (worn, held, even a hand or legs). If you see a person at all, it's "onModel".
+- "lifestyle": no person, but staged in a scene / among objects / on a real surface.
+- "product": ONLY the item, alone on a plain studio background (a clean packshot).
+When in doubt, do NOT say "product".
+
+Return JSON only:
+{ "title": "product name or null", "brand": "label or null", "price": "display price or null", "confidence": "high|medium|low", "shotType": "product|onModel|lifestyle", "attributes": [ { "facet": "material|palette|vibe|category", "value": "<one or two words>" } ] }
+
+Set confidence to how sure you are of the IDENTITY (the name). If the screenshot is blurry, cropped, or you're guessing the product, say "low".`
+})()
+
+export async function readProductFromImage(
+  imageUrl: string,
+  referer?: string,
+): Promise<
+  | { ok: true; title: string | null; brand: string | null; price: string | null; attributes: Attribute[]; shotType: ShotType | null; confidence: Confidence }
+  | { ok: false; reason: string }
+> {
+  const img = await fetchImageBase64(imageUrl, referer)
+  if (!img.ok) return { ok: false, reason: img.reason }
+  try {
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 320,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: img.media, data: img.data } },
+          { type: 'text', text: PRODUCT_PROMPT },
+        ],
+      }],
+    })
+    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+    const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
+    const attributes = cleanAttributes(Array.isArray(parsed.attributes) ? parsed.attributes : [])
+    const shotType = SHOT_TYPES.includes(parsed.shotType) ? (parsed.shotType as ShotType) : null
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+    return { ok: true, title: str(parsed.title), brand: str(parsed.brand), price: str(parsed.price), attributes, shotType, confidence: asConfidence(parsed.confidence) }
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : 'vision-error' }
+  }
+}
+
 // Read taste attributes off a product image URL. Fetches the image (browser UA +
 // Referer), runs Sonnet vision, returns cleaned tags. Never throws — returns a
 // reason on failure so callers can log + carry on (the save still stands).
