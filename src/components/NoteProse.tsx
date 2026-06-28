@@ -15,7 +15,7 @@ export function NoteProse({ label, children, trailing, size = 13 }: { label?: st
           {label}
         </div>
       )}
-      <div style={{ fontSize: size, lineHeight: 1.6, color: '#4A453E', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
+      <div style={{ fontSize: size, lineHeight: 1.65, color: '#4A453E', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
         {children}
         {trailing != null && (
           <span style={{ fontStyle: 'normal', whiteSpace: 'nowrap' }}>

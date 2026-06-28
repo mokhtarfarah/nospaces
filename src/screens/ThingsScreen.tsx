@@ -1529,16 +1529,16 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
           <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
             placeholder="why you saved it — the occasion, the wait-for-a-sale, the one detail you loved…"
             rows={3}
-            style={{ width: '100%', boxSizing: 'border-box', resize: 'none', fontSize: 14.5, lineHeight: 1.6,
+            style={{ width: '100%', boxSizing: 'border-box', resize: 'none', fontSize: 13, lineHeight: 1.65,
               color: '#4A453E', fontStyle: 'italic', background: '#F7F8F9', border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 12px', outline: 'none', fontFamily: 'inherit' }} />
         ) : note ? (
-          <NoteProse size={14.5} trailing={<button onClick={() => { setText(note); setEditing(true) }} style={quietLink}>edit</button>}>{note}</NoteProse>
+          <NoteProse trailing={<button onClick={() => { setText(note); setEditing(true) }} style={quietLink}>edit</button>}>{note}</NoteProse>
         ) : (
           <button onClick={() => { setText(''); setEditing(true) }} style={quietLink}>+ add a note</button>
         )
       ) : (
         fit ? (
-          <NoteProse size={14.5} trailing={
+          <NoteProse trailing={
             <>
               <button onClick={generate} disabled={loading} style={quietLink}>{loading ? 'reading…' : 're-read'}</button>
               <span style={{ color: '#C9C4BB' }}>{' · '}</span>
