@@ -37,6 +37,13 @@ interface Props {
   // Misroute fix: this isn't media, it's a thing — move it to the board. The mirror
   // of the board's "actually media" flip.
   onFlipToThing?: () => void
+  // Tap a genre/vibe/verdict on the read view to filter the library to that medium
+  // + tag (mirrors the Things board's tappable taste tags). Only wired from the
+  // Library; when absent the tags render as plain text.
+  onFilterTag?: (group: 'genre' | 'vibe' | 'verdict', value: string) => void
+  // How many items of THIS item's medium carry the tag — gates tappability so a
+  // one-off tag (count 1) isn't a dead-end filter.
+  countWithTag?: (group: 'genre' | 'vibe' | 'verdict', value: string) => number
   // Open straight into the edit view (e.g. deep-linked from the data-gaps list).
   initialEdit?: boolean
   // Tidy-queue walk-through: when present, the edit view shows "save & next" /
@@ -105,7 +112,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, onFlipToThing, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext, seriesOptions }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, onFlipToThing, onFilterTag, countWithTag, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext, seriesOptions }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -182,6 +189,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [picks, setPicks] = useState<Candidate[] | null>(null)
   const [lookingUp, setLookingUp] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // The ⋯ admin menu over the hero — holds edit / own / status / flip / delete, so
+  // the read view stays calm (mirrors the Things product card).
+  const [menuOpen, setMenuOpen] = useState(false)
   const [inboxDoneMode, setInboxDoneMode] = useState(false)
   const [showBlurb, setShowBlurb] = useState(false)
   const [reactionTagsOpen, setReactionTagsOpen] = useState(true)
@@ -195,6 +205,11 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   )
   const refLinkInputRef = useRef<HTMLInputElement>(null)
   const color = typeColor(item.type)
+  // Row style for the ⋯ dropdown — same quiet menu language as the Things card.
+  const menuItem = (c: string = '#1C1B19', weight: number = 400): React.CSSProperties => ({
+    border: 'none', background: 'none', textAlign: 'left', width: '100%', padding: '9px 10px',
+    borderRadius: 8, fontSize: 13, color: c, fontWeight: weight, cursor: 'pointer', fontFamily: 'inherit',
+  })
 
   const hasWikiLink = wikiUrlEdit.includes('wikipedia.org')
 
@@ -539,23 +554,28 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       }}>
         {view === 'main' && (
           <>
-            {/* Item preview — shared editorial hero (ghost wash + crisp poster) */}
+            {/* Item preview — shared editorial hero (ghost wash + crisp poster). The ⋯
+                in the corner holds all admin (edit / own / status / flip / delete); the
+                row below is outward links only, so nothing boring crowds the title. */}
             <SheetHero
               type={item.type}
               title={item.title}
               cover={cover}
               onClose={onClose}
+              menuButton={!item.metadata?.scratch ? (
+                <button onClick={() => setMenuOpen(o => !o)} aria-label="more"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6F6B64', fontSize: 20, fontWeight: 700, lineHeight: 1, padding: '0 0 4px' }}>⋯</button>
+              ) : undefined}
               meta={[
                 [TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item)].filter(Boolean).join(' · '),
                 item.reaction ? REACTION_LABELS[item.reaction] : null,
                 typeof item.metadata?.series === 'string' && item.metadata.series.trim() ? `↳ ${item.metadata.series}` : null,
               ].filter(Boolean).join(' · ')}
             >
-              {/* One flat row: edit · own it · about this · wikipedia · watch.
-                  No hierarchy between actions and links — they all sit equal. */}
-              {!item.metadata?.scratch && (
+              {/* Outward links only — about/via · spotify · wikipedia · watch. Admin
+                  (edit / own) moved into the ⋯ menu. */}
+              {!item.metadata?.scratch && (blurb || spotifyUrl || wikiUrl || item.type === 'film' || item.type === 'tv') && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <button onClick={() => { setEditOpenGroups({}); setView('edit') }} className="tlink" style={{ flexShrink: 0 }}>edit</button>
                   {blurb && (
                     <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
                       <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource.length > 20 ? blurbSource.slice(0, 19) + '…' : blurbSource}` : 'about this'}</span>
@@ -575,14 +595,47 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   {(item.type === 'film' || item.type === 'tv') && (
                     <button onClick={() => setWatchOpen(true)} className="tlink" style={{ flexShrink: 0 }}>▶︎ watch</button>
                   )}
-                  <button onClick={() => onToggleOwned(!item.metadata?.owned)} className="tlink" style={{ flexShrink: 0 }}>
-                    {item.type === 'book'
-                      ? (item.metadata?.owned ? 'on my shelf ✓︎' : 'on my shelf')
-                      : (item.metadata?.owned ? 'own it ✓︎' : 'own it')}
-                  </button>
                 </div>
               )}
             </SheetHero>
+
+            {/* ⋯ dropdown — rendered OUTSIDE the hero (which clips its children),
+                anchored to the fixed sheet. Holds every admin action + delete. */}
+            {menuOpen && !item.metadata?.scratch && (
+              <>
+                <div onClick={() => { setMenuOpen(false); setConfirmDelete(false) }} style={{ position: 'fixed', inset: 0, zIndex: 9 }} />
+                <div style={{ position: 'absolute', top: 46, right: 16, zIndex: 10, width: 220, background: '#fff',
+                  borderRadius: 12, border: '1px solid #E8E8E8', boxShadow: '0 8px 28px rgba(0,0,0,0.16)', padding: 6, display: 'flex', flexDirection: 'column' }}>
+                  {confirmDelete ? (
+                    <>
+                      <div style={{ fontSize: 12.5, color: '#ABA69C', padding: '8px 10px 6px', lineHeight: 1.4 }}>delete “{item.title}”? this can’t be undone.</div>
+                      <button style={menuItem('#C0392B', 600)} onClick={onDelete}>delete</button>
+                      <button style={menuItem()} onClick={() => setConfirmDelete(false)}>cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button style={menuItem()} onClick={() => { setMenuOpen(false); setEditOpenGroups({}); setView('edit') }}>edit details</button>
+                      <button style={menuItem()} onClick={() => { setMenuOpen(false); onToggleOwned(!item.metadata?.owned) }}>
+                        {item.type === 'book'
+                          ? (item.metadata?.owned ? 'on my shelf ✓' : 'mark on my shelf')
+                          : (item.metadata?.owned ? 'own it ✓' : 'mark as owned')}
+                      </button>
+                      {item.status === 'want_to' && onMarkInProgress && (
+                        <button style={menuItem()} onClick={onMarkInProgress}>mark as in progress</button>
+                      )}
+                      {item.status === 'in_progress' && onMarkWantTo && (
+                        <button style={menuItem()} onClick={onMarkWantTo}>move back to want to</button>
+                      )}
+                      {onFlipToThing && (
+                        <button style={menuItem()} onClick={onFlipToThing}>actually a thing → board</button>
+                      )}
+                      <div style={{ height: 1, background: '#E8E8E8', margin: '5px 8px' }} />
+                      <button style={menuItem('#C0392B')} onClick={() => setConfirmDelete(true)}>delete</button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
             <div style={{ height: 10 }} />
 
             {/* Blurb expansion — below the flat link row */}
@@ -721,16 +774,29 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               // opportunity and can't wrap — flex items can. The middot TRAILS each
               // term (bundled with the term before it) so the separator stays at the
               // end of a line and a wrapped line never begins with a dot.
-              const tagLine = (terms: string[], muted: string[] = []) => {
+              const tagLine = (group: 'genre' | 'vibe' | 'verdict', terms: string[], muted: string[] = []) => {
                 const all = [...terms.map(t => ({ t, muted: false })), ...muted.map(t => ({ t, muted: true }))]
                 return (
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', fontSize: 13, lineHeight: 1.7, color: '#1C1B19' }}>
-                    {all.map((item, i) => (
-                      <span key={(item.muted ? 'm' : '') + item.t} style={{ display: 'inline-flex', alignItems: 'baseline', color: item.muted ? '#ABA69C' : undefined }}>
-                        {item.t}
-                        {i < all.length - 1 && <span style={{ color: '#ABA69C', margin: '0 7px' }}>·</span>}
-                      </span>
-                    ))}
+                    {all.map((tag, i) => {
+                      // Tappable only when the Library wired a filter handler AND more than
+                      // one item of this medium shares the tag (else it's a dead-end of one).
+                      const tappable = !!onFilterTag && (countWithTag?.(group, tag.t) ?? 0) > 1
+                      return (
+                        <span key={(tag.muted ? 'm' : '') + tag.t} style={{ display: 'inline-flex', alignItems: 'baseline' }}>
+                          {tappable ? (
+                            <button onClick={() => onFilterTag!(group, tag.t)} style={{
+                              border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 13, cursor: 'pointer',
+                              color: tag.muted ? '#ABA69C' : '#1C1B19',
+                              textDecoration: 'underline', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3,
+                            }}>{tag.t}</button>
+                          ) : (
+                            <span style={{ color: tag.muted ? '#ABA69C' : undefined }}>{tag.t}</span>
+                          )}
+                          {i < all.length - 1 && <span style={{ color: '#ABA69C', margin: '0 7px' }}>·</span>}
+                        </span>
+                      )
+                    })}
                   </div>
                 )
               }
@@ -742,9 +808,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               )
               return (
                 <div style={{ marginBottom: 14 }}>
-                  {activeGenres.length > 0 && row('genre', tagLine(activeGenres))}
-                  {(feel.length > 0 || unconfirmedVibes.length > 0) && row('vibe', tagLine(feel, unconfirmedVibes))}
-                  {verdicts.length > 0 && row('verdict', tagLine(verdicts))}
+                  {activeGenres.length > 0 && row('genre', tagLine('genre', activeGenres))}
+                  {(feel.length > 0 || unconfirmedVibes.length > 0) && row('vibe', tagLine('vibe', feel, unconfirmedVibes))}
+                  {verdicts.length > 0 && row('verdict', tagLine('verdict', verdicts))}
                   {needsVerdict && row('verdict', (
                     <button onClick={() => { setReactionTagsOpen(true); setView('reaction') }} className="tlink" style={{ color: '#ABA69C', fontStyle: 'italic' }}>
                       how did it land? add a verdict →
@@ -756,72 +822,54 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
 
             {item.note && (
               <div style={{ marginBottom: 16 }}>
-                <NoteProse label="thoughts">{renderNote(item.note)}</NoteProse>
+                {/* Same reflection chrome as the Things board's note block: a small
+                    uppercase header with a hairline divider under it, then the prose —
+                    so a note reads identically across both sides of the app. */}
+                <div style={{ borderBottom: '1px solid #E8E8E8', marginBottom: 11, paddingBottom: 7, fontSize: 11, letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 600, color: '#1C1B19' }}>
+                  thoughts
+                </div>
+                <NoteProse>{renderNote(item.note)}</NoteProse>
               </div>
             )}
 
-            {confirmDelete ? (
-              <div style={footer}>
-                <p style={{ fontSize: 13, color: '#C0392B', textAlign: 'center', marginBottom: 10 }}>
-                  delete "{item.title}"? this cannot be undone.
-                </p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setConfirmDelete(false)} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
-                  <button onClick={onDelete} style={{ ...actionBtn('#fff'), flex: 1, background: '#C0392B', border: 'none' }}>delete</button>
-                </div>
-              </div>
-            ) : item.metadata?.scratch ? (
+            {item.metadata?.scratch ? (
               // Un-identified capture: still a normal item — you can react / note it
               // now and identify it whenever. "identify now" is the primary nudge.
-              <div style={{ ...footer, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <button
-                  onClick={async () => { setEditOpenGroups({}); setView('edit'); await identifyIntoEdit() }}
-                  disabled={autoFilling}
-                  style={{ ...actionBtn('#fff'), width: '100%', background: autoFilling ? '#CCC' : '#111', border: 'none' }}
-                >
-                  {autoFilling ? 'identifying…' : 'identify now'}
-                </button>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
-                    {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
-                  </button>
-                  <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
+              // Scratch items have no ⋯ menu, so delete + its confirm stay inline here.
+              confirmDelete ? (
+                <div style={footer}>
+                  <p style={{ fontSize: 13, color: '#C0392B', textAlign: 'center', marginBottom: 10 }}>
+                    delete "{item.title}"? this cannot be undone.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setConfirmDelete(false)} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
+                    <button onClick={onDelete} style={{ ...actionBtn('#fff'), flex: 1, background: '#C0392B', border: 'none' }}>delete</button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div style={{ ...footer, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button
+                    onClick={async () => { setEditOpenGroups({}); setView('edit'); await identifyIntoEdit() }}
+                    disabled={autoFilling}
+                    style={{ ...actionBtn('#fff'), width: '100%', background: autoFilling ? '#CCC' : '#111', border: 'none' }}
+                  >
+                    {autoFilling ? 'identifying…' : 'identify now'}
+                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
+                      {item.status === 'want_to' ? 'mark as done' : 'edit reaction'}
+                    </button>
+                    <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
+                  </div>
+                </div>
+              )
             ) : (
+              // One quiet primary: log / revisit how it landed. Everything else
+              // (delete, own, status, flip) lives in the ⋯ menu over the hero.
               <div style={{ ...footer }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: (item.status === 'want_to' && onMarkInProgress) || item.status === 'in_progress' ? 6 : 0 }}>
-                  <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), flex: 1 }}>
-                    {item.status === 'done' ? `your reaction · ${item.reaction ? REACTION_LABELS[item.reaction] : 'set'}` : 'mark as done'}
-                  </button>
-                  <button onClick={() => setConfirmDelete(true)} style={{ ...actionBtn('#C0392B'), flex: 1 }}>delete</button>
-                </div>
-                {item.status === 'want_to' && onMarkInProgress && (
-                  <button
-                    onClick={onMarkInProgress}
-                    style={{ background: 'none', border: 'none', fontSize: 11, color: '#ABA69C', cursor: 'pointer', padding: '0 0 2px', width: '100%', textAlign: 'center' }}
-                  >
-                    mark as in progress
-                  </button>
-                )}
-                {item.status === 'in_progress' && onMarkWantTo && (
-                  <button
-                    onClick={onMarkWantTo}
-                    style={{ background: 'none', border: 'none', fontSize: 11, color: '#ABA69C', cursor: 'pointer', padding: '0 0 2px', width: '100%', textAlign: 'center' }}
-                  >
-                    move back to want to
-                  </button>
-                )}
-                {/* Misroute fix: this is really a product, not media — move it to the
-                    board. The mirror of the board's "actually media" flip. */}
-                {onFlipToThing && (
-                  <button
-                    onClick={onFlipToThing}
-                    style={{ background: 'none', border: 'none', fontSize: 11, color: '#ABA69C', cursor: 'pointer', padding: '6px 0 2px', width: '100%', textAlign: 'center' }}
-                  >
-                    actually a thing → move to board
-                  </button>
-                )}
+                <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), width: '100%' }}>
+                  {item.status === 'done' ? `your reaction · ${item.reaction ? REACTION_LABELS[item.reaction] : 'set'}` : 'mark as done'}
+                </button>
               </div>
             )}
           </>

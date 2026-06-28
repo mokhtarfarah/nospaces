@@ -18,6 +18,7 @@ export function SheetHero({
   cover,
   numeral,
   onClose,
+  menuButton,
   children,
 }: {
   type: string
@@ -26,6 +27,10 @@ export function SheetHero({
   cover: string | null
   numeral?: number
   onClose?: () => void
+  // Optional control (e.g. a ⋯ admin menu trigger) that rides in the top row to the
+  // LEFT of the ✕. Just the trigger — any dropdown must render OUTSIDE this hero,
+  // which clips its children (overflow: hidden).
+  menuButton?: ReactNode
   children?: ReactNode
 }) {
   const tint = typeColor(type).bg
@@ -47,7 +52,7 @@ export function SheetHero({
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center',
-          filter: 'blur(8px)', opacity: 0.26, transform: 'scale(1.1)',
+          filter: 'blur(7px)', opacity: 0.46, transform: 'scale(1.1)',
           WebkitMaskImage: 'linear-gradient(180deg, #000 0%, transparent 94%)',
           maskImage: 'linear-gradient(180deg, #000 0%, transparent 94%)',
         }} />
@@ -60,8 +65,9 @@ export function SheetHero({
       )}
 
       <div style={{ position: 'relative', zIndex: 1 }}>
-        {/* ✕ in its own row, as before — clear of the cover */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10, height: 24, boxSizing: 'content-box' }}>
+        {/* ✕ (and optional ⋯) in their own row, clear of the cover */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 16, paddingTop: 10, height: 24, boxSizing: 'content-box' }}>
+          {menuButton}
           {onClose && (
             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6F6B64', fontSize: 16, lineHeight: 1, padding: '0 0 4px' }}>✕</button>
           )}

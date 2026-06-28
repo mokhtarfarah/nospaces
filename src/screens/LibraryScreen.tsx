@@ -934,6 +934,21 @@ export function LibraryScreen() {
               await editItem(fresh.id, flipMediaToThing(fresh))
               inReview(fresh) ? goToReview(reviewIndex + 1) : setActionItem(null)
             }}
+            countWithTag={(group, value) => items.filter(i => i.type === fresh.type && (
+              group === 'genre' ? (i.tags ?? []).includes(value)
+              : group === 'verdict' ? (i.moods ?? []).includes(value)
+              : (i.moods ?? []).includes(value) || ((i.metadata?.unconfirmedVibes as string[] | undefined)?.includes(value) ?? false)
+            )).length}
+            onFilterTag={(group, value) => {
+              // Narrow to this item's medium first — the genre/vibe/verdict facets are
+              // per-medium (hidden on "all"), so the tag only bites once a category is set.
+              setCategories([fresh.type])
+              setGenreFilter(group === 'genre' ? [value] : [])
+              setVibeFilter(group === 'vibe' ? [value] : [])
+              setVerdictFilter(group === 'verdict' ? [value] : [])
+              setSeriesFilter([]); setCountryFilter([])
+              setActionItem(null); setActionEdit(false)
+            }}
             onClose={() => { setActionItem(null); setActionEdit(false); setTidyQueue(null); setReviewQueue(null) }}
           />
         )
