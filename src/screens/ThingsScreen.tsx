@@ -1519,6 +1519,9 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
         {tabBtn('fit', 'how it fits')}
       </div>
 
+      {/* Only this body scrolls when a note or the read runs long — the photo, title
+          and tabs stay put, so the card itself never has to scroll. */}
+      <div style={{ maxHeight: '30dvh', overflowY: 'auto', paddingRight: 2 }}>
       {tab === 'note' ? (
         editing ? (
           <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
@@ -1554,6 +1557,7 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
           </>
         )
       )}
+      </div>
     </div>
   )
 }
@@ -1662,7 +1666,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   })
 
   return (
-    <Sheet onClose={onClose} maxWidth={380}>
+    <Sheet onClose={onClose} maxWidth={380} padBottom={12}>
      <div style={{ position: 'relative' }}>
       {/* Lookbook hero — bled to the sheet edges (negative margins cancel the sheet
           padding) so the photo is the whole top of the card. Every admin action lives
@@ -1670,10 +1674,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
       <div style={{ position: 'relative', margin: '-20px -18px 0' }}>
         {hero
           ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy"
-              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(440px, 44dvh)', objectFit: showCutout ? 'contain' : 'cover',
+              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(480px, 52dvh)', objectFit: showCutout ? 'contain' : 'cover',
                 padding: showCutout ? '8%' : 0, boxSizing: 'border-box', background: TILE, borderRadius: '20px 20px 0 0',
                 filter: showCutout ? undefined : 'saturate(0.97)' }} />
-          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(440px, 44dvh)', background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
+          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(480px, 52dvh)', background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
 
         <button onClick={onClose} aria-label="close" style={{ ...floatBtn, left: 12, fontSize: 19 }}>×</button>
         <button onClick={() => setMenuOpen(o => !o)} aria-label="more" style={{ ...floatBtn, right: 12, fontSize: 21, fontWeight: 700 }}>⋯</button>
@@ -1727,14 +1731,14 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
             the board shares it (a tag on a one-off isn't tappable). Category is left off
             — it's the inventory, not the vibe. */}
         {tagged && (
-          <div style={{ marginTop: 13, fontSize: 13.5, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
+          <div style={{ marginTop: 11, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
             {taste.filter(a => a.facet !== 'category').map((a, i, arr) => {
               const count = countWithTag(a.facet, a.value)
               const tappable = count > 1
               return (
                 <span key={i}>
                   <button disabled={!tappable} onClick={() => tappable && onFilterTag(a.facet, a.value)}
-                    style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 13.5, fontStyle: 'italic',
+                    style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, fontStyle: 'italic',
                       color: tappable ? '#6E6A60' : '#9A958B', cursor: tappable ? 'pointer' : 'default',
                       textDecoration: tappable ? 'underline' : 'none', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3 }}>
                     {a.value}
