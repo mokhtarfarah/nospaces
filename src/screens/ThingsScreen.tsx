@@ -1673,10 +1673,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
       <div style={{ position: 'relative', margin: '-20px -18px 0', flexShrink: 0 }}>
         {hero
           ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy"
-              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(480px, 52dvh)', objectFit: showCutout ? 'contain' : 'cover',
+              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(420px, 46dvh)', objectFit: showCutout ? 'contain' : 'cover',
                 padding: showCutout ? '8%' : 0, boxSizing: 'border-box', background: TILE, borderRadius: '20px 20px 0 0',
                 filter: showCutout ? undefined : 'saturate(0.97)' }} />
-          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(480px, 52dvh)', background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
+          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(420px, 46dvh)', background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
 
         <button onClick={onClose} aria-label="close" style={{ ...floatBtn, left: 12, fontSize: 19 }}>×</button>
         <button onClick={() => setMenuOpen(o => !o)} aria-label="more" style={{ ...floatBtn, right: 12, fontSize: 21, fontWeight: 700 }}>⋯</button>
