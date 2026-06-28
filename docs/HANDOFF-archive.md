@@ -4,6 +4,28 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 89 (2026-06-27) — verify s87/s88 + editorial product-card redesign (note/fit toggle, body-only scroll). All free.
+
+Started as the s88 verification pass, became a full product-card redesign driven live by Farah on her phone. All shipped on `main`, typecheck + lint clean, **98 Vitest green**. No new API calls (every change is UI/CSS or reuses existing cached calls).
+
+**Verification (Farah, on real data):** ✅ photo-aware compare, ✅ compare cache, ✅ in-app screenshot capture, ✅ the flip (product ↔ media), ✅ "find online ↗", ✅ filter tray / tag counts / recency re-sort all **work**. The one miss → the pull-from-link fix below.
+
+**pull-from-link fix — screenshot photo now counts as a gap.** s88's "pull photo & price from link" never showed for screenshot products: a screenshot save always fills `image` (the crop), so the gate `(no image OR no price)` was never true. Added a persisted `imageFromShot` flag (set on screenshot saves, surfaced in `productMeta`, carried through `FieldsForm.save`); the pull now offers whenever there's a link AND (no image OR no price OR the photo is a screenshot), and **swaps** the grainy crop for the clean shop photo (into the form to review), clearing the flag. Decision (Farah): "upgrade the screenshot," not just fill-if-empty. `things.ts` + `ThingsScreen.tsx`. Free (scrape, no AI).
+
+**Taste-tag editor cleanup** (`AttributesEditor`). Was 4 competing chip styles (filled-black facet pills, dashed suggestion chips, dark "add" button). Now: quiet **underline facet tabs**, suggestions as **soft pills** (same `#F4F2EE` as saved tags, no dashed borders, no "+"), and a borderless underlined input with a subtle "+". One material, reads editorial. Farah approved via a before/after mockup.
+
+**Two-step plan picker** (`ProductComposer`). The "add to a plan?" row dumped every existing plan as a chip. Now three choices — `keep standalone · existing plan · new plan` — and the specific-plan picker only appears after you tap "existing plan" (auto-selects the first; reuses `plan.kind`, no new state).
+
+**Editorial product-card redesign** (`ProductSheet`, the resting card). Farah: too plain / too cluttered / didn't feel like "me" → **editorial lookbook** (no serif — app is Geist-only, confirmed; presence comes from scale + air, not a typeface).
+- **Full-bleed hero** (negative margins cancel the sheet padding), capped at `min(500px, 55dvh)` so it dominates without pushing content off-screen. `×` + `⋯` float over the photo.
+- **All admin moved into the `⋯` menu** (got it / edit details / put back in plan / remove-with-confirm). "actually media" was **demoted out of the menu** into edit details (+ the inline flip on the review nudge) — a rare misroute cleanup, too rarely used to sit up top.
+- **Editorial title** (Geist 23px, tight tracking, lowercase, still the shop link via `↗`), **credit line** (price plain, brand as letter-spaced caps), **tag line** (quiet italic, dropped the cryptic `· N` count, tappable→filter).
+- **Note + "how it fits" → one toggle** (`ReflectionBlock`, Farah's spec): two tabs on one line, one voice shows at a time. Defaults to your note; if none, opens on the taste read (auto-shown once generated, dismissable). First tap of "how it fits" generates the cached Haiku read — no new cost, toggling is free. Replaced the stacked `NoteBlock` + `TasteFitBlock`.
+
+**The scroll saga (multi-round, finally verified).** Goal: card never scrolls; only the note/read body does. (1) Added `fill` mode to `Sheet` — a fixed-height flex column that can't self-scroll; the card pins photo/title/tabs (`flex-shrink:0`) and the body is the lone shrink+scroll region. (2) The cap was `88vh` → never hit on iOS (large viewport ignores the URL bar) → switched to `88dvh`. (3) The read-only note was a full-area `<button>`, so a touch-drag registered as a tap → render it as plain `NoteProse` with a small "edit" target + iOS scroll hints. (4) **Root cause** found via a phone-dimension repro tested in the preview (iframe): a multi-line note rendered as **one collapsed line** (HTML drops newlines) so it looked long but actually fit — added `white-space: pre-wrap` to `NoteProse`. Verified at 390×844: 5-line note fits (no scroll), 30-line note bounds the body to ~195px and scrolls only that region. *Lesson: stop shipping blind — a standalone repro in the preview pinned it in one shot.*
+
+**Final proportion tuning** (Farah, on phone): photo length, sheet bottom padding (`Sheet` got a `padBottom` prop, product card uses 6), header rhythm (title 25→23, tightened gaps) to grow the reading box. Briefly bumped the note font to 14.5 on a misread ("text too small" meant the *box*, not the font) — reverted to 13, kept the tighter header. `NoteProse` gained an optional `size` prop (scoped; media notes unaffected).
+
 ### Session 88 (2026-06-27) — Build B (media Add → bottom-sheet card) + self-authored style profile (free + ~free)
 
 Two things, both shipped on `main`, typecheck + lint clean, **98 Vitest green**. Verified the new UI in the noauth preview (screenshots); the live AI behaviour of the profile injection is **unverified by design** (didn't burn API test calls) — Farah confirms on a real compare.
