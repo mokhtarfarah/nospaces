@@ -5,6 +5,19 @@ import { VERDICTS } from '../lib/moods'
 import { NoteInput } from './NoteInput'
 import { MoodChips } from './MoodChips'
 
+// Reaction chip — selected = the shared cream pill; unselected = a quiet,
+// borderless word, so the cluster reads as one scale (mirrors ItemActionSheet).
+function reactionBtnStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: '8px 13px', borderRadius: 9, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit',
+    border: 'none',
+    background: active ? '#F4F2EE' : 'none',
+    boxShadow: active ? 'inset 0 0 0 1px #1C1B19' : 'none',
+    color: active ? '#1C1B19' : '#8A857C',
+    fontWeight: active ? 500 : 400,
+  }
+}
+
 const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'loved_it',   label: 'loved it'   },
   { value: 'liked_it',   label: 'liked it'   },
@@ -26,6 +39,8 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
   const [selectedMoods, setSelectedMoods] = useState<string[]>(unconfirmed)
   const [canon, setCanon] = useState(!!item.metadata?.canon)
   const color = typeColor(item.type)
+  // Desert island only shows once you've landed somewhere positive (or it's set).
+  const canonVisible = reaction === 'liked_it' || reaction === 'loved_it' || canon
 
   function toggleMood(mood: string) {
     setSelectedMoods(prev =>
@@ -70,48 +85,32 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
 
         <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }}>what did you think?</p>
 
-        {/* 5-chip row: loved it · liked it · canon · eh · not for me */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-          {(['loved_it', 'liked_it'] as ItemReaction[]).map(v => {
-            const label = REACTIONS.find(r => r.value === v)!.label
-            const active = reaction === v
-            return (
-              <button key={v} onClick={() => setReaction(v)} style={{
-                flex: 1, padding: '10px 4px', borderRadius: 10, cursor: 'pointer', fontSize: 12,
-                border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
-                background: active ? '#F4F2EE' : '#fff',
-                color: active ? '#1C1B19' : '#6F6B64',
-                fontWeight: active ? 600 : 400, fontFamily: 'inherit',
-              }}>{label}</button>
-            )
-          })}
-          <button
-            onClick={() => setCanon(v => !v)}
-            style={{
-              flex: 1, padding: '10px 4px', borderRadius: 10, cursor: 'pointer', fontSize: 12,
-              border: canon ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
-              background: canon ? '#F4F2EE' : '#fff',
-              color: canon ? '#1C1B19' : '#6F6B64',
-              fontWeight: canon ? 600 : 400, fontFamily: 'inherit',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-            }}
-          >
-            <span style={{ fontSize: 10 }}>desert island</span>
-          </button>
-          {(['eh', 'not_for_me'] as ItemReaction[]).map(v => {
-            const label = REACTIONS.find(r => r.value === v)!.label
-            const active = reaction === v
-            return (
-              <button key={v} onClick={() => setReaction(v)} style={{
-                flex: 1, padding: '10px 4px', borderRadius: 10, cursor: 'pointer', fontSize: 12,
-                border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
-                background: active ? '#F4F2EE' : '#fff',
-                color: active ? '#1C1B19' : '#6F6B64',
-                fontWeight: active ? 600 : 400, fontFamily: 'inherit',
-              }}>{label}</button>
-            )
-          })}
+        {/* Reaction scale — centered cluster (matches the in-sheet reaction view). */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: canonVisible ? 10 : 18, justifyContent: 'center' }}>
+          {(['not_for_me', 'eh', 'liked_it', 'loved_it'] as ItemReaction[]).map(v => (
+            <button key={v} onClick={() => setReaction(v)} style={reactionBtnStyle(reaction === v)}>
+              {REACTIONS.find(r => r.value === v)!.label}
+            </button>
+          ))}
         </div>
+        {/* Desert island — only surfaces once you land somewhere positive (or it's
+            already set). You don't crown something you felt "eh" about. */}
+        {canonVisible && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+            <button
+              onClick={() => setCanon(c => !c)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                border: 'none', background: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 9,
+                fontSize: 13, fontFamily: 'inherit',
+                color: canon ? '#1C1B19' : '#9A958C', fontWeight: canon ? 600 : 400,
+              }}
+            >
+              <span style={{ fontSize: 14 }}>{canon ? '★' : '☆'}</span>
+              {canon ? 'desert island' : 'one for the desert island?'}
+            </button>
+          </div>
+        )}
 
         <div style={{ marginBottom: 16 }}>
           <NoteInput value={note} onChange={setNote} />

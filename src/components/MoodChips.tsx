@@ -26,17 +26,20 @@ export function MoodChips({ type = 'other', isActive, onToggle, size = 'md', lay
     : { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }
   const visibleGroups = groups === 'vibes-only' ? GROUPS.filter(g => g.label === 'vibe') : GROUPS
 
+  // Editorial chip language: selected = cream pill with a hairline ink ring;
+  // unselected = a quiet, borderless word you can tap. No more outlined-box grid.
   const chip = (mood: string, active: boolean) => (
     <button
       key={mood}
       onClick={() => onToggle(mood)}
       style={{
-        padding: sm ? '3px 10px' : '5px 12px', borderRadius: 4, cursor: 'pointer', flexShrink: 0,
+        padding: sm ? '4px 10px' : '5px 12px', borderRadius: sm ? 8 : 4, cursor: 'pointer', flexShrink: 0,
         fontSize: sm ? 11 : 13,
-        border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-        background: active ? (sm ? '#111' : '#EDEDED') : '#fff',
-        color: active ? (sm ? '#fff' : '#111') : (sm ? '#AAA' : '#666'),
-        fontWeight: active ? 600 : 400,
+        border: sm ? 'none' : (active ? '1.5px solid #111' : '1.5px solid #E0E0E0'),
+        boxShadow: sm && active ? 'inset 0 0 0 1px #1C1B19' : 'none',
+        background: active ? (sm ? '#F4F2EE' : '#EDEDED') : (sm ? 'none' : '#fff'),
+        color: active ? (sm ? '#1C1B19' : '#111') : (sm ? '#8A857C' : '#666'),
+        fontWeight: active ? (sm ? 500 : 600) : 400,
       }}
     >
       {collapsible && active ? `${mood} ×` : mood}
@@ -46,7 +49,7 @@ export function MoodChips({ type = 'other', isActive, onToggle, size = 'md', lay
   const toggleBtn = (label: string, isOpen: boolean) => (
     <button
       onClick={() => setOpen(o => ({ ...o, [label]: !o[label] }))}
-      style={{ padding: sm ? '3px 10px' : '5px 12px', borderRadius: 4, fontSize: sm ? 11 : 13, cursor: 'pointer', border: '1.5px dashed #CCC', background: 'none', color: '#AAA', flexShrink: 0 }}
+      style={{ padding: sm ? '4px 10px' : '5px 12px', borderRadius: sm ? 8 : 4, fontSize: sm ? 11 : 13, cursor: 'pointer', border: sm ? 'none' : '1.5px dashed #CCC', background: 'none', color: sm ? '#C4BFB6' : '#AAA', flexShrink: 0 }}
     >
       {isOpen ? 'done' : '+ add'}
     </button>

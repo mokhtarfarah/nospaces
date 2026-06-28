@@ -4,6 +4,26 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 91 (2026-06-28) — aesthetic retool of the "mark as done" reaction sheet + add-page polish. All free.
+
+Farah confirmed the s90 phone check (⋯ menu, tappable tags, reaction footer, ghost-wash all read right), then asked for a **fuller aesthetic retool of the media "mark as done" sheet** ("my call on specifics"). All shipped on `main`, **98 Vitest green**, typecheck + lint clean, **no new API calls**. Driven by faithful **standalone HTML repros** (real Geist font + palette) in `public/`, screenshotted in the preview — the no-auth library is empty so the real reaction view can't render on a saved item (carried: eyeball on a real item on her phone). The two repro files were **deleted before commit** (kept `public/taste-mockup.html`, pre-existing).
+
+**The retool — `ItemActionSheet` reaction view + shared `MoodChips`:**
+- **One chip language everywhere.** Killed the solid-black VIBE bricks. Selected vibe/verdict/reaction chips are now the **cream pill** (`#F4F2EE` + `inset 0 0 0 1px #1C1B19`, weight 500). Did this in `MoodChips` for the `sm` size — all its usages are media surfaces (reaction view, edit view, `MarkDoneSheet`), so no Things blast radius.
+- **De-bordered tags.** Unselected vibe/verdict chips are now quiet borderless **tappable words** (`#8A857C`), not a ~20-box outlined grid. This is what removed the "form" feel. `+ add` / `done` toggles also de-dashed.
+- **Reactions = a centered cluster**, not stretched full-width boxes. **Bigger font on the reactions only** (14px) — Farah's call; tags kept their original `sm` size.
+- **Desert island → Option C (progressive).** Was a 5th chip crammed in the row behind a divider. Now a centered `☆ one for the desert island?` that only appears once reaction is `liked_it`/`loved_it` (or canon already set) → flips to `★ desert island`. Added a local `canon` mirror state for instant toggle. *(Options A "grounded bar" + B "★ tucked at end of scale" were mocked + rejected — B didn't fit at the bigger font.)*
+- **Footer:** `cancel` → quiet text link; `save` → ink pill (`#1C1B19`).
+- **Ported the whole redesign onto `MarkDoneSheet`** too — the *separate* quick "mark as done" that fires straight from a library row (`ItemRow` `onMarkDone` → `setDoneItem`). It was half-new after the shared `MoodChips` change (new tags, old chunky reactions). Now matches; keeps its item-header + single CTA (no surrounding context like the in-sheet view has). **Flagged for later:** two near-identical mark-as-done sheets is a smell worth collapsing.
+
+**Bullet auto-continue (`NoteInput`):** the `• bullet` button was one-shot. Now Enter on a bullet line starts a fresh bullet; Enter on an *empty* bullet ends the list (drops the marker) — standard editor behaviour. Used by both the note box and the reaction sheet.
+
+**Add page (`MediaComposer`) — verified live (real component, screenshots + computed styles):**
+- `identify & save` no longer a **dead grey slab** when empty — it's a quiet ghost (transparent + hairline) that flips to the ink fill once you type (confirmed computed `rgb(28,27,25)`).
+- **"other ways to add" collapsed** behind a `▾` tap (find recommendations / import letterboxd / sync spotify) so the bulk/discovery routes stop competing with the primary single-item add.
+
+---
+
 ### Session 90 (2026-06-27) — cohere the Things editorial polish onto the media item sheet. All free.
 
 Farah asked to bring the s89 product-card language to the **media** side so flipping between worlds feels like one app. All shipped + pushed to `main` ([2b574c0](https://github.com/mokhtarfarah/nospaces/commit/2b574c0), [4395c2b](https://github.com/mokhtarfarah/nospaces/commit/4395c2b)), **98 Vitest green**, typecheck + lint clean, **no new API calls**.

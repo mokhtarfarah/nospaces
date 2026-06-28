@@ -119,6 +119,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [type, setType] = useState(item.type)
   const [year, setYear] = useState(item.year?.toString() ?? '')
   const [reaction, setReaction] = useState<ItemReaction | null>(item.reaction)
+  // Local canon mirror so the desert-island toggle flips instantly (the parent
+  // persists, but item.metadata may not re-render the sheet in time).
+  const [canon, setCanon] = useState(!!item.metadata?.canon)
   const [note, setNote] = useState(item.note ?? '')
   const [selectedMoods, setSelectedMoods] = useState<string[]>(() => {
     const unconfirmed = ((item.metadata?.unconfirmedVibes as string[] | undefined) ?? [])
@@ -1179,7 +1182,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
           )
         })()}
 
-        {view === 'reaction' && (
+        {view === 'reaction' && (() => {
+          const canonVisible = reaction === 'liked_it' || reaction === 'loved_it' || canon
+          return (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <p style={{ ...sectionHeading, margin: 0 }}>
@@ -1187,25 +1192,32 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               </p>
               <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
             </div>
-            {/* 5-chip row: not for me · eh · liked it · loved it | canon */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 18, alignItems: 'stretch' }}>
+            {/* Reaction scale — a centered cluster, not stretched boxes. */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: canonVisible ? 10 : 20, justifyContent: 'center' }}>
               {(['not_for_me', 'eh', 'liked_it', 'loved_it'] as ItemReaction[]).map(r => (
-                <button key={r} onClick={() => setReaction(r)} style={{ ...reactionBtnStyle(reaction === r), flex: 1, padding: '10px 4px', fontSize: 12 }}>
+                <button key={r} onClick={() => setReaction(r)} style={reactionBtnStyle(reaction === r)}>
                   {REACTIONS.find(x => x.value === r)!.label}
                 </button>
               ))}
-              <div style={{ width: 1, background: '#ECEAE6', flexShrink: 0, alignSelf: 'stretch' }} />
-              <button
-                onClick={() => onToggleCanon(!item.metadata?.canon)}
-                style={{
-                  ...reactionBtnStyle(!!item.metadata?.canon),
-                  flex: 1, padding: '10px 4px', fontSize: 12,
-                  display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-                }}
-              >
-                <span style={{ fontSize: 11 }}>desert island</span>
-              </button>
             </div>
+            {/* Desert island — only surfaces once you land somewhere positive (you
+                don't crown something you felt "eh" about). Stays visible if already set. */}
+            {canonVisible && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+                <button
+                  onClick={() => { const next = !canon; setCanon(next); onToggleCanon(next) }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    border: 'none', background: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 9,
+                    fontSize: 13, fontFamily: 'inherit',
+                    color: canon ? '#1C1B19' : '#9A958C', fontWeight: canon ? 600 : 400,
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>{canon ? '★' : '☆'}</span>
+                  {canon ? 'desert island' : 'one for the desert island?'}
+                </button>
+              </div>
+            )}
             <div style={{ marginBottom: 16 }}>
               <NoteInput value={note} onChange={setNote} />
             </div>
@@ -1244,17 +1256,18 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 )}
               </div>
             )}
-            <div style={{ ...footer, display: 'flex', gap: 8 }}>
-              <button onClick={() => setView('main')} style={{ ...actionBtn('#333'), flex: 1 }}>cancel</button>
+            <div style={{ ...footer, display: 'flex', alignItems: 'center', gap: 14 }}>
+              <button onClick={() => setView('main')} style={{ background: 'none', border: 'none', color: '#ABA69C', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', padding: '11px 4px' }}>cancel</button>
               {(() => {
                 // Enable save when there's anything worth saving — a verdict, a note, or tags.
                 // A note no longer requires a verdict (notes can stand alone).
                 const canSave = !!reaction || note.trim().length > 0 || selectedMoods.length > 0
-                return <button onClick={handleSaveReaction} disabled={!canSave} style={{ ...actionBtn('#fff'), flex: 1, background: canSave ? '#111111' : '#ccc', border: 'none' }}>save</button>
+                return <button onClick={handleSaveReaction} disabled={!canSave} style={{ flex: 1, padding: 13, borderRadius: 11, border: 'none', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', color: '#fff', background: canSave ? '#1C1B19' : '#D8D5D0', cursor: canSave ? 'pointer' : 'default' }}>save</button>
               })()}
             </div>
           </>
-        )}
+          )
+        })()}
       </div>
       {watchOpen && (
         <WhereToWatchSheet
@@ -1330,13 +1343,16 @@ const fieldLabel: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: 
 // Small intro label for the read-view tag lines (genre / vibe / verdict).
 const tagLabelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', width: 50, flexShrink: 0 }
 
-// Monochrome reaction button — matches the editorial ink-on-white palette (no type colour).
+// Reaction chip — the primary pick, so it runs a touch larger than the tag chips.
+// Selected = the same cream pill used across vibe/verdict; unselected = a quiet,
+// borderless word (the cluster reads as one scale, not a row of boxes).
 function reactionBtnStyle(active: boolean): React.CSSProperties {
   return {
-    padding: '12px 8px', borderRadius: 10, cursor: 'pointer', fontSize: 14,
-    border: active ? '2px solid #1C1B19' : '1.5px solid #E6E3DE',
-    background: active ? '#F4F2EE' : '#fff',
-    color: active ? '#1C1B19' : '#6F6B64',
-    fontWeight: active ? 600 : 400,
+    padding: '8px 13px', borderRadius: 9, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit',
+    border: 'none',
+    background: active ? '#F4F2EE' : 'none',
+    boxShadow: active ? 'inset 0 0 0 1px #1C1B19' : 'none',
+    color: active ? '#1C1B19' : '#8A857C',
+    fontWeight: active ? 500 : 400,
   }
 }

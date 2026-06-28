@@ -120,6 +120,7 @@ export function MediaComposer({ onClose, onDone }: { onClose: () => void; onDone
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [pickerCandidates, setPickerCandidates] = useState<Candidate[] | null>(null)
   const [sonnetPrompt, setSonnetPrompt] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
@@ -355,20 +356,28 @@ export function MediaComposer({ onClose, onDone }: { onClose: () => void; onDone
               }}
             />
 
-            <button
-              type="submit"
-              disabled={!title.trim() || loading}
-              style={{
-                width: '100%', marginTop: 10, padding: '12px',
-                background: title.trim() && !loading ? INK : HAIR,
-                color: title.trim() && !loading ? '#fff' : MUTE, border: 'none', borderRadius: 8,
-                fontSize: 14, fontWeight: 600, letterSpacing: '0.2px',
-                cursor: title.trim() && !loading ? 'pointer' : 'default',
-                transition: 'background 0.15s ease',
-              }}
-            >
-              {loading ? 'identifying…' : 'identify & save'}
-            </button>
+            {(() => {
+              // Empty = quiet ghost (no dead grey slab); active = solid ink fill.
+              const ready = !!title.trim() && !loading
+              return (
+                <button
+                  type="submit"
+                  disabled={!title.trim() || loading}
+                  style={{
+                    width: '100%', marginTop: 10, padding: '12px',
+                    background: ready ? INK : 'transparent',
+                    color: ready ? '#fff' : MUTE,
+                    border: ready ? '1.5px solid transparent' : `1.5px solid ${HAIR}`,
+                    borderRadius: 8,
+                    fontSize: 14, fontWeight: 600, letterSpacing: '0.2px',
+                    cursor: ready ? 'pointer' : 'default',
+                    transition: 'background 0.15s ease, color 0.15s ease',
+                  }}
+                >
+                  {loading ? 'identifying…' : 'identify & save'}
+                </button>
+              )
+            })()}
 
             {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{error.toLowerCase()}</p>}
 
@@ -417,14 +426,24 @@ export function MediaComposer({ onClose, onDone }: { onClose: () => void; onDone
             )}
           </div>
 
-          {/* Other ways to add */}
+          {/* Other ways to add — collapsed by default so the bulk/discovery routes
+              don't compete with the primary "add this one thing" action. */}
           <div style={{ marginTop: 28, borderTop: `1px solid ${HAIR}`, paddingTop: 18 }}>
-            <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE }}>other ways to add</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <button type="button" onClick={() => go('/recommend')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>find recommendations</button>
-              <button type="button" onClick={() => go('/import')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>import from letterboxd</button>
-              <button type="button" onClick={() => go('/spotify')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>sync from spotify</button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setMoreOpen(o => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, fontFamily: 'inherit' }}
+            >
+              other ways to add
+              <span style={{ fontSize: 9, color: MUTE }}>{moreOpen ? '▴' : '▾'}</span>
+            </button>
+            {moreOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+                <button type="button" onClick={() => go('/recommend')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>find recommendations</button>
+                <button type="button" onClick={() => go('/import')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>import from letterboxd</button>
+                <button type="button" onClick={() => go('/spotify')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>sync from spotify</button>
+              </div>
+            )}
           </div>
         </Sheet>
       )}
