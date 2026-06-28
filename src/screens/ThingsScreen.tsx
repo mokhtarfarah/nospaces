@@ -1913,6 +1913,11 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
   // Your self-described aesthetic + body type, fed into the compare so the weigh-up
   // can speak to fit/silhouette, not just price + reviews.
   const { styleProfile } = usePrefs()
+  // The cached compare is only valid while the option set + order is unchanged
+  // (notes are positional). If it still lines up, seed the view with it so it
+  // survives closing/reopening the plan; otherwise start fresh.
+  const candidateSig = m.candidates.map(c => c.id).join(',')
+  const storedCompare = m.comparison && m.comparison.candidateIds.join(',') === candidateSig ? m.comparison.result : null
   // One editor for the plan's name + context together (opened from near the
   // context — a fiddly inline title tap read messy).
   const [editingDetails, setEditingDetails] = useState(false)
@@ -1928,7 +1933,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
   const [manual, setManual] = useState(false)        // fell back to manual entry for a new option
   const [editingId, setEditingId] = useState<string | null>(null) // candidate being edited
   const [comparing, setComparing] = useState(false)
-  const [compare, setCompare] = useState<Comparison | null>(null)
+  const [compare, setCompare] = useState<Comparison | null>(() => storedCompare)
   const [compareErr, setCompareErr] = useState<string | null>(null)
   const [briefDraft, setBriefDraft] = useState(m.brief ?? '')
   const openDetails = () => { setTitleDraft(item.title); setBriefDraft(m.brief ?? ''); setEditingDetails(true) }
@@ -1946,6 +1951,9 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
     setComparing(false)
     if (!r.ok) { setCompareErr(r.reason); return }
     setCompare(r.result)
+    // Cache it (with the option order it was computed against) so it survives
+    // closing/reopening the plan instead of costing another web search.
+    void onPatch({ ...m, comparison: { result: r.result, candidateIds: m.candidates.map(c => c.id) } })
   }
 
   async function addCandidate() {
@@ -1960,7 +1968,9 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
 
   async function saveNewCandidate(fields: ProductFields) {
     const cand: Candidate = { id: newCandidateId(), ...fields }
-    await onPatch({ ...m, candidates: [...m.candidates, cand] })
+    // Adding an option changes the line-up, so the cached compare no longer fits.
+    setCompare(null)
+    await onPatch({ ...m, candidates: [...m.candidates, cand], comparison: null })
     resetAdd()
   }
   function resetAdd() { setLink(''); setAdding(false); setManual(false); setError(null) }
@@ -1968,8 +1978,11 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
   const setLeaning = (id: string) =>
     onPatch({ ...m, leaning: m.leaning === id ? null : id })
 
-  const removeCandidate = (id: string) =>
-    onPatch({ ...m, candidates: m.candidates.filter(c => c.id !== id), leaning: m.leaning === id ? null : m.leaning })
+  const removeCandidate = (id: string) => {
+    // Removing an option shifts the positional notes, so drop the cached compare.
+    setCompare(null)
+    return onPatch({ ...m, candidates: m.candidates.filter(c => c.id !== id), leaning: m.leaning === id ? null : m.leaning, comparison: null })
+  }
 
   return (
     <Sheet onClose={onClose}>
@@ -2098,7 +2111,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
             ✨ {comparing ? 'thinking…' : compare ? 'compare again' : 'compare these'}
           </button>
           {compare && (
-            <button onClick={() => { setCompare(null); setCompareErr(null) }}
+            <button onClick={() => { setCompare(null); setCompareErr(null); void onPatch({ ...m, comparison: null }) }}
               style={{ marginLeft: 10, border: 'none', background: 'none', color: MUTED, fontSize: 12, cursor: 'pointer' }}>
               dismiss
             </button>

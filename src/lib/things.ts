@@ -185,6 +185,14 @@ export type IntentMeta = {
   winner?: string | null
   /** Free-text context: budget, occasion, must-haves, dealbreakers. Feeds compare. */
   brief?: string | null
+  /**
+   * The last AI weigh-up, cached so it survives closing/reopening the plan (a
+   * compare costs a web search + image reads — re-running just because you tapped
+   * away is wasteful). `candidateIds` is the option order it was computed against;
+   * the notes are positional, so we only show it back when that order still matches
+   * — any add/remove/edit invalidates it and the user re-runs.
+   */
+  comparison?: { result: Comparison; candidateIds: string[] } | null
 }
 
 export type Kind = 'product' | 'intent' | 'inspiration'
@@ -201,7 +209,7 @@ export function isThing(item: Item): boolean {
 
 export function intentMeta(item: Item): IntentMeta {
   const m = (item.metadata ?? {}) as Partial<IntentMeta>
-  return { kind: 'intent', candidates: m.candidates ?? [], leaning: m.leaning ?? null, winner: m.winner ?? null, brief: m.brief ?? null }
+  return { kind: 'intent', candidates: m.candidates ?? [], leaning: m.leaning ?? null, winner: m.winner ?? null, brief: m.brief ?? null, comparison: m.comparison ?? null }
 }
 
 export function productMeta(item: Item): ProductMeta {
