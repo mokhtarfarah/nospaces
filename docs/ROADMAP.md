@@ -75,6 +75,8 @@ The walled-shop screenshot rescue shipped (all 5 parts — see archive s87). Ope
 - **Offline library cache** — full offline-first requires queuing mutations (markDone, edits, deletes) — different scope from the shipped capture queue. *Trigger: offline usage becomes a real pattern.*
 - **Email talkback** — code is live; waiting on Postmark approval for sending to Gmail (submitted 2026-06-02, chased s87). *Trigger: Postmark approves; set `POSTMARK_SERVER_TOKEN` in Vercel.* **Note (s87):** this same account-approval also blocks buying the paid 10k-email plan — so approval unblocks BOTH talkback and the inbound quota in one go. Until then, all email-in is capped/parked (see `docs/REFERENCE.md` → Postmark plan).
 - **PR workflow + branch protection** — direct pushes to `main` are fine for a solo dev / 2 users. *Trigger: a 3rd user joins (memory `pr-workflow-at-3-users` will prompt).*
+- **Split the big screen files** (flagged in s92 audit) — `ThingsScreen.tsx` (~2.9k lines), `LibraryScreen.tsx` (~1.7k), `ItemActionSheet.tsx` (~1.3k) are getting unwieldy to edit safely. No bug, pure maintainability. Pull sub-views / row components into their own files. *Trigger: next time one of these is painful to navigate or a change there feels risky. Free, no API calls. Do deliberately, one file at a time — not a drive-by.*
+- **Lazy-load the image-cutout model** (flagged in s92 audit) — main JS bundle is ~742KB (208KB gzip), dominated by `onnxruntime` (the on-device subject-cutout ML). It's pulled in on first load even though it only fires when you cut out a Things image. Dynamic-`import()` it so it downloads on demand → faster cold start. *Trigger: first-load speed becomes a felt problem, or when next touching the Things image-save path. Free.*
 
 ---
 

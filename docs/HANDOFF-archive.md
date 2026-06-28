@@ -4,6 +4,20 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 92 (2026-06-28) — full-stack code audit + collapsed the duplicate "mark as done" sheets. All free.
+
+Farah asked for a **full-stack code audit** ("make sure everything works + is structured properly"), then to act on it. **No API calls.**
+
+**Audit verdict — healthy.** Typecheck (app + api) clean, lint clean (0 warnings), **98/98 Vitest green**, production build succeeds, **no secrets committed** (`.env*` properly ignored, no keys in code), no dead/unused component files, **zero TODO/FIXME** anywhere. SSRF guard sits on exactly the user-URL endpoints (`og-parse`, `_scrape`, `thing-image`, `_vision`, `email`, `recommend-feeds`); other fetchers hit hardcoded APIs. The 20 `as any` are all the one untyped-Supabase-client pattern; the 2 `console.log` are `DEV`-gated. Nothing broken or unsafe.
+
+**Acted on the one real smell — the duplicate mark-done sheets** (flagged s91). Extracted the shared form body — segmented reaction scale + desert-island toggle + `NoteInput` + vibe/verdict `MoodChips` — into one controlled component **`ReactionForm.tsx`**. Both call sites now render it: the quick `MarkDoneSheet` (row-level) and the `ItemActionSheet` reaction view (handles both mark-done and edit-reaction via a `collapse` prop). Net **−143 / +30** lines in the two files + the new ~120-line shared component → **one source of truth, can't drift again**. Removed the now-unused `NoteInput` import from `ItemActionSheet`. Gates green after.
+- **Two intentional consistency tweaks** (carried — eyeball on a real item): dropped the redundant `vibe · optional` label that only `MarkDoneSheet` had; aligned the in-item desert-island spacing to 18px (was 20). Both pull toward the two sheets matching exactly.
+- **Couldn't drive the live sheet** — same constraint as s91: the no-auth preview library is empty and can't persist a Supabase item, so verification was gates + faithful-extraction reasoning + clean re-render (no error boundary), not a click-through.
+
+**Banked two audit findings to `docs/ROADMAP.md`** (Smaller parked ideas, with triggers): split the big screen files (`ThingsScreen` ~2.9k / `LibraryScreen` ~1.7k / `ItemActionSheet` ~1.3k lines — maintainability, not a bug); and lazy-load the `onnxruntime` image-cutout model (main bundle ~742KB/208KB gzip, only fires on Things image cutout).
+
+---
+
 ### Session 91 (2026-06-28) — aesthetic retool of the "mark as done" reaction sheet + add-page polish. All free.
 
 Farah confirmed the s90 phone check (⋯ menu, tappable tags, reaction footer, ghost-wash all read right), then asked for a **fuller aesthetic retool of the media "mark as done" sheet** ("my call on specifics"). All shipped on `main`, **98 Vitest green**, typecheck + lint clean, **no new API calls**. Driven by faithful **standalone HTML repros** (real Geist font + palette) in `public/`, screenshotted in the preview — the no-auth library is empty so the real reaction view can't render on a saved item (carried: eyeball on a real item on her phone). The two repro files were **deleted before commit** (kept `public/taste-mockup.html`, pre-existing).

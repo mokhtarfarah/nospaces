@@ -1,16 +1,7 @@
 import { useState } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { typeColor } from '../lib/colors'
-import { VERDICTS } from '../lib/moods'
-import { NoteInput } from './NoteInput'
-import { MoodChips } from './MoodChips'
-
-const REACTIONS: { value: ItemReaction; label: string }[] = [
-  { value: 'loved_it',   label: 'loved it'   },
-  { value: 'liked_it',   label: 'liked it'   },
-  { value: 'eh',         label: 'eh'         },
-  { value: 'not_for_me', label: 'not for me' },
-]
+import { ReactionForm } from './ReactionForm'
 
 interface Props {
   item: Item
@@ -24,10 +15,9 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
   const [note, setNote] = useState('')
   const unconfirmed = Array.isArray(item.metadata?.unconfirmedVibes) ? (item.metadata.unconfirmedVibes as string[]) : []
   const [selectedMoods, setSelectedMoods] = useState<string[]>(unconfirmed)
+  // Held locally and applied on confirm (the row isn't persisted until "mark as done").
   const [canon, setCanon] = useState(!!item.metadata?.canon)
   const color = typeColor(item.type)
-  // Desert island only shows once you've landed somewhere positive (or it's set).
-  const canonVisible = reaction === 'liked_it' || reaction === 'loved_it' || canon
 
   function toggleMood(mood: string) {
     setSelectedMoods(prev =>
@@ -72,62 +62,18 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
 
         <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }}>what did you think?</p>
 
-        {/* Reaction scale — one segmented control (matches the in-sheet reaction view). */}
-        <div style={{ display: 'flex', border: '1px solid #E2DED7', borderRadius: 11, overflow: 'hidden', marginBottom: canonVisible ? 10 : 18 }}>
-          {(['not_for_me', 'eh', 'liked_it', 'loved_it'] as ItemReaction[]).map((v, i) => {
-            const active = reaction === v
-            return (
-              <button key={v} onClick={() => setReaction(v)} style={{
-                flex: 1, padding: '10px 4px', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
-                border: 'none', borderRight: i < 3 ? '1px solid #ECEAE6' : 'none',
-                background: active ? '#F4F2EE' : '#fff',
-                color: active ? '#1C1B19' : '#8A857C', fontWeight: active ? 500 : 400,
-              }}>
-                {REACTIONS.find(r => r.value === v)!.label}
-              </button>
-            )
-          })}
-        </div>
-        {/* Desert island — only surfaces once you land somewhere positive (or it's
-            already set). You don't crown something you felt "eh" about. */}
-        {canonVisible && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-            <button
-              onClick={() => setCanon(c => !c)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                border: 'none', background: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 9,
-                fontSize: 13, fontFamily: 'inherit',
-                color: canon ? '#1C1B19' : '#9A958C', fontWeight: canon ? 600 : 400,
-              }}
-            >
-              <span style={{ fontSize: 14 }}>{canon ? '★' : '☆'}</span>
-              {canon ? 'desert island' : 'one for the desert island?'}
-            </button>
-          </div>
-        )}
-
-        <div style={{ marginBottom: 16 }}>
-          <NoteInput value={note} onChange={setNote} rows={2} />
-        </div>
-        <p style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: unconfirmed.length > 0 ? 4 : 8 }}>
-          vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span>
-        </p>
-        {unconfirmed.length > 0 && (
-          <p style={{ fontSize: 10, color: '#C9C6C0', marginBottom: 8 }}>
-            vibes below are ai guesses — keep the ones that fit, saving confirms them.
-          </p>
-        )}
-        <div style={{ marginBottom: 16 }}>
-          <MoodChips
-            type={item.type}
-            size="sm"
-            isActive={m => selectedMoods.includes(m)}
-            onToggle={toggleMood}
-            collapsible
-            initialOpen={{ verdict: !VERDICTS.some(v => selectedMoods.includes(v)) }}
-          />
-        </div>
+        <ReactionForm
+          type={item.type}
+          reaction={reaction}
+          onReaction={setReaction}
+          canon={canon}
+          onToggleCanon={setCanon}
+          note={note}
+          onNote={setNote}
+          selectedMoods={selectedMoods}
+          onToggleMood={toggleMood}
+          showUnconfirmedHint={unconfirmed.length > 0}
+        />
 
         <button
           disabled={!reaction}
