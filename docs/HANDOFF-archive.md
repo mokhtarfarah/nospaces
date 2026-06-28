@@ -4,6 +4,27 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 90 (2026-06-27) — cohere the Things editorial polish onto the media item sheet. All free.
+
+Farah asked to bring the s89 product-card language to the **media** side so flipping between worlds feels like one app. All shipped + pushed to `main` ([2b574c0](https://github.com/mokhtarfarah/nospaces/commit/2b574c0), [4395c2b](https://github.com/mokhtarfarah/nospaces/commit/4395c2b)), **98 Vitest green**, typecheck + lint clean, **no new API calls**.
+
+**The coherence pass (`ItemActionSheet`):**
+- **⋯ admin menu over the hero** — edit · own/on-my-shelf · status toggle · "actually a thing" · **delete** (red, with confirm) all moved off the read view. Kills the loud red delete button and the clutter. (`SheetHero` gained an optional `menuButton` slot rendered next to the ✕; the dropdown renders *outside* the hero since the hero clips with `overflow:hidden`. Discover, which shares `SheetHero`, is unaffected.)
+- **Footer → one warm reaction row (Option A).** Was two heavy outlined buttons + red delete. Now a single warm-bordered (`#E8E8E8`), left-aligned row: `your reaction · liked it … edit →` when done, `mark as done →` (CTA weight) when not yet logged. *Option B (quiet no-pill link) was mocked + parked — Farah chose A but may revert; trigger + hybrid idea in `docs/ROADMAP.md` → Media library polish.*
+- **Link row trimmed** to outward links only (about/via · spotify · wikipedia · watch); edit + own moved into ⋯.
+- **Note "thoughts"** got the Things block chrome — small uppercase header + hairline divider (the shared `NoteProse` already matched; only the divider was missing).
+- **Tappable tags** — genre/vibe/verdict on the read view are now tappable → set `categories=[item.type]` + the matching facet filter, closing the sheet (mirrors the board's tappable taste tags). Gated `countWithTag > 1` so a one-off tag isn't a dead-end. Wired from `LibraryScreen` (reuses the existing `genreFilter`/`vibeFilter`/`verdictFilter` faceted state).
+
+**Aesthetic critique pass (Farah requested, on a real phone screenshot):**
+- **Ghost-wash** (`SheetHero`): was pooling a bright hotspot on saturated posters (read as a smudge). Now `blur 7→16px`, `opacity 0.46→0.40`, `scale 1.1→1.15` — a diffuse tint. *(Earlier in the session it went `0.26→0.46` to fix "barely visible"; the critique then dialled it to an even, non-blotchy 0.40.)*
+- **Meta line** trimmed to identity (type · creator · year · runtime + series); the reaction was dropped (it's on the footer) — was showing 3× (meta + footer + verdict-adjacent).
+- **Hero** title block now **vertically centred** against the poster (`alignItems: flex-start → center`) so a short title block doesn't leave a tall poster hanging; hero bottom padding `16→12` + the hero→tags spacer `10→4` to read as one unit.
+- Tags **left labelled** (genre/vibe/verdict rows) — Farah explicitly agreed they carry more meaning than the board's single italic credit line.
+
+**Verification:** done via **isolated repros** rendered in the preview (injected exact markup, screenshotted) — the no-auth preview's library is empty and the add path costs an AI `identify` call, so no end-to-end run. Live flow + ghost-wash on real covers still to be eyeballed on Farah's phone (carried to next session).
+
+---
+
 ### Session 89 (2026-06-27) — verify s87/s88 + editorial product-card redesign (note/fit toggle, body-only scroll). All free.
 
 Started as the s88 verification pass, became a full product-card redesign driven live by Farah on her phone. All shipped on `main`, typecheck + lint clean, **98 Vitest green**. No new API calls (every change is UI/CSS or reuses existing cached calls).
