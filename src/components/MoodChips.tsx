@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { VERDICTS, vibesForType } from '../lib/moods'
+import { verdictsForType, vibesForType } from '../lib/moods'
 
 export function MoodChips({ type = 'other', isActive, onToggle, size = 'md', layout = 'wrap', groups = 'all', collapsible = false, initialOpen = {} }: {
   // Item type — determines which vibes to show (core + type-appropriate tier).
@@ -18,7 +18,7 @@ export function MoodChips({ type = 'other', isActive, onToggle, size = 'md', lay
   const VIBES = vibesForType(type)
   const GROUPS = [
     { label: 'vibe', list: VIBES },
-    { label: 'verdict', list: VERDICTS },
+    { label: 'verdict', list: verdictsForType(type) },
   ] as const
 
   const rowStyle: React.CSSProperties = layout === 'scroll' && !collapsible

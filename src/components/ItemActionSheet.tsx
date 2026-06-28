@@ -770,8 +770,8 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               const activeGenres = [...new Set((item.tags ?? []).filter(isGenreTag))]
               const feel = (item.moods ?? []).filter(m => VIBES.includes(m))
               const verdicts = item.status === 'done' ? (item.moods ?? []).filter(m => VERDICTS.includes(m)) : []
-              const needsVerdict = item.status === 'done' && verdicts.length === 0
-              if (!activeGenres.length && !feel.length && !verdicts.length && !unconfirmedVibes.length && !needsVerdict) return null
+              const isCanon = item.status === 'done' && canon
+              if (!activeGenres.length && !feel.length && !verdicts.length && !unconfirmedVibes.length && !isCanon) return null
 
               // flexWrap so a long line (e.g. many vibes) wraps onto multiple
               // lines instead of overflowing. The terms are dot-separated with no
@@ -815,12 +815,18 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 <div style={{ marginBottom: 14 }}>
                   {activeGenres.length > 0 && row('genre', tagLine('genre', activeGenres))}
                   {(feel.length > 0 || unconfirmedVibes.length > 0) && row('vibe', tagLine('vibe', feel, unconfirmedVibes))}
+                  {/* Desert island is the top rung — elevated, not a soft-token chip.
+                      A starred line above the verdict row marks the all-time keepers. */}
+                  {isCanon && (
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, color: '#1C1B19' }}>★</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', letterSpacing: '0.01em' }}>desert island</span>
+                    </div>
+                  )}
+                  {/* Verdict is optional now — a highlighter for the special ones, not
+                      a slot to fill. Shown only when set; an empty verdict reads as
+                      finished, not unfinished (s93 reshape). */}
                   {verdicts.length > 0 && row('verdict', tagLine('verdict', verdicts))}
-                  {needsVerdict && row('verdict', (
-                    <button onClick={() => { setReactionTagsOpen(true); setView('reaction') }} className="tlink" style={{ color: '#ABA69C', fontStyle: 'italic' }}>
-                      how did it land? add a verdict →
-                    </button>
-                  ))}
                 </div>
               )
             })()}

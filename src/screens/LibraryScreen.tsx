@@ -1450,7 +1450,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
         <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
           <span style={{ fontWeight: 500 }}>{item.title}</span>
           {item.creator && <span style={{ fontWeight: 400, color: MUTE }}>{'  ·  '}{item.creator}</span>}
-          {!!item.metadata?.canon && <span title="Canon" style={{ fontWeight: 400, color: MUTE, fontSize: 10 }}>{'  '}◆</span>}
+          {!!item.metadata?.canon && <span title="Desert island" style={{ fontWeight: 400, color: MUTE, fontSize: 10 }}>{'  '}★</span>}
           {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: MUTE, fontSize: 11 }}>{'  '}⌂</span>}
           {!!item.metadata?.scratch && <span title="Needs identifying" style={{ fontWeight: 500, color: MUTE, fontSize: 11 }}>{'  '}?</span>}
         </div>
@@ -1634,7 +1634,7 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
       {caption !== 'none' && (
         <div style={{ marginTop: 5 }}>
           <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>
-            {!!item.metadata?.canon && <span style={{ fontSize: 9, marginRight: 3, color: INK }}>◆</span>}
+            {!!item.metadata?.canon && <span style={{ fontSize: 9, marginRight: 3, color: INK }}>★</span>}
             {item.title}
           </div>
           {caption === 'full' && item.creator && (

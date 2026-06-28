@@ -4,6 +4,23 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 93 (2026-06-28) — built the verdict reshape + diamonds→stars; advanced the music-library design. All free, no API calls.
+
+Picked up the locked-but-unbuilt **verdict reshape** (the s92 decision was sitting uncommitted in `ROADMAP.md`). **Shipped the whole build, $0:**
+- **New verdict vocab** in `src/lib/moods.ts`: `stuck with me · would revisit · comfort · guilty pleasure · wanted to love it · my secret gem`, plus `in rotation · hyperfixation` **music/TV-only** via a new `verdictsForType(type)` (tiered like `vibesForType`). `VERDICTS` stays exported flat for membership/validation.
+- **Retired terms migrate** via `MOOD_REMAP` (GapsSheet surfaces them on real items): `respect, not love`→`wanted to love it`, `so bad it's good`→`guilty pleasure`, `delivers`→drop, `unfinished business`→drop (it's a status). Removed the old `would revisit`→`in rotation` remap (would-revisit is first-class again). **`overrated`/`overhyped`→drop** — Farah explicitly overrode the original "→ my secret gem" plan (opposite meaning; shouldn't auto-flip a negative into a positive).
+- **Verdict is optional now** — killed the "how did it land? add a verdict →" nag in `ItemActionSheet`; an empty verdict reads as *finished*, not unfinished.
+- **Desert island elevated on the read sheet** — a `★ desert island` line above the verdict row (Farah's call: "elevate it"). Guarded so a canon item with no other tags still shows.
+- **All diamonds → stars** (Farah: "demise any diamond glyphs, replace with stars"): `LibraryScreen` card markers ◆→★, `GuideScreen` ◆→★ + the illustration's ◇→☆ (matches the real toggle's unselected state). Also refreshed the guide's stale verdict copy (it named dead `overrated`/`so bad it's good`).
+- **`MoodChips.tsx`** now uses `verdictsForType(type)`.
+- **Gates:** typecheck (app+api) ✓, lint ✓, **98/98 Vitest** ✓, production build ✓. **Live-verified the guide screen** (screenshot + DOM: no diamonds, `★ desert island` present, refreshed copy). **Could NOT drive the live mark-done sheet / verdict chips / read-sheet desert-island line** — same blocker as s91/s92 (no-auth preview library is empty, can't persist a done item). Those are gates-only; Farah will toy with it on her phone tonight.
+
+**Music-library design discussion (no build — "decide what we want to do first").** Started from the parked "music clutter" item. Landed on a **reframe Farah confirmed "generally"** (not 100% — revisit s94): the clutter isn't verdicts, it's that **want-to bleeds into the collection**. She uses music as a *wishlist too*, so done+want-to share one wall and it stops feeling like the iPod (whose magic was *purity* — only music in your life, browse-by-artist, naturally curated). **Direction: split collection (the iPod, done) from queue (want-to), by default.** Sub-asks confirmed: verdict "shelves" become *one added view inside the collection* (not default); by-artist view sortable by **# of albums saved**. Open next step: *how* the queue sits beside the collection (leaning: a `to listen · N` chip pinned atop music vs. a separate destination) + whether it generalizes past music. Full direction captured in `ROADMAP.md` → "Media library polish". Used a mockup to make the shelf idea concrete.
+
+**Docs:** deleted the now-built verdict-reshape block from `ROADMAP.md`; the music reframe replaced the old one-liner "music clutter" item.
+
+---
+
 ### Session 92 (2026-06-28) — full-stack code audit + collapsed the duplicate "mark as done" sheets. All free.
 
 Farah asked for a **full-stack code audit** ("make sure everything works + is structured properly"), then to act on it. **No API calls.**

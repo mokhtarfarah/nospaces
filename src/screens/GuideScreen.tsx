@@ -57,8 +57,8 @@ export function GuideScreen() {
           <Tips items={[
             { label: 'rating',  text: 'loved it · liked it · eh · not for me. no stars, just how it actually hit.' },
             { label: 'vibe',    text: 'the feel of it — dark, nostalgic, playful, intense, cozy... add as many as fit.' },
-            { label: 'verdict', text: 'your personal label — comfort, hyperfixation, overrated, so bad it\'s good...' },
-            { label: '◆ desert island', text: 'all-time picks. tap desert island on things you\'d genuinely keep forever. shows up on your taste page.' },
+            { label: 'verdict', text: 'optional — a label for the special ones. comfort, would revisit, guilty pleasure, my secret gem, stuck with me... leave it blank and it just reads as done.' },
+            { label: '★ desert island', text: 'all-time picks. tap desert island on things you\'d genuinely keep forever. shows up on your taste page.' },
           ]} />
           <Extras items={[
             { label: 'in progress', text: 'reading something? halfway through a season? tap "mark as in progress" so you know what you\'re currently on.' },
@@ -93,7 +93,7 @@ export function GuideScreen() {
           <TasteIllustration />
           <Tips items={[
             { label: 'vibes',          text: 'the moods and feels that define your taste — derived from everything you\'ve tagged.' },
-            { label: '◆ desert island', text: 'the things you\'d keep forever, organised by type. your curated collection.' },
+            { label: '★ desert island', text: 'the things you\'d keep forever, organised by type. your curated collection.' },
             { label: 'always loved',   text: 'directors, authors, artists where you\'ve never not loved their work.' },
           ]} />
         </Section>
@@ -241,7 +241,7 @@ function ReactionIllustration() {
 
       {/* desert island full-width */}
       <div style={{ ...btnBase, border: '1.5px solid #E6E3DE', background: '#fff', color: '#6F6B64', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-        <span style={{ fontSize: 10 }}>◇</span> desert island
+        <span style={{ fontSize: 10 }}>☆</span> desert island
       </div>
 
       {/* eh / not for me */}
