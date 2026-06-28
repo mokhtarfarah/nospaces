@@ -2507,6 +2507,35 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
   const [saving, setSaving] = useState(false)
   const set = (patch: Partial<ProductFields>) => setF(prev => ({ ...prev, ...patch }))
   const norm = (s: string | null | undefined) => { const t = (s ?? '').trim(); return t || null }
+  const empty = (s: string | null | undefined) => !(s ?? '').trim()
+
+  // Gap-fill from the link — for a screenshot-saved product that had no link, then
+  // got one. Reads the page and fills ONLY the fields that are still empty (usually
+  // a clean catalog photo + current price), never overwriting anything you have or
+  // typed. Populates the form so you review before saving; your taste tags are left
+  // untouched. Offered only when there's a link and a real gap to fill.
+  const [pulling, setPulling] = useState(false)
+  const [pullMsg, setPullMsg] = useState<string | null>(null)
+  const canPull = !empty(f.url) && (empty(f.image) || empty(f.price))
+  async function pullFromLink() {
+    const url = (f.url ?? '').trim()
+    if (!url || pulling) return
+    setPulling(true); setPullMsg(null)
+    const r = await parseProductLink(url)
+    setPulling(false)
+    if (!r.ok) { setPullMsg(r.reason || "couldn't read that link"); return }
+    const g = r.fields
+    const patch: Partial<ProductFields> = {}
+    if (empty(f.image) && g.image) patch.image = g.image
+    if (empty(f.price) && g.price) patch.price = g.price
+    if (empty(f.wasPrice) && g.wasPrice) patch.wasPrice = g.wasPrice
+    if (empty(f.brand) && g.brand) patch.brand = g.brand
+    if (empty(f.title) && g.title) patch.title = g.title
+    if (empty(f.siteName) && g.siteName) patch.siteName = g.siteName
+    const n = Object.keys(patch).length
+    if (n) { set(patch); setPullMsg(`filled ${n} empty field${n === 1 ? '' : 's'} — review and save`) }
+    else setPullMsg('nothing new — your fields already have it')
+  }
 
   async function save() {
     setSaving(true)
@@ -2538,6 +2567,15 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
       </div>
       <input value={f.brand ?? ''} onChange={e => set({ brand: e.target.value })} placeholder="brand" style={inputStyle} />
       <input value={f.url ?? ''} onChange={e => set({ url: e.target.value })} placeholder="buy link (kept even if it doesn't preview)" style={inputStyle} />
+      {canPull && (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginTop: -2 }}>
+          <button type="button" onClick={pullFromLink} disabled={pulling}
+            style={{ alignSelf: 'flex-start', border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: pulling ? 'default' : 'pointer', padding: 0 }}>
+            {pulling ? 'reading the link…' : 'pull photo & price from link'}
+          </button>
+          {pullMsg && <span style={{ fontSize: 11.5, color: MUTED }}>{pullMsg}</span>}
+        </div>
+      )}
       <AttributesEditor value={f.attributes ?? []} onChange={attributes => set({ attributes })} />
       <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 2 }}>
         <button onClick={onCancel} style={{ border: 'none', background: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer' }}>cancel</button>
