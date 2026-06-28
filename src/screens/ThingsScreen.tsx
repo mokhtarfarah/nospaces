@@ -1520,8 +1520,10 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
       </div>
 
       {/* Only this body scrolls when a note or the read runs long — the photo, title
-          and tabs stay put, so the card itself never has to scroll. */}
-      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', paddingRight: 2 }}>
+          and tabs stay put, so the card itself never has to scroll. The note is plain
+          text (not a full-area button) so a touch-drag scrolls instead of registering
+          as a tap on iOS; "edit" is the small explicit target. */}
+      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', paddingRight: 2 }}>
       {tab === 'note' ? (
         editing ? (
           <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
@@ -1530,10 +1532,7 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
             style={{ width: '100%', boxSizing: 'border-box', resize: 'none', fontSize: 13, lineHeight: 1.65,
               color: '#4A453E', fontStyle: 'italic', background: '#F7F8F9', border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 12px', outline: 'none', fontFamily: 'inherit' }} />
         ) : note ? (
-          <button onClick={() => { setText(note); setEditing(true) }}
-            style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
-            <NoteProse>{note}</NoteProse>
-          </button>
+          <NoteProse trailing={<button onClick={() => { setText(note); setEditing(true) }} style={quietLink}>edit</button>}>{note}</NoteProse>
         ) : (
           <button onClick={() => { setText(''); setEditing(true) }} style={quietLink}>+ add a note</button>
         )
