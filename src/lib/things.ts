@@ -635,7 +635,7 @@ export async function compareCandidates(
       body: JSON.stringify({
         intent,
         brief: brief || undefined,
-        candidates: candidates.map(c => ({ title: c.title, brand: c.brand, price: c.price, wasPrice: c.wasPrice, url: c.url, attributes: c.attributes, note: c.note })),
+        candidates: candidates.map(c => ({ title: c.title, brand: c.brand, price: c.price, wasPrice: c.wasPrice, url: c.url, image: c.image, attributes: c.attributes, note: c.note })),
         styleProfile: styleProfile || undefined,
       }),
     })
