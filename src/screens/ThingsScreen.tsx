@@ -1622,6 +1622,22 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
             )}
           </div>
         )}
+        {/* The misroute fix lives here (not the main ⋯ menu) — it's a rare cleanup for a
+            screenshot we filed as a product but that's really a film/book/album/show. */}
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${LINE}` }}>
+          {flipping ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
+              <span style={{ fontSize: 12.5, color: MUTED }}>move to library as…</span>
+              {MEDIA_TYPES.map(t => (
+                <button key={t} onClick={() => { setFlipping(false); onFlipToMedia(t) }}
+                  style={{ border: 'none', background: 'none', color: INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>{t}</button>
+              ))}
+              <button onClick={() => setFlipping(false)} style={quietLink}>cancel</button>
+            </div>
+          ) : (
+            <button onClick={() => setFlipping(true)} style={quietLink}>this is actually media, not a thing →</button>
+          )}
+        </div>
       </Sheet>
     )
   }
@@ -1654,10 +1670,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
       <div style={{ position: 'relative', margin: '-20px -18px 0' }}>
         {hero
           ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy"
-              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', objectFit: showCutout ? 'contain' : 'cover',
-                padding: showCutout ? '10%' : 0, boxSizing: 'border-box', background: TILE, borderRadius: '20px 20px 0 0',
+              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(440px, 44dvh)', objectFit: showCutout ? 'contain' : 'cover',
+                padding: showCutout ? '8%' : 0, boxSizing: 'border-box', background: TILE, borderRadius: '20px 20px 0 0',
                 filter: showCutout ? undefined : 'saturate(0.97)' }} />
-          : <div style={{ width: '100%', aspectRatio: '4 / 5', background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
+          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(440px, 44dvh)', background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
 
         <button onClick={onClose} aria-label="close" style={{ ...floatBtn, left: 12, fontSize: 19 }}>×</button>
         <button onClick={() => setMenuOpen(o => !o)} aria-label="more" style={{ ...floatBtn, right: 12, fontSize: 21, fontWeight: 700 }}>⋯</button>
@@ -1674,24 +1690,15 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
                   <button style={menuItem('#B4413C', 600)} onClick={onDelete}>remove</button>
                   <button style={menuItem()} onClick={() => setConfirmDel(false)}>cancel</button>
                 </>
-              ) : flipping ? (
-                // The misroute fix: this isn't a thing, it's media — pick which kind and
-                // it moves to the library (type set, product shell dropped, review cleared).
-                <>
-                  <div style={{ fontSize: 12.5, color: MUTED, padding: '8px 10px 6px' }}>move to library as…</div>
-                  {MEDIA_TYPES.map(t => (
-                    <button key={t} style={menuItem()} onClick={() => { setFlipping(false); setMenuOpen(false); onFlipToMedia(t) }}>{t}</button>
-                  ))}
-                  <button style={menuItem()} onClick={() => setFlipping(false)}>cancel</button>
-                </>
               ) : (
                 <>
                   <button style={menuItem()} onClick={() => { setMenuOpen(false); onToggleGot() }}>{got ? 'undo got it' : 'mark as got it'}</button>
+                  {/* "edit details" also holds the rare "actually media" flip — a misroute
+                      cleanup, too rarely needed to earn a slot in this menu. */}
                   <button style={menuItem()} onClick={() => { setMenuOpen(false); setEditing(true) }}>edit details</button>
                   {plan && !got && (
                     <button style={menuItem()} onClick={async () => { setMenuOpen(false); await onReopenPlan(); onClose() }}>↩ put back in plan</button>
                   )}
-                  {!needsReview && <button style={menuItem()} onClick={() => setFlipping(true)}>actually media</button>}
                   <div style={{ height: 1, background: LINE, margin: '5px 8px' }} />
                   <button style={menuItem('#B4413C')} onClick={() => setConfirmDel(true)}>remove</button>
                 </>
@@ -1744,11 +1751,25 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           gate: confirm it's right or flip it to media (opens the ⋯ menu in flip mode). */}
       {needsReview && (
         <div style={{ marginTop: 16, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
-          <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>Read off your screenshot — does this look right?</div>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <button onClick={onClearReview} style={{ ...quietLink, color: INK, fontWeight: 600 }}>looks right</button>
-            <button onClick={() => { setFlipping(true); setMenuOpen(true) }} style={quietLink}>it&rsquo;s actually media →</button>
-          </div>
+          {flipping ? (
+            <>
+              <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>move to library as…</div>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                {MEDIA_TYPES.map(t => (
+                  <button key={t} onClick={() => { setFlipping(false); onFlipToMedia(t) }} style={{ ...quietLink, color: INK, fontWeight: 600 }}>{t}</button>
+                ))}
+                <button onClick={() => setFlipping(false)} style={quietLink}>cancel</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>Read off your screenshot — does this look right?</div>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <button onClick={onClearReview} style={{ ...quietLink, color: INK, fontWeight: 600 }}>looks right</button>
+                <button onClick={() => setFlipping(true)} style={quietLink}>it&rsquo;s actually media →</button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
