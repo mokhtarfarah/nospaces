@@ -17,7 +17,14 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 // give generous headroom over the scraper's timeout.
 export const config = { maxDuration: 60 }
 
-type InCandidate = { title?: string; brand?: string | null; price?: string | null; wasPrice?: string | null; url?: string | null }
+type InCandidate = {
+  title?: string; brand?: string | null; price?: string | null; wasPrice?: string | null; url?: string | null
+  // The user's own saved data — taste tags (look/feel) + why they saved it. Always
+  // present even when a live scrape or web search comes up empty, so we can still
+  // give a real take on a bot-walled or obscure shop instead of bailing.
+  attributes?: { facet?: string; value?: string }[]
+  note?: string | null
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -50,6 +57,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const d = details[i]
     if (d?.rating?.value) extra.push(`on-page rating ${d.rating.value}${d.rating.count ? ` (${d.rating.count} reviews)` : ''}`)
     if (d?.description) extra.push(`details: ${d.description}`)
+    // The user's own saved data — survives even when the live scrape/search fail.
+    const tags = Array.isArray(c.attributes) ? c.attributes.map(a => a?.value).filter((v): v is string => !!v && !!v.trim()) : []
+    if (tags.length) extra.push(`look/feel (her saved tags): ${tags.join(', ')}`)
+    if (c.note && c.note.trim()) extra.push(`why she saved it: ${c.note.trim()}`)
     if (extra.length) anyDetail = true
     const extraStr = extra.length ? `\n   ${extra.join('\n   ')}` : ''
     return `${i + 1}. ${c.title ?? 'Untitled'}${c.brand ? ` — ${c.brand}` : ''} — ${sale}${extraStr}`
@@ -60,9 +71,11 @@ ${context ? `\nWhat matters to them: ${context}\n` : ''}${profilePromptBlock(pro
 Options${anyDetail ? ' (with details and any rating pulled from each product page)' : ''}:
 ${lines}
 
-Use web search to find what's actually said online about each option — real reviews, reputation, common praise and complaints, how the brand holds up. Search for every option, not just the close ones. Lean on the product page's own rating only as a starting point, not the last word — a store rating its own product is not the same as independent reviews.
+Use web search to find what's actually said online about each option — real reviews, reputation, common praise and complaints, how the brand holds up. Search for every option. Lean on the product page's own rating only as a starting point — a store rating its own product is not independent. Online reviews are a BONUS, not a requirement: many real options (small labels, bot-walled luxury sites, sold-out pieces) have little or nothing findable online, and that is normal — it is NOT a reason to withhold a verdict.
 
-For each option, write ONE short, honest line on what stands out — value, price, what you're paying for, whether the sale is real${anyDetail ? ', what the product details and rating suggest about quality/fit' : ''}, and what people online actually report${context ? ', and how well it fits what they said matters' : ''}. Then a brief verdict: which you'd lean toward and why, in 1–2 sentences${context ? ', weighing what they told you matters' : ''}. Use only what's given or what you genuinely found online — where a detail, rating, or review is missing, don't invent it. If it's genuinely a toss-up or you can't really tell them apart, say that plainly instead of manufacturing differences.
+You ALWAYS have enough to give a useful take, because you have what she saved: each option's name, brand, price, her own look/feel tags, and what she said matters. Never refuse to compare or tell her to go re-check the product herself just because a page wouldn't load or reviews weren't findable — that's a non-answer. If you couldn't verify an option online, say so in one short clause and then still judge it on the look/feel, price, brand, and how it fits what she wants.
+
+For each option, write ONE short, honest line on what stands out — lead with FIT and FEEL (how the silhouette, neckline, colour, sleeve etc. serve what she's after${profile ? ' and her body type/aesthetic' : ''}), then value/price and whether the sale is real${anyDetail ? ', what the product details suggest about quality' : ''}, and what people online report IF you found anything. Then a brief verdict: which you'd lean toward and why, in 1–2 sentences${context ? ', weighing what she said matters' : ''}. Don't invent specifics (a rating, a review quote) you don't have — but DO commit to a lean based on fit + value even when reviews are thin. Only call it a true toss-up when the options are genuinely interchangeable on fit and value, not merely because info is missing.
 
 ${VOICE.decisive}
 

@@ -13,5 +13,5 @@ export function sanitizeProfile(input: unknown): string {
 // callers can drop it straight into a template string with no empty scaffolding.
 export function profilePromptBlock(profile: string): string {
   if (!profile) return ''
-  return `\nAbout the shopper, in their own words (their stated aesthetic and body type). Weigh fit and silhouette against this where it's relevant, but treat it as context — don't read it back to them verbatim:\n"""\n${profile}\n"""\n`
+  return `\nAbout the shopper, in their own words — their stated aesthetic and body type:\n"""\n${profile}\n"""\nUse this actively: judge how each option's cut, silhouette, neckline, length and colour actually flatter THIS person, and let it tip your lean when one option suits them better than another. Don't quote it back verbatim or open by describing them to themselves — apply it.\n`
 }
