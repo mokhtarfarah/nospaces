@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 // `trailing` is an inline action (e.g. a "re-read" link) that rides at the END of
 // the prose on the same line — not as a separate paragraph below it — so an AI
 // read and its refresh control read as one flowing thought.
-export function NoteProse({ label, children, trailing }: { label?: string; children: ReactNode; trailing?: ReactNode }) {
+export function NoteProse({ label, children, trailing, size = 13 }: { label?: string; children: ReactNode; trailing?: ReactNode; size?: number }) {
   return (
     <div>
       {label && (
@@ -15,7 +15,7 @@ export function NoteProse({ label, children, trailing }: { label?: string; child
           {label}
         </div>
       )}
-      <div style={{ fontSize: 13, lineHeight: 1.65, color: '#4A453E', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
+      <div style={{ fontSize: size, lineHeight: 1.6, color: '#4A453E', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
         {children}
         {trailing != null && (
           <span style={{ fontStyle: 'normal', whiteSpace: 'nowrap' }}>

@@ -1513,8 +1513,8 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
   )
 
   return (
-    <div style={{ marginTop: 22, flex: '0 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 13, flexShrink: 0 }}>
+    <div style={{ marginTop: 14, flex: '0 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 11, flexShrink: 0 }}>
         {tabBtn('note', 'your note')}
         {tabBtn('fit', 'how it fits')}
       </div>
@@ -1529,16 +1529,16 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
           <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
             placeholder="why you saved it — the occasion, the wait-for-a-sale, the one detail you loved…"
             rows={3}
-            style={{ width: '100%', boxSizing: 'border-box', resize: 'none', fontSize: 13, lineHeight: 1.65,
+            style={{ width: '100%', boxSizing: 'border-box', resize: 'none', fontSize: 14.5, lineHeight: 1.6,
               color: '#4A453E', fontStyle: 'italic', background: '#F7F8F9', border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 12px', outline: 'none', fontFamily: 'inherit' }} />
         ) : note ? (
-          <NoteProse trailing={<button onClick={() => { setText(note); setEditing(true) }} style={quietLink}>edit</button>}>{note}</NoteProse>
+          <NoteProse size={14.5} trailing={<button onClick={() => { setText(note); setEditing(true) }} style={quietLink}>edit</button>}>{note}</NoteProse>
         ) : (
           <button onClick={() => { setText(''); setEditing(true) }} style={quietLink}>+ add a note</button>
         )
       ) : (
         fit ? (
-          <NoteProse trailing={
+          <NoteProse size={14.5} trailing={
             <>
               <button onClick={generate} disabled={loading} style={quietLink}>{loading ? 'reading…' : 're-read'}</button>
               <span style={{ color: '#C9C4BB' }}>{' · '}</span>
@@ -1711,16 +1711,16 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         )}
       </div>
 
-      <div style={{ marginTop: 20, flexShrink: 0 }}>
+      <div style={{ marginTop: 16, flexShrink: 0 }}>
         {/* Title is the editorial headline AND the link out to the shop (quiet ↗). */}
         <a href={outHref} target="_blank" rel="noreferrer" title={outTitle}
           style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, textDecoration: 'none', color: INK }}>
-          <h2 style={{ fontSize: 25, fontWeight: 500, margin: 0, lineHeight: 1.14, letterSpacing: '-0.01em', textTransform: 'lowercase' }}>{p.title}</h2>
+          <h2 style={{ fontSize: 23, fontWeight: 500, margin: 0, lineHeight: 1.12, letterSpacing: '-0.01em', textTransform: 'lowercase' }}>{p.title}</h2>
           <span aria-hidden style={{ fontSize: 14, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
         </a>
 
         {/* Credit line — price reads plainly, brand as a small letter-spaced credit. */}
-        <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9, fontSize: 13 }}>
+        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9, fontSize: 13 }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
           {(p.brand || p.siteName) && <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>{p.brand || p.siteName}</span>}
           {got && <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: INK, fontWeight: 600 }}>· got it</span>}
@@ -1730,7 +1730,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
             the board shares it (a tag on a one-off isn't tappable). Category is left off
             — it's the inventory, not the vibe. */}
         {tagged && (
-          <div style={{ marginTop: 11, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
+          <div style={{ marginTop: 8, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
             {taste.filter(a => a.facet !== 'category').map((a, i, arr) => {
               const count = countWithTag(a.facet, a.value)
               const tappable = count > 1
