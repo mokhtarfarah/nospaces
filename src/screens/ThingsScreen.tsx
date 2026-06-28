@@ -1513,15 +1513,15 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
   )
 
   return (
-    <div style={{ marginTop: 22 }}>
-      <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 13 }}>
+    <div style={{ marginTop: 22, flex: '0 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 13, flexShrink: 0 }}>
         {tabBtn('note', 'your note')}
         {tabBtn('fit', 'how it fits')}
       </div>
 
       {/* Only this body scrolls when a note or the read runs long — the photo, title
           and tabs stay put, so the card itself never has to scroll. */}
-      <div style={{ maxHeight: '30dvh', overflowY: 'auto', paddingRight: 2 }}>
+      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', paddingRight: 2 }}>
       {tab === 'note' ? (
         editing ? (
           <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
@@ -1666,12 +1666,12 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   })
 
   return (
-    <Sheet onClose={onClose} maxWidth={380} padBottom={12}>
-     <div style={{ position: 'relative' }}>
+    <Sheet onClose={onClose} maxWidth={380} padBottom={12} fill>
       {/* Lookbook hero — bled to the sheet edges (negative margins cancel the sheet
           padding) so the photo is the whole top of the card. Every admin action lives
-          in the ⋯ menu, so nothing competes with the image and title. */}
-      <div style={{ position: 'relative', margin: '-20px -18px 0' }}>
+          in the ⋯ menu, so nothing competes with the image and title. flexShrink:0
+          keeps the photo + title fixed; only the note/read body below scrolls. */}
+      <div style={{ position: 'relative', margin: '-20px -18px 0', flexShrink: 0 }}>
         {hero
           ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy"
               style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(480px, 52dvh)', objectFit: showCutout ? 'contain' : 'cover',
@@ -1712,7 +1712,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         )}
       </div>
 
-      <div style={{ marginTop: 20 }}>
+      <div style={{ marginTop: 20, flexShrink: 0 }}>
         {/* Title is the editorial headline AND the link out to the shop (quiet ↗). */}
         <a href={outHref} target="_blank" rel="noreferrer" title={outTitle}
           style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, textDecoration: 'none', color: INK }}>
@@ -1754,7 +1754,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
       {/* For-review nudge — only when the read wasn't sure. An ignorable prompt, not a
           gate: confirm it's right or flip it to media (opens the ⋯ menu in flip mode). */}
       {needsReview && (
-        <div style={{ marginTop: 16, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
+        <div style={{ marginTop: 16, flexShrink: 0, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
           {flipping ? (
             <>
               <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>move to library as…</div>
@@ -1790,7 +1790,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           onRunFit={onRunFit}
           onToggleHideFit={onToggleHideFit} />
       ) : (
-        <div>
+        <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
           <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
           {p.image && !tagged && (
             <button onClick={onRunTaste} style={{ ...quietLink, display: 'block', marginTop: 16 }}>read taste from photo</button>
@@ -1798,8 +1798,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         </div>
       )}
 
-      {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
-     </div>
+      {plan && <div style={{ flexShrink: 0 }}><PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} /></div>}
     </Sheet>
   )
 }
