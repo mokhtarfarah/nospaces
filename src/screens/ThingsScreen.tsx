@@ -1665,7 +1665,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   })
 
   return (
-    <Sheet onClose={onClose} maxWidth={380} padBottom={12} fill>
+    <Sheet onClose={onClose} maxWidth={380} padBottom={6} fill>
       {/* Lookbook hero — bled to the sheet edges (negative margins cancel the sheet
           padding) so the photo is the whole top of the card. Every admin action lives
           in the ⋯ menu, so nothing competes with the image and title. flexShrink:0
