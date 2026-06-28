@@ -5,19 +5,6 @@ import { VERDICTS } from '../lib/moods'
 import { NoteInput } from './NoteInput'
 import { MoodChips } from './MoodChips'
 
-// Reaction chip — selected = the shared cream pill; unselected = a quiet,
-// borderless word, so the cluster reads as one scale (mirrors ItemActionSheet).
-function reactionBtnStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: '8px 13px', borderRadius: 9, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit',
-    border: 'none',
-    background: active ? '#F4F2EE' : 'none',
-    boxShadow: active ? 'inset 0 0 0 1px #1C1B19' : 'none',
-    color: active ? '#1C1B19' : '#8A857C',
-    fontWeight: active ? 500 : 400,
-  }
-}
-
 const REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'loved_it',   label: 'loved it'   },
   { value: 'liked_it',   label: 'liked it'   },
@@ -85,13 +72,21 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
 
         <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', marginBottom: 14 }}>what did you think?</p>
 
-        {/* Reaction scale — centered cluster (matches the in-sheet reaction view). */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: canonVisible ? 10 : 18, justifyContent: 'center' }}>
-          {(['not_for_me', 'eh', 'liked_it', 'loved_it'] as ItemReaction[]).map(v => (
-            <button key={v} onClick={() => setReaction(v)} style={reactionBtnStyle(reaction === v)}>
-              {REACTIONS.find(r => r.value === v)!.label}
-            </button>
-          ))}
+        {/* Reaction scale — one segmented control (matches the in-sheet reaction view). */}
+        <div style={{ display: 'flex', border: '1px solid #E2DED7', borderRadius: 11, overflow: 'hidden', marginBottom: canonVisible ? 10 : 18 }}>
+          {(['not_for_me', 'eh', 'liked_it', 'loved_it'] as ItemReaction[]).map((v, i) => {
+            const active = reaction === v
+            return (
+              <button key={v} onClick={() => setReaction(v)} style={{
+                flex: 1, padding: '10px 4px', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
+                border: 'none', borderRight: i < 3 ? '1px solid #ECEAE6' : 'none',
+                background: active ? '#F4F2EE' : '#fff',
+                color: active ? '#1C1B19' : '#8A857C', fontWeight: active ? 500 : 400,
+              }}>
+                {REACTIONS.find(r => r.value === v)!.label}
+              </button>
+            )
+          })}
         </div>
         {/* Desert island — only surfaces once you land somewhere positive (or it's
             already set). You don't crown something you felt "eh" about. */}
@@ -113,7 +108,7 @@ export function MarkDoneSheet({ item, onConfirm, onToggleCanon, onClose }: Props
         )}
 
         <div style={{ marginBottom: 16 }}>
-          <NoteInput value={note} onChange={setNote} />
+          <NoteInput value={note} onChange={setNote} rows={2} />
         </div>
         <p style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: unconfirmed.length > 0 ? 4 : 8 }}>
           vibe <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#C9C6C0' }}>· optional</span>

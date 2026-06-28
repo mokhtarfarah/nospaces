@@ -22,6 +22,14 @@ Farah confirmed the s90 phone check (⋯ menu, tappable tags, reaction footer, g
 - `identify & save` no longer a **dead grey slab** when empty — it's a quiet ghost (transparent + hairline) that flips to the ink fill once you type (confirmed computed `rgb(28,27,25)`).
 - **"other ways to add" collapsed** behind a `▾` tap (find recommendations / import letterboxd / sync spotify) so the bulk/discovery routes stop competing with the primary single-item add.
 
+**Redo (same session, after the live phone check).** The first pass shipped + pushed ([436151a](https://github.com/mokhtarfarah/nospaces/commit/436151a)) but on a real item it read **"oddly unstructured — tiny text floating in whitespace."** The de-bordering went too far. Redone with **structure back, minus the heaviness**:
+- **Reactions → a segmented control** (4 connected segments, hairline dividers, selected = cream `#F4F2EE` fill + ink). Anchors the top + reads as a clear single choice. Replaced the spread cluster + the `reactionBtnStyle` helper (removed from both sheets).
+- **Vibe/verdict tags → soft-filled tokens** instead of floating words: inactive `bg #F4F2EE / #8A857C`, selected deepens to `bg #E6E1D7 / #1C1B19` weight 500. Every chip has a body now. Done in `MoodChips` (`sm`).
+- **Edit-page genre chips** restyled to the same soft-token language (Farah: "genre chips should match vibe chips") — the local `chip()` helper + the genre `+ add`/`done` toggles (de-dashed).
+- Tightened: reaction-view + `MarkDoneSheet` notes drop to `rows=2`.
+- **Add page**: dropped the bottom divider; "other ways to add" is now a quiet **centered** link directly under the photos/note row (was a left-aligned uppercase block).
+- Picked **segmented (option 1)** over a token-cluster reactions variant (option 2). Verified the segmented mockup + the live add page; reaction sheet still needs a real-item eyeball (no-auth library is empty).
+
 ---
 
 ### Session 90 (2026-06-27) — cohere the Things editorial polish onto the media item sheet. All free.

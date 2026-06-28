@@ -426,22 +426,23 @@ export function MediaComposer({ onClose, onDone }: { onClose: () => void; onDone
             )}
           </div>
 
-          {/* Other ways to add — collapsed by default so the bulk/discovery routes
-              don't compete with the primary "add this one thing" action. */}
-          <div style={{ marginTop: 28, borderTop: `1px solid ${HAIR}`, paddingTop: 18 }}>
+          {/* Other ways to add — a quiet centered link under the utility row (no
+              divider). Collapsed so the bulk/discovery routes don't compete with
+              the primary "add this one thing" action. */}
+          <div style={{ marginTop: 14, textAlign: 'center' }}>
             <button
               type="button"
               onClick={() => setMoreOpen(o => !o)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, fontFamily: 'inherit' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: GRAPHITE, fontFamily: 'inherit' }}
             >
               other ways to add
               <span style={{ fontSize: 9, color: MUTE }}>{moreOpen ? '▴' : '▾'}</span>
             </button>
             {moreOpen && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-                <button type="button" onClick={() => go('/recommend')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>find recommendations</button>
-                <button type="button" onClick={() => go('/import')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>import from letterboxd</button>
-                <button type="button" onClick={() => go('/spotify')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'left' }}>sync from spotify</button>
+                <button type="button" onClick={() => go('/recommend')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0 }}>find recommendations</button>
+                <button type="button" onClick={() => go('/import')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0 }}>import from letterboxd</button>
+                <button type="button" onClick={() => go('/spotify')} style={{ border: 'none', background: 'none', color: GRAPHITE, fontSize: 13, cursor: 'pointer', padding: 0 }}>sync from spotify</button>
               </div>
             )}
           </div>

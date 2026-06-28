@@ -909,11 +909,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
           function toggleEditMood(m: string) {
             setEditMoods(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])
           }
+          // Soft-token genre chip — matches the vibe/verdict chips (MoodChips sm).
           const chip = (label: string, on: boolean, fn: () => void) => (
             <button key={label} onClick={fn} style={{
-              padding: '3px 9px', borderRadius: 4, fontSize: 11, cursor: 'pointer', flexShrink: 0,
-              border: on ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-              background: on ? '#111' : '#fff', color: on ? '#fff' : '#AAA', fontWeight: on ? 600 : 400,
+              padding: '4px 11px', borderRadius: 8, fontSize: 11, cursor: 'pointer', flexShrink: 0,
+              border: 'none',
+              background: on ? '#E6E1D7' : '#F4F2EE', color: on ? '#1C1B19' : '#8A857C', fontWeight: on ? 500 : 400,
             }}>{label}</button>
           )
           return (
@@ -1045,11 +1046,11 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
                       {activeGenres.map(g => chip(g, true, () => toggleGenreEdit(g)))}
                       {!genrePickerOpen && (
-                        <button onClick={() => setGenrePickerOpen(true)} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #CCC', background: 'none', color: '#AAA', flexShrink: 0 }}>+ add</button>
+                        <button onClick={() => setGenrePickerOpen(true)} style={{ padding: '4px 11px', borderRadius: 8, fontSize: 11, cursor: 'pointer', border: 'none', background: 'none', color: '#BDB8AF', flexShrink: 0 }}>+ add</button>
                       )}
                       {genrePickerOpen && inactiveGenres.map(g => chip(g, false, () => toggleGenreEdit(g)))}
                       {genrePickerOpen && (
-                        <button onClick={() => setGenrePickerOpen(false)} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1.5px dashed #CCC', background: 'none', color: '#AAA', flexShrink: 0 }}>done</button>
+                        <button onClick={() => setGenrePickerOpen(false)} style={{ padding: '4px 11px', borderRadius: 8, fontSize: 11, cursor: 'pointer', border: 'none', background: 'none', color: '#BDB8AF', flexShrink: 0 }}>done</button>
                       )}
                     </div>
                   </div>
@@ -1192,13 +1193,22 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               </p>
               <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BBBBBB', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
             </div>
-            {/* Reaction scale — a centered cluster, not stretched boxes. */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: canonVisible ? 10 : 20, justifyContent: 'center' }}>
-              {(['not_for_me', 'eh', 'liked_it', 'loved_it'] as ItemReaction[]).map(r => (
-                <button key={r} onClick={() => setReaction(r)} style={reactionBtnStyle(reaction === r)}>
-                  {REACTIONS.find(x => x.value === r)!.label}
-                </button>
-              ))}
+            {/* Reaction scale — one segmented control, so it reads as a single
+                choice and anchors the top of the sheet. */}
+            <div style={{ display: 'flex', border: '1px solid #E2DED7', borderRadius: 11, overflow: 'hidden', marginBottom: canonVisible ? 10 : 18 }}>
+              {(['not_for_me', 'eh', 'liked_it', 'loved_it'] as ItemReaction[]).map((r, i) => {
+                const active = reaction === r
+                return (
+                  <button key={r} onClick={() => setReaction(r)} style={{
+                    flex: 1, padding: '10px 4px', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
+                    border: 'none', borderRight: i < 3 ? '1px solid #ECEAE6' : 'none',
+                    background: active ? '#F4F2EE' : '#fff',
+                    color: active ? '#1C1B19' : '#8A857C', fontWeight: active ? 500 : 400,
+                  }}>
+                    {REACTIONS.find(x => x.value === r)!.label}
+                  </button>
+                )
+              })}
             </div>
             {/* Desert island — only surfaces once you land somewhere positive (you
                 don't crown something you felt "eh" about). Stays visible if already set. */}
@@ -1219,7 +1229,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               </div>
             )}
             <div style={{ marginBottom: 16 }}>
-              <NoteInput value={note} onChange={setNote} />
+              <NoteInput value={note} onChange={setNote} rows={2} />
             </div>
             {/* First mark-done: verdict starts open (no active verdict yet), vibes collapsible.
                 Active AI-suggested vibes show pre-selected. Edit reaction: tags link on demand. */}
@@ -1342,17 +1352,3 @@ const sectionHeading: React.CSSProperties = { fontSize: 13, fontWeight: 600, col
 const fieldLabel: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }
 // Small intro label for the read-view tag lines (genre / vibe / verdict).
 const tagLabelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', width: 50, flexShrink: 0 }
-
-// Reaction chip — the primary pick, so it runs a touch larger than the tag chips.
-// Selected = the same cream pill used across vibe/verdict; unselected = a quiet,
-// borderless word (the cluster reads as one scale, not a row of boxes).
-function reactionBtnStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: '8px 13px', borderRadius: 9, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit',
-    border: 'none',
-    background: active ? '#F4F2EE' : 'none',
-    boxShadow: active ? 'inset 0 0 0 1px #1C1B19' : 'none',
-    color: active ? '#1C1B19' : '#8A857C',
-    fontWeight: active ? 500 : 400,
-  }
-}
