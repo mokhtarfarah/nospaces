@@ -14,7 +14,7 @@ export function Sheet({ children, onClose, maxWidth = 640, padBottom = 24, fill 
       <div onClick={e => e.stopPropagation()} style={{
         background: '#fff', width: '100%', maxWidth, borderRadius: '20px 20px 0 0',
         padding: `20px 18px calc(${padBottom}px + env(safe-area-inset-bottom))`,
-        maxHeight: '88vh', overflowY: fill ? 'hidden' : 'auto',
+        maxHeight: fill ? '88dvh' : '88vh', overflowY: fill ? 'hidden' : 'auto',
         ...(fill ? { display: 'flex', flexDirection: 'column' } : {}),
       }}>
         {children}
