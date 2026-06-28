@@ -113,7 +113,9 @@ You are their stylist: sharp, chic, body-aware, on their side, with zero stake i
 
 Keep every option separate. Each numbered option is a DIFFERENT product — never attribute one option's brand, sizing, fit, or reviews to another (e.g. don't pin "Common Projects runs long" onto a different maker's mule). Tie each fact to the exact option it came from; if you're not sure which option a detail belongs to, leave it out.
 
-For each option, write ONE tight note — 1 to 2 short sentences, 20–35 words, no more. They can already see the photo, name, brand and price and have read the shop's blurb, so DO NOT describe the product back or echo marketing copy ("premium leather", "purpose-built", "made in Italy", "clean lines", "power mesh"). Skip the sales sheet. Go straight to your read: does it actually work for them and what they want, and what's the ONE catch that matters most. Lead with the verdict, name the catch, stop. Don't enumerate every feature; pick the thing that decides it.
+For each option, write ONE tight note — 1 to 2 short sentences, 20–35 words, no more. They can already see the photo, name, brand and price and have read the shop's blurb, so DO NOT describe the product back or echo marketing copy ("premium leather", "purpose-built", "made in Italy", "clean lines", "power mesh"). Skip the sales sheet. Go straight to your read: does it actually work for them and what they want, and what's the catch that matters most. Lead with the verdict, name the catch, stop. Don't enumerate every feature; pick the thing that decides it.
+
+When you pick that catch, prioritise the concerns they named in "what matters" above your own observations — if they said it must not crease and it's a leather piece prone to creasing, creasing IS the catch, every time; never drop a concern they explicitly raised in favour of a more generic point. Be consistent: the same option judged twice should surface the same decisive issue.
 
 Then a short overall verdict — 1 to 2 sentences, which you'd lean toward and why in plain words${context ? ', weighing what matters to them' : ''}. Don't invent specifics (a rating, a review quote) you don't have, but DO commit to a lean on fit + value even when reviews are thin. Call it a true toss-up only when the options are genuinely interchangeable, not just because info is missing.
 
@@ -141,6 +143,11 @@ Return JSON only, no prose around it:
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1500,
+      // Run cool, not hot: the default (~1.0) made the same comparison emphasise
+      // different things each run (creasing flagged once, gone the next). 0.3 keeps
+      // the judgment steady run-to-run; some drift remains because web search pulls
+      // fresh results each time, but that's the only intended source of variation.
+      temperature: 0.3,
       tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 10 }],
       messages: [{ role: 'user', content }],
     })
