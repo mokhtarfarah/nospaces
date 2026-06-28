@@ -43,7 +43,7 @@ export function SheetHero({
       position: 'relative', overflow: 'hidden',
       // Pull up over the sheet's 10px top padding + out over its 20px side
       // padding so the wash reaches the rounded top corners of the card.
-      margin: '-10px -20px 4px', padding: '0 20px 16px',
+      margin: '-10px -20px 4px', padding: '0 20px 12px',
       borderRadius: '16px 16px 0 0',
     }}>
       {/* Ghosted cover wash — blurred + faded, masked so it dissolves before the
@@ -52,7 +52,7 @@ export function SheetHero({
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center',
-          filter: 'blur(7px)', opacity: 0.46, transform: 'scale(1.1)',
+          filter: 'blur(16px)', opacity: 0.4, transform: 'scale(1.15)',
           WebkitMaskImage: 'linear-gradient(180deg, #000 0%, transparent 94%)',
           maskImage: 'linear-gradient(180deg, #000 0%, transparent 94%)',
         }} />
@@ -73,8 +73,9 @@ export function SheetHero({
           )}
         </div>
 
-        {/* Cover on the left, title block beside it — tops aligned via flex-start */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+        {/* Cover on the left, title block beside it — vertically centred against the
+            poster so a short title block doesn't leave the poster hanging below it. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {cover && (
             <img src={cover} alt="" style={{
               width: posterW, height: posterH, flexShrink: 0,

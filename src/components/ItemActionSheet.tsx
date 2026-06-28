@@ -567,8 +567,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6F6B64', fontSize: 20, fontWeight: 700, lineHeight: 1, padding: '0 0 4px' }}>⋯</button>
               ) : undefined}
               meta={[
+                // Identity only — type · creator · year · runtime (+ series). The
+                // reaction lives on the footer button, so it's dropped here to keep
+                // the meta line about what the thing IS, not its status.
                 [TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item)].filter(Boolean).join(' · '),
-                item.reaction ? REACTION_LABELS[item.reaction] : null,
                 typeof item.metadata?.series === 'string' && item.metadata.series.trim() ? `↳ ${item.metadata.series}` : null,
               ].filter(Boolean).join(' · ')}
             >
@@ -636,7 +638,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 </div>
               </>
             )}
-            <div style={{ height: 10 }} />
+            <div style={{ height: 4 }} />
 
             {/* Blurb expansion — below the flat link row */}
             {showBlurb && blurb && (
@@ -865,10 +867,26 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               )
             ) : (
               // One quiet primary: log / revisit how it landed. Everything else
-              // (delete, own, status, flip) lives in the ⋯ menu over the hero.
+              // (delete, own, status, flip) lives in the ⋯ menu over the hero. Warm
+              // bordered row — left-aligned, with a trailing affordance — so it reads
+              // as state+edit when done and as a real CTA when not yet logged.
               <div style={{ ...footer }}>
-                <button onClick={() => setView('reaction')} style={{ ...actionBtn('#333'), width: '100%' }}>
-                  {item.status === 'done' ? `your reaction · ${item.reaction ? REACTION_LABELS[item.reaction] : 'set'}` : 'mark as done'}
+                <button onClick={() => setView('reaction')} style={{
+                  width: '100%', padding: '11px 14px', border: '1px solid #E8E8E8', borderRadius: 10,
+                  background: '#FBFAF8', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  {item.status === 'done' ? (
+                    <>
+                      <span style={{ fontSize: 13, color: '#333' }}>your reaction · <b style={{ fontWeight: 600, color: '#1C1B19' }}>{item.reaction ? REACTION_LABELS[item.reaction] : 'set'}</b></span>
+                      <span style={{ fontSize: 13, color: '#ABA69C' }}>edit →</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>mark as done</span>
+                      <span style={{ fontSize: 13, color: '#ABA69C' }}>→</span>
+                    </>
+                  )}
                 </button>
               </div>
             )}
