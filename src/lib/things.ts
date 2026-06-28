@@ -137,6 +137,12 @@ export type ProductFields = {
   /** How the photo frames the item (vision-read). Gates the cutout. */
   shotType?: ShotType | null
   /**
+   * The photo is a screenshot crop (not a clean catalog image). Set on screenshot
+   * saves so that, once a buy link is added, "pull from link" can offer to upgrade
+   * the grainy crop to the real shop photo — it counts as a gap, not a filled field.
+   */
+  imageFromShot?: boolean | null
+  /**
    * A transparent-PNG subject cutout (Supabase Storage public URL), generated
    * browser-side at save for `product` shots. The board floats it on a gray tile so
    * a mixed set of shops reads as one catalog. Null/absent → show the photo itself.
@@ -226,6 +232,7 @@ export function productMeta(item: Item): ProductMeta {
     attributes: normAttributes(m.attributes),
     note: m.note ?? null,
     shotType: m.shotType ?? null,
+    imageFromShot: m.imageFromShot ?? null,
     cutout: m.cutout ?? null,
     cutoutV: m.cutoutV ?? null,
     cutoutHidden: m.cutoutHidden ?? null,

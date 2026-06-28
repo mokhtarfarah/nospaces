@@ -444,7 +444,7 @@ export function ThingsScreen() {
       const cropped = await cropBlobToBox(shot, r.box)
       if (cropped) { const c = await uploadMoodImage(user.id, cropped); if (c.ok) image = c.url }
     }
-    return { ok: true, fields: { title: r.title ?? '', image, price: r.price, brand: r.brand, siteName: null, url: null, attributes: r.attributes, shotType: r.shotType } }
+    return { ok: true, fields: { title: r.title ?? '', image, price: r.price, brand: r.brand, siteName: null, url: null, attributes: r.attributes, shotType: r.shotType, imageFromShot: true } }
   }
 
   // Save a product from the composer, into wherever the plan selector points: a
@@ -1470,54 +1470,90 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
   )
 }
 
-// "How this fits your taste" — a one-line read of how the item rhymes with (or
-// departs from) the board. Item-level sibling of the masthead thread. Costs a paid
-// Haiku call, so it's a deliberate tap and the result is cached on metadata.tasteFit
-// (a re-read is offered, also explicit). Mirrors NoteBlock's quiet states.
-function TasteFitBlock({ fit, hidden, onRun, onToggleHide }: { fit: string | null; hidden: boolean; onRun: () => Promise<string | null>; onToggleHide: () => void }) {
+// One reflection zone, two voices: YOUR note (your words) and the app's read of how
+// this fits your taste. They share a single line of tabs — only one shows at a time,
+// you toggle between them. Defaults to your note when you've written one; otherwise
+// it opens on the taste read (shown automatically once generated, dismissable). The
+// read is a paid Haiku call cached on metadata.tasteFit, so the first time you open
+// the "how it fits" tab it generates; after that toggling is free.
+function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleHideFit }: {
+  note: string | null
+  onSaveNote: (n: string | null) => void | Promise<void>
+  fit: string | null
+  fitHidden: boolean
+  onRunFit: () => Promise<string | null>
+  onToggleHideFit: () => void
+}) {
+  const [tab, setTab] = useState<'note' | 'fit'>(note ? 'note' : (fitHidden ? 'note' : 'fit'))
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(note ?? '')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  async function run() {
+  function commit() {
+    const t = text.trim()
+    setEditing(false)
+    if (t !== (note ?? '')) onSaveNote(t || null)
+  }
+  async function generate() {
     if (loading) return
-    setErr(null)
-    setLoading(true)
-    const reason = await onRun()
+    setErr(null); setLoading(true)
+    const reason = await onRunFit()
     setLoading(false)
     if (reason) setErr(reason)
   }
 
-  // Hidden by the user (not interested on this card) — leave one quiet way back, no
-  // cost: it just un-hides the cached read, never re-runs it.
-  if (fit && hidden) {
-    return (
-      <button onClick={onToggleHide} style={{ ...quietLink, display: 'block', marginTop: 14 }}>show taste read</button>
-    )
-  }
+  const tabBtn = (k: 'note' | 'fit', label: string) => (
+    <button type="button" onClick={() => setTab(k)}
+      style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 0 7px', fontSize: 11,
+        letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 600,
+        color: tab === k ? INK : '#C7C2B8', borderBottom: `1.5px solid ${tab === k ? INK : 'transparent'}`, marginBottom: -1 }}>
+      {label}
+    </button>
+  )
 
-  if (fit) {
-    return (
-      <div style={{ marginTop: 16 }}>
-        <NoteProse label="how this fits your taste"
-          trailing={
+  return (
+    <div style={{ marginTop: 22 }}>
+      <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 13 }}>
+        {tabBtn('note', 'your note')}
+        {tabBtn('fit', 'how it fits')}
+      </div>
+
+      {tab === 'note' ? (
+        editing ? (
+          <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
+            placeholder="why you saved it — the occasion, the wait-for-a-sale, the one detail you loved…"
+            rows={3}
+            style={{ width: '100%', boxSizing: 'border-box', resize: 'none', fontSize: 13, lineHeight: 1.65,
+              color: '#4A453E', fontStyle: 'italic', background: '#F7F8F9', border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 12px', outline: 'none', fontFamily: 'inherit' }} />
+        ) : note ? (
+          <button onClick={() => { setText(note); setEditing(true) }}
+            style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
+            <NoteProse>{note}</NoteProse>
+          </button>
+        ) : (
+          <button onClick={() => { setText(''); setEditing(true) }} style={quietLink}>+ add a note</button>
+        )
+      ) : (
+        fit ? (
+          <NoteProse trailing={
             <>
-              <button onClick={run} disabled={loading} style={quietLink}>{loading ? 'reading…' : 're-read'}</button>
+              <button onClick={generate} disabled={loading} style={quietLink}>{loading ? 'reading…' : 're-read'}</button>
               <span style={{ color: '#C9C4BB' }}>{' · '}</span>
-              <button onClick={onToggleHide} style={quietLink}>hide</button>
+              <button onClick={() => { onToggleHideFit(); setTab('note') }} style={quietLink}>dismiss</button>
             </>
           }>
-          {fit}
-        </NoteProse>
-        {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
-      </div>
-    )
-  }
-  return (
-    <div style={{ marginTop: 14 }}>
-      <button onClick={run} disabled={loading} style={quietLink}>
-        {loading ? 'reading your board…' : 'read how this fits your taste'}
-      </button>
-      {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
+            {fit}
+          </NoteProse>
+        ) : (
+          <>
+            <button onClick={generate} disabled={loading} style={quietLink}>
+              {loading ? 'reading your board…' : 'read how this fits your taste ›'}
+            </button>
+            {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
+          </>
+        )
+      )}
     </div>
   )
 }
@@ -1551,6 +1587,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const [confirmDel, setConfirmDel] = useState(false)
   const [showPlan, setShowPlan] = useState(false)
   const [flipping, setFlipping] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   // Hero photo — same treatment as the grid: a product cutout floats on the gray
   // tile; a model/lifestyle photo (or one the user flipped to full-photo) fills it.
   const showCutout = !p.cutoutHidden && !!p.cutout
@@ -1590,156 +1627,153 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   }
 
   const buyLabel = p.brand ? `view at ${p.brand}` : p.siteName ? `view at ${p.siteName}` : 'view at shop'
+  // The title always links OUT: to the stored buy link, or — for a screenshot/flipped
+  // item with no link — a Google search built from brand + title (free, no scrape).
+  const outHref = p.url || findOnlineUrl(p.brand, p.title)
+  const outTitle = p.url ? buyLabel : 'find online'
+  const tagged = taste.some(a => a.facet !== 'category')
+  const fitApplicable = board.thread.length > 0 && tagged
+
+  // Float-over-photo controls (close + the ⋯ admin menu).
+  const floatBtn: React.CSSProperties = {
+    position: 'absolute', top: 12, width: 32, height: 32, borderRadius: 999, border: 'none',
+    background: 'rgba(255,255,255,0.92)', color: INK, lineHeight: 1, cursor: 'pointer',
+    boxShadow: '0 1px 6px rgba(0,0,0,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }
+  const menuItem = (color: string = INK, weight: number = 400): React.CSSProperties => ({
+    border: 'none', background: 'none', textAlign: 'left', width: '100%', padding: '9px 10px',
+    borderRadius: 8, fontSize: 13, color, fontWeight: weight, cursor: 'pointer', fontFamily: 'inherit',
+  })
+
   return (
     <Sheet onClose={onClose} maxWidth={380}>
-     {/* The sheet itself hugs the column (maxWidth above), and the content fills it —
-         so it reads as one tidy column instead of a narrow strip floating in a wide
-         white panel. */}
-     <div style={{ maxWidth: 340, margin: '0 auto' }}>
-      {/* Gallery layout: the photo leads (this is a taste mirror, not a checkout),
-          actions recede to a quiet row. Close floats over the image. */}
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 5', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}` }}>
+     <div style={{ position: 'relative' }}>
+      {/* Lookbook hero — bled to the sheet edges (negative margins cancel the sheet
+          padding) so the photo is the whole top of the card. Every admin action lives
+          in the ⋯ menu, so nothing competes with the image and title. */}
+      <div style={{ position: 'relative', margin: '-20px -18px 0' }}>
         {hero
-          ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: showCutout ? 'contain' : 'cover', padding: showCutout ? '8%' : 0, boxSizing: 'border-box', filter: showCutout ? undefined : 'saturate(0.95)' }} />
-          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
-        <button onClick={onClose} aria-label="close" style={{
-          position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 999,
-          border: 'none', background: 'rgba(255,255,255,0.92)', color: INK, fontSize: 18, lineHeight: 1,
-          cursor: 'pointer', boxShadow: '0 1px 6px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>×</button>
+          ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy"
+              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', objectFit: showCutout ? 'contain' : 'cover',
+                padding: showCutout ? '10%' : 0, boxSizing: 'border-box', background: TILE, borderRadius: '20px 20px 0 0',
+                filter: showCutout ? undefined : 'saturate(0.97)' }} />
+          : <div style={{ width: '100%', aspectRatio: '4 / 5', background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
+
+        <button onClick={onClose} aria-label="close" style={{ ...floatBtn, left: 12, fontSize: 19 }}>×</button>
+        <button onClick={() => setMenuOpen(o => !o)} aria-label="more" style={{ ...floatBtn, right: 12, fontSize: 21, fontWeight: 700 }}>⋯</button>
+
+        {menuOpen && (
+          <>
+            <div onClick={() => { setMenuOpen(false); setConfirmDel(false); setFlipping(false) }}
+              style={{ position: 'fixed', inset: 0, zIndex: 9 }} />
+            <div style={{ position: 'absolute', top: 50, right: 12, zIndex: 10, width: 210, background: '#fff',
+              borderRadius: 12, border: `1px solid ${LINE}`, boxShadow: '0 8px 28px rgba(0,0,0,0.16)', padding: 6, display: 'flex', flexDirection: 'column' }}>
+              {confirmDel ? (
+                <>
+                  <div style={{ fontSize: 12.5, color: MUTED, padding: '8px 10px 6px' }}>remove from the board?</div>
+                  <button style={menuItem('#B4413C', 600)} onClick={onDelete}>remove</button>
+                  <button style={menuItem()} onClick={() => setConfirmDel(false)}>cancel</button>
+                </>
+              ) : flipping ? (
+                // The misroute fix: this isn't a thing, it's media — pick which kind and
+                // it moves to the library (type set, product shell dropped, review cleared).
+                <>
+                  <div style={{ fontSize: 12.5, color: MUTED, padding: '8px 10px 6px' }}>move to library as…</div>
+                  {MEDIA_TYPES.map(t => (
+                    <button key={t} style={menuItem()} onClick={() => { setFlipping(false); setMenuOpen(false); onFlipToMedia(t) }}>{t}</button>
+                  ))}
+                  <button style={menuItem()} onClick={() => setFlipping(false)}>cancel</button>
+                </>
+              ) : (
+                <>
+                  <button style={menuItem()} onClick={() => { setMenuOpen(false); onToggleGot() }}>{got ? 'undo got it' : 'mark as got it'}</button>
+                  <button style={menuItem()} onClick={() => { setMenuOpen(false); setEditing(true) }}>edit details</button>
+                  {plan && !got && (
+                    <button style={menuItem()} onClick={async () => { setMenuOpen(false); await onReopenPlan(); onClose() }}>↩ put back in plan</button>
+                  )}
+                  {!needsReview && <button style={menuItem()} onClick={() => setFlipping(true)}>actually media</button>}
+                  <div style={{ height: 1, background: LINE, margin: '5px 8px' }} />
+                  <button style={menuItem('#B4413C')} onClick={() => setConfirmDel(true)}>remove</button>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        {/* The title IS the link out to the shop (quiet ↗), so there's one clear way
-            through rather than a title plus a competing "view at…" button. The brand
-            on the meta line below says where the arrow goes. */}
-        {p.url ? (
-          <a href={p.url} target="_blank" rel="noreferrer" title={buyLabel}
-            style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, textDecoration: 'none', color: INK }}>
-            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
-            <span aria-hidden style={{ fontSize: 13, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
-          </a>
-        ) : (
-          // No stored URL (a screenshot capture, or a flipped item) — the title still
-          // links OUT, but to a Google search built from brand + title, so there's a
-          // one-tap path back to buy. Free: just a search link, no scrape, no API.
-          <a href={findOnlineUrl(p.brand, p.title)} target="_blank" rel="noreferrer" title="find online"
-            style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, textDecoration: 'none', color: INK }}>
-            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, lineHeight: 1.25, textTransform: 'lowercase' }}>{p.title}</h2>
-            <span aria-hidden style={{ fontSize: 13, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
-          </a>
-        )}
-        <div style={{ fontSize: 13, color: MUTED, marginTop: 6, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+      <div style={{ marginTop: 20 }}>
+        {/* Title is the editorial headline AND the link out to the shop (quiet ↗). */}
+        <a href={outHref} target="_blank" rel="noreferrer" title={outTitle}
+          style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, textDecoration: 'none', color: INK }}>
+          <h2 style={{ fontSize: 25, fontWeight: 500, margin: 0, lineHeight: 1.14, letterSpacing: '-0.01em', textTransform: 'lowercase' }}>{p.title}</h2>
+          <span aria-hidden style={{ fontSize: 14, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
+        </a>
+
+        {/* Credit line — price reads plainly, brand as a small letter-spaced credit. */}
+        <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9, fontSize: 13 }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
-          {p.brand ? <span>{p.brand}</span> : p.siteName && <span>{p.siteName}</span>}
-          {/* Ownership reads as a calm status here, not a loud button — the toggle
-              lives down in the quiet admin row with edit/remove. */}
-          {got && <span style={{ color: INK, fontWeight: 600 }}>· got it</span>}
+          {(p.brand || p.siteName) && <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>{p.brand || p.siteName}</span>}
+          {got && <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: INK, fontWeight: 600 }}>· got it</span>}
         </div>
-        {/* Taste tags as a quiet way INTO the board: tap one to see what else shares it.
-            Plain text (no pills) so they recede below the title + price — tappable ones
-            carry a faint underline + "· N" (how many things the tag pulls up); a one-off
-            isn't tappable. Category is left off — it's the inventory, not the vibe. */}
-        {taste.some(a => a.facet !== 'category') && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 11 }}>
-            {taste.filter(a => a.facet !== 'category').map((a, i) => {
+
+        {/* Taste tags as a quiet, italic credit-style line — tap one to see what else on
+            the board shares it (a tag on a one-off isn't tappable). Category is left off
+            — it's the inventory, not the vibe. */}
+        {tagged && (
+          <div style={{ marginTop: 13, fontSize: 13.5, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
+            {taste.filter(a => a.facet !== 'category').map((a, i, arr) => {
               const count = countWithTag(a.facet, a.value)
               const tappable = count > 1
               return (
-                <button key={i} disabled={!tappable}
-                  onClick={() => tappable && onFilterTag(a.facet, a.value)}
-                  style={{
-                    border: 'none', background: 'none', padding: 0, cursor: tappable ? 'pointer' : 'default',
-                    fontSize: 12.5, lineHeight: 1.4, textTransform: 'lowercase', color: tappable ? INK : MUTED,
-                    textDecoration: tappable ? 'underline' : 'none', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3,
-                  }}>
-                  {a.value}{tappable && <span style={{ color: MUTED, textDecoration: 'none' }}> · {count}</span>}
-                </button>
+                <span key={i}>
+                  <button disabled={!tappable} onClick={() => tappable && onFilterTag(a.facet, a.value)}
+                    style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 13.5, fontStyle: 'italic',
+                      color: tappable ? '#6E6A60' : '#9A958B', cursor: tappable ? 'pointer' : 'default',
+                      textDecoration: tappable ? 'underline' : 'none', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3 }}>
+                    {a.value}
+                  </button>
+                  {i < arr.length - 1 && <span style={{ color: '#CFC9BE' }}>{'  ·  '}</span>}
+                </span>
               )
             })}
           </div>
         )}
       </div>
 
-      {/* For-review nudge — only when the read wasn't sure. An ignorable prompt, not
-          a gate: confirm it's right (clears the flag) or flip it to media if we
-          misread it. Either way it leaves the inbox. */}
+      {/* For-review nudge — only when the read wasn't sure. An ignorable prompt, not a
+          gate: confirm it's right or flip it to media (opens the ⋯ menu in flip mode). */}
       {needsReview && (
         <div style={{ marginTop: 16, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
           <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>Read off your screenshot — does this look right?</div>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
             <button onClick={onClearReview} style={{ ...quietLink, color: INK, fontWeight: 600 }}>looks right</button>
-            <button onClick={() => setFlipping(true)} style={quietLink}>it&rsquo;s actually media →</button>
+            <button onClick={() => { setFlipping(true); setMenuOpen(true) }} style={quietLink}>it&rsquo;s actually media →</button>
           </div>
         </div>
       )}
 
-      {/* No loud CTA in the body — this is a taste mirror, not a checkout. The two
-          things you'd actually do are already quiet: go to the shop (the title link)
-          and jot a note (below). Buying-state + admin all live in the hairline row at
-          the very bottom, so the photo and title carry the only emphasis. */}
-      <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
-
-      {/* How this one thing fits the board — the item-level read of the masthead's
-          keyword thread. Only offered once the board has a real read (a non-empty
-          thread) AND this thing is tagged, so it never compares against nothing.
-          The line is a paid Haiku call, cached on metadata.tasteFit, so it's a tap,
-          never automatic. */}
-      {board.thread.length > 0 && taste.some(a => a.facet !== 'category') ? (
-        <TasteFitBlock
+      {/* The reflection zone — your note and the app's "how it fits" read share one line
+          of tabs, one shows at a time (see ReflectionBlock). Only offered once the board
+          has a read AND this thing is tagged. Otherwise just your note (+ a one-tap photo
+          re-read when an untagged item still has a photo to read). */}
+      {fitApplicable ? (
+        <ReflectionBlock
+          note={p.note ?? null}
+          onSaveNote={onSaveNote}
           fit={(item.metadata as { tasteFit?: string })?.tasteFit ?? null}
-          hidden={(item.metadata as { tasteFitHidden?: boolean })?.tasteFitHidden ?? false}
-          onRun={onRunFit}
-          onToggleHide={onToggleHideFit} />
+          fitHidden={(item.metadata as { tasteFitHidden?: boolean })?.tasteFitHidden ?? false}
+          onRunFit={onRunFit}
+          onToggleHideFit={onToggleHideFit} />
       ) : (
-        // Recovery: a product whose photo couldn't be auto-read (the retailer blocked
-        // the image fetch, or it was an unsupported format) lands here with no taste
-        // tags — offer a one-tap re-read right here instead of burying it in edit.
-        p.image && !taste.some(a => a.facet !== 'category') && (
-          <button onClick={onRunTaste} style={{ ...quietLink, display: 'block', marginTop: 28 }}>read taste from photo</button>
-        )
+        <div>
+          <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
+          {p.image && !tagged && (
+            <button onClick={onRunTaste} style={{ ...quietLink, display: 'block', marginTop: 16 }}>read taste from photo</button>
+          )}
+        </div>
       )}
 
       {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
-
-      {/* One quiet utility row — every administrative action shares the same text-link
-          style, so the sheet reads as one set, not a scatter of button treatments. */}
-      <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-        {confirmDel ? (
-          <>
-            <span style={{ fontSize: 12.5, color: MUTED, marginRight: 'auto' }}>remove from the board?</span>
-            <button onClick={() => setConfirmDel(false)} style={quietLink}>cancel</button>
-            <button onClick={onDelete} style={{ ...quietLink, color: '#B4413C', fontWeight: 600 }}>remove</button>
-          </>
-        ) : flipping ? (
-          // The misroute fix: this isn't a thing, it's media — pick which kind and it
-          // moves to the library (type set, product shell dropped, review cleared).
-          <>
-            <span style={{ fontSize: 12.5, color: MUTED, marginRight: 'auto' }}>move to library as…</span>
-            {MEDIA_TYPES.map(t => (
-              <button key={t} onClick={() => { setFlipping(false); onFlipToMedia(t) }} style={{ ...quietLink, color: INK, fontWeight: 600 }}>{t}</button>
-            ))}
-            <button onClick={() => setFlipping(false)} style={quietLink}>cancel</button>
-          </>
-        ) : (
-          <>
-            {/* The buying-state toggle now lives here, quiet, beside the other admin
-                links — when owned it's mirrored as a "· got it" status by the price. */}
-            <button onClick={onToggleGot} style={got ? { ...quietLink, color: INK, fontWeight: 600 } : quietLink}>
-              {got ? 'undo got it' : 'mark as got it'}
-            </button>
-            <button onClick={() => setEditing(true)} style={quietLink}>edit</button>
-            {/* Flip to media — the safety net for a screenshot we read as a product but
-                that's really a film/book/album/show. Hidden behind the review banner
-                when flagged; available here always. */}
-            {!needsReview && <button onClick={() => setFlipping(true)} style={quietLink}>actually media</button>}
-            {plan && !got && (
-              <button onClick={async () => { await onReopenPlan(); onClose() }} style={quietLink}>↩ put back in plan</button>
-            )}
-            <button onClick={() => setConfirmDel(true)} style={{ ...quietLink, color: '#B4413C', marginLeft: 'auto' }}>remove</button>
-          </>
-        )}
-      </div>
      </div>
     </Sheet>
   )
@@ -2452,9 +2486,16 @@ function ProductComposer({ onClose, onSave, onReadScreenshot, intents }: {
             <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>add to a plan?</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {chip('keep standalone', plan.kind === 'none', () => setPlan({ kind: 'none' }))}
-              {intents.map(it => chip(it.title, plan.kind === 'existing' && plan.id === it.id, () => setPlan({ kind: 'existing', id: it.id })))}
-              {chip('+ new plan', plan.kind === 'new', () => setPlan({ kind: 'new' }))}
+              {intents.length > 0 && chip('existing plan', plan.kind === 'existing', () => setPlan({ kind: 'existing', id: intents[0].id }))}
+              {chip('new plan', plan.kind === 'new', () => setPlan({ kind: 'new' }))}
             </div>
+            {/* Only once you've chosen "existing" do you pick which one — keeps the top
+                row to three clear choices instead of dumping every plan as a chip. */}
+            {plan.kind === 'existing' && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                {intents.map(it => chip(it.title, plan.id === it.id, () => setPlan({ kind: 'existing', id: it.id })))}
+              </div>
+            )}
             {plan.kind === 'new' && (
               <input autoFocus value={newPlanName} onChange={e => setNewPlanName(e.target.value)}
                 placeholder="what are you deciding? e.g. black clogs"
@@ -2516,7 +2557,10 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
   // untouched. Offered only when there's a link and a real gap to fill.
   const [pulling, setPulling] = useState(false)
   const [pullMsg, setPullMsg] = useState<string | null>(null)
-  const canPull = !empty(f.url) && (empty(f.image) || empty(f.price))
+  // A screenshot photo counts as a gap: once there's a link, we'd rather have the
+  // clean shop photo than the grainy crop. So offer the pull when the link can
+  // plausibly add something — a missing photo/price, or a screenshot to upgrade.
+  const canPull = !empty(f.url) && (empty(f.image) || empty(f.price) || !!f.imageFromShot)
   async function pullFromLink() {
     const url = (f.url ?? '').trim()
     if (!url || pulling) return
@@ -2526,14 +2570,16 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
     if (!r.ok) { setPullMsg(r.reason || "couldn't read that link"); return }
     const g = r.fields
     const patch: Partial<ProductFields> = {}
-    if (empty(f.image) && g.image) patch.image = g.image
+    // Upgrade a screenshot crop to the real shop photo (not just fill an empty slot),
+    // and clear the flag so it's treated as a clean catalog image from here on.
+    if ((empty(f.image) || f.imageFromShot) && g.image) { patch.image = g.image; patch.imageFromShot = false }
     if (empty(f.price) && g.price) patch.price = g.price
     if (empty(f.wasPrice) && g.wasPrice) patch.wasPrice = g.wasPrice
     if (empty(f.brand) && g.brand) patch.brand = g.brand
     if (empty(f.title) && g.title) patch.title = g.title
     if (empty(f.siteName) && g.siteName) patch.siteName = g.siteName
     const n = Object.keys(patch).length
-    if (n) { set(patch); setPullMsg(`filled ${n} empty field${n === 1 ? '' : 's'} — review and save`) }
+    if (n) { set(patch); setPullMsg(`updated ${n} field${n === 1 ? '' : 's'} — review and save`) }
     else setPullMsg('nothing new — your fields already have it')
   }
 
@@ -2548,6 +2594,7 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
       siteName: f.siteName ?? null,
       url: norm(f.url),
       attributes: f.attributes ?? [],
+      imageFromShot: f.imageFromShot ?? null,
     })
     setSaving(false)
   }
@@ -2628,33 +2675,37 @@ function AttributesEditor({ value, onChange }: { value: Attribute[]; onChange: (
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {/* Quiet underline tabs — pick which facet you're adding. Lighter than filled
+          pills so the section reads editorial, not like a button bar. */}
+      <div style={{ display: 'flex', gap: 16, borderBottom: `1px solid ${LINE}`, marginBottom: 2 }}>
         {EDIT_FACETS.map(fc => (
           <button key={fc} type="button" onClick={() => setFacet(fc)}
-            style={{ fontSize: 11, fontWeight: 600, padding: '4px 9px', borderRadius: 999, cursor: 'pointer',
-              border: `1px solid ${facet === fc ? INK : LINE}`, background: facet === fc ? INK : '#fff', color: facet === fc ? '#fff' : INK }}>
-            {FACET_LABEL[fc]}
+            style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 0 7px', fontSize: 12,
+              color: facet === fc ? INK : MUTED, borderBottom: `1.5px solid ${facet === fc ? INK : 'transparent'}`, marginBottom: -1 }}>
+            {FACET_LABEL[fc].toLowerCase()}
           </button>
         ))}
       </div>
 
+      {/* Suggestions share the saved-tag pill so the whole section is one material. */}
       {suggestions.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {suggestions.map(s => (
             <button key={s} type="button" onClick={() => add(facet, s)}
-              style={{ fontSize: 11.5, padding: '4px 9px', borderRadius: 999, border: `1px dashed ${MUTED}`, background: 'none', color: INK, cursor: 'pointer' }}>
-              + {s}
+              style={{ fontSize: 11.5, padding: '5px 11px', borderRadius: 999, border: 'none', background: '#F4F2EE', color: '#56564F', cursor: 'pointer' }}>
+              {s}
             </button>
           ))}
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${LINE}`, paddingBottom: 4 }}>
         <input value={draft} onChange={e => setDraft(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(facet, draft); setDraft('') } }}
-          placeholder={`Add ${FACET_LABEL[facet].toLowerCase()}…`} style={inputStyle} />
-        <button type="button" onClick={() => { add(facet, draft); setDraft('') }} disabled={!draft.trim()}
-          style={primaryBtn(!draft.trim())}>add</button>
+          placeholder={`add your own ${FACET_LABEL[facet].toLowerCase()}…`}
+          style={{ flex: 1, border: 'none', background: 'none', outline: 'none', fontSize: 12.5, color: INK, padding: '4px 0' }} />
+        <button type="button" onClick={() => { add(facet, draft); setDraft('') }} disabled={!draft.trim()} aria-label="add tag"
+          style={{ border: 'none', background: 'none', cursor: draft.trim() ? 'pointer' : 'default', fontSize: 18, color: draft.trim() ? INK : MUTED, lineHeight: 1, padding: 0 }}>+</button>
       </div>
     </div>
   )
