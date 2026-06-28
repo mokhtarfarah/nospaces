@@ -17,6 +17,28 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 // give generous headroom over the scraper's timeout.
 export const config = { maxDuration: 60 }
 
+// Tidy a model line for display: web search makes the model wrap cited phrases in
+// `<cite index="…">…</cite>` markup, and it likes to prefix each note with the
+// option's number/name/price (already shown on the card). Strip both so the note
+// reads as a clean sentence. Pass the option's title to also drop a restated
+// "Name (brand, $price): " identity prefix.
+function cleanNote(s: unknown, title?: string | null): string {
+  let t = String(s ?? '')
+    .replace(/<\/?cite[^>]*>/gi, '')       // drop citation tags, keep the text inside
+    .replace(/^\s*\d+[.)]\s*/, '')          // drop a leading "6. " / "6) " enumeration
+    .trim()
+  // If the model led with the item's identity (e.g. "Leather Clog (Common Projects,
+  // $365): …"), cut up to that first colon — but only when the bit before it actually
+  // names the item, so we never chop a real sentence that happens to have a colon.
+  if (title && title.trim().length >= 4) {
+    const colon = t.indexOf(': ')
+    if (colon > 0 && colon < 120 && t.slice(0, colon).toLowerCase().includes(title.trim().toLowerCase().slice(0, 12))) {
+      t = t.slice(colon + 2).trim()
+    }
+  }
+  return t.replace(/\s{2,}/g, ' ').trim()
+}
+
 type InCandidate = {
   title?: string; brand?: string | null; price?: string | null; wasPrice?: string | null; url?: string | null
   // The user's own saved data — taste tags (look/feel) + why they saved it. Always
@@ -81,6 +103,8 @@ ${VOICE.decisive}
 
 ${HUMANIZER_GUARDRAILS}
 
+Format each note as a clean, plain sentence. Do NOT prefix it with the option number, name, brand, or price — those are already shown beside it; start straight with the substance. Do NOT include any citation markup, footnote markers, or \`<cite>\` tags — just write the sentence in plain words.
+
 Return JSON only, no prose around it:
 { "notes": ["line for option 1", "line for option 2", ...same order, one per option...], "lean": <1-based option number you'd pick, or null if a toss-up>, "verdict": "1–2 sentences" }`
 
@@ -101,9 +125,9 @@ Return JSON only, no prose around it:
     const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
     const json = cleaned.startsWith('{') ? cleaned : cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1)
     const parsed = JSON.parse(json)
-    const notes: string[] = Array.isArray(parsed.notes) ? parsed.notes.slice(0, list.length).map(String) : []
+    const notes: string[] = Array.isArray(parsed.notes) ? parsed.notes.slice(0, list.length).map((n: unknown, i: number) => cleanNote(n, list[i]?.title)) : []
     const lean = Number.isInteger(parsed.lean) && parsed.lean >= 1 && parsed.lean <= list.length ? parsed.lean : null
-    const verdict = typeof parsed.verdict === 'string' ? parsed.verdict.trim() : ''
+    const verdict = cleanNote(parsed.verdict)
     return res.status(200).json({ notes, lean, verdict })
   } catch (err) {
     console.error('[things-compare] error:', err instanceof Error ? err.message : err)
