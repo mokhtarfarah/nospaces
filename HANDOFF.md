@@ -19,7 +19,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ## ▶ Next session (92) — no fixed queue
 
-**Quick phone check (carried from s91):** on a *real* saved media item — does the redone **mark as done** finally read structured-but-calm? Specifically: does the **segmented reaction control** + the **soft-token vibe/verdict** feel right (not too airy, not form-y), does **desert island (Option C)** appear only after liked/loved and toggle cleanly, does **bullet auto-continue** feel right, and do the **edit-page genre chips** now match vibe? (Couldn't render on real data in the no-auth preview.)
+**s91 redo — confirmed on a real device.** Farah verified the segmented reactions + soft-token vibe/verdict (structured, not airy), desert-island Option C (appears after liked/loved + toggles), bullet auto-continue, and the edit-page genre chips matching vibe. All read right. Nothing carried.
 
 **Worth a cleanup soon (flagged s91):** there are **two near-identical "mark as done" sheets** — the in-item one (`ItemActionSheet` reaction view) and the quick-from-row one (`MarkDoneSheet`). Both now match visually, but the duplication is a smell worth collapsing into one.
 

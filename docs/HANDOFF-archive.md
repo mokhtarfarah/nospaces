@@ -28,7 +28,7 @@ Farah confirmed the s90 phone check (⋯ menu, tappable tags, reaction footer, g
 - **Edit-page genre chips** restyled to the same soft-token language (Farah: "genre chips should match vibe chips") — the local `chip()` helper + the genre `+ add`/`done` toggles (de-dashed).
 - Tightened: reaction-view + `MarkDoneSheet` notes drop to `rows=2`.
 - **Add page**: dropped the bottom divider; "other ways to add" is now a quiet **centered** link directly under the photos/note row (was a left-aligned uppercase block).
-- Picked **segmented (option 1)** over a token-cluster reactions variant (option 2). Verified the segmented mockup + the live add page; reaction sheet still needs a real-item eyeball (no-auth library is empty).
+- Picked **segmented (option 1)** over a token-cluster reactions variant (option 2). **Farah confirmed all of it on a real device** — segmented reactions + soft tokens read structured (not airy), Option C appears after liked/loved + toggles, bullet auto-continue works, edit-page genre chips match vibe. (Add page also verified live in-session.)
 
 ---
 
