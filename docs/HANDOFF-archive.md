@@ -4,6 +4,24 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 94 (2026-06-30) — five media-item-sheet fixes (2 bugs Farah hit + 3 design polish). All free, no API calls.
+
+Started as "back to nospaces work"; Farah reported bugs, then asked for design read on a fully-filled book card. All shipped on `main`, **98/98 Vitest** + typecheck (app+api) + lint green each push. **Both bugs Farah re-verified on her real device.**
+
+**Bug 1 — dead "discard" in the review inbox** (`ItemActionSheet.tsx`). The review-inbox `discard` button set `confirmDelete=true`, but the only UI reading that flag renders inside the `⋯` dropdown (closed) or the scratch-capture footer (n/a for *identified* items). So on a real review item — e.g. a saved Spotify rec — discard flipped a switch nothing was listening to (the other two buttons call `onKeep` directly, so they worked). Fix: gave the review box its own inline discard confirm (`discard "…"? … → cancel / discard`), gated `!item.metadata?.scratch` so scratch items keep their footer path.
+
+**Bug 2 — newly added items needed a manual refresh to show in the library** (`hooks/useItems.ts`). Root cause: each screen mounts its **own** `useItems()`, and the add sheet (`MediaComposer`) overlays the still-mounted `LibraryScreen` → two separate `items` states. The add-sheet instance refetched itself, but the library instance underneath only learned via Supabase **realtime** — a network round-trip that lags/drops on the free tier. Fix: a module-level pub-sub (`localWriteListeners`) so every write pings **sibling** instances to `fetch({silent:true})` immediately; `notifyOthers()` skips the writing instance (it already refetched) to avoid a double fetch. Added to every mutator (add/edit/delete/mark*/toggle*/patchMetadata/import/deleteMany/fillVibes/fillGenres). Purely additive — realtime still handles genuine cross-device sync.
+
+**Polish 3 — `⋯` nudged down 1px.** The glyph is a *midline* horizontal ellipsis (`⋯`), which optically rides higher than the `✕` beside it; `transform: translateY(1px)` settles them onto one line.
+
+**Polish 4 — "actually a thing → board" moved out of the `⋯` menu into the edit view.** It was a prominent menu option for a rare misroute. Now a quiet two-step link at the bottom of the edit view (`this is actually a thing, not media →` → `move to board`), mirroring the Things side's "actually media" placement. Updated the stale "edit / own / status / flip / delete" comment.
+
+**Polish 5 — lightened the "thoughts" note block.** On a fully-filled card, the note ran a *heavier* labeling system than the genre/vibe/verdict rows above it (bold 11px uppercase header + full-width hairline divider), so a two-word note ("book club") got more chrome than the note and cut the card harder than anything above. Used a before/after mockup to diagnose. Offered fold-into-column vs keep-distinct; **Farah chose keep-distinct-but-lighten** — kept it as its own "your voice" block (header on its own line, note below) but quietened the header to the tag-label style (10px muted, no divider). **Deliberately diverges from the Things note block** (the old parity comment is retired).
+
+**Commits:** `6d6266d` (bugs 1+2), `d196f85` (polish 3+4), `d7ba982` (polish 5). **Docs:** no ROADMAP prune — none of the five were tracked items (fresh reports + design asks).
+
+---
+
 ### Session 93 (2026-06-28) — built the verdict reshape + diamonds→stars; advanced the music-library design. All free, no API calls.
 
 Picked up the locked-but-unbuilt **verdict reshape** (the s92 decision was sitting uncommitted in `ROADMAP.md`). **Shipped the whole build, $0:**
