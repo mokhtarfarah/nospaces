@@ -305,6 +305,19 @@ export function useItems() {
     notifyOthers()
   }
 
+  // Update top-level columns AND/OR a metadata delta in place, no refetch — for
+  // bulk backfills (fill-from-wikipedia) that touch many rows at once without
+  // reshuffling "recent". A superset of patchMetadata (which is metadata-only).
+  async function patchItem(id: string, columns: Record<string, unknown>, metaPatch: Record<string, unknown>) {
+    const item = itemsRef.current.find(i => i.id === id)
+    if (!item) return
+    const newMeta = Object.keys(metaPatch).length ? { ...item.metadata, ...metaPatch } : item.metadata
+    itemsRef.current = itemsRef.current.map(i => i.id === id ? { ...i, ...columns, metadata: newMeta } : i)
+    setItems(itemsRef.current)
+    await db().from('items').update({ ...columns, metadata: newMeta }).eq('id', id)
+    notifyOthers()
+  }
+
   async function toggleOwned(id: string, owned: boolean) {
     const item = items.find(i => i.id === id)
     if (!item) return
@@ -348,5 +361,5 @@ export function useItems() {
     notifyOthers()
   }
 
-  return { items, loading, addItem, importItems, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
+  return { items, loading, addItem, importItems, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, patchItem, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
 }

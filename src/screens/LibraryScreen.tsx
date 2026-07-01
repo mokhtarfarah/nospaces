@@ -19,8 +19,7 @@ import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 import { inReview, reviewCount } from '../lib/review'
 import { flipMediaToThing } from '../lib/flip'
 import { clearStack, clearNav } from '../lib/layout'
-import { pullRegions, itemsNeedingRegion } from '../lib/regions'
-import { authHeaders } from '../lib/supabase'
+import { pullFacts, itemsNeedingFacts } from '../lib/regions'
 
 
 // Editorial palette — matches taste / discover / add
@@ -184,7 +183,7 @@ function itemSource(item: Item): string {
 }
 
 export function LibraryScreen() {
-  const { items: allItems, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, duplicateCount, duplicateGroups, deleteMany } = useItems()
+  const { items: allItems, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, patchItem, duplicateCount, duplicateGroups, deleteMany } = useItems()
   // Things live in their own domain (the board), never in the media library — so
   // they don't leak in as broken cover-art cards or spawn a stray "Thing" tab.
   const items = useMemo(() => allItems.filter(i => i.type !== 'thing'), [allItems])
@@ -262,7 +261,7 @@ export function LibraryScreen() {
   const [gapsOpen, setGapsOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [overflowOpen, setOverflowOpen] = useState(false)
-  const [regionBusy, setRegionBusy] = useState(false)
+  const [factsBusy, setFactsBusy] = useState(false)
   // Email-capture feed: forwards that added nothing (failed/no-op) so they don't
   // vanish silently. Fetched once on mount; surfaced in the overflow menu only
   // when there's something to show.
@@ -436,25 +435,26 @@ export function LibraryScreen() {
     // the card to re-filter, not bounced back to the list.
   }
 
-  // Region backfill — one-shot Wikidata pull (free) for media items not yet
-  // attempted. Updates rows in place via patchMetadata; progress shown as a toast.
-  const regionPending = useMemo(() => itemsNeedingRegion(items).length, [items])
-  async function handlePullRegions() {
-    if (regionBusy) return
-    setRegionBusy(true)
+  // Fill-from-wikipedia backfill — one-shot Wikidata pull (free) that fills blank
+  // creator / year / runtime / pages / region across the library, so you don't
+  // have to open each item and auto-fill by hand. Updates rows in place via
+  // patchItem; progress shown as a toast.
+  const factsPending = useMemo(() => itemsNeedingFacts(items).length, [items])
+  async function handlePullFacts() {
+    if (factsBusy) return
+    setFactsBusy(true)
     setOverflowOpen(false)
-    setToast('pulling regions…')
+    setToast('filling from wikipedia…')
     try {
-      const headers = await authHeaders()
-      const result = await pullRegions(items, headers, patchMetadata, p => setToast(`pulling regions… ${p.done}/${p.total}`))
-      const msg = result.filled > 0 ? `region added to ${result.filled} item${result.filled === 1 ? '' : 's'}` : 'no regions found'
-      // Surface failures so a partial run is visible — they stay untagged and a
-      // re-run retries them (e.g. Wikipedia throttled some at this scale).
+      const result = await pullFacts(items, patchItem, p => setToast(`filling from wikipedia… ${p.done}/${p.total}`))
+      const msg = result.filled > 0 ? `filled ${result.filled} item${result.filled === 1 ? '' : 's'}` : 'nothing new to fill'
+      // Surface failures so a partial run is visible — those items are left
+      // untouched and a re-run retries them (e.g. Wikipedia throttled some).
       setToast(result.failed > 0 ? `${msg} · ${result.failed} failed, run again` : msg)
     } catch {
-      setToast("couldn't pull regions — check your connection")
+      setToast("couldn't reach wikipedia — check your connection")
     } finally {
-      setRegionBusy(false)
+      setFactsBusy(false)
       setTimeout(() => setToast(null), 4000)
     }
   }
@@ -1026,15 +1026,15 @@ export function LibraryScreen() {
           gapCount={gapCount}
           captureCount={captures.length}
           captureFailures={captureFailures}
-          regionPending={regionPending}
-          regionBusy={regionBusy}
+          factsPending={factsPending}
+          factsBusy={factsBusy}
           selectMode={selectMode}
           onClose={() => setOverflowOpen(false)}
           onDecide={() => { setOverflowOpen(false); navigate('/decide') }}
           onGuide={() => { setOverflowOpen(false); navigate('/guide') }}
           onTidy={() => { setOverflowOpen(false); setGapsOpen(true) }}
           onCaptures={() => { setOverflowOpen(false); setCapturesOpen(true) }}
-          onPullRegions={handlePullRegions}
+          onPullFacts={handlePullFacts}
           onSelect={() => { setOverflowOpen(false); selectMode ? exitSelect() : setSelectMode(true) }}
         />
       )}
@@ -1699,20 +1699,20 @@ function HeaderControls({ onSearch, onMore }: {
 }
 
 // Overflow bottom sheet — holds the occasional actions pulled out of the header.
-function OverflowSheet({ hasItems, gapCount, captureCount, captureFailures, regionPending, regionBusy, selectMode, onClose, onDecide, onGuide, onTidy, onCaptures, onPullRegions, onSelect }: {
+function OverflowSheet({ hasItems, gapCount, captureCount, captureFailures, factsPending, factsBusy, selectMode, onClose, onDecide, onGuide, onTidy, onCaptures, onPullFacts, onSelect }: {
   hasItems: boolean
   gapCount: number
   captureCount: number
   captureFailures: number
-  regionPending: number
-  regionBusy: boolean
+  factsPending: number
+  factsBusy: boolean
   selectMode: boolean
   onClose: () => void
   onDecide: () => void
   onGuide: () => void
   onTidy: () => void
   onCaptures: () => void
-  onPullRegions: () => void
+  onPullFacts: () => void
   onSelect: () => void
 }) {
   const Row = ({ label, sub, onClick }: { label: string; sub: string; onClick: () => void }) => (
@@ -1734,7 +1734,7 @@ function OverflowSheet({ hasItems, gapCount, captureCount, captureFailures, regi
         <Row label="how to use" sub="a quick tour of nospaces" onClick={onGuide} />
         {gapCount > 0 && <Row label={`tidy · ${gapCount}`} sub="fill in missing details" onClick={onTidy} />}
         {captureCount > 0 && <Row label={captureFailures > 0 ? `email captures · ${captureFailures}` : 'email captures'} sub="forwards that didn’t save" onClick={onCaptures} />}
-        {regionPending > 0 && <Row label={regionBusy ? 'pulling regions…' : `pull regions · ${regionPending}`} sub="tag films, books & music by country" onClick={regionBusy ? () => {} : onPullRegions} />}
+        {factsPending > 0 && <Row label={factsBusy ? 'filling from wikipedia…' : `fill from wikipedia · ${factsPending}`} sub="creator, year, runtime & region — no tidying needed" onClick={factsBusy ? () => {} : onPullFacts} />}
         <Row label={selectMode ? 'cancel select' : 'select items'} sub="multi-select to bulk delete" onClick={onSelect} />
       </div>
     </>

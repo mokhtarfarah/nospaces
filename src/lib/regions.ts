@@ -21,7 +21,7 @@ import { GAP_MEDIA_TYPES } from './gaps'
 // so the next backfill re-cleans already-tagged items.
 export const REGION_VERSION = 2
 
-export interface RegionProgress { done: number; total: number; filled: number; failed: number }
+export interface FactsProgress { done: number; total: number; filled: number; failed: number }
 
 // True once an item carries at least one country from the CURRENT resolver.
 export function hasRegion(item: Item): boolean {
@@ -30,10 +30,23 @@ export function hasRegion(item: Item): boolean {
     && ((item.metadata?.regionV as number | undefined) ?? 0) >= REGION_VERSION
 }
 
-// Items eligible for a region pull: media types we can resolve, not yet tagged
-// (or tagged by an older resolver version).
-export function itemsNeedingRegion(items: Item[]): Item[] {
-  return items.filter(i => GAP_MEDIA_TYPES.includes(i.type) && !hasRegion(i))
+// Items eligible for a fill-from-wikipedia pass: media types we can resolve that
+// are still missing any of the fields one Wikidata lookup can supply — creator,
+// year, runtime (film/tv), pages (book), or region. A gap the user has dismissed
+// (marked "no data exists") is not counted, so the pending count can reach 0.
+// Region is versioned separately (re-clean on resolver bumps), so it's always
+// re-checked. Re-running is free + idempotent — only real hits get written.
+export function itemsNeedingFacts(items: Item[]): Item[] {
+  return items.filter(i => {
+    if (!GAP_MEDIA_TYPES.includes(i.type)) return false
+    const dismissed = new Set<string>((i.metadata?.dismissedGaps as string[] | undefined) ?? [])
+    const needCreator = !i.creator?.trim() && !dismissed.has('creator')
+    const needYear = !i.year && !dismissed.has('year')
+    const needRuntime = (i.type === 'film' || i.type === 'tv') && !i.metadata?.runtime && !dismissed.has('runtime')
+    const needPages = i.type === 'book' && !i.metadata?.pages && !dismissed.has('pages')
+    const needRegion = !hasRegion(i)
+    return needCreator || needYear || needRuntime || needPages || needRegion
+  })
 }
 
 // ---- Wikidata resolution (browser-direct) ----
@@ -140,20 +153,63 @@ async function labelsFor(ids: string[]): Promise<Record<string, string>> {
   return out
 }
 
-// Resolve one item's countries. Returns [] for "resolved, no country"; throws on
-// a network/Wikipedia error so the caller can count it as a retryable failure.
-async function resolveCountries(item: Item): Promise<string[]> {
+// Fetch entities with labels AND claims in one call — lets us pull a creator's
+// display name (label) and nationality (claims) from a single request.
+async function entitiesFor(ids: string[]): Promise<Record<string, { labels?: { en?: { value?: string } }; claims?: Claims }>> {
+  if (!ids.length) return {}
+  const d = await jget(`${WD}?action=wbgetentities&format=json&origin=*&props=labels|claims&languages=en&ids=${ids.join('|')}`) as { entities?: Record<string, { labels?: { en?: { value?: string } }; claims?: Claims }> }
+  return d?.entities ?? {}
+}
+
+// Numeric-quantity claims (runtime P2047, pages P1104). Wikidata stores these as
+// { amount: "+123" } strings. min = theatrical cut for runtime; first = pages.
+const amounts = (cl: Claims, pid: string): number[] =>
+  (cl[pid] ?? [])
+    .map(c => parseFloat(String((c.mainsnak?.datavalue?.value as { amount?: string })?.amount ?? '')))
+    .filter(n => !isNaN(n) && n > 0)
+const minAmount = (cl: Claims, pid: string): number | null => { const a = amounts(cl, pid); return a.length ? Math.round(Math.min(...a)) : null }
+const firstAmount = (cl: Claims, pid: string): number | null => { const a = amounts(cl, pid); return a.length ? Math.round(a[0]) : null }
+
+// Earliest year across publication (P577) / inception (P571) / start time (P580 —
+// how TV stores first-aired) — the original release, not re-releases.
+const minYear = (cl: Claims, pids: string[]): number | null => {
+  const ys = pids.flatMap(pid => cl[pid] ?? [])
+    .map(c => parseInt(String((c.mainsnak?.datavalue?.value as { time?: string })?.time ?? '').slice(1, 5)))
+    .filter(y => !isNaN(y) && y > 0)
+  return ys.length ? Math.min(...ys) : null
+}
+
+export interface Facts { countries: string[]; creator: string | null; runtime: number | null; pages: number | null; year: number | null }
+
+// Resolve one item's Wikidata facts (creator, year, runtime, pages, region) in a
+// single article+claims pass. null = couldn't resolve the article at all; throws
+// on a network/Wikipedia error so the caller can count it as a retryable failure.
+async function resolveFacts(item: Item): Promise<Facts | null> {
   const resolved = await articleResolve(item)
-  if (!resolved?.qid) return []
+  if (!resolved?.qid) return null
   const qid = resolved.qid
   const claims = (await claimsFor([qid]))[qid]
+
+  const runtime = (item.type === 'film' || item.type === 'tv') ? minAmount(claims, 'P2047') : null
+  const pages = item.type === 'book' ? firstAmount(claims, 'P1104') : null
+  const year = minYear(claims, ['P577', 'P571', 'P580'])
+
+  // creator: up to two entity ids (co-directors / co-authors) → name (label) +
+  // nationality (claims) in one call. The claims double as the country source.
+  const creatorIds = entityIds(claims, CREATOR_PROPS[item.type] ?? []).slice(0, 2)
+  let creator: string | null = null
+  let creatorClaims: Claims[] = []
+  if (creatorIds.length) {
+    const ents = await entitiesFor(creatorIds)
+    const names = creatorIds.map(id => ents[id]?.labels?.en?.value).filter((n): n is string => !!n)
+    if (names.length) creator = names.join(' & ')
+    creatorClaims = creatorIds.map(id => ents[id]?.claims ?? {})
+  }
 
   let countryIds: string[]
   if (item.type === 'film' || item.type === 'tv') {
     countryIds = claimIds(claims, 'P495')
   } else {
-    const creatorIds = entityIds(claims, CREATOR_PROPS[item.type] ?? []).slice(0, 2)
-    const creatorClaims = creatorIds.length ? Object.values(await claimsFor(creatorIds)) : []
     countryIds = creatorClaims.flatMap(creatorCountryIds)
     if (!countryIds.length && !creatorIds.length) countryIds = creatorCountryIds(claims)
     if (!countryIds.length) {
@@ -164,49 +220,59 @@ async function resolveCountries(item: Item): Promise<string[]> {
       }
     }
   }
-
   const labels = await labelsFor([...new Set(countryIds)])
-  return [...new Set(
+  const countries = [...new Set(
     [...new Set(countryIds)]
       .map(id => labels[id])
       .filter((c): c is string => !!c)
       .map(c => HISTORICAL_COUNTRY[c] ?? c)
   )]
+
+  return { countries, creator, runtime, pages, year }
 }
 
-// string[] on success (possibly empty), null if it kept failing. Wikipedia
-// rate-limits anonymous bursts (429), so retry with exponential backoff.
-async function pullOne(item: Item): Promise<string[] | null> {
+// Facts on success, null if it kept failing. Wikipedia rate-limits anonymous
+// bursts (429), so retry with exponential backoff.
+async function pullOne(item: Item): Promise<Facts | null> {
   for (let attempt = 0; attempt < 4; attempt++) {
-    try { return await resolveCountries(item) }
+    try { return await resolveFacts(item) }
     catch { await sleep(800 * 2 ** attempt) }  // 0.8s, 1.6s, 3.2s, 6.4s
   }
   return null
 }
 
-// Run the backfill over the whole library, browser-direct with modest
-// concurrency. Only real hits are persisted; misses/failures stay untagged so
-// re-running mops them up. `save` is the caller's patchMetadata (in-place,
-// no refetch fan-out). headers is accepted for signature stability but unused
-// (Wikipedia needs no auth).
+// Run the fill-from-wikipedia backfill over the whole library, browser-direct
+// with modest concurrency. Fills only BLANK fields (never overwrites your edits);
+// misses/failures leave the item untouched so re-running mops them up. `save` is
+// the caller's patchItem (in-place, no refetch fan-out): it takes top-level
+// column edits (creator, year) separately from a metadata delta (runtime, pages,
+// countries), since those live in different places on the row.
 const CONCURRENCY = 3
 
-export async function pullRegions(
+export async function pullFacts(
   items: Item[],
-  _headers: HeadersInit,
-  save: (id: string, patch: Record<string, unknown>) => Promise<void> | void,
-  onProgress?: (p: RegionProgress) => void,
-): Promise<RegionProgress> {
-  const queue = itemsNeedingRegion(items)
+  save: (id: string, columns: Record<string, unknown>, metaPatch: Record<string, unknown>) => Promise<void> | void,
+  onProgress?: (p: FactsProgress) => void,
+): Promise<FactsProgress> {
+  const queue = itemsNeedingFacts(items)
   const total = queue.length
   let done = 0, filled = 0, failed = 0, next = 0
 
   const worker = async () => {
     while (next < queue.length) {
       const item = queue[next++]
-      const countries = await pullOne(item)
-      if (countries === null) failed++
-      else if (countries.length) { await save(item.id, { countries, regionV: REGION_VERSION }); filled++ }
+      const facts = await pullOne(item)
+      if (facts === null) failed++
+      else {
+        const columns: Record<string, unknown> = {}
+        const meta: Record<string, unknown> = {}
+        if (facts.creator && !item.creator?.trim()) columns.creator = facts.creator
+        if (facts.year && !item.year) columns.year = facts.year
+        if (facts.runtime && !item.metadata?.runtime) meta.runtime = facts.runtime
+        if (facts.pages && !item.metadata?.pages) meta.pages = facts.pages
+        if (facts.countries.length && !hasRegion(item)) { meta.countries = facts.countries; meta.regionV = REGION_VERSION }
+        if (Object.keys(columns).length || Object.keys(meta).length) { await save(item.id, columns, meta); filled++ }
+      }
       done++
       onProgress?.({ done, total, filled, failed })
     }

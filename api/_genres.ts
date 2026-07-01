@@ -5,9 +5,9 @@
 // local copy.
 export const GENRE_VOCAB: Record<string, string[]> = {
   film:  ['action','animation','classic','comedy','crime','documentary','drama','fantasy','horror','musical','period piece','romance','satire','sci-fi','thriller','western'],
-  tv:    ['animation','classic','comedy','crime','documentary','drama','fantasy','horror','period piece','reality','satire','sci-fi','thriller'],
+  tv:    ['action','adventure','animation','classic','comedy','crime','documentary','drama','fantasy','horror','mystery','period piece','reality','romance','satire','sci-fi','thriller'],
   book:  ['biography','business','classics','cookbook','crime','essay','fantasy','historical fiction','history','horror','literary fiction','memoir','mystery','period piece','philosophy','poetry','romance','satire','sci-fi','self-help','short stories','thriller','travel'],
-  music: ['afrobeats','ambient','art pop','classical','country','electronic','experimental','folk','funk','glam rock','hip-hop','indie','jazz','latin','metal','new wave','pop','post-punk','punk','r&b','rock','soul'],
+  music: ['afrobeats','alt rock','ambient','art pop','classical','country','electronic','experimental','folk','funk','glam rock','grunge','hip-hop','indie','jazz','latin','metal','new wave','pop','post-punk','punk','r&b','rock','soul'],
   other: [],
 }
 
