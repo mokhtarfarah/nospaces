@@ -227,6 +227,9 @@ export function LibraryScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => loadPrefs().statusFilter ?? 'all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>(() => loadPrefs().reactionFilter ?? 'all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
+  // "on my shelf" — narrow to items flagged owned (metadata.owned). Useful when
+  // you're out shopping and want to check you don't already have this DVD/record/book.
+  const [ownedOnly, setOwnedOnly] = useState(false)
   // Filter-sheet selections are multi-select: OR within a group, AND across
   // groups (faceted filtering). Empty array = that group isn't narrowing.
   const [vibeFilter, setVibeFilter] = useState<string[]>([])
@@ -420,15 +423,15 @@ export function LibraryScreen() {
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
     || vibeFilter.length > 0 || verdictFilter.length > 0 || genreFilter.length > 0 || seriesFilter.length > 0
-    || reviewOnly || newMusicOnly || !!query.trim()
+    || reviewOnly || newMusicOnly || ownedOnly || !!query.trim()
   // Badge counts every selected chip across groups, so "filter · 3" reflects how
   // many tags are narrowing the list (not just how many groups are touched).
   const filterCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length + countryFilter.length
-    + (newMusicOnly && musicOnly ? 1 : 0)
+    + (newMusicOnly && musicOnly ? 1 : 0) + (ownedOnly ? 1 : 0)
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([])
-    setReviewOnly(false); setNewMusicOnly(false); setQuery('')
+    setReviewOnly(false); setNewMusicOnly(false); setOwnedOnly(false); setQuery('')
     // Note: deliberately does NOT close the filter card — clearing leaves you in
     // the card to re-filter, not bounced back to the list.
   }
@@ -528,8 +531,15 @@ export function LibraryScreen() {
       Array.isArray(item.metadata?.countries) &&
       countryFilter.some(c => (item.metadata.countries as string[]).includes(c))
     )
+    if (ownedOnly) result = result.filter(item => item.metadata?.owned)
     return sortItems(result, sort, dir)
-  }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, sort, dir])
+  }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, ownedOnly, sort, dir])
+
+  // Whether the current base set has anything owned — the shelf filter is only
+  // worth offering when there's something on the shelf to narrow to. Computed off
+  // baseFiltered (which excludes the owned narrowing) so it stays stable as the
+  // toggle flips.
+  const hasOwned = useMemo(() => baseFiltered.some(i => i.metadata?.owned), [baseFiltered])
 
   // Tags present in the current base-filtered set, each with how many items carry
   // it — ranked biggest-first so the filter lists lead with what's worth tapping
@@ -598,6 +608,7 @@ export function LibraryScreen() {
     setGenreFilter(prev => prev.filter(v => has(availableTags.genres, v)))
     setSeriesFilter(prev => prev.filter(v => has(availableTags.series, v)))
     setCountryFilter(prev => prev.filter(v => has(availableTags.countries, v)))
+    if (!hasOwned) setOwnedOnly(false)
     listRef.current?.scrollTo({ top: 0 })
     setCollapsed(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prune only on base-control change, not on every availableFilters recompute
@@ -973,6 +984,7 @@ export function LibraryScreen() {
           seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
           countryFilter={countryFilter} onToggleCountry={toggleFilter(setCountryFilter)}
           showNewMusic={musicOnly} newMusicOnly={newMusicOnly} onToggleNewMusic={() => setNewMusicOnly(v => !v)}
+          showShelf={hasOwned} ownedOnly={ownedOnly} onToggleOwned={() => setOwnedOnly(v => !v)}
           view={view} dir={dir} onSelectView={selectView}
           layout={layout} onLayout={l => setLayout(l)}
           gridCols={gridCols} onGridCols={c => setGridCols(c)}
@@ -1062,6 +1074,7 @@ function FilterSheet({
   seriesFilter, onToggleSeries,
   countryFilter, onToggleCountry,
   showNewMusic, newMusicOnly, onToggleNewMusic,
+  showShelf, ownedOnly, onToggleOwned,
   view, dir, onSelectView,
   layout, onLayout, gridCols, onGridCols, caption, onCaption,
   filtersActive, onClearAll, matchCount, onClose,
@@ -1074,6 +1087,7 @@ function FilterSheet({
   seriesFilter: string[]; onToggleSeries: (v: string) => void
   countryFilter: string[]; onToggleCountry: (v: string) => void
   showNewMusic: boolean; newMusicOnly: boolean; onToggleNewMusic: () => void
+  showShelf: boolean; ownedOnly: boolean; onToggleOwned: () => void
   view: ViewMode; dir: SortDir; onSelectView: (v: ViewMode) => void
   layout: 'list' | 'grid'; onLayout: (l: 'list' | 'grid') => void
   gridCols: 3 | 4; onGridCols: (c: 3 | 4) => void
@@ -1092,8 +1106,9 @@ function FilterSheet({
     ...seriesFilter.map(v => ({ value: v, remove: () => onToggleSeries(v) })),
     ...countryFilter.map(v => ({ value: v, remove: () => onToggleCountry(v) })),
     ...(showNewMusic && newMusicOnly ? [{ value: 'new music tuesday', remove: onToggleNewMusic }] : []),
+    ...(showShelf && ownedOnly ? [{ value: 'on my shelf', remove: onToggleOwned }] : []),
   ]
-  const hasGroups = showNewMusic || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
+  const hasGroups = showNewMusic || showShelf || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
     || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0
   const sectionLabel: CSSProperties = { fontSize: 12, fontWeight: 700, color: '#6F6B64', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px', paddingTop: 13, borderTop: '1px solid #F0F0F0' }
   // Soft segmented control: a quiet track with the selected segment lifted as a
@@ -1194,6 +1209,14 @@ function FilterSheet({
         )}
         {availableTags.countries.length > 0 && (
           <FilterSection label="region" options={availableTags.countries} selected={countryFilter} onSelect={onToggleCountry} />
+        )}
+        {showShelf && (
+          <FilterSection
+            label="shelf"
+            options={[{ value: 'on my shelf' }]}
+            selected={ownedOnly ? ['on my shelf'] : []}
+            onSelect={onToggleOwned}
+          />
         )}
         {showNewMusic && (
           <FilterSection
