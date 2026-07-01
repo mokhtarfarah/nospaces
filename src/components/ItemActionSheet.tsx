@@ -192,7 +192,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [picks, setPicks] = useState<Candidate[] | null>(null)
   const [lookingUp, setLookingUp] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  // The ⋯ admin menu over the hero — holds edit / own / status / flip / delete, so
+  // Two-step confirm for the rare "actually a thing → board" misroute fix, which
+  // now lives at the bottom of the edit view (mirrors the Things "actually media").
+  const [flipConfirm, setFlipConfirm] = useState(false)
+  // The ⋯ admin menu over the hero — holds edit / own / status / delete, so
   // the read view stays calm (mirrors the Things product card).
   const [menuOpen, setMenuOpen] = useState(false)
   const [inboxDoneMode, setInboxDoneMode] = useState(false)
@@ -558,7 +561,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
         {view === 'main' && (
           <>
             {/* Item preview — shared editorial hero (ghost wash + crisp poster). The ⋯
-                in the corner holds all admin (edit / own / status / flip / delete); the
+                in the corner holds all admin (edit / own / status / delete); the
                 row below is outward links only, so nothing boring crowds the title. */}
             <SheetHero
               type={item.type}
@@ -567,7 +570,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               onClose={onClose}
               menuButton={!item.metadata?.scratch ? (
                 <button onClick={() => setMenuOpen(o => !o)} aria-label="more"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6F6B64', fontSize: 20, fontWeight: 700, lineHeight: 1, padding: '0 0 4px' }}>⋯</button>
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6F6B64', fontSize: 20, fontWeight: 700, lineHeight: 1, padding: '0 0 4px', transform: 'translateY(1px)' }}>⋯</button>
               ) : undefined}
               meta={[
                 // Identity only — type · creator · year · runtime (+ series). The
@@ -630,9 +633,6 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                       )}
                       {item.status === 'in_progress' && onMarkWantTo && (
                         <button style={menuItem()} onClick={onMarkWantTo}>move back to want to</button>
-                      )}
-                      {onFlipToThing && (
-                        <button style={menuItem()} onClick={onFlipToThing}>actually a thing → board</button>
                       )}
                       <div style={{ height: 1, background: '#E8E8E8', margin: '5px 8px' }} />
                       <button style={menuItem('#C0392B')} onClick={() => setConfirmDelete(true)}>delete</button>
@@ -1186,6 +1186,23 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   </div>
                 )}
               </div>
+
+              {/* Misroute fix — a rare cleanup for a screenshot/quick-add we filed as
+                  media but that's really a thing. Lives here (not the ⋯ menu) as a
+                  quiet, two-step link so it never competes with the read view. */}
+              {onFlipToThing && (
+                <div style={{ marginBottom: 16, paddingTop: 14, borderTop: '1px solid #ECEAE6' }}>
+                  {flipConfirm ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
+                      <span style={{ fontSize: 12.5, color: '#8A857C' }}>move to the board?</span>
+                      <button onClick={onFlipToThing} style={{ border: 'none', background: 'none', color: '#1C1B19', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>move to board</button>
+                      <button onClick={() => setFlipConfirm(false)} className="tlink">cancel</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setFlipConfirm(true)} className="tlink">this is actually a thing, not media →</button>
+                  )}
+                </div>
+              )}
 
               {/* Footer */}
               <div style={{ ...footer, display: 'flex', gap: 8 }}>
