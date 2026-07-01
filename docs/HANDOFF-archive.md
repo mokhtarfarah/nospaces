@@ -4,6 +4,12 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 99 (2026-07-01) — recent-view headers: months only for the current year. Free, no API calls.
+
+Small frontend polish shipped on `main` (d41c3e6), 106/106 Vitest + typecheck + lint + genre-sync green. No Anthropic cost.
+
+**Change** (`src/screens/LibraryScreen.tsx`, `groupByMonth` → `groupByYear`). Farah: in the "recent" view, month headers ("March 2024") are too granular for old stuff. Reasoned it through together — the month is a meaningful memory anchor only while it's fresh, and the current year (most items, biggest wall) is where breaking it into months actually helps scanning; past years are fewer items each and the month is noise you don't remember. Both angles agreed → **current calendar year gets month headers, every earlier year collapses to just the year.** Year-precision backdates still file under the bare year (no invented month). Considered a rolling-12-months cutoff to dodge the Jan-1 cliff (December suddenly collapsing into a flat year on New Year's) but Farah chose the simpler calendar-year cutoff for now — parked the rolling version if the cliff ever feels bad. Dropped the now-unused `formatMonthYear` helper (inlined into the grouper).
+
 ### Session 98 (2026-07-01) — "look it up online" ranking/dedup + results back button + book covers → Apple Books. All free, no API calls.
 
 Three fixes shipped on `main` (07f3bee, 6b4b4ba), **106/106 Vitest** (98 + 8 new) + typecheck (app+api) + lint + genre-sync green each push. No Anthropic cost change — all work is on the free public catalog APIs (iTunes/Deezer/TMDB/Open Library/Apple Books), browser/serverless-direct. Couldn't be verified locally (every touched endpoint is auth-gated — `describe`/`art` need a logged-in session — or key-gated: TMDB/Apple keys live only on Vercel; local no-auth library is empty), so pre-ship checks were curl against the live APIs + unit tests + the gate. **Confirmed working on Farah's real library after deploy:** catalog lookup ranks the film above the soundtrack, the results back button works, and old book covers self-healed to clean Apple Books covers in the gallery.
