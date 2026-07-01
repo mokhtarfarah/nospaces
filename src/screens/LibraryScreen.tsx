@@ -227,9 +227,12 @@ export function LibraryScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => loadPrefs().statusFilter ?? 'all')
   const [reactionFilter, setReactionFilter] = useState<ReactionFilter>(() => loadPrefs().reactionFilter ?? 'all')
   const [newMusicOnly, setNewMusicOnly] = useState(false)
-  // "on my shelf" — narrow to items flagged owned (metadata.owned). Useful when
-  // you're out shopping and want to check you don't already have this DVD/record/book.
-  const [ownedOnly, setOwnedOnly] = useState(false)
+  // "shelf" — three-state narrow on the owned flag (metadata.owned):
+  //   'owned'   = on my shelf   (out shopping: don't re-buy what you already have)
+  //   'unowned' = not on my shelf (bookstore: your want-to list minus the unread
+  //               copies already at home, so you don't buy a dupe)
+  //   'all'     = don't narrow (default)
+  const [shelfFilter, setShelfFilter] = useState<'all' | 'owned' | 'unowned'>('all')
   // Filter-sheet selections are multi-select: OR within a group, AND across
   // groups (faceted filtering). Empty array = that group isn't narrowing.
   const [vibeFilter, setVibeFilter] = useState<string[]>([])
@@ -423,15 +426,15 @@ export function LibraryScreen() {
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
     || vibeFilter.length > 0 || verdictFilter.length > 0 || genreFilter.length > 0 || seriesFilter.length > 0
-    || reviewOnly || newMusicOnly || ownedOnly || !!query.trim()
+    || reviewOnly || newMusicOnly || shelfFilter !== 'all' || !!query.trim()
   // Badge counts every selected chip across groups, so "filter · 3" reflects how
   // many tags are narrowing the list (not just how many groups are touched).
   const filterCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length + countryFilter.length
-    + (newMusicOnly && musicOnly ? 1 : 0) + (ownedOnly ? 1 : 0)
+    + (newMusicOnly && musicOnly ? 1 : 0) + (shelfFilter !== 'all' ? 1 : 0)
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([])
-    setReviewOnly(false); setNewMusicOnly(false); setOwnedOnly(false); setQuery('')
+    setReviewOnly(false); setNewMusicOnly(false); setShelfFilter('all'); setQuery('')
     // Note: deliberately does NOT close the filter card — clearing leaves you in
     // the card to re-filter, not bounced back to the list.
   }
@@ -532,9 +535,10 @@ export function LibraryScreen() {
       Array.isArray(item.metadata?.countries) &&
       countryFilter.some(c => (item.metadata.countries as string[]).includes(c))
     )
-    if (ownedOnly) result = result.filter(item => item.metadata?.owned)
+    if (shelfFilter === 'owned')   result = result.filter(item => item.metadata?.owned)
+    if (shelfFilter === 'unowned') result = result.filter(item => !item.metadata?.owned)
     return sortItems(result, sort, dir)
-  }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, ownedOnly, sort, dir])
+  }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, shelfFilter, sort, dir])
 
   // Whether the current base set has anything owned — the shelf filter is only
   // worth offering when there's something on the shelf to narrow to. Computed off
@@ -609,7 +613,7 @@ export function LibraryScreen() {
     setGenreFilter(prev => prev.filter(v => has(availableTags.genres, v)))
     setSeriesFilter(prev => prev.filter(v => has(availableTags.series, v)))
     setCountryFilter(prev => prev.filter(v => has(availableTags.countries, v)))
-    if (!hasOwned) setOwnedOnly(false)
+    if (!hasOwned) setShelfFilter('all')
     listRef.current?.scrollTo({ top: 0 })
     setCollapsed(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prune only on base-control change, not on every availableFilters recompute
@@ -730,6 +734,9 @@ export function LibraryScreen() {
             reactionFilter={reactionFilter}
             onStatus={s => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
             onReaction={setReactionFilter}
+            showShelf={hasOwned}
+            shelfFilter={shelfFilter}
+            onShelf={v => setShelfFilter(prev => prev === v ? 'all' : v)}
           />
           {/* spacer pushes the right-hand controls to the edge */}
           <div style={{ flex: '1 1 0' }} />
@@ -985,7 +992,7 @@ export function LibraryScreen() {
           seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
           countryFilter={countryFilter} onToggleCountry={toggleFilter(setCountryFilter)}
           showNewMusic={musicOnly} newMusicOnly={newMusicOnly} onToggleNewMusic={() => setNewMusicOnly(v => !v)}
-          showShelf={hasOwned} ownedOnly={ownedOnly} onToggleOwned={() => setOwnedOnly(v => !v)}
+          showShelf={hasOwned} shelfFilter={shelfFilter} onShelf={v => setShelfFilter(prev => prev === v ? 'all' : v)}
           view={view} dir={dir} onSelectView={selectView}
           layout={layout} onLayout={l => setLayout(l)}
           gridCols={gridCols} onGridCols={c => setGridCols(c)}
@@ -1075,7 +1082,7 @@ function FilterSheet({
   seriesFilter, onToggleSeries,
   countryFilter, onToggleCountry,
   showNewMusic, newMusicOnly, onToggleNewMusic,
-  showShelf, ownedOnly, onToggleOwned,
+  showShelf, shelfFilter, onShelf,
   view, dir, onSelectView,
   layout, onLayout, gridCols, onGridCols, caption, onCaption,
   filtersActive, onClearAll, matchCount, onClose,
@@ -1088,7 +1095,7 @@ function FilterSheet({
   seriesFilter: string[]; onToggleSeries: (v: string) => void
   countryFilter: string[]; onToggleCountry: (v: string) => void
   showNewMusic: boolean; newMusicOnly: boolean; onToggleNewMusic: () => void
-  showShelf: boolean; ownedOnly: boolean; onToggleOwned: () => void
+  showShelf: boolean; shelfFilter: 'all' | 'owned' | 'unowned'; onShelf: (v: 'owned' | 'unowned') => void
   view: ViewMode; dir: SortDir; onSelectView: (v: ViewMode) => void
   layout: 'list' | 'grid'; onLayout: (l: 'list' | 'grid') => void
   gridCols: 3 | 4; onGridCols: (c: 3 | 4) => void
@@ -1107,7 +1114,8 @@ function FilterSheet({
     ...seriesFilter.map(v => ({ value: v, remove: () => onToggleSeries(v) })),
     ...countryFilter.map(v => ({ value: v, remove: () => onToggleCountry(v) })),
     ...(showNewMusic && newMusicOnly ? [{ value: 'new music tuesday', remove: onToggleNewMusic }] : []),
-    ...(showShelf && ownedOnly ? [{ value: 'on my shelf', remove: onToggleOwned }] : []),
+    ...(showShelf && shelfFilter === 'owned' ? [{ value: 'on my shelf', remove: () => onShelf('owned') }] : []),
+    ...(showShelf && shelfFilter === 'unowned' ? [{ value: 'not on my shelf', remove: () => onShelf('unowned') }] : []),
   ]
   const hasGroups = showNewMusic || showShelf || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
     || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0
@@ -1214,9 +1222,9 @@ function FilterSheet({
         {showShelf && (
           <FilterSection
             label="shelf"
-            options={[{ value: 'on my shelf' }]}
-            selected={ownedOnly ? ['on my shelf'] : []}
-            onSelect={onToggleOwned}
+            options={[{ value: 'on my shelf' }, { value: 'not on my shelf' }]}
+            selected={shelfFilter === 'owned' ? ['on my shelf'] : shelfFilter === 'unowned' ? ['not on my shelf'] : []}
+            onSelect={v => onShelf(v === 'on my shelf' ? 'owned' : 'unowned')}
           />
         )}
         {showNewMusic && (
@@ -1339,11 +1347,14 @@ function TabChip({ label, active, onClick }: { label: string; active: boolean; o
 // Status filter as a single dropdown (was a row of chips). The done→reaction
 // sub-filter folds in below a divider: picking a reaction implies "done", so the
 // whole status+reaction choice lives in one short menu instead of two rows.
-function StatusDropdown({ statusFilter, reactionFilter, onStatus, onReaction }: {
+function StatusDropdown({ statusFilter, reactionFilter, onStatus, onReaction, showShelf, shelfFilter, onShelf }: {
   statusFilter: StatusFilter
   reactionFilter: ReactionFilter
   onStatus: (s: StatusFilter) => void
   onReaction: (r: ReactionFilter) => void
+  showShelf: boolean
+  shelfFilter: 'all' | 'owned' | 'unowned'
+  onShelf: (v: 'owned' | 'unowned') => void
 }) {
   const [open, setOpen] = useState(false)
   const active = statusFilter !== 'all' || reactionFilter !== 'all'
@@ -1353,6 +1364,9 @@ function StatusDropdown({ statusFilter, reactionFilter, onStatus, onReaction }: 
     : statusFilter === 'want_to' ? 'want to'
     : statusFilter === 'in_progress' ? 'in progress' : 'done'
   const pick = (s: StatusFilter, r: ReactionFilter = 'all') => { onStatus(s); onReaction(r); setOpen(false) }
+  // Shelf is a global filter (also in the filter sheet); here it's an optional
+  // refinement under "want to" — pick it and stay on want-to, don't force it.
+  const pickShelf = (v: 'owned' | 'unowned') => { onStatus('want_to'); onShelf(v); setOpen(false) }
   const STATUS_ITEMS: [StatusFilter, string][] = [['all', 'all'], ['want_to', 'want to'], ['in_progress', 'in progress'], ['done', 'done']]
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -1387,6 +1401,15 @@ function StatusDropdown({ statusFilter, reactionFilter, onStatus, onReaction }: 
                 {REACTION_ORDER.map(r => (
                   <MenuItem key={r} label={REACTION_LABELS[r]} active={reactionFilter === r} onClick={() => pick('done', r)} />
                 ))}
+              </>
+            )}
+            {/* Shelf refines "want to" — the bookstore case (want-to list minus
+                unread copies already at home). Optional: tap again to clear. */}
+            {statusFilter === 'want_to' && showShelf && (
+              <>
+                <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
+                <MenuItem label="on my shelf" active={shelfFilter === 'owned'} onClick={() => pickShelf('owned')} />
+                <MenuItem label="not on my shelf" active={shelfFilter === 'unowned'} onClick={() => pickShelf('unowned')} />
               </>
             )}
           </div>
