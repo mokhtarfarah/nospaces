@@ -107,8 +107,12 @@ async function openLibraryCover(title: string, creator: string, year?: number): 
   return doc?.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : null
 }
 
-// Apple Books fallback (Goodreads has no public API since 2020; Google Books' keyless
-// quota is unreliable). Verifies the result matches title + author. Covers only.
+// Apple Books — the primary book-cover source. It carries the current commercial
+// cover (clean, high-res), whereas Open Library's default cover_i is usually an old
+// scanned edition (a battered '40s paperback for a gallery wall). Verifies the
+// result matches title + author so a study guide / wrong edition can't sneak in.
+// Covers only. (Goodreads has no public API since 2020; Google Books' keyless
+// quota is unreliable.)
 async function appleBookCover(title: string, creator: string): Promise<string | null> {
   try {
     const term = [title, creator].filter(Boolean).join(' ')
@@ -120,7 +124,7 @@ async function appleBookCover(title: string, creator: string): Promise<string | 
 }
 
 async function bookCover(title: string, creator: string, year?: number): Promise<string | null> {
-  return (await openLibraryCover(title, creator, year)) ?? (await appleBookCover(title, creator))
+  return (await appleBookCover(title, creator)) ?? (await openLibraryCover(title, creator, year))
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

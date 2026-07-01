@@ -9,6 +9,15 @@ export function clearArtworkCache(type: string, title: string, creator: string |
   cache.delete(`${type}|${title}|${creator ?? ''}|${year ?? ''}`)
 }
 
+// Open Library serves mostly old scanned editions; Apple Books (now the primary
+// book source in /api/art) carries the clean modern cover. A book cover already
+// saved from Open Library is therefore treated as non-final: cards re-resolve it
+// and overwrite the saved value on next view, so galleries self-heal to the nicer
+// cover without a manual pass. (Non-book covers and Apple/TMDB URLs stay put.)
+export function isStaleBookCover(type: string, coverUrl: string | null | undefined): boolean {
+  return type === 'book' && !!coverUrl && /openlibrary\.org/.test(coverUrl)
+}
+
 export function useArtwork(type: string, title: string, creator: string | null, year: number | null, overrideUrl?: string | null): string | null {
   const [url, setUrl] = useState<string | null>(overrideUrl ?? null)
   useEffect(() => {

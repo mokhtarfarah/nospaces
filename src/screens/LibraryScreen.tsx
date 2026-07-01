@@ -11,7 +11,7 @@ import { GapsSheet } from '../components/GapsSheet'
 import { CapturesSheet } from '../components/CapturesSheet'
 import { fetchCaptures, clearCaptures, clearCapture, isFailure, type EmailCapture } from '../lib/captures'
 import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
-import { useArtwork } from '../lib/artwork'
+import { useArtwork, isStaleBookCover } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
 import { VIBES, VERDICTS } from '../lib/moods'
 import { isGenreTag } from '../lib/genres'
@@ -1442,10 +1442,14 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
       onSaveWiki?.(item.id, { url: wikiUrl, thumbnail: wikiThumb, summary: wikiSummary })
     }
   }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
-  const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
+  const savedCover = item.metadata?.coverUrl as string | null
+  const staleCover = isStaleBookCover(item.type, savedCover)
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year, staleCover ? null : savedCover)
   const artSaved = useRef(false)
   useEffect(() => {
-    if (artwork && !item.metadata?.coverUrl && !artSaved.current) {
+    // Save a freshly-resolved cover when there's none saved, or overwrite a stale
+    // Open Library book cover with the newly-resolved (Apple) one.
+    if (artwork && artwork !== savedCover && (!savedCover || staleCover) && !artSaved.current) {
       artSaved.current = true
       onSaveArt?.(item.id, artwork)
     }
@@ -1577,10 +1581,14 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
 // Grid layout cover card. square=true for music (album covers are 1:1).
 function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWiki, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; caption: CardCaption; onTap: () => void; onSaveArt?: (id: string, url: string) => void; onSaveWiki?: (id: string, wiki: WikiInfo) => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
-  const artwork = useArtwork(item.type, item.title, item.creator, item.year, item.metadata?.coverUrl as string | null)
+  const savedCover = item.metadata?.coverUrl as string | null
+  const staleCover = isStaleBookCover(item.type, savedCover)
+  const artwork = useArtwork(item.type, item.title, item.creator, item.year, staleCover ? null : savedCover)
   const artSaved = useRef(false)
   useEffect(() => {
-    if (artwork && !item.metadata?.coverUrl && !artSaved.current) {
+    // Save a freshly-resolved cover when there's none saved, or overwrite a stale
+    // Open Library book cover with the newly-resolved (Apple) one.
+    if (artwork && artwork !== savedCover && (!savedCover || staleCover) && !artSaved.current) {
       artSaved.current = true
       onSaveArt?.(item.id, artwork)
     }
