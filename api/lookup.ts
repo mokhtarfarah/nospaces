@@ -32,11 +32,72 @@ interface Candidate {
 
 const yearOf = (d?: string | null) => (d ? new Date(d).getFullYear() || null : null)
 
+// --- Relevance ranking + dedup (the normal, non-recency lookup path) ----------
+// The catalog APIs return raw relevance only: iTunes floats soundtracks/singles
+// that merely share a film's name ("Oppenheimer (Original Motion Picture
+// Soundtrack)"), and Open Library returns the same book three times as separate
+// editions. Without ranking, results were concatenated music-first, so a
+// soundtrack could beat the film and duplicate editions flooded the picker. These
+// helpers (kept pure + exported for unit tests) score each candidate against the
+// query and collapse duplicates, so the closest real match leads regardless of
+// which source it came from. The recency path keeps its own by-artist sorting.
+
+const norm = (s: string) =>
+  s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim()
+
+const tokenSet = (s: string) => new Set(norm(s).split(' ').filter(Boolean))
+
+// 0..1 closeness of a candidate title to the search query. Exact (normalized)
+// match wins; otherwise blends token overlap (Dice) with containment (rewards a
+// clean title that's a subset of an author-augmented query like "Middlemarch
+// George Eliot"), plus a small prefix bonus.
+export function scoreMatch(title: string, query: string): number {
+  const a = norm(title), b = norm(query)
+  if (!a || !b) return 0
+  if (a === b) return 1
+  const T = tokenSet(title), Q = tokenSet(query)
+  let inter = 0
+  for (const t of T) if (Q.has(t)) inter++
+  if (inter === 0) return 0
+  const dice = (2 * inter) / (T.size + Q.size)
+  const containment = inter / Math.min(T.size, Q.size)
+  const prefix = a.startsWith(b) || b.startsWith(a) ? 0.15 : 0
+  return Math.min(1, 0.5 * dice + 0.5 * containment + prefix)
+}
+
+// Collapse duplicate editions (same normalized title + type) and rank the whole
+// pool by closeness to the query. A matching preferredType (the AI's medium
+// guess) is a gentle boost, never a hard filter, so a wrong guess can't hide the
+// right answer. Ties fall back to the newer year.
+export function rankCandidates(candidates: Candidate[], query: string, preferredType?: string | null): Candidate[] {
+  const byKey = new Map<string, Candidate>()
+  for (const c of candidates) {
+    if (!c.title) continue
+    const key = `${c.type}|${norm(c.title)}`
+    const prev = byKey.get(key)
+    if (!prev) { byKey.set(key, c); continue }
+    // Backfill a missing creator/year from the duplicate; keep the earliest year.
+    byKey.set(key, {
+      ...prev,
+      creator: prev.creator || c.creator,
+      year: prev.year != null && c.year != null ? Math.min(prev.year, c.year) : (prev.year ?? c.year),
+    })
+  }
+  return [...byKey.values()]
+    .map(c => ({ c, s: scoreMatch(c.title, query) + (preferredType && c.type === preferredType ? 0.2 : 0) }))
+    .sort((a, b) => b.s - a.s || (b.c.year ?? 0) - (a.c.year ?? 0))
+    .map(x => x.c)
+}
+
 async function itunes(q: string): Promise<Candidate[]> {
-  const data = await (await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=4`)).json()
-  return (data?.results ?? []).map((r: { collectionName?: string; artistName?: string; releaseDate?: string }) => ({
-    title: r.collectionName ?? '', creator: r.artistName ?? '', type: 'music', year: yearOf(r.releaseDate),
-  }))
+  const data = await (await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=8`)).json()
+  return (data?.results ?? [])
+    .filter((r: { collectionName?: string }) => r.collectionName && !/\s-\sSingle$/i.test(r.collectionName)) // drop singles that share a title
+    .slice(0, 4)
+    .map((r: { collectionName?: string; artistName?: string; releaseDate?: string }) => ({
+      title: r.collectionName ?? '', creator: r.artistName ?? '', type: 'music', year: yearOf(r.releaseDate),
+    }))
 }
 
 // Recency music queries ("rosalía's latest album") need the artist's actual discography
@@ -219,14 +280,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const q = String(req.query.q ?? '')
   if (!q) return res.status(200).json({ results: [] })
   const recency = req.query.recency === '1'
+  const preferredType = req.query.type ? String(req.query.type) : null
   const [music, screen, books] = await Promise.all([
     (recency ? itunesByArtist(q) : itunes(q)).catch((e) => { console.error('[lookup] itunes error:', e?.message); return [] }),
     (recency ? tmdbByPerson(q) : tmdb(q)).catch((e) => { console.error('[lookup] tmdb error:', e?.message); return [] }),
     (recency ? openLibraryByAuthor(q) : bookSearch(q)).catch((e) => { console.error('[lookup] books error:', e?.message); return [] }),
   ])
   let results = [...music, ...screen, ...books].filter(r => r.title)
-  // For recency queries, float the newest release to the top across all types.
+  // Recency queries float the newest release to the top across all types; every
+  // other query gets relevance-ranked + deduped so the closest match leads and
+  // duplicate editions collapse (the AI's medium guess is a gentle tiebreak boost).
   if (recency) results = results.sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
+  else results = rankCandidates(results, q, preferredType)
   results = results.slice(0, 10)
   console.log('[lookup] q=%s results=%d (music=%d screen=%d books=%d)', q, results.length, music.length, screen.length, books.length)
   return res.status(200).json({ results })

@@ -42,8 +42,8 @@ async function describeToSearch(input: string): Promise<{ searchQuery: string; t
   return r
 }
 
-async function catalogLookup(q: string, recency = false): Promise<Candidate[]> {
-  const url = `/api/lookup?q=${encodeURIComponent(q)}${recency ? '&recency=1' : ''}`
+async function catalogLookup(q: string, recency = false, type?: string | null): Promise<Candidate[]> {
+  const url = `/api/lookup?q=${encodeURIComponent(q)}${recency ? '&recency=1' : ''}${type ? `&type=${encodeURIComponent(type)}` : ''}`
   const res = await fetch(url)
   if (!res.ok) { console.error('[lookup] HTTP', res.status, url); return [] }
   const data = await res.json()
@@ -237,11 +237,16 @@ export function MediaComposer({ onClose, onDone }: { onClose: () => void; onDone
       // Step 1: Haiku intent parse
       const { searchQuery, type: parsedType, sortByRecency } = await describeToSearch(title.trim())
 
-      // Step 2: Catalog lookup
+      // Step 2: Catalog lookup. The server relevance-ranks + dedupes and uses the
+      // medium guess as a gentle boost, so we no longer hard-filter here (a wrong
+      // guess used to hide the right answer). If the rewritten query finds nothing,
+      // retry once with the raw typed text before falling back to AI.
+      const raw = title.trim()
       if (searchQuery.trim()) {
-        const all = await catalogLookup(searchQuery.trim(), sortByRecency)
-        const typed = parsedType ? all.filter(r => r.type === parsedType) : all
-        const candidates = typed.length > 0 ? typed : all
+        let candidates = await catalogLookup(searchQuery.trim(), sortByRecency, parsedType)
+        if (candidates.length === 0 && searchQuery.trim().toLowerCase() !== raw.toLowerCase()) {
+          candidates = await catalogLookup(raw, sortByRecency, parsedType)
+        }
         if (candidates.length > 0) {
           setPickerCandidates(candidates)
           setLoading(false)
@@ -516,6 +521,13 @@ function PickerSheet({ query, candidates, onPick, onFallback, onClose }: {
         maxHeight: '70dvh', display: 'flex', flexDirection: 'column',
       }}>
         <div style={{ padding: '0 20px 16px', borderBottom: `1px solid ${HAIR}`, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', padding: 0, marginBottom: 10, fontSize: 13, color: GRAPHITE, fontFamily: 'inherit' }}
+          >
+            <span style={{ fontSize: 15, lineHeight: 1 }}>‹</span> back
+          </button>
           <p style={{ margin: 0, fontSize: 11, color: MUTE, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             results for "{query}"
           </p>
