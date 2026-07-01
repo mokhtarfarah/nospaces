@@ -78,10 +78,6 @@ const tagChipStyle = (on: boolean): CSSProperties => ({
   cursor: 'pointer', whiteSpace: 'nowrap',
 })
 
-function formatMonthYear(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-}
-
 // The date that drives the "recent" view: when you finished it if done, else when
 // you added it. Used by BOTH the sort and the month grouping so they always agree
 // — finish a long-ago add today and it surfaces to the top AND files under this
@@ -127,14 +123,19 @@ function sortItems(items: Item[], sort: SortOption, dir: SortDir): Item[] {
   return [...items].sort((a, b) => sign * compareItems(a, b, sort))
 }
 
-function groupByMonth(items: Item[]): Map<string, Item[]> {
+// "Recent" headers: months only stay meaningful while the memory is fresh, so
+// the CURRENT calendar year gets month headers ("March 2026") and every earlier
+// year collapses to just the year ("2024") — where the month is noise you don't
+// remember anyway. Year-precision backdates (month unknown) always file under
+// just the year so we never invent a month.
+function groupByYear(items: Item[]): Map<string, Item[]> {
+  const thisYear = new Date().getFullYear()
   const map = new Map<string, Item[]>()
   for (const item of items) {
-    // Year-precision backdates (month unknown) file under just the year, so the
-    // header reads "2019" rather than a guessed month.
-    const key = item.metadata?.dateAddedPrecision === 'year'
-      ? String(new Date(recencyDate(item)).getFullYear())
-      : formatMonthYear(recencyDate(item))
+    const date = new Date(recencyDate(item))
+    const key = date.getFullYear() === thisYear && item.metadata?.dateAddedPrecision !== 'year'
+      ? date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      : String(date.getFullYear())
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(item)
   }
@@ -618,7 +619,7 @@ export function LibraryScreen() {
     if (view === 'year')     return groupByDecade(filtered)
     if (group === 'creator') return groupByCreator(filtered)
     if (group === 'none')    return groupNone(filtered)
-    return groupByMonth(filtered)
+    return groupByYear(filtered)
   }, [filtered, group, view])
 
   // Types sorted by item count descending — library reflects the user's actual collection
