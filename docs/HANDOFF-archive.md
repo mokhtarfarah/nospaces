@@ -4,6 +4,18 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 96 (2026-07-01) — "about this" blurb crop fix + "on my shelf" owned filter. All free, no API calls.
+
+Two ships on `main`, **98/98 Vitest** + typecheck (app+api) + lint green each push. No Anthropic calls (fix touched only the free Wikipedia API). Neither is re-verified on Farah's device yet (local no-auth library is empty), same as recent sessions.
+
+**Fix — "about this" blurb spilled past the intro into the Plot section** (`api/wiki.ts`, `lib/wikipedia.ts`, `ItemActionSheet.tsx`). On Circe the blurb ran on with "== Plot == Circe is the divine daughter…". Root cause: the extract was cropped by *sentence count*, not by section — the pinned-URL path (`fetchInfoByUrl`) asked Wikipedia for `exsentences=8`, which overruns the lead paragraph into the next section, and `explaintext` renders that section's heading as literal `== Plot ==`. Fix: added `exintro=1` (bounds the extract to the article's lead section — stops before the first heading), kept `exsentences` as a length cap. Applied to both the pinned-URL branch and the title-search branch. Verified directly against the live Wikipedia API (curl): Circe now returns exactly the one clean lead paragraph, no Plot, no `==`. **Self-heal for already-cached blurbs:** the summary is persisted to `metadata.wikiSummary` and seeded back to skip re-fetching, so items opened before this fix kept the long blurb. Added `isStaleSummary()` (a cached summary containing `==` is treated as stale) — `useWikiByUrl` ignores a stale seed and re-fetches; the `ItemActionSheet` patch-back now overwrites a stale saved summary. One-time refresh on next open, no migration.
+
+**Feature — "on my shelf" is now a real filter** (`LibraryScreen.tsx`). The `metadata.owned` flag (set via the item ⋯ menu — "on my shelf" for books, "own it" for others) was set-only; nothing read it. Farah's use case: checking she doesn't already own a DVD/record/book while out shopping. Shipped a "shelf" section in the filter sheet (single option `on my shelf`, modeled on the existing `newMusicOnly` single-option filter), narrowing to owned items across all mediums. Only shown when the current base set has owned items (`hasOwned`, computed off `baseFiltered` so it's stable as the toggle flips); auto-clears when switching to a category with nothing owned. Counts toward the `filter · N` badge, shows a removable chip in the active-filters tray, clears with "clear all". Not visually verified in preview (empty local library gates the section on `hasOwned=false`) — verified by typecheck + lint + tests.
+
+**Raised for consideration (Farah) — want-to priority list.** Farah wants to revisit the parked "want-to priority" idea (pin/tier a backlog). Moved from "Smaller parked ideas" up to a for-discussion note (`docs/ROADMAP.md`). No decision yet — discuss the shape (and whether it fights the calm, mode-light UI + the earlier "adds clutter to every row" worry) before building.
+
+---
+
 ### Session 95 (2026-06-30) — "about this" wiki-link fix + editable/backdate "added" date. Feature discussion: series stacking parked. All free, no API calls.
 
 All shipped on `main`, **98/98 Vitest** + typecheck + lint green. No Anthropic calls (only the free external Wikipedia API).
