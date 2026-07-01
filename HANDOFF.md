@@ -19,7 +19,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ## ▶ Next session (100) — start with the music-library decision
 
-Nothing to re-verify from s99 (small, tested frontend change).
+**⚠️ FIRST — remind Farah to test the s99 shelf filter on her real library** (she asked to test next session). Two things to check on the deploy: (1) **filter sheet** → shelf section now has *on my shelf* / *not on my shelf* (tri-state); (2) **status dropdown** → tap *want to*, the two shelf lines appear as an optional sub-menu. The bookstore case to confirm: *want to → not on my shelf* = your want-to list minus the unread copies already at home. Only appears when she owns something. If it works, mark s99 confirmed in the archive.
 
 **First: re-look at the music-library "iPod collection" reframe** (`docs/ROADMAP.md` → "Media library polish"). Farah confirmed the direction "generally" but **isn't 100% — she wants to look again before any build.** The core idea: the music clutter is **want-to bleeding into the collection**; split *collection (the iPod, done — browse by artist, naturally curated)* from *queue (want-to)* by default. Sub-asks already locked: verdict "shelves" = one added view *inside* the collection (not default); by-artist view sortable by **# of albums saved**. Open layout step: *how* the queue sits beside the collection (leaning: a `to listen · N` chip atop music) + whether it generalizes past music. Confirm the framing with her, then it's a free frontend build.
 
