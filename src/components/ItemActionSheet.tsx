@@ -6,7 +6,7 @@ import { NoteProse } from './NoteProse'
 import { MoodChips } from './MoodChips'
 import { ReactionForm } from './ReactionForm'
 import { VIBES, VERDICTS, vibesForType } from '../lib/moods'
-import { useWikipediaInfo, useWikiByUrl } from '../lib/wikipedia'
+import { useWikipediaInfo, useWikiByUrl, isStaleSummary } from '../lib/wikipedia'
 import { itemGaps } from '../lib/gaps'
 import { useArtwork, clearArtworkCache } from '../lib/artwork'
 import { useBookBlurb, clearBlurbCache } from '../lib/blurb'
@@ -334,7 +334,8 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
     if (!savedWikiUrl && resolved?.url) {
       wikiSavedRef.current = true
       onPatchMetadata?.({ wikiUrl: resolved.url, wikiThumb: resolved.thumbnail ?? null, wikiSummary: resolved.summary ?? null })
-    } else if (savedWikiUrl && resolved?.summary && !savedWikiSummary) {
+    } else if (savedWikiUrl && resolved?.summary && (!savedWikiSummary || isStaleSummary(savedWikiSummary))) {
+      // Missing summary, or a stale pre-`exintro` blurb — persist the clean one.
       wikiSavedRef.current = true
       onPatchMetadata?.({ wikiThumb: resolved.thumbnail ?? null, wikiSummary: resolved.summary })
     }

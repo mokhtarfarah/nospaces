@@ -34,7 +34,7 @@ async function fetchInfo(query: string): Promise<{ title: string; url: string; t
   const url =
     'https://en.wikipedia.org/w/api.php?action=query&format=json' +
     '&prop=pageimages|info|extracts&inprop=url&piprop=thumbnail&pithumbsize=500&pilicense=any' +
-    '&exsentences=2&explaintext=1' +
+    '&exintro=1&exsentences=2&explaintext=1' +
     `&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(query)}`
   const data = await (await fetch(url, {
     headers: { 'User-Agent': 'Nospaces/1.0 (https://nospaces.vercel.app; farahmokhtar94@gmail.com) node-fetch' },
@@ -52,7 +52,9 @@ async function fetchInfo(query: string): Promise<{ title: string; url: string; t
 }
 
 // Fetch a Wikipedia article by its full URL (e.g. https://en.wikipedia.org/wiki/Mother_(2009_film)).
-// Returns a longer extract (5 sentences) for field parsing.
+// `exintro=1` bounds the extract to the article's lead section — so the "about this"
+// blurb never spills past the intro into a later section (Plot, etc.) and never drags
+// in a `== Heading ==` label. `exsentences` is a further length cap on that lead.
 async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: string; thumbnail: string | null; extract: string | null; categories: string[] } | null> {
   // Extract page title from URL path — handles encoded chars like parentheses.
   const match = wikiUrl.match(/wikipedia\.org\/wiki\/(.+)/)
@@ -61,7 +63,7 @@ async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: st
   const apiUrl =
     'https://en.wikipedia.org/w/api.php?action=query&format=json' +
     '&prop=pageimages|info|extracts|categories&inprop=url&piprop=thumbnail&pithumbsize=500&pilicense=any' +
-    '&exsentences=8&explaintext=1&redirects=1&cllimit=30' +
+    '&exintro=1&exsentences=5&explaintext=1&redirects=1&cllimit=30' +
     `&titles=${encodeURIComponent(pageTitle)}`
   const data = await (await fetch(apiUrl, {
     headers: { 'User-Agent': 'Nospaces/1.0 (https://nospaces.vercel.app; farahmokhtar94@gmail.com) node-fetch' },

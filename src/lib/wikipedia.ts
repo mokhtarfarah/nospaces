@@ -13,6 +13,12 @@ export interface WikiInfo {
 const EMPTY: WikiInfo = { url: null, thumbnail: null, summary: null }
 const cache = new Map<string, WikiInfo>()
 
+// A blurb cached before the `exintro` fix (api/wiki.ts) can contain a leaked
+// section heading ("== Plot =="), because the old extract ran past the article's
+// lead. Treat any such saved summary as stale so we re-fetch the clean, lead-only
+// blurb instead of trusting the seed — a one-time self-heal per item.
+export const isStaleSummary = (s: string | null | undefined): boolean => !!s && s.includes('==')
+
 // Limit concurrent Wikipedia lookups so we don't hammer the API when the
 // library renders many items at once (each item fires a request immediately).
 const MAX_CONCURRENT = 6
@@ -116,13 +122,16 @@ export function useWikipediaInfo(
 // Returns null while there's no URL. Pass `seed` (from item metadata) to skip the
 // fetch when the summary is already cached from a previous open.
 export function useWikiByUrl(wikiUrl: string | null, seed?: WikiInfo | null): WikiInfo | null {
-  const [info, setInfo] = useState<WikiInfo | null>(wikiUrl ? (seed?.summary ? seed : null) : null)
+  // A stale (heading-leaked) cached summary is ignored so the fetch below can
+  // replace it with the clean lead-only blurb.
+  const usable = seed?.summary && !isStaleSummary(seed.summary) ? seed : null
+  const [info, setInfo] = useState<WikiInfo | null>(wikiUrl ? usable : null)
   useEffect(() => {
     if (!wikiUrl) { setInfo(null); return }
-    if (seed?.summary) { setInfo(seed); return }
+    if (usable) { setInfo(usable); return }
     let cancelled = false
     resolveByUrl(wikiUrl).then(i => { if (!cancelled) setInfo(i) })
     return () => { cancelled = true }
-  }, [wikiUrl, seed?.summary]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [wikiUrl, usable?.summary]) // eslint-disable-line react-hooks/exhaustive-deps
   return info
 }
