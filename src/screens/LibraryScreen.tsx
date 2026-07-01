@@ -89,7 +89,11 @@ function formatMonthYear(dateStr: string) {
 // month's header, instead of staying buried at its add-date. (We avoid updated_at
 // here on purpose: that bumps on silent background writes — cover/wiki/region
 // backfills — which would reshuffle "recent" for things you never actually touched.)
+// Exception: a hand-set date_added (dateAddedManual) is authoritative — it wins
+// even for done items, so backdating a shelf book you've marked "read" actually
+// sinks it (otherwise its finish-date would keep it at the top).
 function recencyDate(item: Item): string {
+  if (item.metadata?.dateAddedManual) return item.date_added
   return item.status === 'done' && item.date_done ? item.date_done : item.date_added
 }
 
@@ -127,7 +131,11 @@ function sortItems(items: Item[], sort: SortOption, dir: SortDir): Item[] {
 function groupByMonth(items: Item[]): Map<string, Item[]> {
   const map = new Map<string, Item[]>()
   for (const item of items) {
-    const key = formatMonthYear(recencyDate(item))
+    // Year-precision backdates (month unknown) file under just the year, so the
+    // header reads "2019" rather than a guessed month.
+    const key = item.metadata?.dateAddedPrecision === 'year'
+      ? String(new Date(recencyDate(item)).getFullYear())
+      : formatMonthYear(recencyDate(item))
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(item)
   }

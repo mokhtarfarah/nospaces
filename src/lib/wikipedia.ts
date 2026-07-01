@@ -64,6 +64,25 @@ export function clearWikiCache(type: string, title: string, creator: string | nu
   cache.delete(key)
 }
 
+// Resolve a Wikipedia article from its exact URL (not a title search). Used when
+// the user has pinned a specific article — the summary/thumbnail must come from
+// that page, not from re-searching the title (which is what mislinked it).
+const urlCache = new Map<string, WikiInfo>()
+async function resolveByUrl(wikiUrl: string): Promise<WikiInfo> {
+  if (urlCache.has(wikiUrl)) return urlCache.get(wikiUrl)!
+  return withQueue(async () => {
+    if (urlCache.has(wikiUrl)) return urlCache.get(wikiUrl)!
+    try {
+      const data = await (await fetch(`/api/wiki?url=${encodeURIComponent(wikiUrl)}`, { headers: await authHeaders() })).json()
+      const info: WikiInfo = { url: data.url ?? wikiUrl, thumbnail: data.thumbnail ?? null, summary: data.summary ?? null }
+      urlCache.set(wikiUrl, info)
+      return info
+    } catch {
+      return { url: wikiUrl, thumbnail: null, summary: null }
+    }
+  })
+}
+
 // Imperative (non-hook) resolve for one-off use like the library backfill. Shares the
 // same cache + concurrency queue as the hook.
 export function fetchWikiInfo(type: string, title: string, creator: string | null, year: number | null): Promise<WikiInfo> {
@@ -90,5 +109,20 @@ export function useWikipediaInfo(
     })
     return () => { cancelled = true }
   }, [type, title, creator, year, seed?.url])
+  return info
+}
+
+// Resolve a pinned Wikipedia article (by URL) into its summary + thumbnail.
+// Returns null while there's no URL. Pass `seed` (from item metadata) to skip the
+// fetch when the summary is already cached from a previous open.
+export function useWikiByUrl(wikiUrl: string | null, seed?: WikiInfo | null): WikiInfo | null {
+  const [info, setInfo] = useState<WikiInfo | null>(wikiUrl ? (seed?.summary ? seed : null) : null)
+  useEffect(() => {
+    if (!wikiUrl) { setInfo(null); return }
+    if (seed?.summary) { setInfo(seed); return }
+    let cancelled = false
+    resolveByUrl(wikiUrl).then(i => { if (!cancelled) setInfo(i) })
+    return () => { cancelled = true }
+  }, [wikiUrl, seed?.summary]) // eslint-disable-line react-hooks/exhaustive-deps
   return info
 }

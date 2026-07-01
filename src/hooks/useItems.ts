@@ -340,6 +340,7 @@ export function useItems() {
     metadata?: Record<string, unknown>
     status?: string
     date_done?: string | null
+    date_added?: string
   }) {
     const { error } = await db().from('items').update(fields).eq('id', id)
     if (error) throw error

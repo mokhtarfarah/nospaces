@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 95 (2026-06-30) — "about this" wiki-link fix + editable/backdate "added" date. Feature discussion: series stacking parked. All free, no API calls.
+
+All shipped on `main`, **98/98 Vitest** + typecheck + lint green. No Anthropic calls (only the free external Wikipedia API).
+
+**Fix — "about this" ignored a corrected wiki link** (`ItemActionSheet.tsx`, `lib/wikipedia.ts`). Farah corrected the Wikipedia link on *Pride and Prejudice* (it had auto-linked *P&P and Zombies*) but the blurb + cover kept showing the zombies article. Root cause: the read sheet resolved the summary/thumbnail via `useWikipediaInfo`, which **searches Wikipedia by title** — it never used the saved URL. So the hand-corrected link had no effect; the title search just re-returned the same wrong article. Fix: a pinned `metadata.wikiUrl` is now the source of truth — new `useWikiByUrl` hook fetches summary+thumb from that *exact* article (via the existing `/api/wiki?url=` branch). Title search stays as the fallback only when no URL is pinned (seeded so it's a no-op, no wasted request, when a URL exists). Resolved data is persisted so `itemGaps` stops flagging and future opens skip the fetch. `persistEditFields` already cleared cached summary/thumb on URL change, which now forces the by-URL refetch. Bonus: the hero thumbnail also follows the corrected article.
+
+**Feature — editable "added" date (backdating)** (`ItemActionSheet.tsx`, `LibraryScreen.tsx`, `useItems.ts`). Farah wanted to log a shelf book she read years ago without it topping "recent". Shipped: a month(optional)+year field in the edit view's *more details* → *added*. Key subtlety solved: `markDone` stamps `date_done=now` and `recencyDate` prefers `date_done` for done items, so backdating `date_added` alone wouldn't sink a book marked "read". Fix: a hand-set date flags `metadata.dateAddedManual=true`, and `recencyDate` now honours that flag over `date_done`, so a backdated done-book actually sinks. Month optional → stored mid-year, `metadata.dateAddedPrecision='year'`, and `groupByMonth` files year-precision items under a plain "2019" header (not a guessed month). Only rewrites `date_added` when year/month actually changed (no stamp on every save). Proven with a standalone logic script: a done-today book backdated to 2019 correctly lands last in "recent" under a "2019" group. **Not yet re-verified on Farah's device** (local no-auth library is empty — can't drive the real edit flow; matches how she's verified prior fixes on her phone).
+
+**Discussion — series stacking: PARKED** (see `docs/ROADMAP.md` → "Media library polish"). Farah agreed to defer. Two soul-conflict reasons: stacking hides per-item verdicts, and adds a collapse/expand mode. Most relevant for books; not biting yet (she reads series but hasn't logged them consistently). Trigger + calm build spec captured in roadmap.
+
+**Confirmed (Farah asked) — the wiki-URL override does NOT disturb blurb priority.** The change only swaps where the *Wikipedia* summary is sourced (pinned URL vs title search). The ladder is untouched: `manualBlurb ?? recommendationBlurb ?? capturedBlurb ?? summary(wiki) ?? bookBlurb(OpenLibrary)` — wiki is 4th, a recommendation blurb still wins. The persist effect only writes `wikiSummary`/`wikiThumb`, never `recommendationBlurb`.
+
+**Logged bug (not fixed) — book covers pick a random old B&W edition** (`api/art.ts`). Full diagnosis + fix directions in `docs/ROADMAP.md` → "Book cover quality". Short version: OL's default `cover_i` is the oldest edition; likely fix = try Apple Books cover first for books, OL fallback.
+
+---
+
 ### Session 94 (2026-06-30) — five media-item-sheet fixes (2 bugs Farah hit + 3 design polish). All free, no API calls.
 
 Started as "back to nospaces work"; Farah reported bugs, then asked for design read on a fully-filled book card. All shipped on `main`, **98/98 Vitest** + typecheck (app+api) + lint green each push. **Both bugs Farah re-verified on her real device.**

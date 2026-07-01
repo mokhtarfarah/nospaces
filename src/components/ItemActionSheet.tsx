@@ -6,7 +6,7 @@ import { NoteProse } from './NoteProse'
 import { MoodChips } from './MoodChips'
 import { ReactionForm } from './ReactionForm'
 import { VIBES, VERDICTS, vibesForType } from '../lib/moods'
-import { useWikipediaInfo } from '../lib/wikipedia'
+import { useWikipediaInfo, useWikiByUrl } from '../lib/wikipedia'
 import { itemGaps } from '../lib/gaps'
 import { useArtwork, clearArtworkCache } from '../lib/artwork'
 import { useBookBlurb, clearBlurbCache } from '../lib/blurb'
@@ -19,7 +19,7 @@ import { REGION_VERSION } from '../lib/regions'
 
 interface Props {
   item: Item
-  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; moods?: string[]; source_detail?: string | null; metadata?: Record<string, unknown> }) => void
+  onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; moods?: string[]; source_detail?: string | null; metadata?: Record<string, unknown>; date_added?: string }) => void
   onMarkInProgress?: () => void
   onMarkWantTo?: () => void
   onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
@@ -179,6 +179,20 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const [runtimeEdit, setRuntimeEdit] = useState(String((item.metadata?.runtime as number | null) ?? ''))
   const [pagesEdit, setPagesEdit] = useState(String((item.metadata?.pages as number | null) ?? ''))
   const [wikiUrlEdit, setWikiUrlEdit] = useState(String((item.metadata?.wikiUrl as string | null) ?? ''))
+  // Editable "added" date — lets a book read years ago be backdated out of the
+  // top of "recent". Month is optional (some memories are only a year). Seeded
+  // from the stored date_added; year-precision manual dates show a blank month.
+  const addedDate = new Date(item.date_added)
+  const yearOnly = item.metadata?.dateAddedPrecision === 'year'
+  const [dateYear, setDateYear] = useState(
+    isNaN(addedDate.getTime()) ? '' : String(addedDate.getFullYear())
+  )
+  const [dateMonth, setDateMonth] = useState(
+    isNaN(addedDate.getTime()) || yearOnly ? '' : String(addedDate.getMonth() + 1)
+  )
+  // Remember the seed so we only rewrite date_added when the user actually changed it.
+  const origDateYear = isNaN(addedDate.getTime()) ? '' : String(addedDate.getFullYear())
+  const origDateMonth = isNaN(addedDate.getTime()) || yearOnly ? '' : String(addedDate.getMonth() + 1)
   // Region/country of origin — pulled from Wikidata on auto-fill, not hand-edited.
   // Held in state so a Save persists what the fill resolved.
   const [countriesEdit, setCountriesEdit] = useState<string[]>(
@@ -289,20 +303,42 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
 
   // Wikipedia article link (null if no page exists / type not linked).
   // Music resolves a page (for the cover) but keeps Spotify as its button.
-  const metaWiki = item.metadata?.wikiUrl
-    ? { url: item.metadata.wikiUrl as string, thumbnail: (item.metadata.wikiThumb as string) ?? null, summary: (item.metadata.wikiSummary as string) ?? null }
-    : null
-  const { url, summary, thumbnail: wikiThumb } = useWikipediaInfo(item.type, item.title, item.creator, item.year, metaWiki?.summary ? metaWiki : null)
-  const wikiUrl = item.type === 'music' ? null : url
-  // Persist wiki data when the action sheet resolves it but metadata.wikiUrl isn't saved yet.
-  // Without this, itemGaps() keeps flagging wiki as missing even though the card shows the link.
+  // A hand-set article URL is the source of truth — resolve its summary +
+  // thumbnail from that exact page, NOT the title search (which is what linked
+  // the wrong article in the first place, e.g. P&P → "P&P and Zombies"). A
+  // cached summary in metadata skips the fetch; only when no article is pinned
+  // do we fall back to searching by title/creator/year.
+  const savedWikiUrl = (item.metadata?.wikiUrl as string | undefined) || null
+  const savedWikiThumb = (item.metadata?.wikiThumb as string | undefined) ?? null
+  const savedWikiSummary = (item.metadata?.wikiSummary as string | undefined) ?? null
+  const byUrl = useWikiByUrl(
+    savedWikiUrl,
+    savedWikiUrl ? { url: savedWikiUrl, thumbnail: savedWikiThumb, summary: savedWikiSummary } : null,
+  )
+  // Title search — the fallback. A truthy seed url makes it a no-op (no wasted
+  // request) whenever an article is already pinned.
+  const searched = useWikipediaInfo(
+    item.type, item.title, item.creator, item.year,
+    savedWikiUrl ? { url: savedWikiUrl, thumbnail: null, summary: null } : null,
+  )
+  const resolved = savedWikiUrl ? byUrl : searched
+  const summary = resolved?.summary ?? null
+  const wikiThumb = resolved?.thumbnail ?? null
+  const wikiUrl = item.type === 'music' ? null : (resolved?.url ?? savedWikiUrl)
+  // Persist resolved wiki data so itemGaps() stops flagging wiki as missing and
+  // future opens skip the fetch. Two cases: a search found an article we hadn't
+  // saved, or a pinned URL just resolved the summary/thumb that metadata lacked.
   const wikiSavedRef = useRef(false)
   useEffect(() => {
-    if (wikiUrl && !metaWiki?.url && !wikiSavedRef.current) {
+    if (item.type === 'music' || wikiSavedRef.current) return
+    if (!savedWikiUrl && resolved?.url) {
       wikiSavedRef.current = true
-      onPatchMetadata?.({ wikiUrl, wikiThumb: wikiThumb ?? null, wikiSummary: summary ?? null })
+      onPatchMetadata?.({ wikiUrl: resolved.url, wikiThumb: resolved.thumbnail ?? null, wikiSummary: resolved.summary ?? null })
+    } else if (savedWikiUrl && resolved?.summary && !savedWikiSummary) {
+      wikiSavedRef.current = true
+      onPatchMetadata?.({ wikiThumb: resolved.thumbnail ?? null, wikiSummary: resolved.summary })
     }
-  }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resolved?.url, resolved?.summary]) // eslint-disable-line react-hooks/exhaustive-deps
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, coverUrl || null)
   const cover = artwork ?? wikiThumb
   // For books with no Wikipedia summary, fall back to an Open Library / Apple Books blurb.
@@ -374,6 +410,21 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
     // Saving the edit view CONFIRMS any provisional AI vibes — they move into
     // moods (below), so drop the unconfirmed list.
     delete metadata.unconfirmedVibes
+    // Editable "added" date. Only rewrite when the user actually changed year or
+    // month — a stamp on every save would freeze recency for normal items. A
+    // manual date is mid-month (or mid-year when month is blank) so it sorts
+    // cleanly, and flags dateAddedManual so recencyDate honours it even for done
+    // items (which otherwise sort by their finish date).
+    let newDateAdded: string | undefined
+    const changedDate = dateYear !== origDateYear || dateMonth !== origDateMonth
+    const y = parseInt(dateYear)
+    if (changedDate && !isNaN(y) && y > 1000) {
+      const m = dateMonth ? parseInt(dateMonth) : null
+      newDateAdded = new Date(Date.UTC(y, m ? m - 1 : 5, 15, 12)).toISOString()
+      metadata.dateAddedManual = true
+      if (m) delete metadata.dateAddedPrecision
+      else metadata.dateAddedPrecision = 'year'
+    }
     // Type can change here (type chips are authoritative). Drop genres + vibes
     // that don't belong to the chosen type's vocab so a film→book switch doesn't
     // carry over film-only tags.
@@ -389,6 +440,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       moods,
       source_detail: sourceDetail.trim() || null,
       metadata,
+      ...(newDateAdded ? { date_added: newDateAdded } : {}),
     })
   }
 
@@ -1182,6 +1234,28 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     </div>
                     <div style={fieldLabel}>where it came from</div>
                     <input value={sourceDetail} onChange={e => setSourceDetail(e.target.value)} placeholder="source (e.g. a friend, NYT)" style={{ ...smInput, marginBottom: 10 }} />
+                    <div style={fieldLabel}>added</div>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                      <select
+                        value={dateMonth}
+                        onChange={e => setDateMonth(e.target.value)}
+                        style={{ ...smInput, flex: 1, marginBottom: 0 }}
+                      >
+                        <option value="">month — optional</option>
+                        {['January','February','March','April','May','June','July','August','September','October','November','December']
+                          .map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
+                      </select>
+                      <input
+                        value={dateYear}
+                        onChange={e => setDateYear(e.target.value)}
+                        placeholder="year"
+                        type="number"
+                        style={{ ...smInput, width: 84, marginBottom: 0 }}
+                      />
+                    </div>
+                    <div style={{ fontSize: 11, color: '#9A968E', marginBottom: 10 }}>
+                      backdate something you read long ago so it doesn’t top “recent”.
+                    </div>
                     <div style={fieldLabel}>your description</div>
                     <textarea value={blurbText} onChange={e => setBlurbText(e.target.value)}
                       placeholder="about this — your own words" rows={2}
