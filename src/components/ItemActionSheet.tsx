@@ -856,10 +856,13 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
 
             {item.note && (
               <div style={{ marginBottom: 16 }}>
-                {/* Same reflection chrome as the Things board's note block: a small
-                    uppercase header with a hairline divider under it, then the prose —
-                    so a note reads identically across both sides of the app. */}
-                <div style={{ borderBottom: '1px solid #E8E8E8', marginBottom: 11, paddingBottom: 7, fontSize: 11, letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 600, color: '#1C1B19' }}>
+                {/* Its own "your voice" block — the note sits under a header (not in
+                    the genre/vibe/verdict label column), so it still reads as your
+                    reflection. But the header is quietened to match those tag labels
+                    (10px muted, no full-width divider): the old bold header + hairline
+                    outweighed a short note and cut the card heavier than the rows
+                    above it. Deliberately diverges from the Things note block. */}
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 7 }}>
                   thoughts
                 </div>
                 <NoteProse>{renderNote(item.note)}</NoteProse>
