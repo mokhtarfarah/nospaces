@@ -10,6 +10,18 @@ const GENRE_TYPES = ['film', 'tv', 'book', 'music']
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = () => (supabase as any)
 
+// Local cross-instance sync. Each screen mounts its own useItems() (e.g. the add
+// sheet's instance sits over the library's), so a write in one instance doesn't
+// update the others' state. Supabase realtime is the CROSS-DEVICE path, but it's
+// a network round-trip that lags — and drops entirely — on the free tier, so a
+// just-added item wouldn't show in the library until a manual refresh. These
+// listeners give same-client immediacy: every write pings its sibling instances
+// to silently refetch right away. Realtime still handles other devices/tabs.
+const localWriteListeners = new Set<() => void>()
+function notifyLocalWrite(except: () => void) {
+  for (const fn of localWriteListeners) if (fn !== except) fn()
+}
+
 export function useItems() {
   const { user } = useAuth()
   const [items, setItems] = useState<Item[]>([])
@@ -46,6 +58,19 @@ export function useItems() {
   }, [userId])
 
   useEffect(() => { fetch() }, [fetch])
+
+  // Register this instance for same-client write notifications (see
+  // localWriteListeners above). `notifyOthers` skips this same listener so the
+  // instance that made the write doesn't double-fetch — it already refetches
+  // itself inline.
+  const localListenerRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    const listener = () => fetch({ silent: true })
+    localListenerRef.current = listener
+    localWriteListeners.add(listener)
+    return () => { localWriteListeners.delete(listener) }
+  }, [fetch])
+  const notifyOthers = useCallback(() => notifyLocalWrite(localListenerRef.current), [])
 
   // A per-hook-instance suffix so two mounted useItems() (e.g. the library page
   // with the add sheet open over it) don't collide on one channel topic — Supabase
@@ -101,6 +126,7 @@ export function useItems() {
       source_detail: source_detail ?? null,
     }).select('id').single()
     await fetch()
+    notifyOthers()
     // Auto-fill genres in the background when the add path didn't supply any
     // (catalog-pick, bulk photo, shortcut, save-as-typed all arrive tagless —
     // only the AI-identify path carries genres). Fire-and-forget; the realtime
@@ -139,6 +165,7 @@ export function useItems() {
       const meta = { ...(row?.metadata ?? {}), unconfirmedVibes: vibes }
       await db().from('items').update({ metadata: meta }).eq('id', id)
       await fetch({ silent: true })
+      notifyOthers()
     } catch { /* no vibes — on-open fill will retry */ }
   }
 
@@ -149,6 +176,7 @@ export function useItems() {
       if (res.length) {
         await db().from('items').update({ tags: res }).eq('id', id)
         await fetch({ silent: true })
+        notifyOthers()
       }
     } catch { /* leave untagged — on-open fill or library-tools backfill can retry */ }
   }
@@ -176,6 +204,7 @@ export function useItems() {
     }).eq('id', id)
     if (error) throw error
     await fetch({ silent: true })
+    notifyOthers()
   }
 
   async function markWantTo(id: string) {
@@ -186,6 +215,7 @@ export function useItems() {
       date_done: null,
     }).eq('id', id)
     await fetch({ silent: true })
+    notifyOthers()
   }
 
   async function markInProgress(id: string) {
@@ -194,11 +224,13 @@ export function useItems() {
       date_done: null,
     }).eq('id', id)
     await fetch({ silent: true })
+    notifyOthers()
   }
 
   async function deleteItem(id: string) {
     await db().from('items').delete().eq('id', id)
     await fetch({ silent: true })
+    notifyOthers()
   }
 
   // Batch-insert pre-built rows (used by the Letterboxd import). Rows arrive
@@ -212,6 +244,7 @@ export function useItems() {
       await db().from('items').insert(stamped.slice(i, i + CHUNK))
     }
     await fetch()
+    notifyOthers()
     return stamped.length
   }
 
@@ -254,6 +287,7 @@ export function useItems() {
     if (!ids.length) return 0
     await db().from('items').delete().in('id', ids)
     await fetch()
+    notifyOthers()
     return ids.length
   }
 
@@ -268,6 +302,7 @@ export function useItems() {
     itemsRef.current = itemsRef.current.map(i => i.id === id ? { ...i, metadata: newMeta } : i)
     setItems(itemsRef.current)
     await db().from('items').update({ metadata: newMeta }).eq('id', id)
+    notifyOthers()
   }
 
   async function toggleOwned(id: string, owned: boolean) {
@@ -278,6 +313,7 @@ export function useItems() {
     else delete metadata.owned
     await db().from('items').update({ metadata }).eq('id', id)
     await fetch({ silent: true })
+    notifyOthers()
   }
 
   async function toggleCanon(id: string, canon: boolean) {
@@ -288,6 +324,7 @@ export function useItems() {
     else delete metadata.canon
     await db().from('items').update({ metadata }).eq('id', id)
     await fetch({ silent: true })
+    notifyOthers()
   }
 
   async function editItem(id: string, fields: {
@@ -307,6 +344,7 @@ export function useItems() {
     const { error } = await db().from('items').update(fields).eq('id', id)
     if (error) throw error
     await fetch({ silent: true })
+    notifyOthers()
   }
 
   return { items, loading, addItem, importItems, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }

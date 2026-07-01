@@ -685,6 +685,29 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                       </button>
                     </div>
                   </div>
+                ) : confirmDelete && !item.metadata?.scratch ? (
+                  // Inline discard confirm. The ⋯-menu confirm (and the scratch
+                  // footer confirm) don't render here, so the review inbox needs
+                  // its own — otherwise "discard" flips a flag nothing is showing.
+                  <div>
+                    <div style={{ fontSize: 11.5, color: '#C0392B', marginBottom: 8, lineHeight: 1.4 }}>
+                      discard “{item.title}”? this can’t be undone.
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        style={{ padding: '5px 11px', borderRadius: 6, border: '1px solid #DDD', background: '#fff', color: '#1C1B19', fontSize: 12, cursor: 'pointer' }}
+                      >
+                        cancel
+                      </button>
+                      <button
+                        onClick={onDelete}
+                        style={{ padding: '5px 11px', borderRadius: 6, border: 'none', background: '#C0392B', color: '#fff', fontSize: 12, cursor: 'pointer' }}
+                      >
+                        discard
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     <button
