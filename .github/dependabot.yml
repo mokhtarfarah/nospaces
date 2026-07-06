@@ -1,22 +1,33 @@
 # Dependabot watches our dependencies and opens PRs when one has a known
-# security vulnerability or an available update. Grouped + capped so it stays
-# quiet (one PR batch per week, not a flood).
+# security vulnerability or an available update. Grouped + capped + monthly so
+# it stays quiet — at most a few PRs once a month, not a weekly flood.
+#
+# Why the groups: minor/patch bumps are safe and go in ONE PR. Major bumps go in
+# a SEPARATE grouped PR so a single breaking major can't block the safe batch
+# (that's the mistake PR #17 hit — one bad member refused to install and took
+# the whole group down with it). Same idea for GitHub Actions: one PR for all.
 version: 2
 updates:
   # npm packages (the app's libraries)
   - package-ecosystem: npm
     directory: "/"
     schedule:
-      interval: weekly
+      interval: monthly
     open-pull-requests-limit: 5
     groups:
-      # Bundle minor/patch bumps into a single PR to cut noise.
+      # All the safe bumps in one PR.
       minor-and-patch:
         update-types: [minor, patch]
+      # All the risky bumps in a second PR, kept apart from the safe ones.
+      major-updates:
+        update-types: [major]
 
-  # GitHub Actions used in our CI workflows
+  # GitHub Actions used in our CI workflows — all bumps in a single PR.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: weekly
+      interval: monthly
     open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
