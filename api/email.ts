@@ -149,6 +149,26 @@ function isInlineImage(att: Attachment): boolean {
   return !!(att.ContentID && att.ContentID.trim())
 }
 
+// Decoded byte size of an attachment (from its base64 Content). Used to tell a real
+// photo/screenshot from shop-email decoration by weight.
+function attachmentBytes(att: Attachment): number {
+  const b64 = att.Content ?? ''
+  if (!b64) return 0
+  const pad = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0
+  return Math.max(0, Math.floor((b64.length * 3) / 4) - pad)
+}
+
+// The inline-image filter (ContentID) is not enough: FORWARDING a shop email strips
+// the cid: relationship, so its decorative swatches/thumbnails/pixels arrive as plain
+// attachments that look deliberate. Two more signals separate a human's photo from
+// decoration, both checked BEFORE any paid vision call so clutter never becomes junk
+// board cards and never costs anything:
+//   • size — a real screenshot/photo is hundreds of KB; swatches, thumbnails and
+//     tracking pixels are a few KB.
+//   • count — a person attaches one or two photos; a shop newsletter carries dozens.
+const MIN_DELIBERATE_IMAGE_BYTES = 50_000
+const MAX_DELIBERATE_IMAGES = 5
+
 // Figure out the real image type from the MIME type (params stripped) or the filename.
 function imageType(att: Attachment): string {
   let t = (att.ContentType ?? '').split(';')[0].trim().toLowerCase()
@@ -688,11 +708,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const imageResults: any[] = []
   // Products read off screenshots, saved to the board as we go (reported in the reply).
   const screenshotThings: { title: string; price: string | null; tagCount: number }[] = []
-  const imageAttachments: Attachment[] = (Attachments ?? []).filter((a: Attachment) =>
-    imageType(a).startsWith('image/') && !isInlineImage(a)
+  // Non-inline, real-photo-sized images only (see MIN_DELIBERATE_IMAGE_BYTES): this
+  // already drops swatches, thumbnails and tracking pixels.
+  const candidateImages: Attachment[] = (Attachments ?? []).filter((a: Attachment) =>
+    imageType(a).startsWith('image/') && !isInlineImage(a) && attachmentBytes(a) >= MIN_DELIBERATE_IMAGE_BYTES
   )
-  console.log('[email] non-inline image attachments:', imageAttachments.length,
-    JSON.stringify(imageAttachments.map(a => ({ type: a.ContentType, name: a.Name }))))
+  // A pile of big images is a forwarded newsletter's hero shots, not a human attaching
+  // photos — skip the whole image→item path so decoration can't become junk board
+  // cards (and so we don't burn a vision call per image). The link/media readers below
+  // still run, so a genuine forward with a product link is unaffected.
+  const tooManyImages = candidateImages.length > MAX_DELIBERATE_IMAGES
+  const imageAttachments: Attachment[] = tooManyImages ? [] : candidateImages
+  if (tooManyImages) console.log('[email] skipping', candidateImages.length,
+    'image attachments — looks like newsletter decoration, not deliberate photos')
+  console.log('[email] deliberate image attachments:', imageAttachments.length,
+    JSON.stringify(imageAttachments.map(a => ({ type: a.ContentType, name: a.Name, bytes: attachmentBytes(a) }))))
 
   for (const att of imageAttachments) {
     try {
