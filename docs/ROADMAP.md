@@ -14,14 +14,11 @@ When you finish an item: **delete it from here** (don't leave a ✅ — the sess
 
 ## Short term — next few sessions
 
-### Dependency / Dependabot cleanup — its own session (Farah, s100)
-Farah wants ALL remaining dependency-maintenance done in one dedicated session (s100 already took the 5 safe bumps from the failed group PR #17 + closed it). Free, no Anthropic calls. Scope:
-- **Merge the two safe CI bumps now:** #8 `actions/setup-node` 4→6, #10 `actions/checkout` 4→7 (GitHub Actions only, low risk). Quick yes.
-- **ESLint 9 migration (one job, three PRs):** #12 `eslint` 8→10, #13 `eslint-plugin-react-hooks` 4→7, #15 `@typescript-eslint/eslint-plugin` 7→8 — all blocked on the same ESLint 9 move (flat-config rewrite of `.eslintrc`). Doing them together also unblocks `eslint-plugin-react-refresh` 0.5 (the member dropped from the s100 group). Do deliberately — config format changed.
-- **TypeScript 6 (#14, 5.9→6.0):** major version, its own careful pass (watch for new strictness / breaking type changes across app + api tsconfigs).
-- **npm audit (18 vulns, mostly transitive/dev):** `npm audit` to triage; avoid `--force` (can break). Fix what's safe.
-- **Tune Dependabot down:** add/adjust `.github/dependabot.yml` so it batches updates into fewer grouped PRs and nags less often (weekly pile-up of 7 PRs is the current pain).
-- After each change: typecheck + lint + `npm run build` + Vitest must stay green before pushing (Vercel builds `npm install` + build).
+### Adopt react-hooks v7's new rules — opt-in code pass (from s101)
+When we jumped `eslint-plugin-react-hooks` 4→7 (s101), its recommended set gained the React-Compiler-era rules (`set-state-in-effect`, `immutability`, `purity`, `static-components`, `preserve-manual-memoization`). They flag **~36 existing call sites** — mostly `setState` called directly inside effects. We kept only the two classic rules (`rules-of-hooks` + `exhaustive-deps`) so the dep bump wasn't a code sweep. Turning the rest on is a real, separate pass: enable them in `eslint.config.js`, then work through the ~36 findings (some are genuine cascading-render smells worth fixing, some are fine and get a disable-comment). Free, own session. Not urgent — the app works; this is code-health.
+
+### vite 5→8 / vitest 2→3 major upgrade — clears most dev audit vulns (from s101)
+`npm audit` shows 18 vulns, **all dev/build-time only** (nothing ships to users — see s101 log). ~8 of them are the `vite`/`esbuild`/`vitest` dev-server chain; the fix is a `vite` 5→8 + `vitest` 2→3 major upgrade (breaking — own careful session, watch the PWA plugin `vite-plugin-pwa` for compat). The other ~10 are the `@vercel/node` transitive cluster and can't be cleanly fixed without downgrading `@vercel/node` 5→4 (backwards) — those wait on `@vercel/node`'s own upstream. Low priority: dev-only exposure, solo local dev.
 
 ### User guide overhaul (s82) — PARKED (Farah, s86)
 - **Guide is stale and media-only — needs screenshots refreshed + a Things half.** `GuideScreen.tsx` has out-of-date images and covers media only. **Split the guide into two tabs — media and things** — and bring all screenshots up to date. (Reuses the media/things framing the app already has.) *Parked: the UI is still moving (nav, filters, taste read all in flux) — refreshing screenshots now means re-refreshing them next session. Trigger: the app reaches a more final shape (taste-read decided + nav/filter churn settled), then do the guide once.*
