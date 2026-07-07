@@ -20,7 +20,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 ## ▶ Next session (108) — no fixed queue; pick from below
 
 **Do first (housekeeping):**
-- **Verify s107 live** (pushed `beb6f7c`): (1) open a product with a long "how it fits" read, scroll, confirm the hero photo shrinks smoothly; (2) toggle roomy/cozy on the Things board, confirm card size changes; (3) on a standalone product, ⋯ → "add to a plan →" → new plan → confirm the standalone card is gone and it now lives inside that plan. Detail → archive (s107).
+- **Verify the s107 fix-up live** (pushed `a6fd23c`): add-to-plan already confirmed good. Re-check the other two after the fix: (1) product sheet hero — should now be a smaller *static* photo (no scroll-shrink animation), not jumpy/stuck; (2) Things board filter sheet — one combined row "list | roomy | compact" (not two separate rows), and roomy vs compact should now visibly change card size. Also check media's layout row still reads correctly (relabeled "grid 3/4" → "roomy"/"compact", same underlying behavior). Detail → archive (s107).
 - **Confirm the 10k Postmark plan is bought.** Approval unblocked it; talkback ≈ 2 emails/capture and the free plan is only 100/mo, so real use will blow the cap fast. Detail → `docs/REFERENCE.md` → Postmark plan.
 
 **Still open from s106 (full detail in `docs/ROADMAP.md`):**
