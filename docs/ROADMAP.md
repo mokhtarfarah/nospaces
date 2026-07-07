@@ -8,7 +8,12 @@ When you finish an item: **delete it from here** (don't leave a ✅ — the sess
 
 ## Standing principle — humanizer prose
 
-**Anywhere the app generates user-facing text with an LLM, it must not FEEL AI-written** — and must carry true, meaningful insight, not generic filler. Reference: `github.com/blader/humanizer`. The guardrails live in one place — **`api/_humanizer.ts`** (`HUMANIZER_GUARDRAILS`), imported by `taste-profile.ts`, `recommend-feeds.ts`, `recommend.ts`. *Any future prose generator must import it too — don't re-paste the block.* (`api/blurb.ts` is extraction, not AI — no guardrails needed.)
+**Anywhere the app generates user-facing text with an LLM, it must not FEEL AI-written** — and must carry true, meaningful insight, not generic filler. Reference: `github.com/blader/humanizer`. Everything lives in one place — **`api/_humanizer.ts`**:
+- `HUMANIZER_GUARDRAILS` — the "don't sound like an AI" style rules. Imported by every prose endpoint (`taste-profile.ts`, `recommend-feeds.ts`, `recommend.ts`, `things-compare.ts`, `things-taste-fit.ts`, `things-taste.ts`). *Any future prose generator must import it too — don't re-paste the block.*
+- `VOICE` — per-surface registers (`warm` / `terse` / `decisive`); layer one ON TOP of the guardrails at the call site.
+- `GROUNDING` (s106) — the anti-**fabrication** rule (distinct from style): for surfaces that judge a REAL physical product from a photo + tags, don't assert a construction/fabric/fit detail unless it's visible in the photo or written in the text. Currently in `things-compare.ts` + `things-taste-fit.ts`; add it to any new product-judging surface.
+
+(`api/blurb.ts` is extraction, not AI — no guardrails needed.)
 
 ---
 
