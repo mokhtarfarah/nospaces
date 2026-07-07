@@ -141,15 +141,6 @@ const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/we
 
 type Attachment = { ContentType?: string; Content?: string; Name?: string; ContentID?: string }
 
-// An inline image (ContentID set, referenced by `cid:` in the HTML) is shop-email
-// decoration — product thumbnails, swatches, tracking pixels, a sender's logo. It's
-// never "your photo", so we skip it: reading it would burn a vision call on clutter
-// and could misfire a swatch into the library. A real attachment a human chose to
-// attach (a screenshot, a poster photo) has no ContentID, so it survives this filter.
-function isInlineImage(att: Attachment): boolean {
-  return !!(att.ContentID && att.ContentID.trim())
-}
-
 // Decoded byte size of an attachment (from its base64 Content). Used to tell a real
 // photo/screenshot from shop-email decoration by weight.
 function attachmentBytes(att: Attachment): number {
@@ -720,10 +711,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // not a clear product (or unreadable) → fall through to the media reader
   }
 
-  // Read any deliberately-attached images. NON-INLINE only (inline = shop decoration,
-  // see isInlineImage): a photo or screenshot a human chose to attach. Each gets ONE
-  // vision read (classifyEmailImage) that decides product-vs-media and pulls fields —
-  // so a screenshot of a bot-walled shop lands on the board, and a poster photo lands
+  // Read any deliberately-attached images. Each gets ONE vision read
+  // (classifyEmailImage) that decides product-vs-media and pulls fields — so a
+  // screenshot of a bot-walled shop lands on the board, and a poster photo lands
   // in the library, from the same gesture. This runs even when a link is present (the
   // link's first crack already happened above) so a screenshot survives a 403'd link.
   // Each image is normalized first (HEIC→JPEG) so iPhone photos work.
@@ -731,10 +721,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const imageResults: any[] = []
   // Products read off screenshots, saved to the board as we go (reported in the reply).
   const screenshotThings: { title: string; price: string | null; tagCount: number; id: string | null }[] = []
-  // Non-inline, real-photo-sized images only (see MIN_DELIBERATE_IMAGE_BYTES): this
-  // already drops swatches, thumbnails and tracking pixels.
-  const candidateImages: Attachment[] = (Attachments ?? []).filter((a: Attachment) =>
-    imageType(a).startsWith('image/') && !isInlineImage(a) && attachmentBytes(a) >= MIN_DELIBERATE_IMAGE_BYTES
+  // Raw attachment inventory before any filtering — so a "why didn't my photo save"
+  // is answerable from the logs (type, whether it came in inline, and weight).
+  const rawAttachments = (Attachments ?? []) as Attachment[]
+  console.log('[email] raw attachments:', rawAttachments.length,
+    JSON.stringify(rawAttachments.map(a => ({ type: a.ContentType, name: a.Name, cid: !!a.ContentID, bytes: attachmentBytes(a) }))))
+  // Keep any real-photo-sized image (see MIN_DELIBERATE_IMAGE_BYTES). We do NOT drop
+  // inline (Content-ID) images: a screenshot pasted from iOS Mail / Gmail arrives
+  // INLINE, and hard-excluding inline was silently binning legit captures (s105 — two
+  // book-cover screenshots landed 0 attachments). Shop decoration is separated by
+  // WEIGHT + COUNT instead — swatches / thumbnails / tracking pixels are small (< 50KB,
+  // dropped here) and newsletters carry many (capped just below). Forwarding a shop
+  // email also strips the cid: relationship anyway, so inline-ness was never a reliable
+  // "decoration" signal.
+  const candidateImages: Attachment[] = rawAttachments.filter((a: Attachment) =>
+    imageType(a).startsWith('image/') && attachmentBytes(a) >= MIN_DELIBERATE_IMAGE_BYTES
   )
   // A pile of big images is a forwarded newsletter's hero shots, not a human attaching
   // photos — skip the whole image→item path so decoration can't become junk board

@@ -4,6 +4,14 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 105 (2026-07-07) — root-caused the emailed-screenshot bounce: **inline images were being silently dropped.** Fixed. Free.
+
+Continuation of s104's open bug (a book-cover screenshot "didn't work, got a bounceback"). Farah's Vercel logs settled it: two screenshot emails BOTH logged `[email] deliberate image attachments: 0 []` — the images never reached vision, and the reply she read as a "bounceback" was Nospaces' own "nothing found" reply (a normal 200, no error). Root cause: `classifyEmailImage` never ran because the candidate-image filter in `api/email.ts` **hard-excluded any inline image** (`!isInlineImage`, i.e. ContentID set). iOS Mail / Gmail embed a pasted screenshot **inline** (with a Content-ID), so every emailed screenshot was being binned as "shop decoration" before it could be read. The inline exclusion existed to drop newsletter swatches/pixels/logos — but those are already caught by the **weight** gate (`< 50KB`) and the **count** cap (`> 5`), and forwarding a shop email strips the cid: relationship anyway, so inline-ness was never a reliable decoration signal.
+
+**Fix (pushed, green gate — tsc + api tsc + eslint + 116 tests):** dropped the `!isInlineImage` condition from the candidate filter (`api/email.ts`) — now keeps any image that's the right type + ≥ 50KB, still capped at 5. Deleted the now-dead `isInlineImage` helper. Also added a **raw-attachment diagnostic log** (`[email] raw attachments: N [{type, name, cid, bytes}]`) before filtering, so a future "why didn't my photo save" is answerable in one glance. **NOT yet verified live** — Farah should resend a book-cover screenshot after this deploys; expect `raw attachments: 1` then a normal media/product save. If it's STILL 0, the new raw log will show whether Postmark sent the attachment at all (→ a Postmark-side issue, not ours).
+
+Also this session: committed + pushed s104 (undo link + hallucination fix) to `main` (`9895392`). Logged three backlog items from Farah's Vercel logs: comptoirdescotonniers.com as a known scraper-hostile shop (its `/dw/image` CDN → graceful 502/422, not a bug); a Things "for review" quick-remove; and copying the Things nav active-link underline to the media nav. The red `url.parse` DeprecationWarning is `node-fetch@2.6.9` pulled in by `@vercel/node` itself — harmless, left alone (Farah's call).
+
 ### Session 104 (2026-07-07) — Postmark approved → talkback live; shipped email **undo link** + fixed the email-in **hallucination** bug. No new API calls (prompt-only fix + a free HMAC endpoint).
 
 Postmark approved the account (unblocks talkback + the paid 10k plan). Farah confirmed talkback is now working live — she got a confirmation email. But two real bugs surfaced in the same test, plus she asked for an undo link.
