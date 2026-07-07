@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 102 (2026-07-07) — Things "how it fits" now reads body/fit, not just board aesthetic. Shipped on `main`, full green gate.
+
+Farah's ask: make the per-item **"how it fits"** read take the self-ID **style profile** (aesthetic + body guidelines) into account, "similar to the compare analysis." Shipped in one focused pass on `main`, 106/106 Vitest + typecheck (app+api) + lint + genre-sync green.
+
+**Root cause of the gap.** The style profile was *already wired* into `things-taste-fit` (shipped s88, injected via `profilePromptBlock` from `api/_profile.ts`) — but the prompt was framed **aesthetic-only** ("how this sits with the board — AESTHETICALLY… go by aesthetic, NOT category"), so the body notes were handed to the model and then effectively ignored. Compare, by contrast, tells the model to be "your stylist: body-aware… flag where it'll gap, ride up, crease, or miss your proportions." Same profile, opposite job. So this was a **prompt reshape**, not new wiring.
+
+**What changed** (`api/things-taste-fit.ts`, `src/lib/things.ts` `readTasteFit`, `src/screens/ThingsScreen.tsx` call site):
+- **Two-part read now:** (1) how it sits with the board aesthetically + (2) how it'll actually fit/flatter *you* — but ONLY where the body notes bear on the item. A bag/ring/object **skips fit entirely** and never invents a fit note (mirrors the `profilePromptBlock` "a shoe can't gap at the waist" rule).
+- **Feeds the photo (vision).** Was text-only (taste tags). Now fetches the saved product photo server-side via `fetchImageBase64` (`api/_vision.ts`, same browser-spoof/SSRF-guarded path as compare) and attaches it, so it judges the real cut/silhouette. `readTasteFit` + the ProductSheet call site now pass `image` + `url`.
+- **Extracted `buildFitPrompt`** (exported from `things-taste-fit.ts`) so the prompt has one home and can be exercised in a test without standing up auth/rate-limit. Added `export const config = { maxDuration: 30 }` for the fetch+vision latency.
+- **Cost:** ~**0.3¢/item**, cached once on `metadata.tasteFit` (was ~0.1¢ text-only). Still Haiku, still explicit-tap only.
+
+**Verification — 5 guarded live calls** (deliberately over the 2–3 soft cap; spent the extra to *show* the length fix rather than claim it; ~1.5¢ total). Used stand-in Wikimedia photos (flared trousers on a body / Kelly-style leather bag) + a sample petite-long-torso profile. First 2 calls proved **both behaviors correct** — trousers got a real fit read (flagged the **rise** as decisive, per the "high-waist flatters / low-rise shortens legs" note, judged the flare from the photo); the bag correctly said *"a bag doesn't touch your proportions"* and stayed aesthetic. BUT both ran long (62–70 words, 3 sentences) vs. the intended ~2. Tightened the prompt (EXACTLY-2-sentences rule + a length/shape exemplar labeled "never reuse these words" + "LEAD WITH YOUR READ, don't describe the item back" + fold any caveat into the fit sentence) and dropped `max_tokens` 320→160 as a backstop. Re-confirmed (calls 3–5): **trousers 37 words / bag 42 words, 2 sentences, leads with the verdict, bag still skips fit.** Down ~40%.
+
+**⚠️ Not yet checked on the real deploy** — the guarded tests used stand-in photos + a sample profile, not Farah's real saved item + her actual `styleProfile`. Next-session item: on the deploy, open one clothing item vs. one bag with her profile filled in, tap "how it fits", confirm the fit note reads right on her phone (and that the profile is actually authored — the read only speaks to fit if `user_prefs.styleProfile` has body notes in it). No ROADMAP item to prune — this was an ad-hoc request, not a backlogged one.
+
 ### Session 101 (2026-07-06) — dependency / Dependabot cleanup (the whole queued pass). Free, no Anthropic calls.
 
 Cleared all 6 remaining Dependabot PRs + tuned Dependabot + triaged the audit, in one dedicated session as Farah asked. Everything applied **directly on `main`** (not by merging the PRs — their lockfile edits conflict with each other), full green gate each commit (106/106 Vitest + typecheck app+api + lint + genre-sync + build), CI green on `main`, all 6 PRs closed, 0 open.
