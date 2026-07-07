@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
-import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
+import { HUMANIZER_GUARDRAILS, VOICE, GROUNDING } from './_humanizer.js'
 import { sanitizeProfile, profilePromptBlock } from './_profile.js'
 import { fetchImageBase64 } from './_vision.js'
 
@@ -59,6 +59,8 @@ Rules that matter here:
 - Be specific and human, never a checklist of the tags read back. No hype, no "this piece".
 
 ${VOICE.warm}
+
+${GROUNDING}
 
 ${HUMANIZER_GUARDRAILS}
 

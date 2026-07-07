@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
-import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
+import { HUMANIZER_GUARDRAILS, VOICE, GROUNDING } from './_humanizer.js'
 import { scrapeProduct } from './_scrape.js'
 import { fetchImageBase64 } from './_vision.js'
 import { sanitizeProfile, profilePromptBlock } from './_profile.js'
@@ -122,6 +122,8 @@ Then a short overall verdict — 1 to 2 sentences, which you'd lean toward and w
 Write the notes and verdict in SECOND PERSON — speak straight to them as "you"/"your", present tense. Never "she", "her", "the shopper", or by name. Plain and direct: no warm-up, no flourish, no editorializing.
 
 ${VOICE.decisive}
+
+${GROUNDING}
 
 ${HUMANIZER_GUARDRAILS}
 

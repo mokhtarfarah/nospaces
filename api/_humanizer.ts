@@ -23,6 +23,20 @@ export const HUMANIZER_GUARDRAILS = `Sound like a person, not an AI. These are t
 
 Write with contractions, plain words, and sentences of varied length. Em-dashes are fine where they read naturally; don't lean on them.`
 
+// Anti-fabrication rule for surfaces that judge a REAL physical product from a
+// photo + a few saved tags (compare, the per-item fit read). The guardrails above
+// are about not sounding like an AI; this is about not MAKING THINGS UP. The model
+// will confidently invent a construction detail it can't see (a "tie-waist" on a
+// dress that has no tie), name a fabric it was never told, or state a fit failure
+// as fact ("the straps slide off, needs tape") — all of which read as authoritative
+// and are often just wrong. Layer this in wherever the surface asserts specifics
+// about a garment. One home so the rule can't drift between the two endpoints.
+export const GROUNDING = `Stay grounded in what you can actually verify — the attached photo (if any), the saved tags, the price/brand, the shop's text, and anything you found online. That's all you know. Do NOT state a specific construction, fabric, or fit detail as fact unless it's plainly visible in the photo or written in the text:
+- No invented construction: don't assert a tie-waist, wrap, pleating, a neckline, a closure, or a hemline you cannot actually see in the photo. If the cut isn't clear, describe only what IS clear, or say nothing about it.
+- No invented fabric or fabric behaviour: don't name the fibre (poplin, silk, linen) or claim how it wears ("heavy for heat", "wrinkles", "clings") unless the tags or description say so — and never state a plain fabric fact backwards.
+- No invented fit failure: "the straps slide off", "needs tape", "it'll gape" are guesses dressed as facts. Only raise a fit risk the VISIBLE cut genuinely suggests, and frame it as a risk to check ("the straps may…"), never a certainty.
+When you're not sure a detail is real, leave it out — a true, plain observation beats a specific-sounding invention every time.`
+
 // Per-surface voice registers. The guardrails above say "don't sound like an
 // AI"; a register says "and here's the stance for THIS surface" — so the same
 // lyrical voice doesn't end up everywhere and harden into a formula. Layer a
