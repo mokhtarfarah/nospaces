@@ -6,6 +6,7 @@ import { genreBlock } from './_genres.js'
 import { isSafePublicUrl } from './_ssrf.js'
 import { scrapeProduct, type ScrapedFields } from './_scrape.js'
 import { readImageAttributes, FACET_VOCAB, FACETS, type Attribute, type ShotType } from './_vision.js'
+import { signUndo, undoUrl } from './_undo.js'
 
 // Strip any non-ASCII chars that may have crept in via copy-paste
 const cleanEnv = (s: string | undefined) => (s ?? '').replace(/[^\x20-\x7E]/g, '').trim()
@@ -240,7 +241,7 @@ function extractEmailUrls(textBody: string, htmlBody: string): string[] {
 }
 
 type ThingCapture =
-  | { kind: 'saved'; title: string; price: string | null; tagCount: number }
+  | { kind: 'saved'; title: string; price: string | null; tagCount: number; id: string | null }
   | { kind: 'duplicate'; title: string }
   | { kind: 'no-link' }
   | { kind: 'unreadable' }
@@ -296,12 +297,12 @@ async function captureThing(userId: string, urls: string[], strict: boolean): Pr
     }
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('items').insert({
+  const { data: row, error } = await (supabase as any).from('items').insert({
     user_id: userId, title, creator: fields.brand, type: 'thing', status: 'want_to', source: 'email',
     metadata: { kind: 'product', title, image: fields.image, price: fields.price, brand: fields.brand, siteName: fields.siteName, url: fields.url, attributes, shotType },
-  })
+  }).select('id').single()
   if (error) return { kind: 'error', message: error.message }
-  return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length }
+  return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length, id: row?.id ?? null }
 }
 
 type Confidence = 'high' | 'medium' | 'low'
@@ -378,9 +379,9 @@ Set confidence to how sure you are of the identification. If the image is blurry
 // flagged for review; a confident one lands live (saving is the signal).
 async function saveScreenshotProduct(
   userId: string, p: Extract<ClassifiedImage, { kind: 'product' }>,
-): Promise<{ kind: 'saved'; title: string; price: string | null; tagCount: number } | { kind: 'error'; message: string }> {
+): Promise<{ kind: 'saved'; title: string; price: string | null; tagCount: number; id: string | null } | { kind: 'error'; message: string }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('items').insert({
+  const { data: row, error } = await (supabase as any).from('items').insert({
     user_id: userId, title: p.title, creator: p.brand, type: 'thing', status: 'want_to', source: 'email',
     metadata: {
       kind: 'product', title: p.title, image: null, price: p.price, brand: p.brand, url: null,
@@ -389,9 +390,9 @@ async function saveScreenshotProduct(
       // (a low-confidence read) gets parked for review.
       ...(p.confidence === 'low' ? { review: true } : {}),
     },
-  })
+  }).select('id').single()
   if (error) return { kind: 'error', message: error.message }
-  return { kind: 'saved', title: p.title, price: p.price, tagCount: p.attributes.length }
+  return { kind: 'saved', title: p.title, price: p.price, tagCount: p.attributes.length, id: row?.id ?? null }
 }
 
 // Pull a usable product image URL out of a shop email's HTML — og:image first
@@ -456,12 +457,12 @@ async function rescueProductFromEmail(
 
   const title = fields.title
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('items').insert({
+  const { data: row, error } = await (supabase as any).from('items').insert({
     user_id: userId, title, creator: fields.brand, type: 'thing', status: 'want_to', source: 'email',
     metadata: { kind: 'product', title, image, price: fields.price, brand: fields.brand, url, attributes, shotType },
-  })
+  }).select('id').single()
   if (error) return { kind: 'error', message: error.message }
-  return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length }
+  return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length, id: row?.id ?? null }
 }
 
 // Fetch a URL and return a compact summary of its OpenGraph / title metadata,
@@ -513,6 +514,16 @@ Fill in the correct creator (director / author / artist / showrunner), the relea
 the type, even if the email does not state them. Use the exact, canonical title. Only leave a
 field null if you genuinely cannot identify the item.
 
+DO NOT INVENT. If you do not actually recognize the specific work — a bare title, or a title
+plus a person's name you can't place — do NOT guess its type, creator, year, genre, or what
+it's about. Guessing produces confident fabrications (wrong medium, invented plot, made-up
+artist bio), which is worse than admitting uncertainty. In that case: set "confidence" to
+"low", set "type" only if the email states or clearly implies it (else "other"), leave
+"summary" null, and leave "tags" []. A "low" item lands in a review inbox for the reader to
+confirm — that is the correct home for a guess. Note in particular: a title followed by a
+person's name, with no other signal, is far more often a BOOK (that person is the author) than
+music — never default such an item to "music".
+
 The "instruction" field is only for the rare case where the reader added their own note saying
 WHICH items to save (e.g. "add the second one" or "save Brat"). If there is such a note, set
 instruction to "specific" and list those in "specified_items". Otherwise set instruction to
@@ -529,7 +540,7 @@ Return JSON only:
       "creator": "director / author / artist / showrunner",
       "type": "film|book|music|tv|other",
       "year": 1234,
-      "summary": "1-2 sentences describing the ITEM ITSELF — its sound/plot/themes and why it's worth attention — paraphrasing what the email says about it. Describe the work, not its role in the email: NEVER write meta sentences like 'this is the album reviewed in the article' or 'the main subject of this newsletter'. If the email says nothing substantive about it, write one sentence from your own knowledge. Null only if there is genuinely nothing to say.",
+      "summary": "1-2 sentences describing the ITEM ITSELF — its sound/plot/themes and why it's worth attention — paraphrasing what the email says about it. Describe the work, not its role in the email: NEVER write meta sentences like 'this is the album reviewed in the article' or 'the main subject of this newsletter'. If the email says nothing substantive about it, you may add one sentence ONLY IF you genuinely know the work — never invent a plausible-sounding description for a title you don't actually recognize. Null when the email says nothing and you don't truly know it.",
       "confidence": "high|medium|low",
       "metadata": {},
       "tags": []
@@ -643,6 +654,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ saved: 0, error: 'User not found' })
   }
 
+  // A talkback footer that lets the reader undo this exact capture — for when the
+  // AI reads the wrong thing (wrong medium, a hallucinated blurb) or the reader
+  // just changes their mind. Signs the saved row ids to the sender; no-ops (empty
+  // string) if nothing saved or the signing secret is unset. `label` names the
+  // first item so the confirmation page can say what it'll remove.
+  const buildUndo = (ids: (string | null)[], label: string): string => {
+    const clean = ids.filter((x): x is string => !!x)
+    if (clean.length === 0) return ''
+    const token = signUndo({ u: matchedUser.id, i: clean, t: Date.now(), l: label.slice(0, 80), n: clean.length })
+    return token ? `\n\nWrong save, or changed your mind? Undo it: ${undoUrl(token)}` : ''
+  }
+
   // ---- Things domain: forward a product link → save it to your board ----
   // Routed by the recipient address (things@ / shop@ / want@). Free — uses the
   // shared scraper, no Anthropic call. Lenient (any readable link), since the
@@ -651,7 +674,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const r = await captureThing(matchedUser.id, extractEmailUrls(linkText, HtmlBody ?? ''), false)
     if (r.kind === 'saved') {
       await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
-        `Added to your board:\n\n• ${r.title}${r.price ? ` — ${r.price}` : ''}\n\n${tagNote(r.tagCount)}`)
+        `Added to your board:\n\n• ${r.title}${r.price ? ` — ${r.price}` : ''}\n\n${tagNote(r.tagCount)}${buildUndo([r.id], r.title)}`)
       return res.status(200).json({ saved: 1, domain: 'thing' })
     }
     if (r.kind === 'duplicate') {
@@ -686,7 +709,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const t = await captureThing(matchedUser.id, links, true)
     if (t.kind === 'saved') {
       await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
-        `Added to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}`)
+        `Added to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}${buildUndo([t.id], t.title)}`)
       return res.status(200).json({ saved: 1, domain: 'thing' })
     }
     if (t.kind === 'duplicate') {
@@ -707,7 +730,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const imageResults: any[] = []
   // Products read off screenshots, saved to the board as we go (reported in the reply).
-  const screenshotThings: { title: string; price: string | null; tagCount: number }[] = []
+  const screenshotThings: { title: string; price: string | null; tagCount: number; id: string | null }[] = []
   // Non-inline, real-photo-sized images only (see MIN_DELIBERATE_IMAGE_BYTES): this
   // already drops swatches, thumbnails and tracking pixels.
   const candidateImages: Attachment[] = (Attachments ?? []).filter((a: Attachment) =>
@@ -733,7 +756,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (c.kind === 'product') {
         const s = await saveScreenshotProduct(matchedUser.id, c)
         if (s.kind === 'saved') {
-          screenshotThings.push({ title: s.title, price: s.price, tagCount: s.tagCount })
+          screenshotThings.push({ title: s.title, price: s.price, tagCount: s.tagCount, id: s.id })
           console.log('[email] screenshot → board:', s.title, '· conf:', c.confidence)
         } else console.error('[email] screenshot product save failed:', s.message)
       } else {
@@ -791,7 +814,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (screenshotThings.length > 0) {
       const list = screenshotThings.map(s => `• ${s.title}${s.price ? ` — ${s.price}` : ''}`).join('\n')
       await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
-        `${screenshotThings.length > 1 ? 'Read those off your screenshots' : 'Read that off your screenshot'} and added to your board:\n\n${list}\n\n${tagNote(screenshotThings.reduce((n, s) => n + s.tagCount, 0))}`)
+        `${screenshotThings.length > 1 ? 'Read those off your screenshots' : 'Read that off your screenshot'} and added to your board:\n\n${list}\n\n${tagNote(screenshotThings.reduce((n, s) => n + s.tagCount, 0))}${buildUndo(screenshotThings.map(s => s.id), screenshotThings[0]?.title ?? 'that item')}`)
       return res.status(200).json({ saved: screenshotThings.length, domain: 'thing' })
     }
     // Only count NON-product photos toward "couldn't read a photo" — a screenshot we
@@ -808,7 +831,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const t = await captureThing(matchedUser.id, fallbackLinks, !universal)
       if (t.kind === 'saved') {
         await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
-          `That looked like a product, so I added it to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}`)
+          `That looked like a product, so I added it to your board:\n\n• ${t.title}${t.price ? ` — ${t.price}` : ''}\n\n${tagNote(t.tagCount)}${buildUndo([t.id], t.title)}`)
         return res.status(200).json({ saved: 1, domain: 'thing' })
       }
       if (t.kind === 'duplicate') {
@@ -822,7 +845,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const r = await rescueProductFromEmail(matchedUser.id, body, HtmlBody ?? '', fallbackLinks[0])
         if (r?.kind === 'saved') {
           await sendReply(fromEmail, replyFrom, 'Nospaces: saved to your board',
-            `That shop blocks link-reading, so I pulled it from your email instead:\n\n• ${r.title}${r.price ? ` — ${r.price}` : ''}\n\n${tagNote(r.tagCount)}`)
+            `That shop blocks link-reading, so I pulled it from your email instead:\n\n• ${r.title}${r.price ? ` — ${r.price}` : ''}\n\n${tagNote(r.tagCount)}${buildUndo([r.id], r.title)}`)
           return res.status(200).json({ saved: 1, domain: 'thing' })
         }
         if (r?.kind === 'duplicate') {
@@ -945,7 +968,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: insertError } = await (supabase as any).from('items').insert(dedupedRows)
+  const { data: insertedRows, error: insertError } = await (supabase as any).from('items').insert(dedupedRows).select('id')
   console.log('[email] insert error:', insertError, 'rows:', dedupedRows.length)
 
   // Talk back with the result so failures are never silent.
@@ -964,8 +987,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const where = reviewN === dedupedRows.length ? 'Added to your review inbox'
       : reviewN === 0 ? 'Saved to your library'
       : `Saved to your library (${reviewN} flagged for review)`
+    // Undo covers everything this email added — the media rows AND any products
+    // read off screenshots in the same message (reported via boardNote).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const undoIds = [...((insertedRows ?? []) as any[]).map(r => r.id), ...screenshotThings.map(s => s.id)]
+    const undo = buildUndo(undoIds, dedupedRows[0]?.title ?? screenshotThings[0]?.title ?? 'that item')
     await sendReply(fromEmail, replyFrom, `Nospaces: saved ${dedupedRows.length}`,
-      `${where}:\n\n${list}${skippedNote}${boardNote}`)
+      `${where}:\n\n${list}${skippedNote}${boardNote}${undo}`)
   }
 
   return res.status(200).json({ saved: insertError ? 0 : dedupedRows.length + screenshotThings.length, skipped, error: insertError?.message })

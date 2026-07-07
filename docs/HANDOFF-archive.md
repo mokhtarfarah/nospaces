@@ -4,6 +4,26 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 104 (2026-07-07) — Postmark approved → talkback live; shipped email **undo link** + fixed the email-in **hallucination** bug. No new API calls (prompt-only fix + a free HMAC endpoint).
+
+Postmark approved the account (unblocks talkback + the paid 10k plan). Farah confirmed talkback is now working live — she got a confirmation email. But two real bugs surfaced in the same test, plus she asked for an undo link.
+
+**What she hit:**
+1. Emailed a **screenshot of a book cover** → "didn't work," got a bounceback. *Not reproduced from code — needs logs (see below).*
+2. Emailed **"Yesteryear" + "Caro Claire Burke"** (a 2025 book) → talkback replied (good) but it saved as **music** with a **hallucinated blurb** ("An album by Irish singer-songwriter…"). Changed type to book in-app, but the fake blurb persisted (it's stored `recommendationBlurb`, shows as "via recommendation").
+
+**Root cause of bug 2:** `EMAIL_PROMPT` in `api/email.ts` told the model to identify "using your own knowledge" and to "write one sentence from your own knowledge" if the email said nothing — which for an unknown 2025 title licenses a *confident* fabrication (wrong medium + invented bio). Because it reported the guess as confident (not `low`), the existing review gate (`review: bulk || confidence==='low'`) let it land live instead of in the review inbox.
+
+**Fixes shipped (all green: tsc + api tsc + eslint max-warnings 0 + 126 tests):**
+- **Undo link in talkback.** New `api/_undo.ts` (HMAC-signed capability token: user id + row ids + issued-at, signed with the existing `EMAIL_WEBHOOK_SECRET`, 60-day expiry) + new `api/undo.ts` endpoint. Every "saved" reply now ends with "Wrong save, or changed your mind? Undo it: <link>". **GET renders a confirm page with a POST button; the delete only happens on POST** — so mail-client / scanner link-prefetch can't silently delete (a destructive GET would be dangerous). Delete is scoped to `id IN (…) AND user_id = signed-user`. Threaded inserted ids through all save paths (`captureThing`, `saveScreenshotProduct`, `rescueProductFromEmail`, the media insert, screenshot board saves). Undo on the media reply covers everything that email added (media rows + screenshot products). New unit test `src/lib/undo.test.ts` (10 tests: round-trip, tamper, wrong-secret, expiry, future-skew, garbage).
+- **Anti-hallucination prompt fix** (`EMAIL_PROMPT`): added a "DO NOT INVENT" rule — if the model doesn't actually recognize the work, don't guess type/creator/year/genre/plot; set `confidence:"low"`, leave `summary` null, and **never default a bare "Title by Name" to music** (a name is usually an *author* → book). Low-confidence now lands in review, which is the correct home for a guess. Also softened the summary instruction so it only writes from own knowledge when it genuinely knows the work.
+
+**NOT DONE / carried:**
+- **Bug 1 (screenshot bounceback) is undiagnosed** — can't confirm from code. Farah (or next session) should check **Vercel logs** for the `/api/email` run: look for `[email] image had nothing identifiable` / `image skipped (unusable)` / `screenshot → board|library`, and **Postmark → Activity** for whether the send was an actual bounce vs the app's "couldn't read the photo" reply. Most likely `classifyEmailImage` returned nothing identifiable off that cover.
+- **New env for undo:** `PUBLIC_BASE_URL` is optional (falls back to `https://nospaces.vercel.app`). Set it in Vercel only if the deploy domain changes.
+- The one mis-saved "Yesteryear" item still has the stale album blurb — Farah can edit/undo it; the upstream fix stops it recurring.
+- **10k Postmark plan:** approval unblocked buying it. Confirm Farah has (talkback ≈ 2 emails/capture now, free plan = 100/mo).
+
 ### Session 103 (2026-07-07) — "how it fits" tone retune (pushed, awaiting Farah's live re-read) + s99 confirmed. Prompt-only, no new API calls.
 
 Farah read the s102 "how it fits" output on five real items (kiki slacks, fairuz tee, nautilus bag, staud dress, openwork caftan) and gave sharp tone feedback. Then asked me to critique the reads as the user, which surfaced more. Shipped 7 prompt-only fixes to `buildFitPrompt` in `api/things-taste-fit.ts` on `main` (`aff8108`), 106/106 green gate. Still Haiku, ~0.3¢/item cached once — no cost change.
