@@ -4,6 +4,28 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 103 (2026-07-07) — "how it fits" tone retune (pushed, awaiting Farah's live re-read) + s99 confirmed. Prompt-only, no new API calls.
+
+Farah read the s102 "how it fits" output on five real items (kiki slacks, fairuz tee, nautilus bag, staud dress, openwork caftan) and gave sharp tone feedback. Then asked me to critique the reads as the user, which surfaced more. Shipped 7 prompt-only fixes to `buildFitPrompt` in `api/things-taste-fit.ts` on `main` (`aff8108`), 106/106 green gate. Still Haiku, ~0.3¢/item cached once — no cost change.
+
+**What was wrong (all visible in the s102 reads):**
+- Every read opened literally **"Squarely your board"** — the model was copying the first words of the anchor example despite a "never reuse" note.
+- Bags **narrated the absence of fit** ("without any body considerations to weigh it") — took up space stating something baked in.
+- Fit calls too **certain** (Farah: "could read short vs WILL read short") — the model was reading a photo, not seeing it on her.
+- **Naming the variable instead of answering it** — the tee: "The key is whether it hits at your natural waist or skims past it" = a dodge, no actual read.
+- **"try it on to confirm ___"** closer on 4 of 5 — a formula/tic.
+- **Stock phrases** rotated across items: "reads intentional rather than shapeless" (verbatim in 2), "swallow your frame/proportions", "structurally confident".
+- A real writing failure: "try it on to confirm **the balance feels balanced**" (tautology).
+- **Sentence 1 re-read the tag row** — the tee said "bold, textured cotton, oversized" with `cotton · bold · oversized` displayed right above it.
+
+**The 7 fixes (all in the prompt):** (1) vary the opener every time, never default to "Squarely your board"; (2) bags skip fit *silently* — never narrate its absence; (3) hedge the *certainty* not the call ("likely/should/might", not flat verdicts); (4) **make a call, not a variable** — naming the fit question without answering it is now explicitly a dodge; (5) ban the "try it on to confirm ___" closer, fold uncertainty into the call; (6) name a concrete feature of the *exact* piece + banned the stock-phrase list; (7) sentence 1 can't restate the tags shown above it. Also updated the anchor example to model a hedged call with no trailing caveat. **Aesthetic still leads** — Farah's explicit call (the fit half is the actionable one, but she wants the "yes this is you" validation first).
+
+**NOT yet verified.** Tone only reads true on Farah's real board + profile, and the reads are **cached on `metadata.tasteFit`** — she must tap **"re-read"** on each item post-deploy to regenerate against the new prompt. Deliberately did NOT burn guarded API calls on stand-in data (that was s102's weak spot). Next session: read the fresh output on her phone, tune again if needed, mark confirmed.
+
+**Also:** s99 three-state shelf filter **confirmed working on the real deploy** (Farah) — marked in the s99 entry below.
+
+---
+
 ### Session 102 (2026-07-07) — Things "how it fits" now reads body/fit, not just board aesthetic. Shipped on `main`, full green gate.
 
 Farah's ask: make the per-item **"how it fits"** read take the self-ID **style profile** (aesthetic + body guidelines) into account, "similar to the compare analysis." Shipped in one focused pass on `main`, 106/106 Vitest + typecheck (app+api) + lint + genre-sync green.
