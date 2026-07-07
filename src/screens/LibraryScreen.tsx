@@ -1141,13 +1141,16 @@ function FilterSheet({
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 12px' }} />
 
         {/* Layout — the most-toggled control, first. List + the two grid densities
-            fold into one row (was layout + a separate "columns" row before s85). */}
+            fold into one row (was layout + a separate "columns" row before s85).
+            "roomy"/"compact" (s107) — same terminology as the Things board's density
+            row, so the language matches across both even though the underlying grid
+            here is a fixed 3/4-column choice rather than Things' responsive one. */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
           <span style={{ fontSize: 14, color: '#3A3A3A' }}>layout</span>
           <div style={segGroup}>
             <button onClick={() => onLayout('list')} style={segBtn(layout === 'list')}>list</button>
-            <button onClick={() => { onLayout('grid'); onGridCols(3) }} style={segBtn(layout === 'grid' && gridCols === 3)}>grid 3</button>
-            <button onClick={() => { onLayout('grid'); onGridCols(4) }} style={segBtn(layout === 'grid' && gridCols === 4)}>grid 4</button>
+            <button onClick={() => { onLayout('grid'); onGridCols(3) }} style={segBtn(layout === 'grid' && gridCols === 3)}>roomy</button>
+            <button onClick={() => { onLayout('grid'); onGridCols(4) }} style={segBtn(layout === 'grid' && gridCols === 4)}>compact</button>
           </div>
         </div>
         {layout === 'grid' && (

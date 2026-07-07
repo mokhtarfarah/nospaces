@@ -33,6 +33,13 @@ const LINE = '#E8E8E8'
 // grey studio photography most shops use.
 const TILE = '#ECEDEF'
 
+// Product-sheet hero cap. A first attempt shrank this on scroll (collapse-on-scroll)
+// to free up read room without ever capping the photo lower than this — but the
+// scroll-driven resize fought the sheet's own scroll position (jumpy on a trackpad,
+// stuck under a touch drag on iOS). A static, simply-smaller cap side-steps that
+// entirely: less dramatic than the full-bleed original, but reliable everywhere.
+const HERO_MAX = 'min(380px, 44dvh)'
+
 // Filter-sheet chip — identical to the media Library's tagChipStyle so sort/show
 // in Things read in the same chip language (not iOS ✓-list rows).
 const chipStyle = (on: boolean) => ({
@@ -50,9 +57,18 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'name', label: 'a–z' },
 ]
 
-// Target px-per-column for the responsive grid — the wall auto-sizes its column
-// count to the device width (no manual density toggle; keep it simple).
-const COL_TARGET = 220
+// Density toggle (mirrors media's "list | roomy | compact"): the grid still
+// auto-sizes its column count to the device width, but the target px-per-column
+// differs by mode so the two options are always visibly different at any width —
+// a fixed "-1 column" delta could floor out at the same number on a narrow screen.
+// 'roomy' (220) matches the old single-density auto-fit unchanged; 'compact' (155)
+// packs in noticeably more per row.
+type ColsMode = 'roomy' | 'compact'
+const COL_TARGET: Record<ColsMode, number> = { roomy: 220, compact: 155 }
+const COLS_KEY = 'nospaces.thingsColsMode'
+function loadColsMode(): ColsMode {
+  try { return localStorage.getItem(COLS_KEY) === 'compact' ? 'compact' : 'roomy' } catch { return 'roomy' }
+}
 
 // Grid (visual wall) vs list (the plan-style row: square thumb + title + price).
 // Persisted so the choice sticks.
@@ -65,15 +81,6 @@ type CardCaption = 'none' | 'title' | 'full'
 const CAPTION_KEY = 'nospaces.thingsCaption'
 function loadCaption(): CardCaption {
   try { const c = localStorage.getItem(CAPTION_KEY); return c === 'none' || c === 'title' ? c : 'full' } catch { return 'full' }
-}
-// Density control on top of the responsive auto-fit column count (media's fixed
-// 3/4 toggle doesn't map 1:1 since Things' column count already varies by device
-// width) — 'roomy' asks for one fewer column than the auto fit, 'cozy' is the
-// existing auto behaviour untouched.
-type ColsMode = 'cozy' | 'roomy'
-const COLS_KEY = 'nospaces.thingsColsMode'
-function loadColsMode(): ColsMode {
-  try { return localStorage.getItem(COLS_KEY) === 'roomy' ? 'roomy' : 'cozy' } catch { return 'cozy' }
 }
 function loadView(): ViewMode {
   try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
@@ -235,26 +242,27 @@ export function ThingsScreen() {
   // Speed-dial for the floating +: open reveals the two capture paths.
   const [addMenu, setAddMenu] = useState(false)
   // Responsive grid: more columns as the board gets wider (≈2 on a phone, up to
-  // ~5 on a desktop), so it fills the page like the rest of the app instead of a
-  // fixed 2-up locked to a narrow column. Measured off the scroller's own width.
+  // ~5+ on a desktop), so it fills the page like the rest of the app instead of a
+  // fixed 2-up locked to a narrow column. Measured off the scroller's own width;
+  // re-measures on both a resize AND a density-mode change (the target px-per-
+  // column differs by mode — see COL_TARGET above).
   const listRef = useRef<HTMLDivElement>(null)
-  const [autoCols, setAutoCols] = useState(2)
+  const [cols, setCols] = useState(2)
   const [view, setView] = useState<ViewMode>(loadView)
   useEffect(() => { try { localStorage.setItem(VIEW_KEY, view) } catch { /* private mode */ } }, [view])
   const [caption, setCaption] = useState<CardCaption>(loadCaption)
   useEffect(() => { try { localStorage.setItem(CAPTION_KEY, caption) } catch { /* private mode */ } }, [caption])
   const [colsMode, setColsMode] = useState<ColsMode>(loadColsMode)
   useEffect(() => { try { localStorage.setItem(COLS_KEY, colsMode) } catch { /* private mode */ } }, [colsMode])
-  const cols = colsMode === 'roomy' ? Math.max(2, autoCols - 1) : autoCols
   useEffect(() => {
     const el = listRef.current
     if (!el) return
-    const measure = () => setAutoCols(Math.max(2, Math.floor(el.clientWidth / COL_TARGET)))
+    const measure = () => setCols(Math.max(2, Math.floor(el.clientWidth / COL_TARGET[colsMode])))
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [])
+  }, [colsMode])
   const [sort, setSort] = useState<SortKey>('recent')
   const [cat, setCat] = useState<string | null>(null)
   // A taste-tag filter set by tapping a tag inside a product (e.g. 'monochrome') —
@@ -1514,14 +1522,13 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
 // it opens on the taste read (shown automatically once generated, dismissable). The
 // read is a paid Haiku call cached on metadata.tasteFit, so the first time you open
 // the "how it fits" tab it generates; after that toggling is free.
-function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleHideFit, onBodyScroll }: {
+function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleHideFit }: {
   note: string | null
   onSaveNote: (n: string | null) => void | Promise<void>
   fit: string | null
   fitHidden: boolean
   onRunFit: () => Promise<string | null>
   onToggleHideFit: () => void
-  onBodyScroll: (e: React.UIEvent<HTMLDivElement>) => void
 }) {
   const [tab, setTab] = useState<'note' | 'fit'>(note ? 'note' : (fitHidden ? 'note' : 'fit'))
   const [editing, setEditing] = useState(false)
@@ -1562,7 +1569,7 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
           and tabs stay put, so the card itself never has to scroll. The note is plain
           text (not a full-area button) so a touch-drag scrolls instead of registering
           as a tap on iOS; "edit" is the small explicit target. */}
-      <div onScroll={onBodyScroll} style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', paddingRight: 2 }}>
+      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', paddingRight: 2 }}>
       {tab === 'note' ? (
         editing ? (
           <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
@@ -1644,16 +1651,6 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const [planPick, setPlanPick] = useState<PlanChoice>({ kind: 'none' })
   const [newPlanName, setNewPlanName] = useState('')
   const [addingBusy, setAddingBusy] = useState(false)
-  // Collapse-on-scroll hero: the photo opens full-size (prominent, as Farah likes),
-  // then shrinks to a strip as you scroll into the read — so a long "how it fits"
-  // gets the room without ever cropping the picture at rest. Hysteresis (40/8)
-  // stops it flickering on tiny scroll jitters.
-  const [heroShrunk, setHeroShrunk] = useState(false)
-  const onBodyScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const top = e.currentTarget.scrollTop
-    setHeroShrunk(prev => top > 40 ? true : top < 8 ? false : prev)
-  }
-  const heroMax = heroShrunk ? 'min(200px, 26dvh)' : 'min(500px, 55dvh)'
   // Hero photo — same treatment as the grid: a product cutout floats on the gray
   // tile; a model/lifestyle photo (or one the user flipped to full-photo) fills it.
   const showCutout = !p.cutoutHidden && !!p.cutout
@@ -1736,10 +1733,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
       <div style={{ position: 'relative', margin: '-20px -18px 0', flexShrink: 0 }}>
         {hero
           ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy"
-              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: heroMax, objectFit: showCutout ? 'contain' : 'cover',
+              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: HERO_MAX, objectFit: showCutout ? 'contain' : 'cover',
                 padding: showCutout ? '8%' : 0, boxSizing: 'border-box', background: TILE, borderRadius: '20px 20px 0 0',
-                filter: showCutout ? undefined : 'saturate(0.97)', transition: 'max-height 0.28s ease' }} />
-          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: heroMax, background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12, transition: 'max-height 0.28s ease' }}>no image</div>}
+                filter: showCutout ? undefined : 'saturate(0.97)' }} />
+          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: HERO_MAX, background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
 
         <button onClick={onClose} aria-label="close" style={{ ...floatBtn, left: 12, fontSize: 19 }}>×</button>
         <button onClick={() => setMenuOpen(o => !o)} aria-label="more" style={{ ...floatBtn, right: 12, fontSize: 21, fontWeight: 700 }}>⋯</button>
@@ -1901,10 +1898,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           fit={(item.metadata as { tasteFit?: string })?.tasteFit ?? null}
           fitHidden={(item.metadata as { tasteFitHidden?: boolean })?.tasteFitHidden ?? false}
           onRunFit={onRunFit}
-          onToggleHideFit={onToggleHideFit}
-          onBodyScroll={onBodyScroll} />
+          onToggleHideFit={onToggleHideFit} />
       ) : (
-        <div onScroll={onBodyScroll} style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
+        <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
           <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
           {p.image && !tagged && (
             <button onClick={onRunTaste} style={{ ...quietLink, display: 'block', marginTop: 16 }}>read taste from photo</button>
@@ -1950,12 +1946,15 @@ function FilterSheet({ sort, onSort, view, onView, caption, onCaption, colsMode,
       }}>
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 18px' }} />
 
-        <SegRow label="layout" options={[{ k: 'grid', l: 'grid' }, { k: 'list', l: 'list' }]} value={view} onChange={onView} />
+        {/* One combined row — list, or grid at one of two densities — mirroring the
+            media Library's "list | roomy | compact" layout row exactly (same
+            terminology, same single-row shape) instead of a separate density row. */}
+        <SegRow label="layout"
+          options={[{ k: 'list', l: 'list' }, { k: 'roomy', l: 'roomy' }, { k: 'compact', l: 'compact' }]}
+          value={view === 'list' ? 'list' : colsMode}
+          onChange={(k) => { if (k === 'list') onView('list'); else { onView('grid'); onColsMode(k) } }} />
         {view === 'grid' && (
-          <>
-            <SegRow label="density" options={[{ k: 'roomy', l: 'roomy' }, { k: 'cozy', l: 'cozy' }]} value={colsMode} onChange={onColsMode} />
-            <SegRow label="captions" options={[{ k: 'none', l: 'none' }, { k: 'title', l: 'title' }, { k: 'full', l: 'full' }]} value={caption} onChange={onCaption} />
-          </>
+          <SegRow label="captions" options={[{ k: 'none', l: 'none' }, { k: 'title', l: 'title' }, { k: 'full', l: 'full' }]} value={caption} onChange={onCaption} />
         )}
 
         <ChipRow label="sort" options={SORTS.map(s => ({ k: s.key, l: s.label }))} value={sort} onChange={onSort} />
