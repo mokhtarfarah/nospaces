@@ -16,7 +16,7 @@ Then built three of the five nits logged at the end of s106 (all in `ThingsScree
 
 **NOT built — held for a decision with Farah:** the 4th nit, **closed category list** (`api/_vision.ts:20`) — needs the actual category list decided with her first (see roadmap), not a blind build.
 
-**Green gate:** tsc + api tsc + eslint (max-warnings 0) + 116 tests, all clean. **Not exercised live** — the local no-auth preview has no backend (`useItems` requires a real Supabase user id, so it stays permanently empty; confirmed no console/runtime errors on load). Same situation as several s106 items — Farah verifies live post-deploy: (1) open a product sheet with a long "how it fits" read, scroll, confirm the hero shrinks smoothly and doesn't feel jumpy; (2) toggle roomy/cozy on the board and confirm card size actually changes; (3) on a standalone (non-plan) product, use ⋯ → "add to a plan →", attach to a new plan, confirm the standalone card is gone and the item now lives inside that plan as an option.
+**Green gate:** tsc + api tsc + eslint (max-warnings 0) + 116 tests, all clean. Pushed `beb6f7c`. **Not exercised live** — the local no-auth preview has no backend (`useItems` requires a real Supabase user id, so it stays permanently empty; confirmed no console/runtime errors on load). Same situation as several s106 items — Farah verifies live post-deploy: (1) open a product sheet with a long "how it fits" read, scroll, confirm the hero shrinks smoothly and doesn't feel jumpy; (2) toggle roomy/cozy on the board and confirm card size actually changes; (3) on a standalone (non-plan) product, use ⋯ → "add to a plan →", attach to a new plan, confirm the standalone card is gone and the item now lives inside that plan as an option.
 
 ---
 
