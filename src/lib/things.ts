@@ -567,13 +567,14 @@ export function recurringBrands(items: Item[], min = 3): { brand: string; count:
 }
 
 /**
- * The per-item "how this fits your taste" one-liner (Haiku, text-only, ~$0.001).
- * Reads the item's already-extracted taste tags against the board summary — never
- * an image. Never auto-runs: called on an explicit tap, the result cached on
- * metadata.tasteFit so a product costs ~1¢ once.
+ * The per-item "how this fits your taste" read (Haiku, ~2–4¢). Two short parts: how
+ * the item sits with the board (aesthetic) and — when the style profile bears on it —
+ * how it'll fit/flatter the body. Reads the item's taste tags + its saved photo
+ * (vision, to judge the real cut). Never auto-runs: called on an explicit tap, the
+ * result cached on metadata.tasteFit so a product costs a few cents once.
  */
 export async function readTasteFit(
-  item: { title: string; brand: string | null; price: string | null; attributes: Attribute[] },
+  item: { title: string; brand: string | null; price: string | null; attributes: Attribute[]; image: string | null; url: string | null },
   board: BoardTasteSummary,
   styleProfile?: string | null,
 ): Promise<{ ok: true; fit: string } | { ok: false; reason: string }> {
@@ -587,6 +588,8 @@ export async function readTasteFit(
         brand: item.brand,
         price: item.price,
         attributes: item.attributes,
+        image: item.image,
+        url: item.url,
         board,
         styleProfile: styleProfile || undefined,
       }),

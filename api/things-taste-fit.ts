@@ -3,14 +3,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
 import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
 import { sanitizeProfile, profilePromptBlock } from './_profile.js'
+import { fetchImageBase64 } from './_vision.js'
 
-// The per-item "how this fits your taste" read: one honest line on how a single
-// saved thing rhymes with (or departs from) the rest of the board. The item-level
-// sibling of the board's keyword thread. Text only — it reads the already-extracted
-// taste tags, never an image — so it stays cheap (Haiku, ~$0.001 a call). Never
-// auto-runs: the client calls it on an explicit tap and caches the line on
-// metadata.tasteFit, so a given product costs ~1¢ once.
+// The per-item "how this fits your taste" read: a short, two-part take on a single
+// saved thing — how it sits with the rest of the board (aesthetic) AND, when the
+// user's style profile bears on it, how it'll actually fit and flatter *them*
+// (body/silhouette), the way the compare read does. The item-level sibling of the
+// board's keyword thread. Reads the already-extracted taste tags + the saved photo
+// (vision, so it can judge the real cut), so it's still cheap (Haiku, ~2–4¢ a call).
+// Never auto-runs: the client calls it on an explicit tap and caches the line on
+// metadata.tasteFit, so a given product costs a few cents once.
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+// Fetching the photo then a vision call runs a touch longer than the old text-only
+// read; give it headroom over Vercel's default.
+export const config = { maxDuration: 30 }
 
 type InAttr = { facet?: string; value?: string }
 // Board context: the recurring keyword thread + the top recurring values per facet,
@@ -21,14 +28,52 @@ const FACET_LABEL: Record<string, string> = {
   material: 'material', palette: 'palette', vibe: 'vibe', category: 'category', priceTier: 'price',
 }
 
+// The prompt, factored out of the handler so it has exactly one home (and can be
+// exercised in a test without standing up auth/rate-limit). Takes the already-prepped
+// board + item strings; `profileBlock` is profilePromptBlock(profile) (or '') and
+// `hasPhoto` says whether a photo is attached below the prompt.
+export function buildFitPrompt(a: {
+  thread: string[]; boardLines: string; title?: string; brand?: string | null; price?: string | null
+  itemLine: string; profileBlock: string; hasPhoto: boolean
+}): string {
+  return `Someone keeps a personal "taste board" — things they've saved across clothes, bags, shoes, objects. The board has a recurring aesthetic; here's the gist:
+${a.thread.length ? `\nIn a phrase, it reads as: ${a.thread.join(' · ')}.\n` : ''}
+Recurring threads:
+${a.boardLines || '(nothing strongly recurring yet)'}
+
+They just saved:
+- ${a.title ? a.title : 'an item'}${a.brand ? ` — ${a.brand}` : ''}${a.price ? ` (${a.price})` : ''}
+- reads as: ${a.itemLine}
+${a.profileBlock}${a.hasPhoto ? "\nTheir saved photo of it is attached below — actually look at it: judge the real silhouette, cut, proportion and how it would sit on the body, not a guess. You canNOT feel the fabric or know the true in-person fit, so frame those as risks to check, not facts.\n" : ''}
+You're their stylist reading this one saved piece: warm, sharp, on their side, with zero stake in the sale. Write a TIGHT read — EXACTLY 2 sentences, 40 words MAX, second person ("you"/"your"), no trailing period, no hype. Sentence 1: how it sits with your board, AESTHETICALLY — the *feeling* (palette, mood, silhouette, relaxed/dressy, soft/sharp); is it squarely your aesthetic, or a genuine shift? Sentence 2: how it'll actually FIT and FLATTER *you* — but ONLY where your body notes bear on this kind of item; name the ONE thing that decides it (where it'll gap, ride up, cut short, miss your proportions — or why the cut works), and fold any "check it in person" caveat INTO that same sentence, never as a third sentence. If nothing about the body applies (a bag, jewellery, an object), skip fit entirely — make sentence 2 a second aesthetic beat instead, and NEVER invent a fit note.
+
+Length/shape to match (NEVER reuse these words — vary every time): "Squarely your board — quiet, structured, earthy. The high rise and cropped cut flatter your long torso, though check the leg length in person." That's the ceiling: two sentences, ~25 words. A third sentence is a failure.
+
+Rules that matter here:
+- LEAD WITH YOUR READ. Do NOT open by describing the item back — its colour, material or cut is already in front of them. First words are your verdict, not "earth-toned wool in a clean cut".
+- On the aesthetic side, go by aesthetic, NOT category. The board mixes clothes, bags and objects, so a recurring material (e.g. leather) usually comes from accessories — never treat it as a wardrobe staple, and never frame a different category as a departure ("a bag, unlike your coats"). Bag-vs-trousers is not a taste observation.
+- Don't force a contrast. If it simply IS your aesthetic, say so with warmth and confidence — that's a truer read than inventing a difference. Only name a tension when it's a genuine aesthetic shift.
+- Be specific and human, never a checklist of the tags read back. No hype, no "this piece".
+
+${VOICE.warm}
+
+${HUMANIZER_GUARDRAILS}
+
+Return JSON only, no prose around it:
+{ "fit": "the read" }`
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
   const userId = await getAuthUserId(req.headers['authorization'])
   if (!userId) return res.status(401).end()
   if (!await checkRateLimit(userId, 'things-taste-fit', 40)) return res.status(429).json({ error: 'That’s a lot of reads — try again next hour.' })
 
-  const { title, brand, price, attributes, board, styleProfile } = req.body as {
+  const { title, brand, price, attributes, board, styleProfile, image, url } = req.body as {
     title?: string; brand?: string | null; price?: string | null; attributes?: InAttr[]; board?: InBoard; styleProfile?: string
+    // The saved product photo (+ its page url for referer) — fetched server-side so
+    // the model can judge the real cut/silhouette against the body notes, like compare.
+    image?: string | null; url?: string | null
   }
   const profile = sanitizeProfile(styleProfile)
   const attrs = (Array.isArray(attributes) ? attributes : [])
@@ -54,37 +99,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const itemAttrsShown = attrs.filter(a => !HIDE.has(a.facet))
   const itemLine = (itemAttrsShown.length ? itemAttrsShown : attrs).map(a => `${FACET_LABEL[a.facet] ?? a.facet}: ${a.value}`).join(', ')
 
-  const prompt = `Someone keeps a personal "taste board" — things they've saved across clothes, bags, shoes, objects. The board has a recurring aesthetic; here's the gist:
-${thread.length ? `\nIn a phrase, it reads as: ${thread.join(' · ')}.\n` : ''}
-Recurring threads:
-${boardLines || '(nothing strongly recurring yet)'}
+  // Best-effort: fetch the saved photo so the model can judge the real cut against
+  // the body notes. A photo that won't load just drops that signal — the read still
+  // runs on the taste tags alone.
+  const photo = image ? await fetchImageBase64(image, url ?? undefined) : null
 
-They just saved:
-- ${title ? title : 'an item'}${brand ? ` — ${brand}` : ''}${price ? ` (${price})` : ''}
-- reads as: ${itemLine}
-${profilePromptBlock(profile)}
-Write ONE short line (second person, ~12–18 words, no trailing period) on how this sits with the board — AESTHETICALLY. Read the *feeling*: palette, mood, silhouette, how relaxed or dressy, soft or sharp, quiet or bold.
+  const prompt = buildFitPrompt({
+    thread, boardLines, title, brand, price, itemLine,
+    profileBlock: profilePromptBlock(profile), hasPhoto: !!photo?.ok,
+  })
 
-Rules that matter here:
-- Go by aesthetic, NOT category. The board mixes clothes, bags and objects, so a recurring material (e.g. leather) usually comes from accessories — never treat it as a wardrobe staple, and never frame a different category as a departure ("a bag, unlike your coats"). Bag-vs-trousers is not a taste observation.
-- Don't force a contrast. If it simply IS her aesthetic, say so with warmth and confidence in a few words — that's a better, truer read than inventing a difference. Only name a tension when it's a genuine aesthetic shift (a softer palette, a dressier mood, a sharper line than usual).
-- Vary the phrasing every time. Do NOT use a fixed template like "X and Y check the boxes, but Z…" — that reads robotic. Each line should be put freshly.
-- Be specific and human, never a checklist of the tags read back. No hype, no "this piece".
-
-${VOICE.warm}
-
-${HUMANIZER_GUARDRAILS}
-
-Return JSON only, no prose around it:
-{ "fit": "the one line" }`
+  // Prompt text first, then the photo (when we could fetch it) so the model can read
+  // the real cut.
+  const content: Anthropic.ContentBlockParam[] = [{ type: 'text', text: prompt }]
+  if (photo?.ok) content.push({ type: 'image', source: { type: 'base64', media_type: photo.media, data: photo.data } })
 
   try {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 160,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content }],
     })
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+    const text = message.content.find((b): b is Anthropic.TextBlock => b.type === 'text')?.text ?? ''
     const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
     const fit = typeof parsed.fit === 'string' ? parsed.fit.trim() : ''
     if (!fit) return res.status(500).json({ error: 'Could not read that right now.' })

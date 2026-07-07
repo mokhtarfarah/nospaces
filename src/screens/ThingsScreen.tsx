@@ -932,12 +932,13 @@ export function ThingsScreen() {
           onToggleCutout={() => patchMetadata(openProduct.id, { cutoutHidden: !productMeta(openProduct).cutoutHidden })}
           onSaveNote={(note) => patchMetadata(openProduct.id, { note })}
           board={board}
-          // Reads how this one thing fits the board (Haiku, ~$0.001), then caches the
-          // line on metadata.tasteFit so it's a one-time cost. Returns the reason on
+          // Reads how this one thing fits — the board (aesthetic) + how it'll fit/flatter
+          // the body when the style profile applies (Haiku vision, ~2–4¢), then caches the
+          // read on metadata.tasteFit so it's a one-time cost. Returns the reason on
           // failure so the sheet can show it. Only ever fired by an explicit tap.
           onRunFit={async () => {
             const p = productMeta(openProduct)
-            const r = await readTasteFit({ title: p.title, brand: p.brand, price: p.price, attributes: p.attributes ?? [] }, board, styleProfile)
+            const r = await readTasteFit({ title: p.title, brand: p.brand, price: p.price, attributes: p.attributes ?? [], image: p.image, url: p.url }, board, styleProfile)
             if (!r.ok) return r.reason
             await patchMetadata(openProduct.id, { tasteFit: r.fit })
             return null
@@ -1550,7 +1551,7 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
         ) : (
           <>
             <button onClick={generate} disabled={loading} style={quietLink}>
-              {loading ? 'reading your board…' : 'read how this fits your taste ›'}
+              {loading ? 'reading…' : 'read how this fits your taste ›'}
             </button>
             {err && <div style={{ marginTop: 6, fontSize: 11.5, color: '#B4413C' }}>{err}</div>}
           </>
