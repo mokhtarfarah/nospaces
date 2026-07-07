@@ -482,17 +482,6 @@ export function LibraryScreen() {
   // (film / book / tv) — never on "all" or music.
   const seriesRelevant = categories.length === 1 && ['film', 'book', 'tv'].includes(categories[0])
 
-  // Kicker census — counts the medium you're actually looking at. "all" → the
-  // whole collection; a single type → just that type ("12 films", "30 books").
-  const kicker = useMemo(() => {
-    if (categories.length === 1) {
-      const type = categories[0]
-      const n = items.filter(i => i.type === type).length
-      return `${n} ${CATEGORY_LABEL[type] ?? type}`
-    }
-    return `${items.length} in the collection`
-  }, [items, categories])
-
   // Base filter: everything except the tag/vibe filter. Used to compute which
   // vibe/genre chips should be shown so they don't vanish when one is selected.
   const baseFiltered = useMemo(() => {
@@ -539,6 +528,22 @@ export function LibraryScreen() {
     if (shelfFilter === 'unowned') result = result.filter(item => !item.metadata?.owned)
     return sortItems(result, sort, dir)
   }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, shelfFilter, sort, dir])
+
+  // Kicker census — counts what's actually on screen, so it tracks every active
+  // filter (status/reaction/tag/shelf), not just the category. "all" → the whole
+  // (filtered) collection; a single type → that type, singularised at 1 ("1 book").
+  // Search spans all categories, so it reads as plain results; review has its own
+  // count. Uses `filtered` (the rendered set), hence it lives below that memo.
+  const kicker = useMemo(() => {
+    const n = filtered.length
+    if (reviewOnly) return `${n} to review`
+    if (query.trim()) return `${n} result${n === 1 ? '' : 's'}`
+    if (categories.length === 1) {
+      const label = CATEGORY_LABEL[categories[0]] ?? categories[0]
+      return `${n} ${n === 1 ? label.replace(/s$/, '') : label}`
+    }
+    return `${n} in the collection`
+  }, [filtered, categories, reviewOnly, query])
 
   // Whether the current base set has anything owned — the shelf filter is only
   // worth offering when there's something on the shelf to narrow to. Computed off

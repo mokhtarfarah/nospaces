@@ -656,18 +656,18 @@ export function ThingsScreen() {
           sort + category bar is position:sticky, so it pins smoothly on its own. */}
       <div ref={listRef} style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '20px 16px 0' }}>
-          {/* Magazine header — small kicker + label + rule (shared treatment with Library) */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10, color: MUTED, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>
-                {tab === 'taste'
-                  ? (tasteSub === 'moodboard'
-                      ? (moods.length === 0 ? 'mood board' : `${moods.length} image${moods.length === 1 ? '' : 's'}`)
-                      : 'taste')
-                  : (things.length === 0 ? 'wishlist' : `${things.length} on your wishlist`)}
-              </div>
-              <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>things</h1>
-            </div>
+          {/* Magazine header — title over a quiet lowercase count-subline, matching
+              the Library header exactly (s106): same order (title first), same
+              subline size/colour, no uppercase kicker. */}
+          <div style={{ minWidth: 0, marginBottom: 10 }}>
+            <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px', color: INK }}>things</h1>
+            <span style={{ fontSize: 12.5, color: MUTED }}>
+              {tab === 'taste'
+                ? (tasteSub === 'moodboard'
+                    ? (moods.length === 0 ? 'mood board' : `${moods.length} image${moods.length === 1 ? '' : 's'}`)
+                    : 'taste')
+                : (things.length === 0 ? 'wishlist' : `${things.length} on your wishlist`)}
+            </span>
           </div>
           <div style={{ borderBottom: `1.5px solid ${INK}` }} />
           {/* The wishlist/mood toggle lives in the bottom nav (mirrors the media
