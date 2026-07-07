@@ -4,7 +4,13 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
-### Session 106 (2026-07-07) — four small frontend wins + captured 5 s106 nits. All free.
+### Session 106 (2026-07-07) — four frontend wins + a taste-read anti-hallucination fix + captured 5 s106 nits. All free.
+
+**Late add — taste-read hallucination fix (`f1297bc`, pushed).** Farah spotted the plan-**compare** note calling a STAUD Margi dress "tie-waist" (it isn't) and asserting "poplin is heavy for heat" + "straps slide off (needs tape)" as facts — the model inventing construction/fabric/fit details it can't see from a photo + tags. Root gap: both product-judging endpoints (`things-compare.ts`, `things-taste-fit.ts`) told the model to "judge the real cut" and treat fabric-*feel* as a risk, but neither forbade **inventing a specific construction/fabric/fit detail** and stating it as fact. Fix: new shared `GROUNDING` rule in `api/_humanizer.ts` (one home, can't drift between the two), layered into both prompts — don't assert a construction/fabric/fit specific unless it's visible in the photo or written in the text; frame genuine fit risks as risks to check, not certainties; when unsure, leave it out. **Prompt-only — no new API calls, same Haiku model.** *Unverified live (like the s103 tone retune): reads are cached (`metadata.tasteFit` for fit; compare re-runs on tap) — Farah re-runs compare on that STAUD plan to confirm "tie-waist" is gone.*
+
+---
+
+Original four (below):
 
 A quick polish session. Shipped four frontend changes to `main` (each through the full green gate — tsc + api tsc + eslint + 116 tests), verified in the local no-auth preview where data allowed:
 

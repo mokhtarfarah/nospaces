@@ -20,7 +20,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 ## ▶ Next session (107) — no fixed queue; pick from below
 
 **Do first (housekeeping):**
-- **Push the s106 commits** if Farah's happy (`3af8ad2`, `768af17`, `546abab` + doc updates) — then verify the **Things review discard** live (board has ~18 in review): open a for-review thing → discard → confirms + removes.
+- **Verify the two s106 live-unverified changes** (both pushed): (1) the **Things review discard** — open a for-review thing (~18 in review) → discard → confirms + removes; (2) the **taste-read anti-hallucination fix** (`f1297bc`) — re-run **compare** on the STAUD Margi plan and confirm it no longer invents "tie-waist"/fabric/fit facts it can't see. If both good, mark them confirmed in the s106 archive.
 - **Confirm the 10k Postmark plan is bought.** Approval unblocked it; talkback ≈ 2 emails/capture and the free plan is only 100/mo, so real use will blow the cap fast. Detail → `docs/REFERENCE.md` → Postmark plan.
 
 **New nits from s106 (all free frontend; full detail in `docs/ROADMAP.md`):**
