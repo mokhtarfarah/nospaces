@@ -27,6 +27,9 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 - **Grid-size toggle on Things** — give the *gallery/board* view media's 3/4-column control (→ Things board polish). *(Separate screen from the cramp item above.)*
 - **"Add to plan" on an existing card** — so an emailed-in item can join a plan without being saved twice (→ Things board polish).
 - **Header/footer nav reconciliation** — nav is split between top header and bottom bar inconsistently; rethink the model, discuss with Farah first (→ Media library polish, next to the bottom-nav items).
+- **Library vs Things header inconsistent** — count sits *below* the title (lowercase) on Library but *above* it (uppercase kicker) on Things; pick one pattern (lean: match Things to Library's calmer s84 style) (→ Media library polish).
+- **Library count should follow the filter** — "162 books" counts by category only; it should update under a status/tag filter (done, want-to, etc.) (→ Media library polish).
+- **Too many Things categories** — `category` is AI free-text so it sprawls (fabric / material sample / surface material…); make it a closed list + normalize existing. Free (→ Things board polish).
 
 **Still carried from s103:** read the s103 "how it fits" tone retune on real items (pushed `aff8108`, unverified). Reads are **cached on `metadata.tasteFit`** — Farah must tap **"re-read"** per item. Check openers all differ (no "Squarely your board"), bags stay pure aesthetic, tee/dresses make a fit call not a variable, no "try it on to confirm" endings. If good, mark s103 confirmed in the archive.
 
