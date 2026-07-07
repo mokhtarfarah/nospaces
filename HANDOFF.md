@@ -22,9 +22,11 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 **Do first (housekeeping):**
 - **Confirm the 10k Postmark plan is bought.** Approval unblocked it; talkback ≈ 2 emails/capture and the free plan is only 100/mo, so real use will blow the cap fast. Detail → `docs/REFERENCE.md` → Postmark plan.
 
-**New backlog from s104–105 (both free frontend, in `docs/ROADMAP.md` → Things board polish):**
-- **Things "for review" quick-remove** — a mistakenly-added *thing* in the review inbox has no fast way to bin it; mirror the media review-remove flow.
-- **Copy the Things nav active-link underline to the media nav** — Farah likes the Things nav's underline on the active link; match it on the media library nav.
+**New nits from s106 (all free frontend; full detail in `docs/ROADMAP.md`):**
+- **Product detail sheet is cramped** — in the *open-product* view the taste read is cut off under a big fixed hero photo (up to 55dvh); free up read room without shrinking the picture (→ Things board polish).
+- **Grid-size toggle on Things** — give the *gallery/board* view media's 3/4-column control (→ Things board polish). *(Separate screen from the cramp item above.)*
+- **"Add to plan" on an existing card** — so an emailed-in item can join a plan without being saved twice (→ Things board polish).
+- **Header/footer nav reconciliation** — nav is split between top header and bottom bar inconsistently; rethink the model, discuss with Farah first (→ Media library polish, next to the bottom-nav items).
 
 **Still carried from s103:** read the s103 "how it fits" tone retune on real items (pushed `aff8108`, unverified). Reads are **cached on `metadata.tasteFit`** — Farah must tap **"re-read"** per item. Check openers all differ (no "Squarely your board"), bags stay pure aesthetic, tee/dresses make a fit call not a variable, no "try it on to confirm" endings. If good, mark s103 confirmed in the archive.
 

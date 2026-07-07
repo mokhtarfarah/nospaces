@@ -1320,21 +1320,25 @@ function EmptyState({ hasItems, onGuide }: { hasItems: boolean; onGuide: () => v
   )
 }
 
-// Tab-style: used for category row + status row. No pill — active is shown by
-// ink colour + italics (trying italics instead of the underline).
+// Tab-style: the category row. Active is ink + italic AND a 1.5px underline —
+// ported from the Things board's category chips (Farah likes the underline; it's
+// easier to scan at a glance than italics alone). Keep the two in sync.
 function TabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       style={{
         flexShrink: 0,
-        padding: '4px 2px 8px',
+        padding: '4px 2px 7px',
         border: 'none',
         background: 'none',
         color: active ? '#111' : '#888',
         fontSize: 13,
         fontWeight: active ? 600 : 400,
         fontStyle: active ? 'italic' : 'normal',
+        // Explicit 'transparent' when inactive so the line reserves its space and
+        // the row doesn't jump 1.5px when you switch tabs.
+        borderBottom: active ? '1.5px solid #111' : '1.5px solid transparent',
         cursor: 'pointer',
         whiteSpace: 'nowrap',
       }}

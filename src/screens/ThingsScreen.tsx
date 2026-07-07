@@ -1589,6 +1589,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const needsReview = inReview(item)
   const [editing, setEditing] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
+  // Discard-from-review has its own inline confirm (the ⋯-menu confirm above
+  // doesn't render while the review banner is up), mirroring the media inbox.
+  const [confirmReviewDel, setConfirmReviewDel] = useState(false)
   const [showPlan, setShowPlan] = useState(false)
   const [flipping, setFlipping] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -1765,12 +1768,21 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
                 <button onClick={() => setFlipping(false)} style={quietLink}>cancel</button>
               </div>
             </>
+          ) : confirmReviewDel ? (
+            <>
+              <div style={{ fontSize: 12.5, color: '#B4413C', marginBottom: 9, lineHeight: 1.4 }}>discard &ldquo;{p.title}&rdquo;? this can&rsquo;t be undone.</div>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <button onClick={onDelete} style={{ ...quietLink, color: '#B4413C', fontWeight: 600 }}>discard</button>
+                <button onClick={() => setConfirmReviewDel(false)} style={quietLink}>cancel</button>
+              </div>
+            </>
           ) : (
             <>
               <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>Read off your screenshot — does this look right?</div>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
                 <button onClick={onClearReview} style={{ ...quietLink, color: INK, fontWeight: 600 }}>looks right</button>
                 <button onClick={() => setFlipping(true)} style={quietLink}>it&rsquo;s actually media →</button>
+                <button onClick={() => setConfirmReviewDel(true)} style={{ ...quietLink, color: '#B4413C' }}>discard</button>
               </div>
             </>
           )}
