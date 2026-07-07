@@ -33,12 +33,13 @@ const LINE = '#E8E8E8'
 // grey studio photography most shops use.
 const TILE = '#ECEDEF'
 
-// Product-sheet hero cap. A first attempt shrank this on scroll (collapse-on-scroll)
-// to free up read room without ever capping the photo lower than this — but the
-// scroll-driven resize fought the sheet's own scroll position (jumpy on a trackpad,
-// stuck under a touch drag on iOS). A static, simply-smaller cap side-steps that
-// entirely: less dramatic than the full-bleed original, but reliable everywhere.
-const HERO_MAX = 'min(380px, 44dvh)'
+// Product-sheet hero cap. Two failed attempts to shrink this and free up read
+// room: collapse-on-scroll fought the sheet's own scroll position (jumpy/stuck),
+// and a smaller static cap made the photo itself feel too small (Farah wants it
+// prominent — that was the original ask, don't shrink it). Back to the original
+// size; the read-room problem is left to the smaller chrome trims below instead
+// (tighter title/tag spacing) rather than touching the photo again.
+const HERO_MAX = 'min(500px, 55dvh)'
 
 // Filter-sheet chip — identical to the media Library's tagChipStyle so sort/show
 // in Things read in the same chip language (not iOS ✓-list rows).
@@ -243,9 +244,7 @@ export function ThingsScreen() {
   const [addMenu, setAddMenu] = useState(false)
   // Responsive grid: more columns as the board gets wider (≈2 on a phone, up to
   // ~5+ on a desktop), so it fills the page like the rest of the app instead of a
-  // fixed 2-up locked to a narrow column. Measured off the scroller's own width;
-  // re-measures on both a resize AND a density-mode change (the target px-per-
-  // column differs by mode — see COL_TARGET above).
+  // fixed 2-up locked to a narrow column. Measured off the scroller's own width.
   const listRef = useRef<HTMLDivElement>(null)
   const [cols, setCols] = useState(2)
   const [view, setView] = useState<ViewMode>(loadView)
@@ -257,7 +256,19 @@ export function ThingsScreen() {
   useEffect(() => {
     const el = listRef.current
     if (!el) return
-    const measure = () => setCols(Math.max(2, Math.floor(el.clientWidth / COL_TARGET[colsMode])))
+    // Both target widths floor to the same min-2 column count on a narrow phone
+    // (375px / 220px and 375px / 155px both round down to 1, clamped up to the
+    // same 2) — so on mobile the two modes rendered identically. Force compact
+    // to always be at least one MORE column than roomy at the current width,
+    // instead of computing each mode's column count independently — that
+    // guarantees the toggle visibly does something on every screen size, not
+    // just wide ones.
+    const measure = () => {
+      const w = el.clientWidth
+      const roomyCols = Math.max(2, Math.floor(w / COL_TARGET.roomy))
+      const compactCols = Math.max(roomyCols + 1, Math.floor(w / COL_TARGET.compact))
+      setCols(colsMode === 'roomy' ? roomyCols : compactCols)
+    }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
@@ -1559,8 +1570,8 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
   )
 
   return (
-    <div style={{ marginTop: 14, flex: '0 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 11, flexShrink: 0 }}>
+    <div style={{ marginTop: 10, flex: '0 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 9, flexShrink: 0 }}>
         {tabBtn('note', 'your note')}
         {tabBtn('fit', 'how it fits')}
       </div>
@@ -1774,7 +1785,11 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         )}
       </div>
 
-      <div style={{ marginTop: 16, flexShrink: 0 }}>
+      {/* Title/credit/tags block — trimmed a little tighter (16→11, 8→6) than it
+          was originally (Farah, s107: the hero photo stays full-size, so this is
+          the only safe place left to claw back a bit of room for the scrolling
+          read below without shrinking or animating the photo). */}
+      <div style={{ marginTop: 11, flexShrink: 0 }}>
         {/* Title is the editorial headline AND the link out to the shop (quiet ↗). */}
         <a href={outHref} target="_blank" rel="noreferrer" title={outTitle}
           style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, textDecoration: 'none', color: INK }}>
@@ -1783,7 +1798,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         </a>
 
         {/* Credit line — price reads plainly, brand as a small letter-spaced credit. */}
-        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9, fontSize: 13 }}>
+        <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9, fontSize: 13 }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
           {(p.brand || p.siteName) && <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>{p.brand || p.siteName}</span>}
           {got && <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: INK, fontWeight: 600 }}>· got it</span>}
@@ -1793,7 +1808,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
             the board shares it (a tag on a one-off isn't tappable). Category is left off
             — it's the inventory, not the vibe. */}
         {tagged && (
-          <div style={{ marginTop: 8, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
+          <div style={{ marginTop: 6, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
             {taste.filter(a => a.facet !== 'category').map((a, i, arr) => {
               const count = countWithTag(a.facet, a.value)
               const tappable = count > 1
