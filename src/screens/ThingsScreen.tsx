@@ -66,6 +66,15 @@ const CAPTION_KEY = 'nospaces.thingsCaption'
 function loadCaption(): CardCaption {
   try { const c = localStorage.getItem(CAPTION_KEY); return c === 'none' || c === 'title' ? c : 'full' } catch { return 'full' }
 }
+// Density control on top of the responsive auto-fit column count (media's fixed
+// 3/4 toggle doesn't map 1:1 since Things' column count already varies by device
+// width) — 'roomy' asks for one fewer column than the auto fit, 'cozy' is the
+// existing auto behaviour untouched.
+type ColsMode = 'cozy' | 'roomy'
+const COLS_KEY = 'nospaces.thingsColsMode'
+function loadColsMode(): ColsMode {
+  try { return localStorage.getItem(COLS_KEY) === 'roomy' ? 'roomy' : 'cozy' } catch { return 'cozy' }
+}
 function loadView(): ViewMode {
   try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
 }
@@ -229,15 +238,18 @@ export function ThingsScreen() {
   // ~5 on a desktop), so it fills the page like the rest of the app instead of a
   // fixed 2-up locked to a narrow column. Measured off the scroller's own width.
   const listRef = useRef<HTMLDivElement>(null)
-  const [cols, setCols] = useState(2)
+  const [autoCols, setAutoCols] = useState(2)
   const [view, setView] = useState<ViewMode>(loadView)
   useEffect(() => { try { localStorage.setItem(VIEW_KEY, view) } catch { /* private mode */ } }, [view])
   const [caption, setCaption] = useState<CardCaption>(loadCaption)
   useEffect(() => { try { localStorage.setItem(CAPTION_KEY, caption) } catch { /* private mode */ } }, [caption])
+  const [colsMode, setColsMode] = useState<ColsMode>(loadColsMode)
+  useEffect(() => { try { localStorage.setItem(COLS_KEY, colsMode) } catch { /* private mode */ } }, [colsMode])
+  const cols = colsMode === 'roomy' ? Math.max(2, autoCols - 1) : autoCols
   useEffect(() => {
     const el = listRef.current
     if (!el) return
-    const measure = () => setCols(Math.max(2, Math.floor(el.clientWidth / COL_TARGET)))
+    const measure = () => setAutoCols(Math.max(2, Math.floor(el.clientWidth / COL_TARGET)))
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
@@ -956,6 +968,30 @@ export function ThingsScreen() {
           }}
           // "This read is right" — clear the review flag so it leaves the inbox.
           onClearReview={async () => { await patchMetadata(openProduct.id, { review: false }); setOpenProductId(null) }}
+          intents={decidingItems.map(i => ({ id: i.id, title: i.title }))}
+          // Move a standalone product onto a plan as an option, then delete the
+          // standalone copy — same shape as ProductComposer's save-into-plan path
+          // (saveComposedProduct above), just starting from an existing item instead
+          // of the composer's fresh fields.
+          onAddToPlan={async (choice) => {
+            if (choice.kind === 'none') return
+            const { kind: _kind, ...f } = productMeta(openProduct)
+            const cand: Candidate = { id: newCandidateId(), ...f }
+            if (choice.kind === 'existing') {
+              const intent = items.find(i => i.id === choice.id)
+              if (!intent) return
+              await patchMetadata(choice.id, { candidates: [...intentMeta(intent).candidates, cand] })
+              await deleteItem(openProduct.id)
+              setOpenProductId(null)
+              goWishlist(); setOpenIntentId(choice.id)
+              return
+            }
+            const name = (choice.name || f.title || 'new plan').trim()
+            const id = await addItem(name, 'thing', null, null, { kind: 'intent', candidates: [cand], leaning: null, brief: null })
+            await deleteItem(openProduct.id)
+            setOpenProductId(null)
+            if (id) { goWishlist(); setOpenIntentId(id) }
+          }}
         />
       )}
 
@@ -963,6 +999,7 @@ export function ThingsScreen() {
         <FilterSheet
           view={view} onView={setView}
           caption={caption} onCaption={setCaption}
+          colsMode={colsMode} onColsMode={setColsMode}
           sort={sort} onSort={setSort}
           status={statusF} onStatus={setStatusF}
           polishCount={polishable.length + polishableLeads.length} polishing={polishing}
@@ -1477,13 +1514,14 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
 // it opens on the taste read (shown automatically once generated, dismissable). The
 // read is a paid Haiku call cached on metadata.tasteFit, so the first time you open
 // the "how it fits" tab it generates; after that toggling is free.
-function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleHideFit }: {
+function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleHideFit, onBodyScroll }: {
   note: string | null
   onSaveNote: (n: string | null) => void | Promise<void>
   fit: string | null
   fitHidden: boolean
   onRunFit: () => Promise<string | null>
   onToggleHideFit: () => void
+  onBodyScroll: (e: React.UIEvent<HTMLDivElement>) => void
 }) {
   const [tab, setTab] = useState<'note' | 'fit'>(note ? 'note' : (fitHidden ? 'note' : 'fit'))
   const [editing, setEditing] = useState(false)
@@ -1524,7 +1562,7 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
           and tabs stay put, so the card itself never has to scroll. The note is plain
           text (not a full-area button) so a touch-drag scrolls instead of registering
           as a tap on iOS; "edit" is the small explicit target. */}
-      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', paddingRight: 2 }}>
+      <div onScroll={onBodyScroll} style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', paddingRight: 2 }}>
       {tab === 'note' ? (
         editing ? (
           <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
@@ -1562,7 +1600,7 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
   )
 }
 
-function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onSaveNote, board, onRunFit, onToggleHideFit, countWithTag, onFilterTag, onDelete, onFlipToMedia, onClearReview }: {
+function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunTaste, onToggleCutout, onSaveNote, board, onRunFit, onToggleHideFit, countWithTag, onFilterTag, onDelete, onFlipToMedia, onClearReview, intents, onAddToPlan }: {
   item: Item
   onClose: () => void
   onSave: (f: ProductFields) => void | Promise<void>
@@ -1578,6 +1616,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   onToggleHideFit: () => void
   countWithTag: (facet: Facet, value: string) => number
   onFilterTag: (facet: Facet, value: string) => void
+  // Plans this standalone product could join (the board's decidingItems).
+  intents: { id: string; title: string }[]
+  // Attaches this product to an existing/new plan and removes the standalone copy.
+  onAddToPlan: (plan: PlanChoice) => void | Promise<void>
   onDelete: () => void
   // Flip this thing into the media library as the chosen type (the misroute fix).
   onFlipToMedia: (t: MediaType) => void | Promise<void>
@@ -1595,6 +1637,23 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const [showPlan, setShowPlan] = useState(false)
   const [flipping, setFlipping] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  // Route an already-saved standalone product into a plan (existing or new) instead
+  // of it sitting alone — the fix for an emailed-in item that needed a duplicate
+  // re-add to be weighed against options. Own inline picker, mirrors the composer's.
+  const [addingToPlan, setAddingToPlan] = useState(false)
+  const [planPick, setPlanPick] = useState<PlanChoice>({ kind: 'none' })
+  const [newPlanName, setNewPlanName] = useState('')
+  const [addingBusy, setAddingBusy] = useState(false)
+  // Collapse-on-scroll hero: the photo opens full-size (prominent, as Farah likes),
+  // then shrinks to a strip as you scroll into the read — so a long "how it fits"
+  // gets the room without ever cropping the picture at rest. Hysteresis (40/8)
+  // stops it flickering on tiny scroll jitters.
+  const [heroShrunk, setHeroShrunk] = useState(false)
+  const onBodyScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const top = e.currentTarget.scrollTop
+    setHeroShrunk(prev => top > 40 ? true : top < 8 ? false : prev)
+  }
+  const heroMax = heroShrunk ? 'min(200px, 26dvh)' : 'min(500px, 55dvh)'
   // Hero photo — same treatment as the grid: a product cutout floats on the gray
   // tile; a model/lifestyle photo (or one the user flipped to full-photo) fills it.
   const showCutout = !p.cutoutHidden && !!p.cutout
@@ -1677,10 +1736,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
       <div style={{ position: 'relative', margin: '-20px -18px 0', flexShrink: 0 }}>
         {hero
           ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy"
-              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(500px, 55dvh)', objectFit: showCutout ? 'contain' : 'cover',
+              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: heroMax, objectFit: showCutout ? 'contain' : 'cover',
                 padding: showCutout ? '8%' : 0, boxSizing: 'border-box', background: TILE, borderRadius: '20px 20px 0 0',
-                filter: showCutout ? undefined : 'saturate(0.97)' }} />
-          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: 'min(500px, 55dvh)', background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
+                filter: showCutout ? undefined : 'saturate(0.97)', transition: 'max-height 0.28s ease' }} />
+          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: heroMax, background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12, transition: 'max-height 0.28s ease' }}>no image</div>}
 
         <button onClick={onClose} aria-label="close" style={{ ...floatBtn, left: 12, fontSize: 19 }}>×</button>
         <button onClick={() => setMenuOpen(o => !o)} aria-label="more" style={{ ...floatBtn, right: 12, fontSize: 21, fontWeight: 700 }}>⋯</button>
@@ -1705,6 +1764,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
                   <button style={menuItem()} onClick={() => { setMenuOpen(false); setEditing(true) }}>edit details</button>
                   {plan && !got && (
                     <button style={menuItem()} onClick={async () => { setMenuOpen(false); await onReopenPlan(); onClose() }}>↩ put back in plan</button>
+                  )}
+                  {!plan && !got && (
+                    <button style={menuItem()} onClick={() => { setMenuOpen(false); setAddingToPlan(true) }}>add to a plan →</button>
                   )}
                   <div style={{ height: 1, background: LINE, margin: '5px 8px' }} />
                   <button style={menuItem('#B4413C')} onClick={() => setConfirmDel(true)}>remove</button>
@@ -1789,6 +1851,45 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         </div>
       )}
 
+      {/* "Add to a plan" picker — opened from the ⋯ menu. Attaches this standalone
+          product as an option on an existing/new plan, then removes the standalone
+          copy so it doesn't sit in the library twice. */}
+      {addingToPlan && (
+        <div style={{ marginTop: 16, flexShrink: 0, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
+          <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>add to a plan</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {intents.length > 0 && (
+              <button style={chipStyle(planPick.kind === 'existing')} onClick={() => setPlanPick({ kind: 'existing', id: intents[0].id })}>existing plan</button>
+            )}
+            <button style={chipStyle(planPick.kind === 'new')} onClick={() => setPlanPick({ kind: 'new' })}>new plan</button>
+          </div>
+          {planPick.kind === 'existing' && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+              {intents.map(it => (
+                <button key={it.id} style={chipStyle(planPick.id === it.id)} onClick={() => setPlanPick({ kind: 'existing', id: it.id })}>{it.title}</button>
+              ))}
+            </div>
+          )}
+          {planPick.kind === 'new' && (
+            <input autoFocus value={newPlanName} onChange={e => setNewPlanName(e.target.value)}
+              placeholder="what are you deciding? e.g. black clogs"
+              style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', marginTop: 8 }} />
+          )}
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 10 }}>
+            <button disabled={planPick.kind === 'none' || addingBusy}
+              onClick={async () => {
+                setAddingBusy(true)
+                const choice: PlanChoice = planPick.kind === 'new' ? { kind: 'new', name: newPlanName.trim() || undefined } : planPick
+                await onAddToPlan(choice)
+              }}
+              style={{ ...quietLink, color: INK, fontWeight: 600, opacity: planPick.kind === 'none' || addingBusy ? 0.4 : 1 }}>
+              {addingBusy ? 'adding…' : 'add'}
+            </button>
+            <button onClick={() => { setAddingToPlan(false); setPlanPick({ kind: 'none' }); setNewPlanName('') }} style={quietLink}>cancel</button>
+          </div>
+        </div>
+      )}
+
       {/* The reflection zone — your note and the app's "how it fits" read share one line
           of tabs, one shows at a time (see ReflectionBlock). Only offered once the board
           has a read AND this thing is tagged. Otherwise just your note (+ a one-tap photo
@@ -1800,9 +1901,10 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           fit={(item.metadata as { tasteFit?: string })?.tasteFit ?? null}
           fitHidden={(item.metadata as { tasteFitHidden?: boolean })?.tasteFitHidden ?? false}
           onRunFit={onRunFit}
-          onToggleHideFit={onToggleHideFit} />
+          onToggleHideFit={onToggleHideFit}
+          onBodyScroll={onBodyScroll} />
       ) : (
-        <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
+        <div onScroll={onBodyScroll} style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
           <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
           {p.image && !tagged && (
             <button onClick={onRunTaste} style={{ ...quietLink, display: 'block', marginTop: 16 }}>read taste from photo</button>
@@ -1821,13 +1923,15 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
 // to match the media Library's ViewSheet exactly — same drag-handle sheet, the same
 // label-left segmented rows, and the same right-aligned chip rows for sort/show — so
 // flipping between media and things feels like one app, not two.
-function FilterSheet({ sort, onSort, view, onView, caption, onCaption, status, onStatus, polishCount, polishing, onPolishAll, onClose }: {
+function FilterSheet({ sort, onSort, view, onView, caption, onCaption, colsMode, onColsMode, status, onStatus, polishCount, polishing, onPolishAll, onClose }: {
   sort: SortKey
   onSort: (s: SortKey) => void
   view: ViewMode
   onView: (v: ViewMode) => void
   caption: CardCaption
   onCaption: (c: CardCaption) => void
+  colsMode: ColsMode
+  onColsMode: (c: ColsMode) => void
   status: StatusFilter
   onStatus: (s: StatusFilter) => void
   polishCount: number
@@ -1848,7 +1952,10 @@ function FilterSheet({ sort, onSort, view, onView, caption, onCaption, status, o
 
         <SegRow label="layout" options={[{ k: 'grid', l: 'grid' }, { k: 'list', l: 'list' }]} value={view} onChange={onView} />
         {view === 'grid' && (
-          <SegRow label="captions" options={[{ k: 'none', l: 'none' }, { k: 'title', l: 'title' }, { k: 'full', l: 'full' }]} value={caption} onChange={onCaption} />
+          <>
+            <SegRow label="density" options={[{ k: 'roomy', l: 'roomy' }, { k: 'cozy', l: 'cozy' }]} value={colsMode} onChange={onColsMode} />
+            <SegRow label="captions" options={[{ k: 'none', l: 'none' }, { k: 'title', l: 'title' }, { k: 'full', l: 'full' }]} value={caption} onChange={onCaption} />
+          </>
         )}
 
         <ChipRow label="sort" options={SORTS.map(s => ({ k: s.key, l: s.label }))} value={sort} onChange={onSort} />
