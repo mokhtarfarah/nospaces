@@ -1570,17 +1570,17 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
   )
 
   return (
-    <div style={{ marginTop: 10, flex: '0 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 9, flexShrink: 0 }}>
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 9 }}>
         {tabBtn('note', 'your note')}
         {tabBtn('fit', 'how it fits')}
       </div>
 
-      {/* Only this body scrolls when a note or the read runs long — the photo, title
-          and tabs stay put, so the card itself never has to scroll. The note is plain
-          text (not a full-area button) so a touch-drag scrolls instead of registering
-          as a tap on iOS; "edit" is the small explicit target. */}
-      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', paddingRight: 2 }}>
+      {/* The note is plain text (not a full-area button) so a touch-drag scrolls the
+          sheet instead of registering as a tap on iOS; "edit" is the small explicit
+          target. The whole sheet scrolls as one page now (Farah, s107 v3) — this
+          used to be its own internal scroll region, pinned under a fixed photo. */}
+      <div>
       {tab === 'note' ? (
         editing ? (
           <textarea autoFocus value={text} onChange={e => setText(e.target.value)} onBlur={commit}
@@ -1662,6 +1662,9 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   const [planPick, setPlanPick] = useState<PlanChoice>({ kind: 'none' })
   const [newPlanName, setNewPlanName] = useState('')
   const [addingBusy, setAddingBusy] = useState(false)
+  // Taste tags are opt-in on this sheet (Farah, s107 v3) — collapsed by default,
+  // freeing default vertical space; reset to hidden each time the sheet reopens.
+  const [showTags, setShowTags] = useState(false)
   // Hero photo — same treatment as the grid: a product cutout floats on the gray
   // tile; a model/lifestyle photo (or one the user flipped to full-photo) fills it.
   const showCutout = !p.cutoutHidden && !!p.cutout
@@ -1736,19 +1739,14 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
   })
 
   return (
-    <Sheet onClose={onClose} maxWidth={380} padBottom={6} fill>
-      {/* Lookbook hero — bled to the sheet edges (negative margins cancel the sheet
-          padding) so the photo is the whole top of the card. Every admin action lives
-          in the ⋯ menu, so nothing competes with the image and title. flexShrink:0
-          keeps the photo + title fixed; only the note/read body below scrolls. */}
-      <div style={{ position: 'relative', margin: '-20px -18px 0', flexShrink: 0 }}>
-        {hero
-          ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy"
-              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: HERO_MAX, objectFit: showCutout ? 'contain' : 'cover',
-                padding: showCutout ? '8%' : 0, boxSizing: 'border-box', background: TILE, borderRadius: '20px 20px 0 0',
-                filter: showCutout ? undefined : 'saturate(0.97)' }} />
-          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: HERO_MAX, background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
-
+    <Sheet onClose={onClose} maxWidth={380} padBottom={6}>
+      {/* Close + ⋯ float over whatever's currently at the top of the sheet, not just
+          the photo — a zero-height `position: sticky` spacer whose containing block
+          is the WHOLE scrolling sheet (not just the hero div), so it stays stuck
+          through the entire scroll instead of scrolling away once you pass the
+          photo (Farah, s107 v3: the sheet now scrolls as one page — see below —
+          so the controls need their own anchor, independent of the hero). */}
+      <div style={{ position: 'sticky', top: 0, height: 0, zIndex: 20 }}>
         <button onClick={onClose} aria-label="close" style={{ ...floatBtn, left: 12, fontSize: 19 }}>×</button>
         <button onClick={() => setMenuOpen(o => !o)} aria-label="more" style={{ ...floatBtn, right: 12, fontSize: 21, fontWeight: 700 }}>⋯</button>
 
@@ -1785,16 +1783,30 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         )}
       </div>
 
-      {/* Title/credit/tags block — trimmed a little tighter (16→11, 8→6) than it
-          was originally (Farah, s107: the hero photo stays full-size, so this is
-          the only safe place left to claw back a bit of room for the scrolling
-          read below without shrinking or animating the photo). */}
-      <div style={{ marginTop: 11, flexShrink: 0 }}>
+      {/* Lookbook hero — bled to the sheet edges (negative margins cancel the sheet
+          padding) so the photo is the whole top of the card. Full size, always —
+          two earlier attempts to shrink or animate it both backfired (jumpy scroll-
+          linked resize, then a permanently-smaller photo that felt cramped in the
+          other direction). The read-room fix now lives entirely in the scroll model
+          below: the photo is just the first thing in one continuously-scrolling
+          page, not a fixed region eating a capped viewport. */}
+      <div style={{ position: 'relative', margin: '-20px -18px 0' }}>
+        {hero
+          ? <img src={hero} onError={imgFallback(p.image)} alt="" loading="lazy"
+              style={{ display: 'block', width: '100%', aspectRatio: '4 / 5', maxHeight: HERO_MAX, objectFit: showCutout ? 'contain' : 'cover',
+                padding: showCutout ? '8%' : 0, boxSizing: 'border-box', background: TILE, borderRadius: '20px 20px 0 0',
+                filter: showCutout ? undefined : 'saturate(0.97)' }} />
+          : <div style={{ width: '100%', aspectRatio: '4 / 5', maxHeight: HERO_MAX, background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
+      </div>
+
+      {/* Title/credit/tags block. Title is smaller than before (23→18, Farah s107
+          v3) — it was oversized for a detail sheet next to a full photo. */}
+      <div style={{ marginTop: 11 }}>
         {/* Title is the editorial headline AND the link out to the shop (quiet ↗). */}
         <a href={outHref} target="_blank" rel="noreferrer" title={outTitle}
           style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, textDecoration: 'none', color: INK }}>
-          <h2 style={{ fontSize: 23, fontWeight: 500, margin: 0, lineHeight: 1.12, letterSpacing: '-0.01em', textTransform: 'lowercase' }}>{p.title}</h2>
-          <span aria-hidden style={{ fontSize: 14, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
+          <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em', textTransform: 'lowercase' }}>{p.title}</h2>
+          <span aria-hidden style={{ fontSize: 13, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
         </a>
 
         {/* Credit line — price reads plainly, brand as a small letter-spaced credit. */}
@@ -1804,26 +1816,36 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           {got && <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: INK, fontWeight: 600 }}>· got it</span>}
         </div>
 
-        {/* Taste tags as a quiet, italic credit-style line — tap one to see what else on
-            the board shares it (a tag on a one-off isn't tappable). Category is left off
-            — it's the inventory, not the vibe. */}
+        {/* Taste tags — opt-in now (Farah, s107 v3): collapsed by default behind a
+            quiet toggle (mirrors PlanReveal's "decided from N options ›" pattern)
+            instead of always taking a line under the credit row. Still fully
+            reachable, just not imposed on every open. */}
         {tagged && (
-          <div style={{ marginTop: 6, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
-            {taste.filter(a => a.facet !== 'category').map((a, i, arr) => {
-              const count = countWithTag(a.facet, a.value)
-              const tappable = count > 1
-              return (
-                <span key={i}>
-                  <button disabled={!tappable} onClick={() => tappable && onFilterTag(a.facet, a.value)}
-                    style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, fontStyle: 'italic',
-                      color: tappable ? '#6E6A60' : '#9A958B', cursor: tappable ? 'pointer' : 'default',
-                      textDecoration: tappable ? 'underline' : 'none', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3 }}>
-                    {a.value}
-                  </button>
-                  {i < arr.length - 1 && <span style={{ color: '#CFC9BE' }}>{'  ·  '}</span>}
-                </span>
-              )
-            })}
+          <div style={{ marginTop: 6 }}>
+            <button onClick={() => setShowTags(o => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', color: MUTED, fontSize: 11.5, fontWeight: 500, cursor: 'pointer', padding: 0 }}>
+              {showTags ? 'hide tags' : 'tags'}
+              <span aria-hidden style={{ fontSize: 10, transform: showTags ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>›</span>
+            </button>
+            {showTags && (
+              <div style={{ marginTop: 6, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
+                {taste.filter(a => a.facet !== 'category').map((a, i, arr) => {
+                  const count = countWithTag(a.facet, a.value)
+                  const tappable = count > 1
+                  return (
+                    <span key={i}>
+                      <button disabled={!tappable} onClick={() => tappable && onFilterTag(a.facet, a.value)}
+                        style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, fontStyle: 'italic',
+                          color: tappable ? '#6E6A60' : '#9A958B', cursor: tappable ? 'pointer' : 'default',
+                          textDecoration: tappable ? 'underline' : 'none', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3 }}>
+                        {a.value}
+                      </button>
+                      {i < arr.length - 1 && <span style={{ color: '#CFC9BE' }}>{'  ·  '}</span>}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1831,7 +1853,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
       {/* For-review nudge — only when the read wasn't sure. An ignorable prompt, not a
           gate: confirm it's right or flip it to media (opens the ⋯ menu in flip mode). */}
       {needsReview && (
-        <div style={{ marginTop: 16, flexShrink: 0, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
+        <div style={{ marginTop: 16, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
           {flipping ? (
             <>
               <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>move to library as…</div>
@@ -1867,7 +1889,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           product as an option on an existing/new plan, then removes the standalone
           copy so it doesn't sit in the library twice. */}
       {addingToPlan && (
-        <div style={{ marginTop: 16, flexShrink: 0, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
+        <div style={{ marginTop: 16, padding: '11px 13px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#FBFAF8' }}>
           <div style={{ fontSize: 12.5, color: INK, marginBottom: 9 }}>add to a plan</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {intents.length > 0 && (
@@ -1915,7 +1937,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           onRunFit={onRunFit}
           onToggleHideFit={onToggleHideFit} />
       ) : (
-        <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
+        <div>
           <NoteBlock note={p.note ?? null} onSave={onSaveNote} />
           {p.image && !tagged && (
             <button onClick={onRunTaste} style={{ ...quietLink, display: 'block', marginTop: 16 }}>read taste from photo</button>
@@ -1923,7 +1945,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         </div>
       )}
 
-      {plan && <div style={{ flexShrink: 0 }}><PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} /></div>}
+      {plan && <PlanReveal plan={plan} open={showPlan} onToggle={() => setShowPlan(o => !o)} />}
     </Sheet>
   )
 }

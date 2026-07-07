@@ -20,7 +20,7 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 ## ▶ Next session (108) — no fixed queue; pick from below
 
 **Do first (housekeeping):**
-- **Verify the s107 second fix-up live** (pushed `6c9b878`): add-to-plan already confirmed good (1st round). 1st fix-up round also missed twice — check the re-fixes: (1) product sheet hero is back to **full original size** (not the smaller static crop from round 1) — should feel prominent again, with only a small amount of extra scroll room clawed back from tighter title/tag spacing (may still need to scroll for a long read — that's accepted, not a bug); (2) density toggle — test specifically **on your phone** this time (the bug was mobile-only: both modes floored to the same column count under ~400px width) — roomy vs compact should now visibly differ even on a phone screen. Detail → archive (s107).
+- **Verify the s107 third round live**: add-to-plan ✅ and the density toggle ✅ are both confirmed good. The cramped sheet got a real structural fix this round (not another spacing nudge) — check: (1) the sheet now scrolls as **one continuous page**, photo included — scroll all the way down and confirm the close (×) / menu (⋯) buttons stay reachable the whole way, not just near the top; (2) the title reads smaller now; (3) taste tags are hidden by default behind a "tags ›" toggle — tap it, confirm the tags + tap-to-filter still work. Detail → archive (s107).
 - **Confirm the 10k Postmark plan is bought.** Approval unblocked it; talkback ≈ 2 emails/capture and the free plan is only 100/mo, so real use will blow the cap fast. Detail → `docs/REFERENCE.md` → Postmark plan.
 
 **Still open from s106 (full detail in `docs/ROADMAP.md`):**
