@@ -5,7 +5,8 @@ import { useOfflineSync } from './hooks/useOfflineSync'
 import { LoginScreen } from './components/LoginScreen'
 import { BottomNav } from './components/BottomNav'
 import { MediaComposer } from './components/MediaComposer'
-import { clearStack } from './lib/layout'
+import { clearStack, SUBNAV_H } from './lib/layout'
+import { SubNavProvider, useSubNavContent } from './lib/subNav'
 import { LibraryScreen } from './screens/LibraryScreen'
 import { ImportScreen } from './screens/ImportScreen'
 import { SpotifyScreen } from './screens/SpotifyScreen'
@@ -18,10 +19,19 @@ import { HelpMeDecideScreen } from './screens/HelpMeDecideScreen'
 import { GuideScreen } from './screens/GuideScreen'
 
 export default function App() {
+  return (
+    <SubNavProvider>
+      <AppInner />
+    </SubNavProvider>
+  )
+}
+
+function AppInner() {
   const { user, loading } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const { pendingCount, syncStatus } = useOfflineSync()
+  const subNav = useSubNavContent()
 
   // "add" is now a bottom-sheet card, not a page. The FAB opens it over whatever
   // screen you're on; the legacy /add route (iOS shortcut deep-links, the "back to
@@ -68,12 +78,14 @@ export default function App() {
       {/* Things is its own domain — the board carries its own capture buttons + its
           own bottom bar, so the media nav + FAB step aside there. Both bars embed
           the media/things switcher on their left now (no separate strip). */}
-      {location.pathname !== '/things' && <BottomNav onAdd={() => setFabAdd(true)} />}
+      {location.pathname !== '/things' && (
+        <BottomNav onAdd={() => setFabAdd(true)} subNav={location.pathname === '/taste' ? subNav : null} />
+      )}
       {addOpen && <MediaComposer onClose={closeAdd} onDone={doneAdd} />}
       {(pendingCount > 0 || syncStatus !== 'idle') && (
         <div style={{
           position: 'fixed',
-          bottom: clearStack(),
+          bottom: clearStack(location.pathname === '/taste' && subNav ? SUBNAV_H : 0),
           left: 0, right: 0,
           background: '#1C1B19',
           color: '#ABA69C',

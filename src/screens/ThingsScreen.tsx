@@ -19,7 +19,7 @@ import {
 import { uploadMoodImage, moodSrc } from '../lib/mood'
 import { inReview } from '../lib/review'
 import { flipThingToMedia, MEDIA_TYPES, type MediaType } from '../lib/flip'
-import { NAV_H, clearStack } from '../lib/layout'
+import { NAV_H, NAV_TINT, SUBNAV_H, clearStack } from '../lib/layout'
 import { sampleBoardColors } from '../lib/palette'
 import { usePrefs } from '../hooks/usePrefs'
 
@@ -691,7 +691,7 @@ export function ThingsScreen() {
               the Library header exactly (s106): same order (title first), same
               subline size/colour, no uppercase kicker. */}
           <div style={{ minWidth: 0, marginBottom: 10 }}>
-            <h1 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px', color: INK }}>things</h1>
+            <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 0.95, margin: '0 0 6px', color: INK }}>things</h1>
             <span style={{ fontSize: 12.5, color: MUTED }}>
               {tab === 'taste'
                 ? (tasteSub === 'moodboard'
@@ -758,15 +758,9 @@ export function ThingsScreen() {
           </div>
         )}
 
-        <div style={{ padding: '16px 16px 160px' }}>
+        <div style={{ padding: `16px 16px ${tab === 'taste' ? 160 + SUBNAV_H : 160}px` }}>
           {tab === 'taste' ? (
             <>
-              {/* Sub-tabs — profile · moodboard, mirroring the media taste page's
-                  profile · desert island split. */}
-              <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 18 }}>
-                <TabChip label="profile" active={tasteSub === 'profile'} onClick={() => setTasteSub('profile')} underline={false} />
-                <TabChip label="moodboard" active={tasteSub === 'moodboard'} onClick={() => setTasteSub('moodboard')} underline={false} />
-              </div>
               {tasteSub === 'moodboard' ? (
                 <>
                   {moods.length > 0 && (
@@ -1052,7 +1046,7 @@ export function ThingsScreen() {
           moodboard (one tap → image picker). The taste PROFILE is a read-only
           mirror — nothing to add there — so the FAB hides. */}
       {(tab === 'wishlist' || onMoodboard) && (
-      <div style={{ position: 'fixed', right: 20, bottom: clearStack(18), zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+      <div style={{ position: 'fixed', right: 20, bottom: clearStack(onMoodboard ? 18 + SUBNAV_H : 18), zIndex: 99, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
         {tab === 'wishlist' && addMenu && (
           <>
             <FabAction label="save a product" onClick={() => { setAddMenu(false); setComposer('product') }} />
@@ -1078,8 +1072,15 @@ export function ThingsScreen() {
 
       {/* The Things bottom nav — two pages (wishlist / taste), mirroring the media
           domain's library / taste. The media BottomNav is hidden on /things
-          (App.tsx), so this is the only bar here. */}
-      <ThingsNav tab={tab} onTab={setTab} />
+          (App.tsx), so this is the only bar here. subNav (s108) carries the
+          profile/moodboard switcher as a quiet row above the main one, same
+          treatment as the media taste page. */}
+      <ThingsNav tab={tab} onTab={setTab} subNav={tab === 'taste' ? (
+        <>
+          <SubTabChip label="profile" active={tasteSub === 'profile'} onClick={() => setTasteSub('profile')} />
+          <SubTabChip label="moodboard" active={tasteSub === 'moodboard'} onClick={() => setTasteSub('moodboard')} />
+        </>
+      ) : undefined} />
     </div>
   )
 }
@@ -1087,26 +1088,50 @@ export function ThingsScreen() {
 // Things bottom bar — same merged row as the media BottomNav: media / things on
 // the left, the board's two sections (wishlist / taste) as slash-split text links
 // on the right.
-function ThingsNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
+function ThingsNav({ tab, onTab, subNav }: { tab: Tab; onTab: (t: Tab) => void; subNav?: React.ReactNode }) {
   const link = (on: boolean): React.CSSProperties => ({
     border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 13,
     color: on ? '#1C1B19' : '#A8A39A', fontWeight: on ? 600 : 400,
   })
   return (
-    <nav style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0,
-      height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom: 'env(safe-area-inset-bottom)',
-      background: '#fff', borderTop: '1px solid #E8E8E8',
-      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-      padding: '14px 18px 0', boxSizing: 'border-box', zIndex: 100,
-    }}>
-      <DomainLinks current="things" />
-      <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
-        <button onClick={() => onTab('wishlist')} style={link(tab === 'wishlist')}>wishlist</button>
-        <span style={{ color: '#D5D1C9', fontSize: 12 }}>/</span>
-        <button onClick={() => onTab('taste')} style={link(tab === 'taste')}>taste</button>
-      </div>
-    </nav>
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+      {subNav && (
+        <div style={{
+          background: NAV_TINT, borderTop: '1px solid #ECE9E2',
+          height: SUBNAV_H, boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16,
+          padding: '0 18px',
+        }}>
+          {subNav}
+        </div>
+      )}
+      <nav style={{
+        height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom: 'env(safe-area-inset-bottom)',
+        background: NAV_TINT, borderTop: '1px solid #ECE9E2',
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+        padding: '14px 18px 0', boxSizing: 'border-box',
+      }}>
+        <DomainLinks current="things" />
+        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+          <button onClick={() => onTab('wishlist')} style={link(tab === 'wishlist')}>wishlist</button>
+          <span style={{ color: '#D5D1C9', fontSize: 12 }}>/</span>
+          <button onClick={() => onTab('taste')} style={link(tab === 'taste')}>taste</button>
+        </div>
+      </nav>
+    </div>
+  )
+}
+
+// Same small, subordinate switcher as the media taste page's SubTabChip —
+// kept local since the shared TabChip above still serves category filters.
+function SubTabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      flexShrink: 0, padding: 0, border: 'none', background: 'none',
+      color: active ? '#111' : '#8A8782', fontSize: 11.5,
+      fontWeight: active ? 700 : 400, fontStyle: active ? 'italic' : 'normal',
+      cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
+    }}>{label}</button>
   )
 }
 

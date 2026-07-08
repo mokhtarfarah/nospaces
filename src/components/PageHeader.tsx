@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 
-// Shared magazine-style page header: a small uppercase kicker, a small label,
-// and a rule beneath. The label stays small on purpose so page content (e.g.
-// the taste vibe-headline) can be the biggest thing — the editorial weight
-// comes from the kicker + rule, not from an oversized title.
+// Shared magazine-style page header: a tight-tracked headline over a small,
+// normal-spaced kicker + rule. The cramped headline against the loose kicker
+// is the whole trick — a quiet nod to the app's own name (no spaces between
+// the letters either).
 const INK = '#1C1B19'
 const KICKER = '#ABA69C'
 
@@ -12,10 +12,10 @@ export function PageHeader({ kicker, title, right }: { kicker?: string; title: s
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 0.95, margin: '0 0 5px', color: INK }}>{title}</h1>
           {kicker && (
-            <div style={{ fontSize: 10, color: KICKER, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>{kicker}</div>
+            <div style={{ fontSize: 10, color: KICKER, letterSpacing: '1.5px', textTransform: 'uppercase' }}>{kicker}</div>
           )}
-          <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: INK }}>{title}</h1>
         </div>
         {right && <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingBottom: 1 }}>{right}</div>}
       </div>

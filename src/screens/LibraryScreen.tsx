@@ -664,7 +664,7 @@ export function LibraryScreen() {
               kicker and the in-title sort button are gone: the title row now holds
               only the title and the two icons, so the top reads calmer. */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <h1 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1C1B19' }}>library</h1>
+            <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 0.95, margin: 0, color: '#1C1B19' }}>library</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
               <HeaderControls
                 onSearch={() => setSearchOpen(v => !v)}

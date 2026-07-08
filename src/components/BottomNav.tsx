@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
-import { NAV_H, clearStack } from '../lib/layout'
+import { NAV_H, NAV_TINT, SUBNAV_H, clearStack } from '../lib/layout'
 import { DomainLinks } from './DomainSwitcher'
 
 // The media domain's bottom bar (s85): one editorial row — the domain switcher
@@ -8,7 +9,12 @@ import { DomainLinks } from './DomainSwitcher'
 // the section. Icons + the separate switcher strip are gone.
 // The floating + opens the add sheet (s88) — adding is a card over the page now,
 // not a navigation, so the FAB calls onAdd rather than routing to /add.
-export function BottomNav({ onAdd }: { onAdd: () => void }) {
+//
+// `subNav` (s108): an optional quiet second row above the main one — the taste
+// screen's profile/desert-island switcher, handed up via context since this
+// component renders outside the route tree. Keeps that sub-view switch in the
+// same physical zone as the rest of nav instead of splitting top vs. bottom.
+export function BottomNav({ onAdd, subNav }: { onAdd: () => void; subNav?: ReactNode }) {
   const link = (isActive: boolean): React.CSSProperties => ({
     textDecoration: 'none', fontSize: 13,
     color: isActive ? '#1C1B19' : '#A8A39A', fontWeight: isActive ? 600 : 400,
@@ -22,7 +28,7 @@ export function BottomNav({ onAdd }: { onAdd: () => void }) {
         onClick={onAdd}
         aria-label="add"
           style={{
-            position: 'fixed', bottom: clearStack(18), right: 20,
+            position: 'fixed', bottom: clearStack(subNav ? 18 + SUBNAV_H : 18), right: 20,
             width: 50, height: 50, borderRadius: '50%',
             background: '#1C1B19', color: '#fff', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -35,23 +41,34 @@ export function BottomNav({ onAdd }: { onAdd: () => void }) {
           </svg>
         </button>
 
-      <nav style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        background: '#fff', borderTop: '1px solid #E8E8E8',
-        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-        padding: '14px 18px 0', boxSizing: 'border-box', zIndex: 100,
-      }}>
-        <DomainLinks current="media" />
-        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
-          <NavLink to="/library" style={({ isActive }) => link(isActive)}>library</NavLink>
-          {slash}
-          <NavLink to="/taste" style={({ isActive }) => link(isActive)}>taste</NavLink>
-          {slash}
-          <NavLink to="/discover" style={({ isActive }) => link(isActive)}>discover</NavLink>
-        </div>
-      </nav>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+        {subNav && (
+          <div style={{
+            background: NAV_TINT, borderTop: '1px solid #ECE9E2',
+            height: SUBNAV_H, boxSizing: 'border-box',
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16,
+            padding: '0 18px',
+          }}>
+            {subNav}
+          </div>
+        )}
+        <nav style={{
+          height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          background: NAV_TINT, borderTop: '1px solid #ECE9E2',
+          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          padding: '14px 18px 0', boxSizing: 'border-box',
+        }}>
+          <DomainLinks current="media" />
+          <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+            <NavLink to="/library" style={({ isActive }) => link(isActive)}>library</NavLink>
+            {slash}
+            <NavLink to="/taste" style={({ isActive }) => link(isActive)}>taste</NavLink>
+            {slash}
+            <NavLink to="/discover" style={({ isActive }) => link(isActive)}>discover</NavLink>
+          </div>
+        </nav>
+      </div>
     </>
   )
 }

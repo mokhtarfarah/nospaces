@@ -9,7 +9,8 @@ import { useArtwork } from '../lib/artwork'
 import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
 import { SheetHero } from '../components/SheetHero'
-import { clearStack } from '../lib/layout'
+import { clearStack, SUBNAV_H } from '../lib/layout'
+import { useSetSubNav } from '../lib/subNav'
 
 const INK = '#1C1B19'
 const GRAPHITE = '#6F6B64'
@@ -450,16 +451,18 @@ function DesertIsland({ byType, total, candidates, fullTypes, onMove, onRemove, 
   )
 }
 
-// Tab chip — same language as Discover's stream chips (active: ink + italic),
-// so taste reads as one app with the rest.
-function TabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+// The profile/desert-island switcher, now rendered as part of the bottom nav's
+// quiet sub-row (s108) rather than a tab strip under the page header — same
+// active language (ink + italic) as Discover's stream chips, just smaller so it
+// stays subordinate to the main nav row underneath it.
+function SubTabChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       style={{
-        flexShrink: 0, padding: '4px 2px 8px', border: 'none', background: 'none',
-        color: active ? '#111' : '#888', fontSize: 13,
-        fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal',
+        flexShrink: 0, padding: 0, border: 'none', background: 'none',
+        color: active ? '#111' : '#8A8782', fontSize: 11.5,
+        fontWeight: active ? 700 : 400, fontStyle: active ? 'italic' : 'normal',
         cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
       }}
     >
@@ -493,6 +496,19 @@ export function TasteScreen() {
     [items]
   )
   const hasIsland = canonItems.length > 0
+
+  // Tabs — profile (the read) vs desert island (the picks) — now live in the
+  // bottom nav (s108), handed up via context, instead of a second row under the
+  // page header. Only registered when there's a desert island; otherwise the
+  // bottom nav stays its normal one row and the page is just the profile.
+  // Called unconditionally, above the loading/locked early-returns below, so
+  // hook order stays stable across renders (Rules of Hooks).
+  useSetSubNav(hasIsland ? (
+    <>
+      <SubTabChip label="profile" active={tab === 'profile'} onClick={() => setTab('profile')} />
+      <SubTabChip label="desert island" active={tab === 'island'} onClick={() => setTab('island')} />
+    </>
+  ) : null)
 
   // Desert island grouped by medium and ordered by the stored rank. Picks with no
   // rank yet (everything, until first reorder) fall back to add-date so the order
@@ -600,20 +616,9 @@ export function TasteScreen() {
   )
 
   return (
-    <div style={{ padding: `20px 20px ${clearStack(24)}`, background: '#fff', minHeight: '100dvh', color: INK }}>
+    <div style={{ padding: `20px 20px ${clearStack(hasIsland ? 24 + SUBNAV_H : 24)}`, background: '#fff', minHeight: '100dvh', color: INK }}>
       {/* "taste" as a small section label, vibe words as the headline */}
       <PageHeader kicker={`shaped by ${doneWithReaction.length} ${doneWithReaction.length === 1 ? 'rating' : 'ratings'}`} title="taste" />
-
-      {/* Tabs — profile (the read) vs desert island (the picks). Sit directly
-          under the header so they stay anchored when you switch; the vibe words
-          live inside the profile tab (they describe the profile, not the picks).
-          Only shown when there's a desert island; otherwise it's just the profile. */}
-      {hasIsland && (
-        <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${HAIR}`, marginBottom: 18 }}>
-          <TabChip label="profile" active={tab === 'profile'} onClick={() => setTab('profile')} />
-          <TabChip label="desert island" active={tab === 'island'} onClick={() => setTab('island')} />
-        </div>
-      )}
 
       {/* ── Profile tab: vibe headline + prose + the gap + always loved ────── */}
       {(!hasIsland || tab === 'profile') && (

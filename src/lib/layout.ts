@@ -10,6 +10,16 @@
 export const NAV_H = 54            // single bottom-bar row height, px (above the safe-area inset) — taller since s86 to seat the bigger media/things masthead
 export const BOTTOM_STACK = NAV_H  // the whole bottom panel is one row now
 
+// A second, quieter row that sits directly above the main nav row — used only
+// on the taste screens (media: profile/desert-island; things: profile/moodboard)
+// so the sub-view switcher lives in the same physical zone as the rest of nav
+// instead of splitting across the top and bottom of the screen (s108).
+export const SUBNAV_H = 32
+// Barely-there tint for the whole bottom-nav zone (main row + sub-row when
+// present) — visually seals it as one "this strip is chrome" unit, distinct
+// from the white page content above it. Deliberately subtle.
+export const NAV_TINT = '#F7F5F0'
+
 // `calc(<px> + safe-area)` for something sitting just above the bottom bar.
 // `extra` adds breathing room (content gap, FAB gap, a tall sheet, …). clearStack
 // and clearNav are equal now (one row) but both are kept so callers read clearly.
