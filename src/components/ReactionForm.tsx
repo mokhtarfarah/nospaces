@@ -8,8 +8,8 @@ import { MoodChips } from './MoodChips'
 // were near-identical and drifted; keeping the segmented scale + desert-island
 // toggle + note + vibe/verdict chips here keeps them in lockstep.
 
-const REACTION_ORDER: ItemReaction[] = ['not_for_me', 'eh', 'liked_it', 'loved_it']
-const REACTION_LABELS: Record<ItemReaction, string> = {
+export const REACTION_ORDER: ItemReaction[] = ['not_for_me', 'eh', 'liked_it', 'loved_it']
+export const REACTION_LABELS: Record<ItemReaction, string> = {
   not_for_me: 'not for me',
   eh: 'eh',
   liked_it: 'liked it',
