@@ -6,7 +6,7 @@ import { NoteProse } from './NoteProse'
 import { MoodChips } from './MoodChips'
 import { ReactionForm } from './ReactionForm'
 import { VIBES, VERDICTS, vibesForType } from '../lib/moods'
-import { useWikipediaInfo, useWikiByUrl, isStaleSummary } from '../lib/wikipedia'
+import { useWikipediaInfo, useWikiByUrl, isStaleSummary, useRottenTomatoesScore } from '../lib/wikipedia'
 import { itemGaps } from '../lib/gaps'
 import { useArtwork, clearArtworkCache } from '../lib/artwork'
 import { useBookBlurb, clearBlurbCache } from '../lib/blurb'
@@ -340,6 +340,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       onPatchMetadata?.({ wikiThumb: resolved.thumbnail ?? null, wikiSummary: resolved.summary })
     }
   }, [resolved?.url, resolved?.summary]) // eslint-disable-line react-hooks/exhaustive-deps
+  const rtScore = useRottenTomatoesScore(item.type, item.title, item.creator, item.year)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, coverUrl || null)
   const cover = artwork ?? wikiThumb
   // For books with no Wikipedia summary, fall back to an Open Library / Apple Books blurb.
@@ -647,6 +648,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                     <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" className="tlink" style={{ flexShrink: 0 }}>
                       <SpotifyIcon /> spotify
                     </a>
+                  )}
+                  {rtScore !== null && (
+                    <span style={{ flexShrink: 0, fontSize: 11, color: '#6F6B64' }}>rt {rtScore}%</span>
                   )}
                   {wikiUrl && (
                     <a href={wikiUrl} target="_blank" rel="noopener noreferrer" className="tlink" style={{ flexShrink: 0 }}>
