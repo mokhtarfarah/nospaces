@@ -2585,19 +2585,22 @@ function MoodSheet({ item, onClose, onRunTaste, onDelete }: {
 
   return (
     <Sheet onClose={onClose} maxWidth={380}>
-     <div style={{ maxWidth: 340, margin: '0 auto' }}>
-      <div style={{ position: 'relative', width: '100%', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}` }}>
+      {/* Bled to the sheet edges (negative margins cancel the sheet's own padding),
+          same treatment as the product sheet's lookbook hero — no border, no inset
+          card-within-a-card. Natural aspect, never cropped (this is still a mood
+          board, not a catalog — only the border/inset was the actual complaint). */}
+      <div style={{ position: 'relative', margin: '-20px -18px 0' }}>
         {/* Tap the photo itself to visit the source — no separate "source" link
             competing for attention below the image. The corner badge is just the
             affordance that it's tappable. */}
         {src && m.sourceUrl ? (
           <a href={m.sourceUrl} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
-            <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block' }} />
+            <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block', borderRadius: '20px 20px 0 0' }} />
           </a>
         ) : src ? (
-          <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block' }} />
+          <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block', borderRadius: '20px 20px 0 0' }} />
         ) : (
-          <div style={{ width: '100%', aspectRatio: '4 / 5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>
+          <div style={{ width: '100%', aspectRatio: '4 / 5', background: TILE, borderRadius: '20px 20px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>
         )}
         {m.sourceUrl && (
           <div style={{
@@ -2639,7 +2642,6 @@ function MoodSheet({ item, onClose, onRunTaste, onDelete }: {
           <button onClick={() => setConfirmDel(true)} style={{ ...quietLink, color: '#B4413C', marginLeft: 'auto' }}>remove</button>
         )}
       </div>
-     </div>
     </Sheet>
   )
 }
