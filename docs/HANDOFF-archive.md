@@ -4,6 +4,26 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 108, continued — Library header scroll jank, fixed + confirmed live. Free, frontend only.
+
+**Farah, last nit of the session: "library scroll header disappearing is still jumpy on mobile (things isn't)."** Diffed the two: `LibraryScreen.tsx`'s header used a scroll listener (`onListScroll`) calling `setCollapsed` on every scroll event, toggling `max-height`/`opacity`/`margin` on the title block via a CSS transition — a React re-render plus an animated layout property fighting the browser's native scroll compositing, on every single scroll tick. `ThingsScreen.tsx`'s own code comment already documented hitting and fixing this exact problem: "no JS height animation — that was the jumpy part," solved by letting the title scroll away naturally in normal flow and keeping only a `position: sticky` control bar pinned.
+
+Applied the identical fix to Library: removed the `collapsed` state and the JS-driven animation entirely; the title/subline/rule/search block now lives in normal scroll flow inside the same scroller as the list (scrolls away for free, no JS involved); the category/status/filter row became its own `position: sticky` div, no longer wrapped with the title. `onListScroll` now only tracks `lastScrollRef` for the existing background/hide scroll-persistence feature — the collapse logic is gone.
+
+Verified structurally before shipping (per the `verify-css-with-repro` standing rule — this environment can't reproduce real iOS jank): typecheck/lint/tests clean; injected filler rows into the live (empty) dev library to scroll it, confirmed the sticky row pins with zero gap while the title scrolls away, confirmed search still opens correctly now that it lives in the scrolling block rather than the old collapsing one. Farah confirmed live on her phone: **"better now."**
+
+Committed `fb3af7a` (code) + `fd1ce66` (docs), pushed to `main`, live.
+
+---
+
+### Session 108 (2026-07-07) — desert-island read-sheet grid fix + Things category vocabulary closed. Free.
+
+**Desert-island line broke the read-sheet's label-column grid.** The read sheet's other rows (vibe, verdict) use a label-column layout (icon/word in a fixed-width label slot, content alongside); the desert-island line sat flush-left instead, breaking the grid. Fixed to match: ★ in the label slot, "desert island" in the content slot.
+
+**Things categories were an open-ended free-text field — closed it to a fixed list (decided with Farah).** New closed vocabulary: clothing (outerwear, dresses & jumpsuits, bottoms, tops, shoes, bags, jewelry), home (furniture, lighting, decor, kitchenware, appliances), beauty (skincare, makeup, fragrance), + other. Root cause of the sprawl: the vision prompt told the model category was "not limited to the list," so it kept inventing new ones. Fixed in three places: the vision prompt (now a strict enum), the tag-editor UI (grouped pick-one chips, no free text), and a synonym map that folds old sprawled values (fabric/material sample/coat/bag/etc.) onto the new list at read time — no backend migration needed, existing items just resolve through the map. Farah's now planning to start saving home + beauty items now that real categories exist for them.
+
+---
+
 ### Session 108, continued — nav reconciliation (closes the s106 item) + a header restyle nit. Free, frontend only.
 
 **The problem (Farah, s106).** Navigation was split across two idioms: the bottom bar carried the primary nav (domain switcher + library/taste/discover or wishlist/taste), while the taste screens' sub-view switcher — profile ↔ desert island (media) and profile ↔ moodboard (things) — sat in a top tab strip under the page header. Farah clarified the actual complaint mid-session: sticky inline headers (Library/Things category rows) are fine, don't touch those — the confusion is specifically "navigation between taste pages at the top, navigation for everything else at the bottom."
