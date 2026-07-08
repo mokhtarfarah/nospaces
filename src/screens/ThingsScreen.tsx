@@ -1157,6 +1157,12 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
   const [err, setErr] = useState<string | null>(null)
   const [colors, setColors] = useState<string[]>([])
   const tagged = useMemo(() => items.filter(t => itemAttributes(t).length > 0).length, [items])
+  // Split so the caption can show its actual wishlist/mood mix — Farah, s109: the
+  // "wishlist + mood" text read as if both sides carry equal weight, with no way
+  // to tell if mood is actually thin enough to get drowned out in the recurring
+  // counts (boardTasteSummary/readThread just count items, no per-kind weighting).
+  const taggedMood = useMemo(() => items.filter(t => kindOf(t) === 'inspiration' && itemAttributes(t).length > 0).length, [items])
+  const taggedWishlist = tagged - taggedMood
   // Brands you keep reaching for — the makers' echo of the keyword thread.
   const brands = useMemo(() => recurringBrands(items), [items])
   // The keyword thread is the signal gate — it only appears once enough items recur
@@ -1206,7 +1212,7 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
         {board.thread.join('   ·   ')}
       </div>
       <div style={{ fontSize: 11, color: MUTED, marginTop: 6 }}>
-        read across {tagged} tagged thing{tagged === 1 ? '' : 's'} — wishlist + mood
+        read across {tagged} tagged thing{tagged === 1 ? '' : 's'} — {taggedWishlist} wishlist + {taggedMood} mood
       </div>
 
       {/* Hero — the synthesis as a pull-quote, or the read CTA before it's generated. */}

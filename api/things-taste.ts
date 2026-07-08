@@ -49,10 +49,10 @@ ${typeof count === 'number' && count > 0 ? `\nRead across ${count} saved item${c
 Write a short taste read — 1 sentence, second person, ~15–25 words — that names what's actually recurring. This is the headline of their taste page.
 
 What matters most here:
-- Lead with the concrete pattern: the materials, palette, and shapes that keep coming back. State it plainly, like a caption — this describes what's on the board, not how it makes someone feel.
+${thread.length ? `- HARD RULE — the words "${thread.join('", "')}" are already shown as this page's headline, directly above what you're writing. Do not use any of them, or an obvious synonym of one, anywhere in your sentence. Repeating the headline back adds nothing. Instead reach into the fuller "recurring threads" list above: a facet or value that ISN'T one of those three, or a specific pairing between two facets (e.g. a material + a shape together) that says something the three-word headline didn't already say.\n` : ''}- Lead with a concrete pattern the reader can picture, stated plainly like a caption — this describes what's on the board, not how it makes someone feel.
 - A register word (warm, sharp, quiet, considered) can ride along AFTER something concrete, never in place of it, and never as the opening word. Don't read back a raw tag dump either ("wood, velvet, leather, linen") — pick the one or two tags that actually carry the pattern.
 - Be specific and true to the evidence. Don't invent a tension or a story the tags don't support.
-- Second person, present tense, no preamble, no title in quotes, no trailing list. Don't restate the keyword thread verbatim — it's shown right next to this; deepen it instead.
+- Second person, present tense, no preamble, no title in quotes, no trailing list.
 - No hype, no "this board", no "your taste says".
 - CRITICAL — don't end on a tidy aphorism or a self-satisfied bow. State the fact and stop — it doesn't need a bow on top.
 - Don't psychoanalyse or narrate motive ("you're drawn to things that feel earned" is out; "you gravitate to" / "you reach for" is fine as a connector, not a conclusion). Describe what the taste IS, not what it says about them as a person.
