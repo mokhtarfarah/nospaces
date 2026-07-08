@@ -1107,9 +1107,9 @@ function ThingsNav({ tab, onTab, subNav }: { tab: Tab; onTab: (t: Tab) => void; 
       )}
       <nav style={{
         height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom: 'env(safe-area-inset-bottom)',
-        background: NAV_TINT, borderTop: '1px solid #ECE9E2',
+        background: NAV_TINT, borderTop: subNav ? 'none' : '1px solid #ECE9E2',
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-        padding: '14px 18px 0', boxSizing: 'border-box',
+        padding: '10px 18px 0', boxSizing: 'border-box',
       }}>
         <DomainLinks current="things" />
         <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>

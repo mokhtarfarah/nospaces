@@ -538,13 +538,15 @@ export function LibraryScreen() {
   // count. Uses `filtered` (the rendered set), hence it lives below that memo.
   const kicker = useMemo(() => {
     const n = filtered.length
-    if (reviewOnly) return `${n} to review`
-    if (query.trim()) return `${n} result${n === 1 ? '' : 's'}`
+    // Bold ink number leads, quiet label follows — same stat treatment as taste's rating count.
+    const count = <span style={{ color: '#1C1B19', fontWeight: 800 }}>{n}</span>
+    if (reviewOnly) return <>{count} to review</>
+    if (query.trim()) return <>{count} result{n === 1 ? '' : 's'}</>
     if (categories.length === 1) {
       const label = CATEGORY_LABEL[categories[0]] ?? categories[0]
-      return `${n} ${n === 1 ? label.replace(/s$/, '') : label}`
+      return <>{count} {n === 1 ? label.replace(/s$/, '') : label}</>
     }
-    return `${n} in the collection`
+    return <>{count} in the collection</>
   }, [filtered, categories, reviewOnly, query])
 
   // Whether the current base set has anything owned — the shelf filter is only

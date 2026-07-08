@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 const INK = '#1C1B19'
 const KICKER = '#ABA69C'
 
-export function PageHeader({ kicker, title, right }: { kicker?: string; title: string; right?: ReactNode }) {
+export function PageHeader({ kicker, title, right }: { kicker?: ReactNode; title: string; right?: ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 }}>

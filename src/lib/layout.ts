@@ -14,7 +14,7 @@ export const BOTTOM_STACK = NAV_H  // the whole bottom panel is one row now
 // on the taste screens (media: profile/desert-island; things: profile/moodboard)
 // so the sub-view switcher lives in the same physical zone as the rest of nav
 // instead of splitting across the top and bottom of the screen (s108).
-export const SUBNAV_H = 32
+export const SUBNAV_H = 28
 // Barely-there tint for the whole bottom-nav zone (main row + sub-row when
 // present) — visually seals it as one "this strip is chrome" unit, distinct
 // from the white page content above it. Deliberately subtle.

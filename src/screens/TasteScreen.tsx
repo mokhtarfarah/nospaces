@@ -617,8 +617,18 @@ export function TasteScreen() {
 
   return (
     <div style={{ padding: `20px 20px ${clearStack(hasIsland ? 24 + SUBNAV_H : 24)}`, background: '#fff', minHeight: '100dvh', color: INK }}>
-      {/* "taste" as a small section label, vibe words as the headline */}
-      <PageHeader kicker={`shaped by ${doneWithReaction.length} ${doneWithReaction.length === 1 ? 'rating' : 'ratings'}`} title="taste" />
+      {/* "taste" as a small section label, vibe words as the headline. The
+          rating count leads in ink-bold weight so the kicker reads as a stat,
+          not a caption sentence — same treatment as library's item count. */}
+      <PageHeader
+        kicker={
+          <span style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 12.5 }}>
+            <span style={{ color: INK, fontWeight: 800 }}>{doneWithReaction.length}</span>
+            {` ${doneWithReaction.length === 1 ? 'rating' : 'ratings'} and counting`}
+          </span>
+        }
+        title="taste"
+      />
 
       {/* ── Profile tab: vibe headline + prose + the gap + always loved ────── */}
       {(!hasIsland || tab === 'profile') && (
