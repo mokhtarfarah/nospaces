@@ -19,13 +19,10 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ## ▶ Next session (108) — no fixed queue; pick from below
 
-**Session 108 so far — 2 quick fixes shipped + pushed to `main` (live):** (1) the **desert-island read-sheet line** now gets the same label-column treatment as vibe/verdict (★ in the label slot, "desert island" in the content slot) instead of sitting flush-left and breaking the grid. (2) **Things categories are now a closed list** — decided with Farah: clothing (outerwear, dresses & jumpsuits, bottoms, tops, shoes, bags, jewelry), home (furniture, lighting, decor, kitchenware, appliances), beauty (skincare, makeup, fragrance), + other. Root cause was the vision prompt saying category was "not limited to the list" — fixed there (now a strict enum) plus the tag-editor UI (grouped pick-one chips, no free text) plus a synonym map that folds old sprawled values (fabric/material sample/coat/bag/etc.) onto the new list at read time — no backend migration needed. Farah's also planning to start saving home + beauty items now that the categories exist for them.
+**Session 108 so far — 3 fixes shipped + pushed to `main` (live):** (1) the **desert-island read-sheet line** now matches the vibe/verdict label-column grid instead of sitting flush-left. (2) **Things categories are now a closed list** (clothing/home/beauty/other + subcategories) — fixed at the vision-prompt level (strict enum), the tag-editor UI (grouped chips, no free text), and a synonym map folding old values onto the new list at read time. (3) **Header/footer nav reconciliation — done, closes the s106 item.** The taste screens' sub-tabs (profile/desert-island, profile/moodboard) moved from a top strip into a quiet contextual row above the bottom nav; whole nav zone got a subtle tint; headlines (`library`/`things`/`taste`/`discover`) got a tighter, bolder lockup (a same-session Farah nit). Full detail (the plumbing, a Rules-of-Hooks bug caught before shipping, how it was verified without touching real data) → archive.
 
 **Do first (housekeeping):**
 - **Confirm the 10k Postmark plan is bought.** Approval unblocked it; talkback ≈ 2 emails/capture and the free plan is only 100/mo, so real use will blow the cap fast. Detail → `docs/REFERENCE.md` → Postmark plan.
-
-**Still open from s106 (full detail in `docs/ROADMAP.md`):**
-- **Header/footer nav reconciliation** — nav is split between top header and bottom bar inconsistently; rethink the model, discuss with Farah first (→ Media library polish, next to the bottom-nav items).
 
 **Settled, not open:** tags-as-a-third-tab (alongside note/how-it-fits) was considered and declined this session — leave the credit-line placement alone unless discoverability becomes a real complaint again (s107 archive has the reasoning).
 
