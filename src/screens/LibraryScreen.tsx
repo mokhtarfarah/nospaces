@@ -112,7 +112,7 @@ function compareItems(a: Item, b: Item, sort: SortOption): number {
       return ai - bi
     }
     case 'creator':
-      return lastNameKey(a.creator).localeCompare(lastNameKey(b.creator))
+      return creatorSortKey(a).localeCompare(creatorSortKey(b))
     case 'year':
       return (a.year ?? 0) - (b.year ?? 0)
   }
@@ -150,6 +150,19 @@ function lastNameKey(creator: string | null | undefined): string {
   return (name.split(/\s+/).pop() ?? name).toLowerCase()
 }
 
+// Music creators are band/artist names, not people — "Arctic Monkeys" or
+// "Fleetwood Mac" isn't a first-name/last-name pair, so last-name sorting files
+// them under the wrong letter (M, M). File by the full name instead, the way a
+// record shop would, dropping a leading "The" so it doesn't dominate under T.
+function creatorSortKey(item: Item): string {
+  if (item.type === 'music') {
+    const name = item.creator?.trim()
+    if (!name) return '￿'
+    return name.replace(/^the\s+/i, '').toLowerCase()
+  }
+  return lastNameKey(item.creator)
+}
+
 function groupByCreator(items: Item[]): Map<string, Item[]> {
   const map = new Map<string, Item[]>()
   for (const item of items) {
@@ -157,10 +170,11 @@ function groupByCreator(items: Item[]): Map<string, Item[]> {
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(item)
   }
-  // Alphabetical by last name, with "Unknown" last.
+  // Alphabetical by last name (full band/artist name for music), with "Unknown" last.
   return new Map(
     [...map.entries()].sort((a, b) =>
-      a[0] === 'Unknown' ? 1 : b[0] === 'Unknown' ? -1 : lastNameKey(a[0]).localeCompare(lastNameKey(b[0])),
+      a[0] === 'Unknown' ? 1 : b[0] === 'Unknown' ? -1
+        : creatorSortKey(map.get(a[0])![0]).localeCompare(creatorSortKey(map.get(b[0])![0])),
     ),
   )
 }
