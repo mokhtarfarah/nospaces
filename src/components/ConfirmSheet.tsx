@@ -48,6 +48,10 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
   const [status, setStatus] = useState<'want_to' | 'done'>('want_to')
   const [reaction, setReaction] = useState<ItemReaction | null>(null)
   const [note, setNote] = useState('')
+  // Same metadata.owned flag the item's ⋯ menu sets after the fact (ItemActionSheet)
+  // — offered here too so a "want to" you already have a copy of (the bookstore
+  // case: don't re-buy a dupe) doesn't need a second trip to set it.
+  const [owned, setOwned] = useState(false)
   const color = typeColor(item.type)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year)
 
@@ -305,6 +309,14 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
           })}
         </div>
 
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', userSelect: 'none' }}>
+          <input type="checkbox" checked={owned} onChange={e => setOwned(e.target.checked)}
+            style={{ width: 16, height: 16, accentColor: color.border, cursor: 'pointer', margin: 0 }} />
+          <span style={{ fontSize: 13, color: '#444' }}>
+            {item.type === 'book' ? 'already on my shelf' : 'already own it'}
+          </span>
+        </label>
+
         {status === 'done' && (
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
@@ -339,7 +351,10 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
 
         <div style={{ position: 'sticky', bottom: 0, background: '#fff', paddingTop: 10, paddingBottom: 'calc(14px + env(safe-area-inset-bottom))' }}>
           <button
-            onClick={() => onConfirm(item, status === 'done' ? { reaction, note } : null)}
+            onClick={() => onConfirm(
+              owned ? { ...item, metadata: { ...item.metadata, owned: true } } : item,
+              status === 'done' ? { reaction, note } : null,
+            )}
             style={{
               width: '100%', padding: 14, background: '#111111',
               color: '#fff', border: 'none', borderRadius: 12,
