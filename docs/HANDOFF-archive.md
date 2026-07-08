@@ -12,6 +12,9 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 Green gate clean (tsc + api tsc + eslint + 116 tests). Not yet re-verified live.
 
+**Closing discussion, same session — tags-as-third-tab, declined.** Farah asked for an opinion: should tags become a third tab alongside "your note" / "how it fits," instead of the credit-line toggle above? Recommended against it — tags are short, scannable facets, while the two existing tabs are both prose you actually read; folding tags into that tab set trades a quick glance for an extra tap, the opposite direction from the north-star ask this session. Flagged that if the real itch is discoverability (a quiet "· tags" is easy to miss), that's a smaller, separate fix (a dot/count, more visual weight) rather than a structural move. Farah agreed to leave it alone — **no change made, not a rejected-but-parked idea, just genuinely settled for now.**
+
+Session ended here — Farah asked to log everything and start fresh next time.
 
 ---
 
