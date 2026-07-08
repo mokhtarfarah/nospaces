@@ -2488,18 +2488,18 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
 
 /* ---------- mood board (pure-inspiration images) ---------- */
 
-// A grid of inspiration images, same family as the wishlist's ProductCard (Farah
-// s109): its taste tags as a caption below, uniform columns instead of the old
-// gapless masonry wall. Images still keep their natural aspect (never cropped,
-// no border/tile framing around them) — the s80 call on that stands; only the
-// wall's layout and the missing caption were the actual complaint.
+// A grid of inspiration images, uniform columns instead of the old gapless
+// masonry wall (s109). No caption under each tile — Farah: text under the
+// images broke the gallery look, so this is a pure image wall again, just
+// with even columns instead of the height-balanced masonry. Natural aspect,
+// never cropped, no border/tile framing around them.
 function MoodWall({ moods, cols, onOpen, onAddUpload, onAddLink }: {
   moods: Item[]; cols: number; onOpen: (id: string) => void; onAddUpload: () => void; onAddLink: () => void
 }) {
   if (moods.length === 0) return <MoodEmpty onAddUpload={onAddUpload} onAddLink={onAddLink} />
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, alignItems: 'start', gap: 12 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, alignItems: 'start', gap: 4 }}>
       {moods.map(item => (
         <MoodCard key={item.id} item={item} onOpen={() => onOpen(item.id)} />
       ))}
@@ -2510,18 +2510,12 @@ function MoodWall({ moods, cols, onOpen, onAddUpload, onAddLink }: {
 function MoodCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const m = inspirationMeta(item)
   const src = moodSrc(m.image, m.hosted)
-  const taste = (m.attributes ?? []).filter(a => a.facet !== 'category')
   return (
     <button onClick={onOpen}
       style={{ textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: INK, display: 'block', width: '100%' }}>
       {src
         ? <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block', background: TILE }} />
         : <div style={{ width: '100%', aspectRatio: '4 / 5', background: TILE, border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 11 }}>no image</div>}
-      {taste.length > 0 && (
-        <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {taste.map(a => a.value).join(' · ')}
-        </div>
-      )}
     </button>
   )
 }
