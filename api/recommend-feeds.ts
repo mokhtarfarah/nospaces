@@ -201,8 +201,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .map(i => `${i.title} (${i.type})`)
     .join('\n') || '(none yet)'
 
-  // Build prior-recs exclusion list (titles already recommended in past sessions)
-  const priorRecsList = priorRecs.length > 0 ? priorRecs.join('\n') : null
+  // Build prior-recs exclusion list (titles already recommended in past sessions).
+  // Cap what actually reaches the prompt well below the client-side storage cap
+  // (150, see usePrefs.ts) — a long, shouty exclusion block was found to make the
+  // model narrate its own filtering into the "why"/"sources" fields instead of
+  // silently excluding matches (s109 bug: leaked text like "via alreadyrecommended").
+  const priorRecsList = priorRecs.length > 0 ? priorRecs.slice(-40).join('\n') : null
+  const exclusionNote = priorRecsList
+    ? '\n(Use the two exclusion lists above only to silently skip duplicates — never mention, quote, or explain this filtering in your output.)\n'
+    : ''
 
   // Build feed content block
   const feedBlock = posts
@@ -219,7 +226,7 @@ WHAT THEY'RE IN THE MOOD FOR:
 
 ${tasteProfile ? `TASTE PROFILE (for calibration only — the mood comes first):\n${tasteProfile}\n` : ''}ALREADY IN THEIR LIBRARY — do not recommend these:
 ${libraryList}
-${priorRecsList ? `\nALREADY RECOMMENDED IN PAST SESSIONS — do not repeat these:\n${priorRecsList}\n` : ''}CULTURAL CONTEXT (recent posts from their trusted sources — use loosely, the mood leads):
+${priorRecsList ? `\nALREADY RECOMMENDED IN PAST SESSIONS — do not repeat these:\n${priorRecsList}\n` : ''}${exclusionNote}CULTURAL CONTEXT (recent posts from their trusted sources — use loosely, the mood leads):
 ${feedBlock}
 
 Find 8–10 recommendations that directly answer what they're in the mood for. Any type is fine unless the mood implies one. For each, write a "why" in 1–2 sentences that ties the pick back to the specific mood they described — name the thread explicitly.
@@ -249,7 +256,7 @@ ${tasteProfile}
 
 ALREADY IN THEIR LIBRARY — do not recommend these:
 ${libraryList}
-${priorRecsList ? `\nALREADY RECOMMENDED IN PAST SESSIONS — do not repeat these:\n${priorRecsList}\n` : ''}
+${priorRecsList ? `\nALREADY RECOMMENDED IN PAST SESSIONS — do not repeat these:\n${priorRecsList}\n` : ''}${exclusionNote}
 CULTURAL CONTEXT (for inspiration, not as the source of your picks):
 ${feedBlock}
 
@@ -283,7 +290,7 @@ ${tasteProfile}
 
 ALREADY IN THEIR LIBRARY — do not recommend these:
 ${libraryList}
-${priorRecsList ? `\nALREADY RECOMMENDED IN PAST SESSIONS — do not repeat these:\n${priorRecsList}\n` : ''}
+${priorRecsList ? `\nALREADY RECOMMENDED IN PAST SESSIONS — do not repeat these:\n${priorRecsList}\n` : ''}${exclusionNote}
 RECENT CONTENT FROM THEIR TRUSTED SOURCES:
 ${feedBlock}
 
@@ -323,12 +330,23 @@ ${HUMANIZER_GUARDRAILS}`
 
     const text = message.content[0].type === 'text' ? message.content[0].text.trim() : '{}'
     const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
+
+    // Hard backstop against leaked prompt bookkeeping (s109 bug: fabricated source
+    // labels like "via alreadyrecommended") — a source is only ever a feed we
+    // actually queried, or one of the two known fallback labels. Anything else is
+    // dropped rather than rendered verbatim to the user.
+    const validSources = new Set([...feeds.map(f => f.name.toLowerCase()), 'nospaces', "claude's knowledge"])
+    const cleanSources = (raw: unknown[]): string[] => {
+      const cleaned = raw.map(s => String(s).trim()).filter(s => validSources.has(s.toLowerCase()))
+      return cleaned.length > 0 ? cleaned : ['nospaces']
+    }
+
     const recommendations: DiscoveryResult[] = (parsed.recommendations ?? [])
       .filter((r: Record<string, unknown>) => r?.title && r?.type && ['film','book','music','tv'].includes(r.type as string))
       .map((r: Record<string, unknown>) => ({
         ...r,
         // Normalise: model may return source (string) instead of sources (array)
-        sources: Array.isArray(r['sources']) ? r['sources'] : r['source'] ? [r['source']] : ['Claude\'s knowledge'],
+        sources: cleanSources(Array.isArray(r['sources']) ? r['sources'] : r['source'] ? [r['source']] : ['nospaces']),
       })) as DiscoveryResult[]
 
     return res.status(200).json({ recommendations })
