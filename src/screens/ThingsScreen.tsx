@@ -1157,6 +1157,12 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
   const [generating, setGenerating] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [colors, setColors] = useState<string[]>([])
+  // s109: style profile moved off a standalone page link, behind this small
+  // filters-style icon (same glyph as the wishlist's filter button) — tap it for
+  // a one-row menu, tap that row for the actual editor. Two sheets, not one,
+  // because the menu is where future taste-tab settings would land too.
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false)
   const tagged = useMemo(() => items.filter(t => itemAttributes(t).length > 0).length, [items])
   // Split so the caption can show its actual wishlist/mood mix — Farah, s109: the
   // "wishlist + mood" text read as if both sides carry equal weight, with no way
@@ -1193,15 +1199,41 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
     setGenerating(false)
   }
 
+  const settingsIcon = (
+    <button onClick={() => setFiltersOpen(true)} aria-label="taste settings"
+      style={{ border: 'none', background: 'none', cursor: 'pointer', color: styleProfile ? INK : MUTED, padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" fill="#fff" />
+        <line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" fill="#fff" />
+      </svg>
+      {styleProfile && <span style={{ width: 5, height: 5, borderRadius: '50%', background: INK }} />}
+    </button>
+  )
+  const settingsSheets = (
+    <>
+      {filtersOpen && (
+        <TasteFiltersMenu styleProfileOn={!!styleProfile}
+          onOpenStyleProfile={() => { setFiltersOpen(false); setProfileEditorOpen(true) }}
+          onClose={() => setFiltersOpen(false)} />
+      )}
+      {profileEditorOpen && (
+        <StyleProfileEditor value={styleProfile} onSave={onSaveProfile} onClose={() => setProfileEditorOpen(false)} />
+      )}
+    </>
+  )
+
   if (items.length === 0 || !hasSignal) {
     return (
       <>
-        <div style={{ margin: '12px 0', fontSize: 13, color: MUTED, lineHeight: 1.6 }}>
-          save a few things and add some mood images — once a thread recurs across your board,
-          your <em>taste read</em> surfaces here: your keywords, a line on what you’re reflecting, and your colour story.
-          {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} so far.</span>}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, margin: '12px 0' }}>
+          <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.6, flex: 1 }}>
+            save a few things and add some mood images — once a thread recurs across your board,
+            your <em>taste read</em> surfaces here: your keywords, a line on what you’re reflecting, and your colour story.
+            {tagged > 0 && <span style={{ color: INK, fontWeight: 600 }}> {tagged}/{THREAD_MIN_ITEMS} so far.</span>}
+          </div>
+          {settingsIcon}
         </div>
-        <StyleProfileBlock value={styleProfile} onSave={onSaveProfile} />
+        {settingsSheets}
       </>
     )
   }
@@ -1209,11 +1241,16 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
   return (
     <div>
       {/* Kicker — keywords in small caps, the quiet label above the read. */}
-      <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: '2px', textTransform: 'uppercase' }}>
-        {board.thread.join('   ·   ')}
-      </div>
-      <div style={{ fontSize: 11, color: MUTED, marginTop: 6 }}>
-        read across {tagged} tagged thing{tagged === 1 ? '' : 's'} — {taggedWishlist} wishlist + {taggedMood} mood
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: '2px', textTransform: 'uppercase' }}>
+            {board.thread.join('   ·   ')}
+          </div>
+          <div style={{ fontSize: 11, color: MUTED, marginTop: 6 }}>
+            read across {tagged} tagged thing{tagged === 1 ? '' : 's'} — {taggedWishlist} wishlist + {taggedMood} mood
+          </div>
+        </div>
+        {settingsIcon}
       </div>
 
       {/* Hero — the synthesis as a pull-quote, or the read CTA before it's generated. */}
@@ -1274,45 +1311,54 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
         </div>
       )}
 
-      <StyleProfileBlock value={styleProfile} onSave={onSaveProfile} />
+      {settingsSheets}
     </div>
+  )
+}
+
+// The taste tab's settings menu (s109) — currently just the one row, but its own
+// small popover rather than an inline page link so the editorial page stays quiet
+// and there's a home for future taste-tab settings without cluttering the read.
+function TasteFiltersMenu({ styleProfileOn, onOpenStyleProfile, onClose }: {
+  styleProfileOn: boolean
+  onOpenStyleProfile: () => void
+  onClose: () => void
+}) {
+  return (
+    <Sheet onClose={onClose} maxWidth={340}>
+      <button onClick={onOpenStyleProfile}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', border: 'none', background: 'none', padding: '2px 0', cursor: 'pointer', color: INK, fontSize: 14, fontWeight: 500 }}>
+        <span>style profile{styleProfileOn ? ' · on' : ''}</span>
+        <span style={{ color: MUTED, fontSize: 13 }}>›</span>
+      </button>
+    </Sheet>
   )
 }
 
 // Your own words on your aesthetic + body type — a back-end input for the AI, not
 // a taste-page feature. It feeds the compare + per-item "how this fits" reads
 // (never the editorial board read), so a weigh-up can speak to fit and silhouette,
-// not just price. Deliberately quiet: a small link on the taste page; the text
-// itself lives behind a sheet so the page stays editorial. Private to you.
-function StyleProfileBlock({ value, onSave }: { value: string | null; onSave: (s: string) => void }) {
-  const [open, setOpen] = useState(false)
+// not just price. Reached via the taste tab's settings icon, not a page link
+// (s109) — the text itself still lives behind its own sheet. Private to you.
+function StyleProfileEditor({ value, onSave, onClose }: { value: string | null; onSave: (s: string) => void; onClose: () => void }) {
   const [draft, setDraft] = useState(value ?? '')
-  const openEditor = () => { setDraft(value ?? ''); setOpen(true) }
-  const save = () => { onSave(draft.trim()); setOpen(false) }
+  const save = () => { onSave(draft.trim()); onClose() }
 
   return (
-    <div style={{ marginTop: 26 }}>
-      <button onClick={openEditor} style={{ ...quietLink, fontSize: 12 }}>
-        style profile{value ? ' · on' : ''} ›
-      </button>
-
-      {open && (
-        <Sheet onClose={() => setOpen(false)} maxWidth={420}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>style profile</h2>
-          <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 14px', lineHeight: 1.55 }}>
-            your own words on your aesthetic + body type. you won’t see this on your taste page — it quietly feeds <em>compare</em> and a thing’s <em>how it fits</em>, so those reads speak to silhouette and fit, not just price.
-          </p>
-          <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)}
-            placeholder="e.g. drawn to quiet, structured tailoring in earth tones. petite with a long torso — high-waisted cuts and cropped jackets flatter; oversized swamps me."
-            rows={6}
-            style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 10 }}>
-            <button onClick={() => setOpen(false)} style={quietLink}>cancel</button>
-            <button onClick={save} style={primaryBtn(false)}>save</button>
-          </div>
-        </Sheet>
-      )}
-    </div>
+    <Sheet onClose={onClose} maxWidth={420}>
+      <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>style profile</h2>
+      <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 14px', lineHeight: 1.55 }}>
+        your own words on your aesthetic + body type. you won’t see this on your taste page — it quietly feeds <em>compare</em> and a thing’s <em>how it fits</em>, so those reads speak to silhouette and fit, not just price.
+      </p>
+      <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)}
+        placeholder="e.g. drawn to quiet, structured tailoring in earth tones. petite with a long torso — high-waisted cuts and cropped jackets flatter; oversized swamps me."
+        rows={6}
+        style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', marginTop: 10 }}>
+        <button onClick={onClose} style={quietLink}>cancel</button>
+        <button onClick={save} style={primaryBtn(false)}>save</button>
+      </div>
+    </Sheet>
   )
 }
 
@@ -2442,59 +2488,40 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
 
 /* ---------- mood board (pure-inspiration images) ---------- */
 
-// A wall of inspiration images: gapless masonry, newest first (Farah s80: wants both
-// — a tight wall AND reading top-to-bottom newest-first across the row). CSS can't do
-// both at once (columns pack gaplessly but run column-major; a row grid reads right
-// but leaves gaps under short tiles), so we lay the columns out in JS: walk the items
-// newest-first and drop each into whichever column is currently shortest. Newest tiles
-// spread across the top, nothing leaves a gap. Heights aren't known until an image
-// loads, so each tile reports its aspect ratio on load and the layout settles in.
-// Images keep their natural aspect (never cropped — this is a mood board, not a
-// catalog). Editorial: sharp corners, tight 4px gaps.
+// A grid of inspiration images, same family as the wishlist's ProductCard (Farah
+// s109): its taste tags as a caption below, uniform columns instead of the old
+// gapless masonry wall. Images still keep their natural aspect (never cropped,
+// no border/tile framing around them) — the s80 call on that stands; only the
+// wall's layout and the missing caption were the actual complaint.
 function MoodWall({ moods, cols, onOpen, onAddUpload, onAddLink }: {
   moods: Item[]; cols: number; onOpen: (id: string) => void; onAddUpload: () => void; onAddLink: () => void
 }) {
-  // ratio = rendered height / width per tile; all columns are equal width, so a tile's
-  // ratio is a fair proxy for the height it adds to its column. Unmeasured tiles use a
-  // 4:5 default (matches the "no image" placeholder) so the first paint is balanced.
-  const [ratios, setRatios] = useState<Record<string, number>>({})
-  const onMeasure = (id: string, r: number) =>
-    setRatios(prev => (prev[id] === r ? prev : { ...prev, [id]: r }))
-
   if (moods.length === 0) return <MoodEmpty onAddUpload={onAddUpload} onAddLink={onAddLink} />
 
-  const columns: Item[][] = Array.from({ length: cols }, () => [])
-  const heights = new Array(cols).fill(0)
-  for (const item of moods) {
-    const shortest = heights.indexOf(Math.min(...heights))
-    columns[shortest].push(item)
-    heights[shortest] += ratios[item.id] ?? 1.25
-  }
-
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-      {columns.map((col, ci) => (
-        <div key={ci} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {col.map(item => (
-            <MoodTile key={item.id} item={item} onOpen={() => onOpen(item.id)} onMeasure={onMeasure} />
-          ))}
-        </div>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, alignItems: 'start', gap: 12 }}>
+      {moods.map(item => (
+        <MoodCard key={item.id} item={item} onOpen={() => onOpen(item.id)} />
       ))}
     </div>
   )
 }
 
-function MoodTile({ item, onOpen, onMeasure }: { item: Item; onOpen: () => void; onMeasure: (id: string, ratio: number) => void }) {
+function MoodCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const m = inspirationMeta(item)
   const src = moodSrc(m.image, m.hosted)
+  const taste = (m.attributes ?? []).filter(a => a.facet !== 'category')
   return (
     <button onClick={onOpen}
-      style={{ display: 'block', width: '100%', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
+      style={{ textAlign: 'left', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: INK, display: 'block', width: '100%' }}>
       {src
-        ? <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy"
-            onLoad={e => { const t = e.currentTarget; if (t.naturalWidth) onMeasure(item.id, t.naturalHeight / t.naturalWidth) }}
-            style={{ width: '100%', display: 'block', background: TILE }} />
+        ? <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block', background: TILE }} />
         : <div style={{ width: '100%', aspectRatio: '4 / 5', background: TILE, border: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 11 }}>no image</div>}
+      {taste.length > 0 && (
+        <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {taste.map(a => a.value).join(' · ')}
+        </div>
+      )}
     </button>
   )
 }
@@ -2560,9 +2587,25 @@ function MoodSheet({ item, onClose, onRunTaste, onDelete }: {
     <Sheet onClose={onClose} maxWidth={380}>
      <div style={{ maxWidth: 340, margin: '0 auto' }}>
       <div style={{ position: 'relative', width: '100%', borderRadius: 12, overflow: 'hidden', background: TILE, border: `1px solid ${LINE}` }}>
-        {src
-          ? <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block' }} />
-          : <div style={{ width: '100%', aspectRatio: '4 / 5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>}
+        {/* Tap the photo itself to visit the source — no separate "source" link
+            competing for attention below the image. The corner badge is just the
+            affordance that it's tappable. */}
+        {src && m.sourceUrl ? (
+          <a href={m.sourceUrl} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+            <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block' }} />
+          </a>
+        ) : src ? (
+          <img src={src} onError={imgFallback(m.image)} alt="" loading="lazy" style={{ width: '100%', display: 'block' }} />
+        ) : (
+          <div style={{ width: '100%', aspectRatio: '4 / 5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 12 }}>no image</div>
+        )}
+        {m.sourceUrl && (
+          <div style={{
+            position: 'absolute', bottom: 10, left: 10, width: 26, height: 26, borderRadius: 999, pointerEvents: 'none',
+            background: 'rgba(255,255,255,0.92)', color: INK, fontSize: 13, boxShadow: '0 1px 6px rgba(0,0,0,0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>↗</div>
+        )}
         <button onClick={onClose} aria-label="close" style={{
           position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 999,
           border: 'none', background: 'rgba(255,255,255,0.92)', color: INK, fontSize: 18, lineHeight: 1,
@@ -2573,15 +2616,6 @@ function MoodSheet({ item, onClose, onRunTaste, onDelete }: {
       {taste.length > 0 && (
         <div style={{ fontSize: 12.5, color: INK, marginTop: 14, letterSpacing: '0.01em' }}>
           {taste.map(a => a.value).join('  ·  ')}
-        </div>
-      )}
-
-      {m.sourceUrl && (
-        <div style={{ marginTop: 12 }}>
-          <a href={m.sourceUrl} target="_blank" rel="noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: INK, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-            source <span style={{ fontSize: 12 }}>↗</span>
-          </a>
         </div>
       )}
 

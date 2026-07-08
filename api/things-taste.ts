@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
 import { HUMANIZER_GUARDRAILS, NO_FLATTERY, VOICE } from './_humanizer.js'
 
-// The board's taste synthesis: a 1–2 sentence "what you're reflecting" read across
+// The board's taste synthesis: a ONE-sentence "what you're reflecting" read across
 // the WHOLE Things board — wishlist + mood images together. The set-level sibling
 // of the per-item "how this fits" line (things-taste-fit). Text only — it reads the
 // already-extracted taste tags, never an image — so it's cheap (Haiku, ~$0.001 a
@@ -52,7 +52,8 @@ What matters most here:
 ${thread.length ? `- HARD RULE — the words "${thread.join('", "')}" are already shown as this page's headline, directly above what you're writing. Do not use any of them, or an obvious synonym of one, anywhere in your sentence. Repeating the headline back adds nothing. Instead reach into the fuller "recurring threads" list above: a facet or value that ISN'T one of those three, or a specific pairing between two facets (e.g. a material + a shape together) that says something the three-word headline didn't already say.\n` : ''}- Lead with a concrete pattern the reader can picture, stated plainly like a caption — this describes what's on the board, not how it makes someone feel.
 - A register word (warm, sharp, quiet, considered) can ride along AFTER something concrete, never in place of it, and never as the opening word. Don't read back a raw tag dump either ("wood, velvet, leather, linen") — pick the one or two tags that actually carry the pattern.
 - Be specific and true to the evidence. Don't invent a tension or a story the tags don't support.
-- Second person, present tense, no preamble, no title in quotes, no trailing list.
+- Second person, present tense, no preamble, no title in quotes, no trailing list. Stay in direct address WALL TO WALL — do not pivot partway through to describing "the board," "the collection," or "someone" in third person. That shift out of direct address is what makes a read feel like a report about a specimen instead of a friend talking to you. If a sentence starts with "the board reads like..." or "it's the kind of thing someone...", that's the tell — rewrite it back into "you."
+- EXACTLY ONE sentence, full stop. If what you've written has a period followed by more words, you've written two sentences — cut the second one rather than trim it, don't just shorten it and leave it there. The most common way this rule breaks: a first sentence naming the concrete pattern, then a second "summing up" sentence about what the board/collection represents — that second sentence is always the one to delete.
 - No hype, no "this board", no "your taste says".
 - CRITICAL — don't end on a tidy aphorism or a self-satisfied bow. State the fact and stop — it doesn't need a bow on top.
 - Don't psychoanalyse or narrate motive ("you're drawn to things that feel earned" is out; "you gravitate to" / "you reach for" is fine as a connector, not a conclusion). Describe what the taste IS, not what it says about them as a person.
@@ -65,7 +66,7 @@ ${NO_FLATTERY}
 ${HUMANIZER_GUARDRAILS}
 
 Return JSON only, no prose around it:
-{ "synthesis": "the 1–2 sentence read" }`
+{ "synthesis": "the ONE-sentence read" }`
 
   try {
     const message = await client.messages.create({
