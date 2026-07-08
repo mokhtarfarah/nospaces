@@ -20,8 +20,9 @@ import type { Item } from './database.types'
 // A thing's taste signal isn't its brand or its category — it's the recurring
 // *attributes* across the whole set. We store them as flat {facet, value} tags
 // rather than a frozen enum, on purpose: the vocab should grow from what's
-// actually saved, not a taxonomy invented in a vacuum. `value` is free text; the
-// suggestions below are just starter chips, never a closed list.
+// actually saved, not a taxonomy invented in a vacuum. `value` is free text for
+// material/palette/vibe; the suggestions below are just starter chips, never a
+// closed list. `category` is the one exception — see CATEGORY_VALUES below.
 
 // 'vibe' covers both silhouette/shape AND attitude (oversized, structured, bold,
 // statement, chunky) — one facet for "how it carries itself". Renamed from the
@@ -52,13 +53,55 @@ export const FACET_LABEL: Record<Facet, string> = {
   material: 'Material', palette: 'Palette', vibe: 'Vibe', category: 'Category', priceTier: 'Price',
 }
 
+// Unlike the other facets, `category` IS a closed vocabulary (s108) — it sprawled
+// as AI free-text (fabric / material sample / surface material…) with no home for
+// non-clothing saves. Grouped for the tag-editor UI; flattened for validation.
+// Twin copy in api/_vision.ts (Vercel functions can't import from src/, same
+// tradeoff as the genre vocab — see docs/REFERENCE.md).
+export const CATEGORY_GROUPS: { label: string; values: string[] }[] = [
+  { label: 'clothing', values: ['outerwear', 'dresses & jumpsuits', 'bottoms', 'tops', 'shoes', 'bags', 'jewelry'] },
+  { label: 'home', values: ['furniture', 'lighting', 'decor', 'kitchenware', 'appliances'] },
+  { label: 'beauty', values: ['skincare', 'makeup', 'fragrance'] },
+  { label: 'other', values: ['other'] },
+]
+export const CATEGORY_VALUES: string[] = CATEGORY_GROUPS.flatMap(g => g.values)
+
+// Best-effort remap for values saved before the closed list (s108) — old free-text
+// synonyms fold onto the new buckets on read, no backend migration needed.
+// Anything not recognized here (and not already a valid value) lands in "other"
+// rather than sprawling further.
+const CATEGORY_SYNONYMS: Record<string, string> = {
+  coat: 'outerwear', jacket: 'outerwear', blazer: 'outerwear', parka: 'outerwear',
+  dress: 'dresses & jumpsuits', dresses: 'dresses & jumpsuits', jumpsuit: 'dresses & jumpsuits', romper: 'dresses & jumpsuits',
+  skirt: 'bottoms', shorts: 'bottoms', trousers: 'bottoms', pants: 'bottoms', jeans: 'bottoms', leggings: 'bottoms',
+  top: 'tops', shirt: 'tops', blouse: 'tops', knitwear: 'tops', knit: 'tops', sweater: 'tops', cardigan: 'tops', tee: 'tops', 't-shirt': 'tops', tshirt: 'tops',
+  boots: 'shoes', sneakers: 'shoes', sandals: 'shoes', heels: 'shoes', flats: 'shoes',
+  bag: 'bags', purse: 'bags', tote: 'bags', clutch: 'bags', backpack: 'bags',
+  jewellery: 'jewelry', necklace: 'jewelry', earrings: 'jewelry', ring: 'jewelry', bracelet: 'jewelry',
+  chair: 'furniture', table: 'furniture', sofa: 'furniture', shelf: 'furniture', shelving: 'furniture',
+  lamp: 'lighting', light: 'lighting', lights: 'lighting',
+  vase: 'decor', art: 'decor', candle: 'decor', rug: 'decor', throw: 'decor', blanket: 'decor',
+  fabric: 'decor', 'material sample': 'decor', 'surface material': 'decor', textile: 'decor', swatch: 'decor',
+  cookware: 'kitchenware', kitchen: 'kitchenware',
+  vacuum: 'appliances', tv: 'appliances', television: 'appliances', appliance: 'appliances',
+  perfume: 'fragrance', cosmetics: 'makeup',
+}
+
+/** Fold any category value onto the closed list — unrecognized ones become "other". */
+export function normalizeCategory(raw: string): string {
+  const v = normValue(raw)
+  if (CATEGORY_VALUES.includes(v)) return v
+  return CATEGORY_SYNONYMS[v] ?? 'other'
+}
+
 // Light starter chips — tap-to-add convenience, not a closed vocabulary. Real
 // saved items will pull the vocab in whatever direction Farah's taste runs.
+// `category` is the one exception (closed list, see above).
 export const SUGGESTED: Record<Facet, string[]> = {
   material: ['wool', 'leather', 'linen', 'cotton', 'silk', 'denim', 'knit', 'suede'],
   palette: ['muted', 'earth', 'monochrome', 'neutral', 'warm', 'bold', 'pastel'],
   vibe: ['structured', 'oversized', 'tailored', 'relaxed', 'minimal', 'statement', 'bold', 'chunky', 'sleek'],
-  category: ['coat', 'knitwear', 'boots', 'bag', 'dress', 'trousers'],
+  category: CATEGORY_VALUES,
   priceTier: ['steal', 'mid', 'splurge'],
 }
 
@@ -67,7 +110,9 @@ export const SUGGESTED: Record<Facet, string[]> = {
 const LEGACY_FACET: Record<string, Facet> = { form: 'vibe' }
 function legacyFacet(a: Attribute): Attribute {
   const mapped = LEGACY_FACET[a.facet as string]
-  return mapped ? { ...a, facet: mapped } : a
+  const facet = mapped ?? a.facet
+  if (facet === 'category') return { facet, value: normalizeCategory(a.value) }
+  return mapped ? { ...a, facet } : a
 }
 export function normAttributes(attrs: Attribute[] | undefined): Attribute[] {
   return (attrs ?? []).map(legacyFacet)

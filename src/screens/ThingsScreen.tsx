@@ -12,7 +12,7 @@ import type { Item } from '../lib/database.types'
 import {
   parseProductLink, compareCandidates, readImageAttributes, readProductFromImage, kindOf, intentMeta, productMeta, inspirationMeta, newCandidateId,
   promoteIntentToProduct, demoteProductToIntent, productPlan,
-  EDIT_FACETS, FACET_LABEL, SUGGESTED, normValue, itemAttributes, THREAD_MIN_ITEMS, priceValue, formatPrice,
+  EDIT_FACETS, FACET_LABEL, SUGGESTED, CATEGORY_GROUPS, normValue, itemAttributes, THREAD_MIN_ITEMS, priceValue, formatPrice,
   boardTasteSummary, readTasteFit, readTasteSynthesis, recurringBrands,
   type Candidate, type ProductFields, type Comparison, type Attribute, type Facet, type PlanRecord, type BoardTasteSummary,
 } from '../lib/things'
@@ -2813,7 +2813,8 @@ function FieldsForm({ initial, saveLabel, onSave, onCancel }: {
 
 // Taste-tag editor — the data that feeds the board's "thread" read. Suggested
 // chips are tap-to-add convenience; the text box accepts anything, so the vocab
-// grows from real saves rather than a fixed list.
+// grows from real saves rather than a fixed list. `category` is the one closed
+// facet (s108) — no free text, one value at a time, picked from CATEGORY_GROUPS.
 function AttributesEditor({ value, onChange }: { value: Attribute[]; onChange: (a: Attribute[]) => void }) {
   const [open, setOpen] = useState(value.length > 0)
   const [facet, setFacet] = useState<Facet>(EDIT_FACETS[0])
@@ -2823,6 +2824,7 @@ function AttributesEditor({ value, onChange }: { value: Attribute[]; onChange: (
   const add = (f: Facet, raw: string) => {
     const v = raw.trim()
     if (!v || has(f, v)) return
+    if (f === 'category') { onChange([...value.filter(a => a.facet !== 'category'), { facet: f, value: v }]); return }
     onChange([...value, { facet: f, value: v }])
   }
   const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i))
@@ -2837,6 +2839,7 @@ function AttributesEditor({ value, onChange }: { value: Attribute[]; onChange: (
   }
 
   const suggestions = SUGGESTED[facet].filter(s => !has(facet, s))
+  const isCategory = facet === 'category'
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: `1px solid ${LINE}`, paddingTop: 10 }}>
       <span style={{ fontSize: 10, color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase' }}>taste tags</span>
@@ -2865,26 +2868,52 @@ function AttributesEditor({ value, onChange }: { value: Attribute[]; onChange: (
         ))}
       </div>
 
-      {/* Suggestions share the saved-tag pill so the whole section is one material. */}
-      {suggestions.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {suggestions.map(s => (
-            <button key={s} type="button" onClick={() => add(facet, s)}
-              style={{ fontSize: 11.5, padding: '5px 11px', borderRadius: 999, border: 'none', background: '#F4F2EE', color: '#56564F', cursor: 'pointer' }}>
-              {s}
-            </button>
-          ))}
+      {/* Category is closed — grouped chips, no free text (s108). Every other
+          facet shares the flat suggestion-chip + free-text pattern below. */}
+      {isCategory ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {CATEGORY_GROUPS.map(g => {
+            const chips = g.values.filter(s => !has('category', s))
+            if (!chips.length) return null
+            return (
+              <div key={g.label} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <span style={{ fontSize: 9.5, color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{g.label}</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {chips.map(s => (
+                    <button key={s} type="button" onClick={() => add('category', s)}
+                      style={{ fontSize: 11.5, padding: '5px 11px', borderRadius: 999, border: 'none', background: '#F4F2EE', color: '#56564F', cursor: 'pointer' }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
-      )}
+      ) : (
+        <>
+          {/* Suggestions share the saved-tag pill so the whole section is one material. */}
+          {suggestions.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {suggestions.map(s => (
+                <button key={s} type="button" onClick={() => add(facet, s)}
+                  style={{ fontSize: 11.5, padding: '5px 11px', borderRadius: 999, border: 'none', background: '#F4F2EE', color: '#56564F', cursor: 'pointer' }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${LINE}`, paddingBottom: 4 }}>
-        <input value={draft} onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(facet, draft); setDraft('') } }}
-          placeholder={`add your own ${FACET_LABEL[facet].toLowerCase()}…`}
-          style={{ flex: 1, border: 'none', background: 'none', outline: 'none', fontSize: 12.5, color: INK, padding: '4px 0' }} />
-        <button type="button" onClick={() => { add(facet, draft); setDraft('') }} disabled={!draft.trim()} aria-label="add tag"
-          style={{ border: 'none', background: 'none', cursor: draft.trim() ? 'pointer' : 'default', fontSize: 18, color: draft.trim() ? INK : MUTED, lineHeight: 1, padding: 0 }}>+</button>
-      </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${LINE}`, paddingBottom: 4 }}>
+            <input value={draft} onChange={e => setDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(facet, draft); setDraft('') } }}
+              placeholder={`add your own ${FACET_LABEL[facet].toLowerCase()}…`}
+              style={{ flex: 1, border: 'none', background: 'none', outline: 'none', fontSize: 12.5, color: INK, padding: '4px 0' }} />
+            <button type="button" onClick={() => { add(facet, draft); setDraft('') }} disabled={!draft.trim()} aria-label="add tag"
+              style={{ border: 'none', background: 'none', cursor: draft.trim() ? 'pointer' : 'default', fontSize: 18, color: draft.trim() ? INK : MUTED, lineHeight: 1, padding: 0 }}>+</button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

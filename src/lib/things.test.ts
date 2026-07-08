@@ -347,14 +347,14 @@ describe('boardTasteSummary', () => {
 
   it('keeps category in the summary even though the thread leaves it out', () => {
     const items = [
-      product([a('category', 'coat'), a('palette', 'muted')]),
-      product([a('category', 'coat'), a('palette', 'muted')]),
-      product([a('category', 'bag'), a('palette', 'muted')]),
-      product([a('category', 'bag'), a('palette', 'muted')]),
+      product([a('category', 'outerwear'), a('palette', 'muted')]),
+      product([a('category', 'outerwear'), a('palette', 'muted')]),
+      product([a('category', 'bags'), a('palette', 'muted')]),
+      product([a('category', 'bags'), a('palette', 'muted')]),
     ]
     const s = boardTasteSummary(items)
-    expect(s.facets.category).toEqual(expect.arrayContaining([['coat', 2], ['bag', 2]]))
-    expect(s.thread).not.toContain('coat')
+    expect(s.facets.category).toEqual(expect.arrayContaining([['outerwear', 2], ['bags', 2]]))
+    expect(s.thread).not.toContain('outerwear')
   })
 
   it('drops one-off values (a value only one item carries)', () => {
