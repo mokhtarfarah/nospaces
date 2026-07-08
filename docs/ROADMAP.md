@@ -19,12 +19,6 @@ When you finish an item: **delete it from here** (don't leave a ✅ — the sess
 
 ## Short term — next few sessions
 
-### Tweak both taste prompts + media taste page substance (Farah, s109 — not yet scoped)
-Flagged mid-session, no specifics given yet — scope with Farah before touching anything:
-- **Both taste-generation prompts need a tweak** — media's `api/taste-profile.ts` (`SYSTEM_PROMPT`) and Things' `api/things-taste.ts`. What exactly wasn't said; ask what's bugging her about the current output before changing either.
-- **Media taste page substance may need updating too** — `TasteScreen.tsx`, the profile prose section. Also unscoped.
-- Touches Anthropic API calls — state cost impact up front when picking this up (see `docs/REFERENCE.md` → API costs). Related to the bigger gated "what feeds the taste read" decision below — check whether this is a small wording tweak or actually part of that larger call before starting.
-
 ### Adopt react-hooks v7's new rules — opt-in code pass (from s101)
 When we jumped `eslint-plugin-react-hooks` 4→7 (s101), its recommended set gained the React-Compiler-era rules (`set-state-in-effect`, `immutability`, `purity`, `static-components`, `preserve-manual-memoization`). They flag **~36 existing call sites** — mostly `setState` called directly inside effects. We kept only the two classic rules (`rules-of-hooks` + `exhaustive-deps`) so the dep bump wasn't a code sweep. Turning the rest on is a real, separate pass: enable them in `eslint.config.js`, then work through the ~36 findings (some are genuine cascading-render smells worth fixing, some are fine and get a disable-comment). Free, own session. Not urgent — the app works; this is code-health.
 
