@@ -1809,43 +1809,42 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
           <span aria-hidden style={{ fontSize: 13, fontWeight: 400, color: MUTED, flexShrink: 0 }}>↗</span>
         </a>
 
-        {/* Credit line — price reads plainly, brand as a small letter-spaced credit. */}
+        {/* Credit line — price reads plainly, brand as a small letter-spaced credit.
+            The tags toggle (Farah, s107 v4) folds into THIS line instead of getting
+            its own — collapsed, it costs zero extra lines; open, it costs exactly
+            one (the tag list below), not two. North star: no line exists just to
+            hold a toggle. */}
         <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9, fontSize: 13 }}>
           <PriceLine price={p.price} wasPrice={p.wasPrice} />
           {(p.brand || p.siteName) && <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>{p.brand || p.siteName}</span>}
           {got && <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: INK, fontWeight: 600 }}>· got it</span>}
+          {tagged && (
+            <button onClick={() => setShowTags(o => !o)}
+              style={{ border: 'none', background: 'none', color: MUTED, fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer', padding: 0 }}>
+              · {showTags ? 'hide tags' : 'tags'}
+            </button>
+          )}
         </div>
 
-        {/* Taste tags — opt-in now (Farah, s107 v3): collapsed by default behind a
-            quiet toggle (mirrors PlanReveal's "decided from N options ›" pattern)
-            instead of always taking a line under the credit row. Still fully
-            reachable, just not imposed on every open. */}
-        {tagged && (
-          <div style={{ marginTop: 6 }}>
-            <button onClick={() => setShowTags(o => !o)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', color: MUTED, fontSize: 11.5, fontWeight: 500, cursor: 'pointer', padding: 0 }}>
-              {showTags ? 'hide tags' : 'tags'}
-              <span aria-hidden style={{ fontSize: 10, transform: showTags ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>›</span>
-            </button>
-            {showTags && (
-              <div style={{ marginTop: 6, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
-                {taste.filter(a => a.facet !== 'category').map((a, i, arr) => {
-                  const count = countWithTag(a.facet, a.value)
-                  const tappable = count > 1
-                  return (
-                    <span key={i}>
-                      <button disabled={!tappable} onClick={() => tappable && onFilterTag(a.facet, a.value)}
-                        style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, fontStyle: 'italic',
-                          color: tappable ? '#6E6A60' : '#9A958B', cursor: tappable ? 'pointer' : 'default',
-                          textDecoration: tappable ? 'underline' : 'none', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3 }}>
-                        {a.value}
-                      </button>
-                      {i < arr.length - 1 && <span style={{ color: '#CFC9BE' }}>{'  ·  '}</span>}
-                    </span>
-                  )
-                })}
-              </div>
-            )}
+        {/* Taste tags — opt-in (Farah, s107 v3/v4): stays hidden until the toggle
+            above is tapped. Still fully reachable, just not imposed on every open. */}
+        {tagged && showTags && (
+          <div style={{ marginTop: 6, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
+            {taste.filter(a => a.facet !== 'category').map((a, i, arr) => {
+              const count = countWithTag(a.facet, a.value)
+              const tappable = count > 1
+              return (
+                <span key={i}>
+                  <button disabled={!tappable} onClick={() => tappable && onFilterTag(a.facet, a.value)}
+                    style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, fontStyle: 'italic',
+                      color: tappable ? '#6E6A60' : '#9A958B', cursor: tappable ? 'pointer' : 'default',
+                      textDecoration: tappable ? 'underline' : 'none', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3 }}>
+                    {a.value}
+                  </button>
+                  {i < arr.length - 1 && <span style={{ color: '#CFC9BE' }}>{'  ·  '}</span>}
+                </span>
+              )
+            })}
           </div>
         )}
       </div>

@@ -20,7 +20,8 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 ## ▶ Next session (108) — no fixed queue; pick from below
 
 **Do first (housekeeping):**
-- **Verify the s107 third round live**: add-to-plan ✅ and the density toggle ✅ are both confirmed good. The cramped sheet got a real structural fix this round (not another spacing nudge) — check: (1) the sheet now scrolls as **one continuous page**, photo included — scroll all the way down and confirm the close (×) / menu (⋯) buttons stay reachable the whole way, not just near the top; (2) the title reads smaller now; (3) taste tags are hidden by default behind a "tags ›" toggle — tap it, confirm the tags + tap-to-filter still work. Detail → archive (s107).
+- **Verify the s107 latest round live**: sheet-scroll rework ✅, smaller title ✅ confirmed good ("product card looks better"). The tags toggle just got tightened — check it now sits inline on the credit line (no line of its own when collapsed) and only adds one line when opened, not two.
+- **PWA login-loop glitch (Farah hit this, now resolved)**: after this session's deploys, opening "things" on the installed PWA bounced to login. Diagnosed as a stale service-worker cache (not a code bug — confirmed nothing in today's commits touches auth/routing). Force-quit + reopen fixed it for her. If it recurs after a future multi-deploy session, that's the first thing to try again before investigating further. Detail → archive (s107).
 - **Confirm the 10k Postmark plan is bought.** Approval unblocked it; talkback ≈ 2 emails/capture and the free plan is only 100/mo, so real use will blow the cap fast. Detail → `docs/REFERENCE.md` → Postmark plan.
 
 **Still open from s106 (full detail in `docs/ROADMAP.md`):**

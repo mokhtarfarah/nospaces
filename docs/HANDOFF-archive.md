@@ -4,6 +4,17 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 107, continued — PWA login-loop glitch (not our bug) + a "no extraneous line" tags fix. Free.
+
+**PWA login loop, diagnosed not fixed (fix was on Farah's end).** Farah: opening "things" on her installed PWA bounced to login; logging in landed on media (not things); tapping things again looped back to login. Delegated to an agent to rule in/out today's ThingsScreen/Sheet changes before guessing. Confirmed via `git log` that none of the day's commits touch `App.tsx`, `useAuth.tsx`, `supabase.ts`, or the service worker (`src/sw.ts`) — and `App.tsx`'s auth check gates every route identically, no things-specific branch. **Best-fit theory: a stale service-worker cache from three same-session deploys** — the installed PWA kept running an old JS bundle until reloaded, which lost track of the session and bounced to login; logging back in did a real reload onto fresh code but at the default route (media), not back to things. **Fix was force-quit + reopen the PWA** (flushes the stale worker) — Farah confirmed this worked. Not a code change, not logged as a bug fix; noting here so a repeat after a future multi-deploy session isn't re-investigated from scratch.
+
+**Tags toggle was adding lines it shouldn't (Farah, s107 v4).** The v3 "tags ›" toggle (previous log entry) put itself on its own line even collapsed, then a second line when opened — Farah: "as part of the north star of the app, not to have extraneous text." Folded the toggle directly into the existing credit line (price · brand · "· tags") instead of giving it a line of its own — collapsed now costs **zero** extra lines, expanded costs exactly **one** (the tag list, same as before). Verified in a throwaway repro (three cases: short brand, long-brand-plus-got-it worst-case wrap, expanded) before shipping — collapsed sits cleanly on the credit line, expanded adds just the one line; a long brand name can still wrap the credit line onto two lines, but that's pre-existing `flexWrap` behavior, not something new.
+
+Green gate clean (tsc + api tsc + eslint + 116 tests). Not yet re-verified live.
+
+
+---
+
 ### Session 107 (2026-07-07) — three of the five s106 nits shipped. All free frontend.
 
 Farah confirmed both s106 live-unverified items first: the Things review **discard** works, and the taste-read **anti-hallucination fix** "seems better." (10k Postmark plan not bought yet — carry.)
