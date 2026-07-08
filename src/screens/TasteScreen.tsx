@@ -3,7 +3,6 @@ import { useItems } from '../hooks/useItems'
 import { usePrefs } from '../hooks/usePrefs'
 import type { Item, ItemReaction } from '../lib/database.types'
 import { VIBES, VERDICTS as _VERDICTS } from '../lib/moods'
-import { isGenreTag } from '../lib/genres'
 import { authHeaders } from '../lib/supabase'
 import { useArtwork } from '../lib/artwork'
 import { typeColor } from '../lib/colors'
@@ -83,47 +82,6 @@ function inlineItalics(text: string) {
   return text.split(/\*([^*]+)\*/).map((part, i) =>
     i % 2 === 1 ? <em key={i}>{part}</em> : part
   )
-}
-
-function topGenreForPool(pool: Item[]): string | null {
-  const map = new Map<string, number>()
-  for (const item of pool) {
-    for (const tag of item.tags ?? []) {
-      if (isGenreTag(tag)) map.set(tag, (map.get(tag) ?? 0) + 1)
-    }
-  }
-  let top: string | null = null, max = 0
-  for (const [g, c] of map) {
-    if (c > max && c >= 2) { top = g; max = c }
-  }
-  return top
-}
-
-interface GapEntry { adding: string; finishing: string; medium?: string }
-
-function computeAspirationGaps(items: Item[]): GapEntry[] {
-  const gaps: GapEntry[] = []
-  const seen = new Set<string>()
-
-  function tryGap(pool: Item[], medium?: string) {
-    const wantTo = pool.filter(i => i.status === 'want_to')
-    const done = pool.filter(i => i.status === 'done')
-    const adding = topGenreForPool(wantTo)
-    const finishing = topGenreForPool(done)
-    if (!adding || !finishing || adding === finishing) return
-    const key = `${adding}>${finishing}`
-    if (seen.has(key)) return
-    seen.add(key)
-    gaps.push({ adding, finishing, medium })
-  }
-
-  // Overall first, then per-medium
-  tryGap(items)
-  for (const type of ['film', 'book', 'music', 'tv'] as const) {
-    tryGap(items.filter(i => i.type === type), TYPE_LABEL[type])
-  }
-
-  return gaps.slice(0, 3)
 }
 
 function computeFaithfulCreators(items: Item[]) {
@@ -487,8 +445,6 @@ export function TasteScreen() {
     [items]
   )
 
-  const aspirationGaps = useMemo(() => computeAspirationGaps(items), [items])
-
   const faithfulCreators = useMemo(() => computeFaithfulCreators(items), [items])
 
   const canonItems = useMemo(() =>
@@ -577,7 +533,6 @@ export function TasteScreen() {
       // primary signal; negatives tell the profiler what leaves this person cold.
       const signal = doneWithReaction
       const canonTitles = canonItems.map(i => `${i.title} (${i.type})`)
-      const primaryGap = aspirationGaps[0] ?? null
       const res = await fetch('/api/taste-profile', {
         method: 'POST',
         headers: await authHeaders(),
@@ -585,7 +540,6 @@ export function TasteScreen() {
           items: signal.map(i => ({ title: i.title, creator: i.creator, type: i.type, reaction: i.reaction, note: i.note })),
           vibes: topVibes.map(v => v.label),
           canon: canonTitles.length ? canonTitles : undefined,
-          aspirationGap: primaryGap,
         }),
       })
       if (!res.ok) {
@@ -681,28 +635,6 @@ export function TasteScreen() {
             )}
             {genError && <div style={{ fontSize: 11, color: '#C0392B', marginTop: 6 }}>{genError}</div>}
           </div>
-
-          {/* The gap — per-medium where meaningful */}
-          {aspirationGaps.length > 0 && (
-            <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 14, marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: MUTE, marginBottom: 4 }}>
-                the gap
-              </div>
-              <div style={{ fontSize: 12, color: MUTE, lineHeight: 1.5, marginBottom: 10 }}>
-                what you're collecting vs. what you actually finish
-              </div>
-              {aspirationGaps.map((g, i) => (
-                <div key={i} style={{ marginBottom: i < aspirationGaps.length - 1 ? 6 : 0 }}>
-                  <span style={{ fontSize: 14, color: GRAPHITE, letterSpacing: '-0.1px', lineHeight: 1.55 }}>
-                    {g.medium ? `In ${g.medium}, you keep adding ` : 'You keep adding '}
-                    <span style={{ color: INK, fontWeight: 600 }}>{g.adding}</span>
-                    {' but finish '}
-                    <span style={{ color: INK, fontWeight: 600 }}>{g.finishing}</span>.
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Creator faithfulness */}
           {faithfulCreators.length > 0 && (

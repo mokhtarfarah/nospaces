@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
-import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
+import { HUMANIZER_GUARDRAILS, NO_FLATTERY, VOICE } from './_humanizer.js'
 
 // The board's taste synthesis: a 1–2 sentence "what you're reflecting" read across
 // the WHOLE Things board — wishlist + mood images together. The set-level sibling
@@ -46,17 +46,21 @@ Recurring threads:
 ${boardLines || '(nothing strongly recurring yet)'}
 ${typeof count === 'number' && count > 0 ? `\nRead across ${count} saved item${count === 1 ? '' : 's'}.` : ''}
 
-Write a short taste read — 1 to 2 sentences, second person, ~25–40 words total — that tells them what they're reflecting. This is the headline of their taste page.
+Write a short taste read — 1 sentence, second person, ~15–25 words — that names what's actually recurring. This is the headline of their taste page.
 
 What matters most here:
-- Narrate the AESTHETIC REGISTER, not a materials list. Say what the overall feeling is — warm, refined, lived-in, quiet, sharp, soft, undone, considered, earthy — and let one or two concrete tags serve that feeling as evidence. Do NOT read back a pile of literal materials ("wood, velvet, leather, linen"); that's a tag dump, not a taste read. The recurring tags are your evidence; the register is your point.
-- Be specific and true to the evidence. Don't invent a tension or a story the tags don't support. If the board is coherent, name the through-line with warmth and confidence.
+- Lead with the concrete pattern: the materials, palette, and shapes that keep coming back. State it plainly, like a caption — this describes what's on the board, not how it makes someone feel.
+- A register word (warm, sharp, quiet, considered) can ride along AFTER something concrete, never in place of it, and never as the opening word. Don't read back a raw tag dump either ("wood, velvet, leather, linen") — pick the one or two tags that actually carry the pattern.
+- Be specific and true to the evidence. Don't invent a tension or a story the tags don't support.
 - Second person, present tense, no preamble, no title in quotes, no trailing list. Don't restate the keyword thread verbatim — it's shown right next to this; deepen it instead.
-- No hype, no "this board", no "your taste says". Just the read, like a perceptive friend who's seen everything you've saved.
-- CRITICAL — don't end on a tidy aphorism or a self-satisfied bow. Banned moves: "there's an X, but it's the X of someone who…", "the ease/confidence/restraint of someone who knows…", "it's not just X, it's Y", and any closing line that flatters the person's discernment in the abstract. These read instantly as AI. End on something concrete and specific, or just stop — a read can end without a neat conclusion.
-- Don't psychoanalyse or narrate motive ("you're drawn to things that feel earned" is borderline; "you gravitate to" / "you reach for" is fine). Describe what the taste IS, not what it says about them as a person.
+- No hype, no "this board", no "your taste says".
+- CRITICAL — don't end on a tidy aphorism or a self-satisfied bow. State the fact and stop — it doesn't need a bow on top.
+- Don't psychoanalyse or narrate motive ("you're drawn to things that feel earned" is out; "you gravitate to" / "you reach for" is fine as a connector, not a conclusion). Describe what the taste IS, not what it says about them as a person.
+- This should read like something a friend could glance at and nod to, not a personality read — if it would feel try-hard or precious to screenshot into a group chat, it's wrong.
 
 ${VOICE.warm}
+
+${NO_FLATTERY}
 
 ${HUMANIZER_GUARDRAILS}
 

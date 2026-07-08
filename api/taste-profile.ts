@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getAuthUserId, checkRateLimit } from './_ratelimit.js'
-import { HUMANIZER_GUARDRAILS, VOICE } from './_humanizer.js'
+import { HUMANIZER_GUARDRAILS, NO_FLATTERY, VOICE } from './_humanizer.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -15,34 +15,30 @@ interface InputItem {
   note?: string | null
 }
 
-interface AspGap {
-  adding: string
-  finishing: string
-}
+const SYSTEM_PROMPT = `You are summarizing one person's taste in film, books, music, and TV from how they've actually rated things — plain and factual, like a friend stating the pattern back to them, not reading their aura. Not a critic, not a brand, not a horoscope.
 
-const SYSTEM_PROMPT = `You are writing a short, sharp profile of one person's taste in film, books, music, and TV — the kind of read a perceptive friend who knows them well would write. Not a critic, not a brand.
-
-Write exactly 2 paragraphs in second person. Each paragraph 2–4 sentences.
+Write exactly 1 paragraph, 3–4 sentences, in second person.
 
 How to read the evidence — the RATING is the verdict and your primary signal:
-- LOVED items are the core of their taste. Anchor your profile on these. The strongest patterns should come from what they loved.
+- LOVED items are the core of their taste. Anchor the read on these.
 - LIKED items are secondary positives — supporting evidence, not the center.
-- EH and NOT FOR ME items are the boundary of their taste: what leaves them cold or actively turns them off. A clear pattern in what they reject is as revealing as what they love — name it if one exists.
-- Private notes add specific color, but they NEVER override the rating. Do not let a heavily-annotated "liked" or "eh" item overshadow a "loved" item with no note. Weight by how they actually rated things, not by how much they wrote.
+- EH and NOT FOR ME items are the boundary: what leaves them cold. A clear pattern in what they reject is worth naming if one exists.
+- Private notes add specific color, but never override the rating. Weight by how they actually rated things, not by how much they wrote.
 
 Substance rules:
-- Name 2–3 specific titles total across both paragraphs — no more. Wrap titles in *asterisks*. Prefer loved titles unless a lower-rated one is essential to the point. Choose titles that actually illustrate the point; don't pile on examples.
-- Make only observations that are clearly supported by the ratings. Do not speculate, invent patterns, or force a clever contrast that isn't genuinely there.
-- If there is a real and interesting tension in the taste — name it plainly. If there isn't, don't manufacture one.
-- If an aspiration gap is provided (what they keep adding vs. what they actually finish), weave it in naturally if it adds something true.
+- Name 2–3 specific titles — no more. Wrap titles in *asterisks*. Prefer loved titles unless a lower-rated one is essential to the point.
+- Make only observations clearly supported by the ratings. No speculation, no invented tension, no forced contrast.
+- State the pattern plainly — genres, tones, structures, creators they return to. Describe what the taste IS, not what it supposedly means about them as a person.
 - The vibe words shown on the page are anchors — deepen them with something specific; do not restate or list them.
-- Private notes are evidence for you to reason from, not for publication. Never quote or echo a note's wording.
+- Private notes are evidence to reason from, not for publication. Never quote or echo a note's wording.
 
 ${VOICE.warm}
 
+${NO_FLATTERY}
+
 ${HUMANIZER_GUARDRAILS}
 
-No hedging, no preamble, no bullet points, no summary sentence at the end. Just the two paragraphs.`
+This should read like a fact-based note a friend could send, not a personality read — something they'd be comfortable screenshotting to a group chat, not something that sounds like it's trying too hard. No hedging, no preamble, no bullet points, no closing flourish that sums up who they are. Just the paragraph.`
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -50,11 +46,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return res.status(401).end()
   if (!await checkRateLimit(userId, 'taste-profile', 20)) return res.status(429).json({ error: 'Rate limit exceeded. Try again next hour.' })
 
-  const { items, vibes, canon, aspirationGap } = req.body as {
+  const { items, vibes, canon } = req.body as {
     items: InputItem[]
     vibes?: string[]
     canon?: string[]
-    aspirationGap?: AspGap | null
   }
   if (!items?.length) return res.status(400).json({ error: 'no items' })
 
@@ -88,10 +83,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ? `\n\nCanon items (things they have explicitly marked as defining works): ${canon.join(', ')}.`
     : ''
 
-  const gapLine = aspirationGap
-    ? `\n\nAspiration gap: they keep adding ${aspirationGap.adding} to their list but mostly finish ${aspirationGap.finishing}. This is often revealing — work it in if it adds something true.`
-    : ''
-
   const vibeLine = vibes?.length
     ? `\n\nVibe words already shown on the page (do not restate): ${vibes.join(', ')}.`
     : ''
@@ -103,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
-        content: `Here is the list:\n\n${list}${canonLine}${gapLine}${vibeLine}`,
+        content: `Here is the list:\n\n${list}${canonLine}${vibeLine}`,
       }],
     })
     const profile = message.content[0].type === 'text' ? message.content[0].text.trim() : ''

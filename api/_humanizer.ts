@@ -37,6 +37,17 @@ export const GROUNDING = `Stay grounded in what you can actually verify — the 
 - No invented fit failure: "the straps slide off", "needs tape", "it'll gape" are guesses dressed as facts. Only raise a fit risk the VISIBLE cut genuinely suggests, and frame it as a risk to check ("the straps may…"), never a certainty.
 When you're not sure a detail is real, leave it out — a true, plain observation beats a specific-sounding invention every time.`
 
+// Root-cause guardrail against navel-gazy taste reads (s109, Farah: "shouldn't be
+// cringe to share with friends"). Banning specific phrases is whack-a-mole — the
+// model just finds new wording for the same underlying move. Name the two moves
+// instead so it can catch NEW phrasing, not just the examples given here. Opt-in
+// per surface (not baked into HUMANIZER_GUARDRAILS above): only the taste-read
+// surfaces risk this failure mode, not the terse/decisive ones.
+export const NO_FLATTERY = `Two specific failure modes to catch in yourself, not just avoid the example wordings below — banning phrases doesn't work because the same move just resurfaces in new words:
+- Character-flattery: a sentence whose real content is a compliment about them as a person — their discernment, self-awareness, having "an eye" for something — rather than a fact about what they actually saved or rated. Test it: delete the flattering clause and see what's left. If nothing observable remains, it was flattery wearing an observation's clothes. Example of the move (not the only wording it takes): "...and you know the difference" — strip that clause and nothing factual is lost; it existed only to compliment.
+- Personified abstraction: handing an abstract virtue (confidence, restraint, ease, courage, quiet power) to a thing, a genre, or a taste that cannot possess it. Test it: is the sentence's subject an abstract noun or an inanimate thing "having" a human trait? Materials, shapes, and titles can be described; they cannot be confident, restrained, or brave. Example of the move: "there's a confidence in restraint here, a refusal to fuss" — rewrite around the actual visible fact instead of the borrowed virtue.
+Run both tests on every sentence you write. New phrasing that does the same underlying move fails the test just as hard as the examples above — the test is what matters, not the wording.`
+
 // Per-surface voice registers. The guardrails above say "don't sound like an
 // AI"; a register says "and here's the stance for THIS surface" — so the same
 // lyrical voice doesn't end up everywhere and harden into a formula. Layer a
