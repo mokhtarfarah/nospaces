@@ -5,7 +5,7 @@ import { authHeaders } from '../lib/supabase'
 import { DEFAULT_FEEDS, normaliseFeedUrl, guessFeedKind, type DiscoveryResult, type FeedEntry } from '../lib/feeds'
 import { editorialPicksFor } from '../lib/editorialPicks'
 import { useArtwork } from '../lib/artwork'
-import { useWikipediaInfo } from '../lib/wikipedia'
+import { useWikipediaInfo, useRottenTomatoesScore } from '../lib/wikipedia'
 import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
 import { SheetHero } from '../components/SheetHero'
@@ -544,6 +544,7 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
         <SheetHero type={r.type} title={r.title} meta={meta} cover={artwork} numeral={index} onClose={onClose}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11, color: MUTE }}>via {sourceLabel}</span>
+            <DiscoverRtScore title={r.title} creator={r.creator} type={r.type} year={r.year} />
             <DiscoverWikiLink title={r.title} creator={r.creator} type={r.type} year={r.year} />
           </div>
         </SheetHero>
@@ -576,6 +577,12 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
       </div>
     </>
   )
+}
+
+function DiscoverRtScore({ title, creator, type, year }: { title: string; creator: string | null; type: string; year: number | null }) {
+  const score = useRottenTomatoesScore(type, title, creator, year)
+  if (score === null) return null
+  return <span style={{ fontSize: 11, color: MUTE }}>rt {score}%</span>
 }
 
 function DiscoverWikiLink({ title, creator, type, year }: { title: string; creator: string | null; type: string; year: number | null }) {

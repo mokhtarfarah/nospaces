@@ -112,6 +112,35 @@ export function useWikipediaInfo(
   return info
 }
 
+// Rotten Tomatoes score (0-100), read from Wikidata's structured review-score
+// claim (see api/wiki.ts wikidataFields). film/tv only — RT doesn't score
+// books/albums, so other types never fetch. Returns null while loading or when
+// the work has no RT claim on Wikidata yet — never fabricate a score.
+const rtCache = new Map<string, number | null>()
+export function useRottenTomatoesScore(type: string, title: string, creator: string | null, year: number | null): number | null {
+  const key = `${type}|${title}|${creator ?? ''}|${year ?? ''}`
+  const [score, setScore] = useState<number | null>(rtCache.get(key) ?? null)
+  useEffect(() => {
+    if (type !== 'film' && type !== 'tv') return
+    if (rtCache.has(key)) { setScore(rtCache.get(key)!); return }
+    let cancelled = false
+    const sp = new URLSearchParams({ type, title, parse: '1' })
+    if (creator) sp.set('creator', creator)
+    if (year) sp.set('year', String(year))
+    withQueue(async () => {
+      let rt: number | null = null
+      try {
+        const data = await (await fetch(`/api/wiki?${sp}`, { headers: await authHeaders() })).json()
+        rt = typeof data.parsed?.rt === 'number' ? data.parsed.rt : null
+      } catch { /* leave rt null */ }
+      rtCache.set(key, rt)
+      if (!cancelled) setScore(rt)
+    })
+    return () => { cancelled = true }
+  }, [type, title, creator, year, key])
+  return score
+}
+
 // Resolve a pinned Wikipedia article (by URL) into its summary + thumbnail.
 // Returns null while there's no URL. Pass `seed` (from item metadata) to skip the
 // fetch when the summary is already cached from a previous open.

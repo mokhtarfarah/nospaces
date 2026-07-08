@@ -85,7 +85,7 @@ async function fetchInfoByUrl(wikiUrl: string): Promise<{ title: string; url: st
   }
 }
 
-interface ParsedFields { year: number | null; creator: string | null; runtime: number | null; pages: number | null; genres: string[]; countries: string[] }
+interface ParsedFields { year: number | null; creator: string | null; runtime: number | null; pages: number | null; genres: string[]; countries: string[]; rt: number | null }
 
 const WIKI_UA = 'Nospaces/1.0 (https://nospaces.vercel.app; farahmokhtar94@gmail.com) node-fetch'
 const wbFetch = async (url: string) =>
@@ -130,7 +130,7 @@ const HISTORICAL_COUNTRY: Record<string, string> = {
 // client's /api/genres call (title-knowledge), which handles our vocab better than
 // Wikidata's genre entities.
 async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFields> {
-  const empty: ParsedFields = { year: null, creator: null, runtime: null, pages: null, genres: [], countries: [] }
+  const empty: ParsedFields = { year: null, creator: null, runtime: null, pages: null, genres: [], countries: [], rt: null }
   try {
     // 1. page title → Wikidata Q-id (follow redirects)
     const d1 = await wbFetch(
@@ -180,6 +180,25 @@ async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFi
     // pages: P1104. book only.
     const pageCounts = type === 'book' ? amounts('P1104') : []
     const numPages = pageCounts.length ? Math.round(pageCounts[0]) : null
+
+    // Rotten Tomatoes score: P444 (review score) qualified by P447 (review
+    // score by) = Q105584. film/tv only — RT doesn't score books/albums, and a
+    // work can carry several P444 claims (Metacritic, IMDb) under other
+    // qualifiers, so only the RT-qualified one, in RT's own "NN%" format, counts.
+    let rt: number | null = null
+    if (type === 'film' || type === 'tv') {
+      type QualSnak = { datavalue?: { value?: unknown } }
+      for (const c of claims['P444'] ?? []) {
+        // Qualifier snaks sit directly under qualifiers[pid][i] — unlike a claim's
+        // own mainsnak, there's no extra wrapper here.
+        const scoredBy = (c as Snak & { qualifiers?: Record<string, QualSnak[]> }).qualifiers?.['P447']?.[0]
+        const byId = (scoredBy?.datavalue?.value as { id?: string })?.id
+        if (byId !== 'Q105584') continue
+        const raw = String(c.mainsnak?.datavalue?.value ?? '')
+        const match = raw.match(/^(\d+)%$/)
+        if (match) { rt = parseInt(match[1]); break }
+      }
+    }
 
     // Resolve a list of Q-ids to English labels (one batched call).
     const labelsFor = async (ids: string[]): Promise<Record<string, string>> => {
@@ -260,7 +279,7 @@ async function wikidataFields(pageTitle: string, type: string): Promise<ParsedFi
         .map(c => HISTORICAL_COUNTRY[c] ?? c)
     )]
 
-    return { year, creator, runtime, pages: numPages, genres: [], countries }
+    return { year, creator, runtime, pages: numPages, genres: [], countries, rt }
   } catch {
     return empty
   }
