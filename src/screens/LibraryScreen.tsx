@@ -1766,9 +1766,9 @@ function OverflowSheet({ hasItems, gapCount, captureCount, captureFailures, fact
         <div style={{ width: 36, height: 4, background: '#E0E0E0', borderRadius: 2, margin: '0 auto 12px' }} />
         {hasItems && <Row label="help me decide" sub="can’t choose? we’ll pick from your library" onClick={onDecide} />}
         <Row label="how to use" sub="a quick tour of nospaces" onClick={onGuide} />
-        {gapCount > 0 && <Row label={`tidy · ${gapCount}`} sub="fill in missing details" onClick={onTidy} />}
+        {gapCount > 0 && <Row label="tidy" sub="fill in missing details" onClick={onTidy} />}
         {captureCount > 0 && <Row label={captureFailures > 0 ? `email captures · ${captureFailures}` : 'email captures'} sub="forwards that didn’t save" onClick={onCaptures} />}
-        {factsPending > 0 && <Row label={factsBusy ? 'filling from wikipedia…' : `fill from wikipedia · ${factsPending}`} sub="creator, year, runtime & region — no tidying needed" onClick={factsBusy ? () => {} : onPullFacts} />}
+        {factsPending > 0 && <Row label={factsBusy ? 'filling from wikipedia…' : 'fill from wikipedia'} sub="creator, year, runtime & wiki link — no tidying needed" onClick={factsBusy ? () => {} : onPullFacts} />}
         <Row label={selectMode ? 'cancel select' : 'select items'} sub="multi-select to bulk delete" onClick={onSelect} />
       </div>
     </>

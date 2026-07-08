@@ -4,7 +4,6 @@ import type { Item } from '../lib/database.types'
 import { itemGaps, dismissGaps } from '../lib/gaps'
 import { useArtwork } from '../lib/artwork'
 import { authHeaders } from '../lib/supabase'
-import { fetchWikiInfo } from '../lib/wikipedia'
 
 import { MOOD_REMAP } from '../lib/moods'
 
@@ -16,12 +15,14 @@ function AutoFillTools({ items, editItem }: {
   items: Item[]
   editItem: (id: string, fields: Record<string, unknown>) => Promise<void>
 }) {
-  // Derive from itemGaps() so dismissed gaps are respected — consistent with DATA GAPS list
+  // Derive from itemGaps() so dismissed gaps are respected — consistent with DATA GAPS list.
+  // Wiki links are NOT handled here — they're covered (along with creator/year/
+  // runtime/region) by the single "fill from wikipedia" pass in the Library
+  // overflow menu (lib/regions.ts pullFacts), so there's one wiki tool, not two.
   const untagged = useMemo(() => items.filter(i => itemGaps(i).includes('genre')), [items])
   const needsRuntime = useMemo(() => items.filter(i => itemGaps(i).some(g => g === 'runtime' || g === 'pages')), [items])
   const needsMoodMigration = useMemo(() =>
     items.filter(i => i.moods?.some(m => m in MOOD_REMAP || m === 'gripping' || m === 'project' || m === 'classic')), [items])
-  const needsWiki = useMemo(() => items.filter(i => itemGaps(i).includes('wiki')), [items])
 
   // Flag covers that are genuinely low-res (< 300px) — will look soft on retina.
   // Each source encodes size in the URL; we check the specific pattern.
@@ -41,7 +42,7 @@ function AutoFillTools({ items, editItem }: {
       return url && coverIsTooSmall(url)
     }), [items])
 
-  const total = untagged.length + needsRuntime.length + needsMoodMigration.length + needsWiki.length + needsArtRefresh.length
+  const total = untagged.length + needsRuntime.length + needsMoodMigration.length + needsArtRefresh.length
 
   // Genre backfill
   const [backfilling, setBackfilling] = useState(false)
@@ -64,13 +65,6 @@ function AutoFillTools({ items, editItem }: {
   // Mood migration
   const [migrating, setMigrating] = useState(false)
   const [migrateProgress, setMigrateProgress] = useState(0)
-
-  // Wiki backfill
-  const [wikiRunning, setWikiRunning] = useState(false)
-  const [wikiProgress, setWikiProgress] = useState(0)
-  const [wikiTotal2, setWikiTotal2] = useState(0)
-  const wikiCancel = useRef(false)
-
 
   // Art refresh
   const [artRunning, setArtRunning] = useState(false)
@@ -157,24 +151,6 @@ function AutoFillTools({ items, editItem }: {
     setMigrating(false)
   }
 
-  async function runWiki() {
-    if (wikiRunning || needsWiki.length === 0) return
-    wikiCancel.current = false
-    setWikiRunning(true); setWikiProgress(0); setWikiTotal2(needsWiki.length)
-    const BATCH = 6
-    for (let i = 0; i < needsWiki.length; i += BATCH) {
-      if (wikiCancel.current) break
-      await Promise.all(needsWiki.slice(i, i + BATCH).map(async item => {
-        try {
-          const info = await fetchWikiInfo(item.type, item.title, item.creator, item.year)
-          if (info.url) await editItem(item.id, { metadata: { ...item.metadata, wikiUrl: info.url, wikiThumb: info.thumbnail, wikiSummary: info.summary } })
-        } catch { /* skip */ }
-      }))
-      setWikiProgress(Math.min(i + BATCH, needsWiki.length))
-    }
-    setWikiRunning(false); wikiCancel.current = false
-  }
-
   async function runArtRefresh() {
     if (artRunning || needsArtRefresh.length === 0) return
     artCancel.current = false; setArtResult(null)
@@ -204,7 +180,7 @@ function AutoFillTools({ items, editItem }: {
 
         {untagged.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ fontSize: 12, color: '#6F6B64' }}>genres — {untagged.length} missing</span>
+            <span style={{ fontSize: 12, color: '#6F6B64' }}>genres</span>
             {backfilling
               ? <span style={{ fontSize: 12, color: '#888' }}>{Math.min(backfillProgress + 5, backfillTotal)}/{backfillTotal}… <button onClick={() => { backfillCancel.current = true }} style={ghost}>cancel</button></span>
               : backfillResult
@@ -217,7 +193,7 @@ function AutoFillTools({ items, editItem }: {
 
         {needsRuntime.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ fontSize: 12, color: '#6F6B64' }}>runtime / pages — {needsRuntime.length} missing</span>
+            <span style={{ fontSize: 12, color: '#6F6B64' }}>runtime / pages</span>
             {rtRunning
               ? <span style={{ fontSize: 12, color: '#888' }}>{Math.min(rtProgress + 5, rtTotal2)}/{rtTotal2}… <button onClick={() => { rtCancel.current = true }} style={ghost}>cancel</button></span>
               : rtResult
@@ -230,25 +206,16 @@ function AutoFillTools({ items, editItem }: {
 
         {needsMoodMigration.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: '#6F6B64' }}>old vibe words — {needsMoodMigration.length} items</span>
+            <span style={{ fontSize: 12, color: '#6F6B64' }}>old vibe words</span>
             {migrating
               ? <span style={{ fontSize: 12, color: '#888' }}>updating {migrateProgress}/{needsMoodMigration.length}…</span>
               : <button onClick={runMoodMigration} style={run}>clean up →</button>}
           </div>
         )}
 
-        {needsWiki.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: '#6F6B64' }}>wiki links — {needsWiki.length} missing</span>
-            {wikiRunning
-              ? <span style={{ fontSize: 12, color: '#888' }}>{Math.min(wikiProgress + 6, wikiTotal2)}/{wikiTotal2}… <button onClick={() => { wikiCancel.current = true }} style={ghost}>cancel</button></span>
-              : <button onClick={runWiki} style={run}>fill →</button>}
-          </div>
-        )}
-
         {needsArtRefresh.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: '#6F6B64' }}>cover art — {needsArtRefresh.length} below 300px</span>
+            <span style={{ fontSize: 12, color: '#6F6B64' }}>cover art</span>
             {artRunning
               ? <span style={{ fontSize: 12, color: '#888' }}>{Math.min(artProgress + 10, artTotal2)}/{artTotal2}… <button onClick={() => { artCancel.current = true }} style={ghost}>cancel</button></span>
               : artResult !== null
@@ -346,12 +313,7 @@ export function GapsSheet({ items, editItem, onClose }: {
           {/* Individual gap items */}
           {incomplete.length > 0 && (
             <>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C', margin: 0 }}>data gaps</p>
-                <p style={{ fontSize: 12, color: '#ABA69C', margin: 0 }}>
-                  {incomplete.length} item{incomplete.length !== 1 ? 's' : ''}
-                </p>
-              </div>
+              <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#ABA69C', margin: '0 0 4px' }}>data gaps</p>
               <p style={{ fontSize: 12, color: '#ABA69C', margin: '0 0 10px' }}>
                 tap to fill · ✓︎ to dismiss
               </p>

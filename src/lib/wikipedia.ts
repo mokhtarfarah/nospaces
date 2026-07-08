@@ -89,12 +89,6 @@ async function resolveByUrl(wikiUrl: string): Promise<WikiInfo> {
   })
 }
 
-// Imperative (non-hook) resolve for one-off use like the library backfill. Shares the
-// same cache + concurrency queue as the hook.
-export function fetchWikiInfo(type: string, title: string, creator: string | null, year: number | null): Promise<WikiInfo> {
-  return resolve(type, title, creator, year)
-}
-
 // Resolves the Wikipedia article URL + thumbnail for an item. Both may be null when
 // no suitable page exists (or the type isn't looked up).
 // Pass `seed` (from item metadata) to skip the network call entirely when we

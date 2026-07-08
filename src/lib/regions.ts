@@ -31,21 +31,25 @@ export function hasRegion(item: Item): boolean {
 }
 
 // Items eligible for a fill-from-wikipedia pass: media types we can resolve that
-// are still missing any of the fields one Wikidata lookup can supply — creator,
-// year, runtime (film/tv), pages (book), or region. A gap the user has dismissed
-// (marked "no data exists") is not counted, so the pending count can reach 0.
-// Region is versioned separately (re-clean on resolver bumps), so it's always
-// re-checked. Re-running is free + idempotent — only real hits get written.
+// are still missing any of the fields one Wikidata lookup can supply — the wiki
+// link itself, creator, year, runtime (film/tv), pages (book), or region. A gap
+// the user has dismissed (marked "no data exists") is not counted, so the
+// pending count can reach 0. Region is versioned separately (re-clean on
+// resolver bumps), so it's always re-checked; it has no dismiss path (unlike
+// the others) since "no country listed" is common and not worth nagging about —
+// it just quietly stops showing up once the count itself is hidden from the UI.
+// Re-running is free + idempotent — only real hits get written.
 export function itemsNeedingFacts(items: Item[]): Item[] {
   return items.filter(i => {
     if (!GAP_MEDIA_TYPES.includes(i.type)) return false
     const dismissed = new Set<string>((i.metadata?.dismissedGaps as string[] | undefined) ?? [])
+    const needWiki = !i.metadata?.wikiUrl && !dismissed.has('wiki')
     const needCreator = !i.creator?.trim() && !dismissed.has('creator')
     const needYear = !i.year && !dismissed.has('year')
     const needRuntime = (i.type === 'film' || i.type === 'tv') && !i.metadata?.runtime && !dismissed.has('runtime')
     const needPages = i.type === 'book' && !i.metadata?.pages && !dismissed.has('pages')
     const needRegion = !hasRegion(i)
-    return needCreator || needYear || needRuntime || needPages || needRegion
+    return needWiki || needCreator || needYear || needRuntime || needPages || needRegion
   })
 }
 
@@ -83,7 +87,11 @@ async function jget(url: string): Promise<unknown> {
   return res.json()
 }
 
-type Resolved = { title: string; qid: string | null }
+// url/thumbnail/summary are only populated when resolved via search (an item
+// missing a stored wikiUrl) — that's the case that needs them written back, so
+// one pass can fill the wiki link itself alongside creator/year/runtime/pages/
+// region, instead of needing a separate "fill wiki links" tool.
+type Resolved = { title: string; qid: string | null; url?: string; thumbnail?: string | null; summary?: string | null }
 
 function wikiQueries(type: string, title: string, creator: string, year: string): string[] {
   const bare = title.replace(/^(the|a|an)\s+/i, '').trim()
@@ -128,11 +136,22 @@ async function articleResolve(item: Item): Promise<Resolved | null> {
   }
   const a = norm(item.title)
   for (const q of wikiQueries(item.type, item.title, item.creator ?? '', item.year ? String(item.year) : '')) {
-    const d = await jget(`${WIKI}?action=query&format=json&origin=*&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(q)}&prop=pageprops&ppprop=wikibase_item`) as { query?: { pages?: Record<string, { title?: string; pageprops?: { wikibase_item?: string } }> } }
+    const d = await jget(
+      `${WIKI}?action=query&format=json&origin=*&generator=search&gsrlimit=1&gsrsearch=${encodeURIComponent(q)}` +
+      '&prop=pageprops|pageimages|info|extracts&ppprop=wikibase_item&inprop=url&piprop=thumbnail&pithumbsize=500&pilicense=any&exintro=1&exsentences=2&explaintext=1'
+    ) as { query?: { pages?: Record<string, { title?: string; fullurl?: string; thumbnail?: { source?: string }; extract?: string; pageprops?: { wikibase_item?: string } }> } }
     const page = d?.query?.pages ? Object.values(d.query.pages)[0] : undefined
     if (!page?.title) continue
     const b = norm(page.title)
-    if (b.includes(a) || a.includes(b)) return { title: page.title, qid: page.pageprops?.wikibase_item ?? null }
+    if (b.includes(a) || a.includes(b)) {
+      return {
+        title: page.title,
+        qid: page.pageprops?.wikibase_item ?? null,
+        url: page.fullurl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
+        thumbnail: page.thumbnail?.source ?? null,
+        summary: page.extract?.trim() || null,
+      }
+    }
   }
   return null
 }
@@ -179,14 +198,20 @@ const minYear = (cl: Claims, pids: string[]): number | null => {
   return ys.length ? Math.min(...ys) : null
 }
 
-export interface Facts { countries: string[]; creator: string | null; runtime: number | null; pages: number | null; year: number | null }
+export interface Facts {
+  countries: string[]; creator: string | null; runtime: number | null; pages: number | null; year: number | null
+  wikiUrl?: string; wikiThumb?: string | null; wikiSummary?: string | null
+}
 
-// Resolve one item's Wikidata facts (creator, year, runtime, pages, region) in a
+// Resolve one item's Wikidata facts (creator, year, runtime, pages, region) —
+// plus the wiki link itself when the item didn't already have one — in a
 // single article+claims pass. null = couldn't resolve the article at all; throws
 // on a network/Wikipedia error so the caller can count it as a retryable failure.
 async function resolveFacts(item: Item): Promise<Facts | null> {
   const resolved = await articleResolve(item)
-  if (!resolved?.qid) return null
+  if (!resolved) return null
+  const wikiFields = resolved.url ? { wikiUrl: resolved.url, wikiThumb: resolved.thumbnail ?? null, wikiSummary: resolved.summary ?? null } : {}
+  if (!resolved.qid) return { countries: [], creator: null, runtime: null, pages: null, year: null, ...wikiFields }
   const qid = resolved.qid
   const claims = (await claimsFor([qid]))[qid]
 
@@ -228,7 +253,7 @@ async function resolveFacts(item: Item): Promise<Facts | null> {
       .map(c => HISTORICAL_COUNTRY[c] ?? c)
   )]
 
-  return { countries, creator, runtime, pages, year }
+  return { countries, creator, runtime, pages, year, ...wikiFields }
 }
 
 // Facts on success, null if it kept failing. Wikipedia rate-limits anonymous
@@ -271,6 +296,7 @@ export async function pullFacts(
         if (facts.runtime && !item.metadata?.runtime) meta.runtime = facts.runtime
         if (facts.pages && !item.metadata?.pages) meta.pages = facts.pages
         if (facts.countries.length && !hasRegion(item)) { meta.countries = facts.countries; meta.regionV = REGION_VERSION }
+        if (facts.wikiUrl && !item.metadata?.wikiUrl) { meta.wikiUrl = facts.wikiUrl; meta.wikiThumb = facts.wikiThumb ?? null; meta.wikiSummary = facts.wikiSummary ?? null }
         if (Object.keys(columns).length || Object.keys(meta).length) { await save(item.id, columns, meta); filled++ }
       }
       done++
