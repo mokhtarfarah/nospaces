@@ -2499,9 +2499,11 @@ function MoodWall({ moods, cols, onOpen, onAddUpload, onAddLink }: {
   if (moods.length === 0) return <MoodEmpty onAddUpload={onAddUpload} onAddLink={onAddLink} />
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, alignItems: 'start', gap: 4 }}>
+    <div style={{ columnCount: cols, columnGap: 4 }}>
       {moods.map(item => (
-        <MoodCard key={item.id} item={item} onOpen={() => onOpen(item.id)} />
+        <div key={item.id} style={{ breakInside: 'avoid', marginBottom: 4 }}>
+          <MoodCard item={item} onOpen={() => onOpen(item.id)} />
+        </div>
       ))}
     </div>
   )
