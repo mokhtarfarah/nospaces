@@ -480,21 +480,24 @@ export async function parseProductLink(
 
 /**
  * Slice 4 — paid vision read (Sonnet 4.6, ~$0.01/call). Reads taste attributes
- * off a product image (material/palette/vibe/category) so the board mirrors you
- * without manual tagging. Reads the look, never the identity. Fires automatically
- * in the background after a save — best-effort, so any failure just means no
- * auto-tags (the user can still tag by hand). Sends only the image URL.
+ * off a product OR mood-board image (material/palette/vibe/category) so the board
+ * mirrors you without manual tagging. Reads the look, never the identity. Fires
+ * automatically in the background after a save — best-effort, so any failure just
+ * means no auto-tags (the user can still tag by hand). Sends only the image URL.
+ * `kind: 'inspiration'` (mood-board saves) switches the server to a prompt that
+ * doesn't assume it's looking at a product — see api/_vision.ts INSPIRATION_PROMPT.
  */
 export async function readImageAttributes(
   image: string,
   referer?: string | null,
+  kind: 'product' | 'inspiration' = 'product',
 ): Promise<{ ok: true; attributes: Attribute[]; shotType: ShotType | null } | { ok: false; reason: string }> {
   let resp: Response
   try {
     resp = await fetch('/api/things-vision', {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ image, referer: referer || undefined }),
+      body: JSON.stringify({ image, referer: referer || undefined, kind }),
     })
   } catch {
     return { ok: false, reason: "Couldn't reach the reader." }

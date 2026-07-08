@@ -147,6 +147,29 @@ Return JSON only, no prose:
 { "shotType": "product|onModel|lifestyle", "attributes": [ { "facet": "material|palette|vibe|category", "value": "<one or two words>" }, ... ] }`
 })()
 
+// The mood-board twin of PROMPT above (s109, Farah). A mood image isn't
+// necessarily a purchasable product — it can be an interior, a texture, a street
+// photo, anything whose LOOK caught their eye — so forcing it through the
+// product-shaped prompt (garment-cut vibe words, a closed clothing/home/beauty
+// category, a packshot/onModel/lifestyle shotType call) either mistags it or
+// leaves it under-tagged ("skip any facet you'd be guessing at" bites hard when
+// the image isn't clothing at all). No category or shotType here — neither is
+// used for an inspiration item (see InspirationMeta / things-taste.ts's HIDE set).
+const INSPIRATION_FACETS = FACETS.filter(f => f !== 'category')
+const INSPIRATION_OPEN_VOCAB = INSPIRATION_FACETS.map(f => `- ${f}: e.g. ${FACET_VOCAB[f].join(', ')}`).join('\n')
+
+const INSPIRATION_PROMPT = (() => {
+  return `Look at this image from someone's personal mood board — pure inspiration, not necessarily something they'd buy. It might be a product, but just as easily an interior, a texture, a scene, a street photo, or anything else whose LOOK caught their eye. Read its aesthetic register — the feeling the image gives off — not its identity. Do NOT name a brand, read any logo or text, or try to identify an exact product.
+
+Tag it on these facets (one or two words each, lowercase). These are examples, not a checklist — reach for whatever word actually captures the image, including atmosphere/mood words (moody, warm, sun-bleached, worn, quiet, lived-in, soft-focus) alongside material/palette when that's genuinely what carries the feeling:
+${INSPIRATION_OPEN_VOCAB}
+
+Only tag a facet when you can genuinely see or feel it in the image — skip a facet entirely rather than force a garment-style word onto something that isn't clothing (a room, a landscape, a texture). One value per facet (the dominant one). Better to return fewer, honest tags than to pad.
+
+Return JSON only, no prose:
+{ "attributes": [ { "facet": "material|palette|vibe", "value": "<one or two words>" }, ... ] }`
+})()
+
 // Clean a raw model attribute list down to well-formed tags: one per known facet,
 // value trimmed/lowercased/short.
 function cleanAttributes(raw: unknown[]): Attribute[] {
@@ -241,12 +264,16 @@ export async function readProductFromImage(
   }
 }
 
-// Read taste attributes off a product image URL. Fetches the image (browser UA +
-// Referer), runs Sonnet vision, returns cleaned tags. Never throws — returns a
-// reason on failure so callers can log + carry on (the save still stands).
+// Read taste attributes off a product OR mood-board image URL. Fetches the image
+// (browser UA + Referer), runs Sonnet vision, returns cleaned tags. Never throws —
+// returns a reason on failure so callers can log + carry on (the save still
+// stands). `kind` picks which prompt fits what's actually being read — a wishlist
+// save is a product photo, a mood-board save is 'inspiration' and may not be a
+// product at all (see INSPIRATION_PROMPT above).
 export async function readImageAttributes(
   imageUrl: string,
   referer?: string,
+  kind: 'product' | 'inspiration' = 'product',
 ): Promise<{ ok: true; attributes: Attribute[]; shotType: ShotType | null } | { ok: false; reason: string }> {
   const img = await fetchImageBase64(imageUrl, referer)
   if (!img.ok) return { ok: false, reason: img.reason }
@@ -258,7 +285,7 @@ export async function readImageAttributes(
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: img.media, data: img.data } },
-          { type: 'text', text: PROMPT },
+          { type: 'text', text: kind === 'inspiration' ? INSPIRATION_PROMPT : PROMPT },
         ],
       }],
     })

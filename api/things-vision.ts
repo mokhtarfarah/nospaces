@@ -21,12 +21,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(429).json({ error: 'Lots of reads this hour — try again later.' })
   }
 
-  const { image, referer } = req.body as { image?: string; referer?: string }
+  const { image, referer, kind } = req.body as { image?: string; referer?: string; kind?: string }
   if (!image || typeof image !== 'string' || !/^https?:\/\//i.test(image)) {
     return res.status(400).json({ error: 'Need an image URL.' })
   }
 
-  const result = await readImageAttributes(image, typeof referer === 'string' ? referer : undefined)
+  const result = await readImageAttributes(image, typeof referer === 'string' ? referer : undefined, kind === 'inspiration' ? 'inspiration' : 'product')
   if (!result.ok) {
     // An image-fetch failure (403/avif/timeout) is the user's link, not our bug — 422.
     // A vision/parse error is ours — 500.

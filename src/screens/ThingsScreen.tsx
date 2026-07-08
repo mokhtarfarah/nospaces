@@ -521,11 +521,12 @@ export function ThingsScreen() {
 
   // Read taste tags off a mood image (palette/material/vibe) and store them, so the
   // image feeds the board's thread. Same ~1¢ vision path as a product photo, minus
-  // the cutout (an inspiration image is shown whole). `silent` suppresses the toasts
-  // for a multi-image upload (which shows its own summary line).
+  // the cutout (an inspiration image is shown whole) — and reads with the
+  // 'inspiration' prompt (s109), which doesn't assume it's looking at clothing.
+  // `silent` suppresses the toasts for a multi-image upload (its own summary line).
   async function autoTagMood(id: string, image: string, opts?: { silent?: boolean }): Promise<boolean> {
     if (!opts?.silent) setFlash('reading taste from the image…')
-    const r = await readImageAttributes(image, null)
+    const r = await readImageAttributes(image, null, 'inspiration')
     if (!r.ok) { if (!opts?.silent) showFlash(`couldn't read the image — ${r.reason} (tap to dismiss)`, true); return false }
     if (r.attributes.length) {
       await patchMetadata(id, { attributes: r.attributes })
