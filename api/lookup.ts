@@ -46,7 +46,15 @@ const norm = (s: string) =>
   s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, ' ').trim()
 
-const tokenSet = (s: string) => new Set(norm(s).split(' ').filter(Boolean))
+// Common words that shouldn't count as a "match" on their own \u2014 without this, a
+// query like "the memory police" scored "The Police (Remastered)" and "The
+// Complete Sherlock Holmes" as real partial matches purely because they share
+// the word "the" (s109, Farah: "look it up online" was surfacing Panic! At the
+// Disco albums for a book search). Excluded from token overlap only \u2014 the exact-
+// match check above (`a === b`) still sees the full normalized string.
+const STOPWORDS = new Set(['the', 'a', 'an', 'of', 'and', 'or', 'in', 'on', 'at', 'to', 'for', 'is', 'it', 'this', 'that'])
+
+const tokenSet = (s: string) => new Set(norm(s).split(' ').filter(Boolean).filter(t => !STOPWORDS.has(t)))
 
 // 0..1 closeness of a candidate title to the search query. Exact (normalized)
 // match wins; otherwise blends token overlap (Dice) with containment (rewards a
@@ -57,6 +65,7 @@ export function scoreMatch(title: string, query: string): number {
   if (!a || !b) return 0
   if (a === b) return 1
   const T = tokenSet(title), Q = tokenSet(query)
+  if (T.size === 0 || Q.size === 0) return 0
   let inter = 0
   for (const t of T) if (Q.has(t)) inter++
   if (inter === 0) return 0
@@ -84,8 +93,14 @@ export function rankCandidates(candidates: Candidate[], query: string, preferred
       year: prev.year != null && c.year != null ? Math.min(prev.year, c.year) : (prev.year ?? c.year),
     })
   }
+  // Zero real textual relevance (no shared content word) is noise, not a ranked-
+  // last result — filter it out before the type boost even applies, so a catalog
+  // API's loose/fallback suggestions (an unrelated album, a random book) can't
+  // ride a medium-guess boost into the results (s109).
   return [...byKey.values()]
-    .map(c => ({ c, s: scoreMatch(c.title, query) + (preferredType && c.type === preferredType ? 0.2 : 0) }))
+    .map(c => ({ c, base: scoreMatch(c.title, query) }))
+    .filter(x => x.base > 0)
+    .map(x => ({ c: x.c, s: x.base + (preferredType && x.c.type === preferredType ? 0.2 : 0) }))
     .sort((a, b) => b.s - a.s || (b.c.year ?? 0) - (a.c.year ?? 0))
     .map(x => x.c)
 }

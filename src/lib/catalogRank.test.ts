@@ -29,6 +29,11 @@ describe('scoreMatch', () => {
   it('scores an unrelated title at zero', () => {
     expect(scoreMatch('Barbie', 'Oppenheimer')).toBe(0)
   })
+
+  it('does not treat a shared stopword as a match (s109 — "the memory police" scored "The Police" and "The Complete Sherlock Holmes")', () => {
+    expect(scoreMatch('The Complete Sherlock Holmes', 'the memory police')).toBe(0)
+    expect(scoreMatch('The Great Gatsby', 'the memory police')).toBe(0)
+  })
 })
 
 describe('rankCandidates', () => {
@@ -70,5 +75,17 @@ describe('rankCandidates', () => {
     expect(out).toHaveLength(1)
     expect(out[0].creator).toBe('Sally Rooney')
     expect(out[0].year).toBe(2018)
+  })
+
+  it('drops candidates with zero real relevance instead of ranking them last (s109)', () => {
+    const out = rankCandidates([
+      c('The Memory Police', 'book', 2020, 'Yōko Ogawa'),
+      c('The Police (Remastered)', 'music', 2007, 'The Police'),
+      c('Pretty. Odd. (Deluxe Version)', 'music', 2008, 'Panic! At the Disco'),
+      c('The Complete Sherlock Holmes', 'book', 1900, 'Arthur Conan Doyle'),
+    ], 'the memory police')
+    expect(out.map(x => x.title)).not.toContain('Pretty. Odd. (Deluxe Version)')
+    expect(out.map(x => x.title)).not.toContain('The Complete Sherlock Holmes')
+    expect(out[0].title).toBe('The Memory Police')
   })
 })
