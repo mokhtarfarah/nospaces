@@ -19,11 +19,12 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ## ▶ Next session (108) — no fixed queue; pick from below
 
+**Session 108 so far — 2 quick fixes shipped + pushed to `main` (live):** (1) the **desert-island read-sheet line** now gets the same label-column treatment as vibe/verdict (★ in the label slot, "desert island" in the content slot) instead of sitting flush-left and breaking the grid. (2) **Things categories are now a closed list** — decided with Farah: clothing (outerwear, dresses & jumpsuits, bottoms, tops, shoes, bags, jewelry), home (furniture, lighting, decor, kitchenware, appliances), beauty (skincare, makeup, fragrance), + other. Root cause was the vision prompt saying category was "not limited to the list" — fixed there (now a strict enum) plus the tag-editor UI (grouped pick-one chips, no free text) plus a synonym map that folds old sprawled values (fabric/material sample/coat/bag/etc.) onto the new list at read time — no backend migration needed. Farah's also planning to start saving home + beauty items now that the categories exist for them.
+
 **Do first (housekeeping):**
 - **Confirm the 10k Postmark plan is bought.** Approval unblocked it; talkback ≈ 2 emails/capture and the free plan is only 100/mo, so real use will blow the cap fast. Detail → `docs/REFERENCE.md` → Postmark plan.
 
 **Still open from s106 (full detail in `docs/ROADMAP.md`):**
-- **Too many Things categories** — `category` is AI free-text so it sprawls (fabric / material sample / surface material…); make it a closed list + normalize existing. Free, but **decide the actual list with Farah first** (→ Things board polish).
 - **Header/footer nav reconciliation** — nav is split between top header and bottom bar inconsistently; rethink the model, discuss with Farah first (→ Media library polish, next to the bottom-nav items).
 
 **Settled, not open:** tags-as-a-third-tab (alongside note/how-it-fits) was considered and declined this session — leave the credit-line placement alone unless discoverability becomes a real complaint again (s107 archive has the reasoning).
@@ -33,8 +34,6 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 **Also still carried:** the ~8 junk board cards from the old email bug (s100) may still be there — check she deleted them. *(Dependency/Dependabot cleanup is now DONE — s101.)* **One open Dependabot PR is expected + intentional:** the `major-updates` group PR (batches react 19, react-router 7, vite/vitest majors) — the new config's parked "majors" bucket. Leave it; those are deliberate own-session upgrades (`docs/ROADMAP.md`), not noise.
 
 **First: re-look at the music-library "iPod collection" reframe** (`docs/ROADMAP.md` → "Media library polish"). Farah confirmed the direction "generally" but **isn't 100% — she wants to look again before any build.** The core idea: the music clutter is **want-to bleeding into the collection**; split *collection (the iPod, done — browse by artist, naturally curated)* from *queue (want-to)* by default. Sub-asks already locked: verdict "shelves" = one added view *inside* the collection (not default); by-artist view sortable by **# of albums saved**. Open layout step: *how* the queue sits beside the collection (leaning: a `to listen · N` chip atop music) + whether it generalizes past music. Confirm the framing with her, then it's a free frontend build.
-
-**Still open — `★ desert island` read-sheet placement (untouched s94).** The line sits flush-left and breaks the genre/vibe/verdict label-column grid (see `docs/ROADMAP.md`, "Desert-island read-sheet placement"). A quick frontend tweak whenever — and note the s94 "thoughts" block just moved to the *quiet 10px muted label* style, so match the desert-island line to that same label family when you place it.
 
 **Also still worth a check:** the s89 **pull-from-link fix** — screenshot a product, add a link, edit → does "pull photo & price" now appear and **swap the screenshot for the clean shop photo**? (Only fires on *newly* screenshot-saved products — the `imageFromShot` flag isn't backfilled onto older ones.)
 
