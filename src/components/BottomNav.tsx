@@ -42,19 +42,22 @@ export function BottomNav({ onAdd, subNav }: { onAdd: () => void; subNav?: React
         </button>
 
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
-        {/* Main row always sits on top, against the page content — the sub-tab
-            row (when present) goes underneath it, hard against the bottom
-            safe-area edge. Boxed in by the main row above and the physical
-            edge below, instead of floating in the gap between content and
-            chrome (s108 follow-up: tried closing that gap directly, but
-            without something to attach to it just read as loose text). */}
+        {subNav && (
+          <div style={{
+            background: NAV_TINT, borderTop: '1px solid #ECE9E2',
+            height: SUBNAV_H, boxSizing: 'border-box',
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16,
+            padding: '0 18px',
+          }}>
+            {subNav}
+          </div>
+        )}
         <nav style={{
-          height: subNav ? NAV_H : `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
-          paddingTop: 14, paddingLeft: 18, paddingRight: 18,
-          paddingBottom: subNav ? 0 : 'env(safe-area-inset-bottom)',
+          height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
+          paddingBottom: 'env(safe-area-inset-bottom)',
           background: NAV_TINT, borderTop: '1px solid #ECE9E2',
           display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-          boxSizing: 'border-box',
+          padding: '14px 18px 0', boxSizing: 'border-box',
         }}>
           <DomainLinks current="media" />
           <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
@@ -65,18 +68,6 @@ export function BottomNav({ onAdd, subNav }: { onAdd: () => void; subNav?: React
             <NavLink to="/discover" style={({ isActive }) => link(isActive)}>discover</NavLink>
           </div>
         </nav>
-        {subNav && (
-          <div style={{
-            background: NAV_TINT,
-            height: `calc(${SUBNAV_H}px + env(safe-area-inset-bottom))`,
-            paddingBottom: 'env(safe-area-inset-bottom)',
-            paddingLeft: 18, paddingRight: 18,
-            boxSizing: 'border-box',
-            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16,
-          }}>
-            {subNav}
-          </div>
-        )}
       </div>
     </>
   )

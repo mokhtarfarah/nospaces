@@ -1095,15 +1095,21 @@ function ThingsNav({ tab, onTab, subNav }: { tab: Tab; onTab: (t: Tab) => void; 
   })
   return (
     <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
-      {/* Main row on top, sub-tab row underneath against the safe-area edge —
-          see BottomNav.tsx for why. */}
+      {subNav && (
+        <div style={{
+          background: NAV_TINT, borderTop: '1px solid #ECE9E2',
+          height: SUBNAV_H, boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16,
+          padding: '0 18px',
+        }}>
+          {subNav}
+        </div>
+      )}
       <nav style={{
-        height: subNav ? NAV_H : `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
-        paddingTop: 14, paddingLeft: 18, paddingRight: 18,
-        paddingBottom: subNav ? 0 : 'env(safe-area-inset-bottom)',
+        height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom: 'env(safe-area-inset-bottom)',
         background: NAV_TINT, borderTop: '1px solid #ECE9E2',
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-        boxSizing: 'border-box',
+        padding: '14px 18px 0', boxSizing: 'border-box',
       }}>
         <DomainLinks current="things" />
         <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
@@ -1112,18 +1118,6 @@ function ThingsNav({ tab, onTab, subNav }: { tab: Tab; onTab: (t: Tab) => void; 
           <button onClick={() => onTab('taste')} style={link(tab === 'taste')}>taste</button>
         </div>
       </nav>
-      {subNav && (
-        <div style={{
-          background: NAV_TINT,
-          height: `calc(${SUBNAV_H}px + env(safe-area-inset-bottom))`,
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          paddingLeft: 18, paddingRight: 18,
-          boxSizing: 'border-box',
-          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16,
-        }}>
-          {subNav}
-        </div>
-      )}
     </div>
   )
 }
