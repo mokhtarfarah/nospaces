@@ -41,10 +41,12 @@ npm run typecheck    # tsc --noEmit (src) && tsc --noEmit -p tsconfig.api.json (
 ## Key files
 
 - `src/screens/LibraryScreen.tsx` — library UI + filter/sort/gaps/dupes
-- `src/screens/AddScreen.tsx` — add screen + library tools (auto-fill)
+- `src/components/MediaComposer.tsx` — media add flow, a bottom sheet (not a route — `AddScreen.tsx` no longer exists, see s87/Build B)
+- `src/components/ConfirmSheet.tsx` — add-flow confirm/edit step, restructured s110 onto the shared editorial language (`SheetHero` + segmented controls)
+- `src/components/SheetHero.tsx` — shared bottom-sheet header (ghost cover wash + title), used by Discover/Library/ConfirmSheet detail sheets
 - `src/screens/TasteScreen.tsx` — taste snapshot page
 - `src/components/ItemActionSheet.tsx` — action card (read/edit/reaction views)
-- `src/components/MarkDoneSheet.tsx` — mark-as-done sheet
+- `src/components/MarkDoneSheet.tsx` — mark-as-done sheet (reaction segmented control lives in `ReactionForm.tsx`, shared with ConfirmSheet)
 - `src/components/GapsSheet.tsx` — data-gaps tidy sheet (accessible from Library header)
 - `src/components/DuplicatesSheet.tsx` — duplicate review sheet
 - `src/hooks/useItems.ts` — all item CRUD + toggleOwned, toggleCanon, duplicateGroups
