@@ -277,17 +277,19 @@ export function LibraryScreen() {
   // one tray, reached from either side, rather than a guess-which-tab split.
   useEffect(() => { fetchCaptures().then(setCaptures) }, [])
   const captureFailures = useMemo(() => captures.filter(isFailure).length, [captures])
-  // Header collapse-on-scroll: the title row + view control fold away once the
-  // user scrolls into the collection, leaving the category + status tab rows
-  // pinned. Hysteresis (collapse past 56px, expand under 16px) avoids flicker
-  // from momentum/rubber-band scrolling near the threshold.
-  const [collapsed, setCollapsed] = useState(false)
+  // The title row used to fold away via a JS scroll listener toggling
+  // max-height/opacity (collapse past 56px, expand under 16px) — it was jumpy
+  // on mobile because it fires a React re-render + animates a layout property
+  // on every scroll event, fighting the browser's own scroll compositing.
+  // Things hit the identical problem and fixed it by dropping the JS height
+  // animation entirely and letting the title scroll away naturally, keeping
+  // only the actually-useful control row sticky (see ThingsScreen.tsx) — same
+  // fix here (s108): the title block below is now in normal scroll flow
+  // inside the list, and only the category/status/filter row is sticky.
   const listRef = useRef<HTMLDivElement>(null)
   const lastScrollRef = useRef(0)
   const onListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const t = e.currentTarget.scrollTop
-    lastScrollRef.current = t
-    setCollapsed(prev => (prev ? t > 16 : t > 56))
+    lastScrollRef.current = e.currentTarget.scrollTop
   }, [])
   // Persist scroll on background/hide (the moment iOS may kill a standalone PWA),
   // and restore it once the list has loaded after the resulting reload.
@@ -609,8 +611,8 @@ export function LibraryScreen() {
   // present in the current set, so pruning keeps the active filters consistent
   // with what's offered. availableTags reflects the NEW base set by the time
   // this post-render effect runs, so it's safe to prune against it here.
-  // Also scroll back to the top and expand the header — otherwise switching to a
-  // short (non-scrollable) result set could leave the header stuck collapsed.
+  // Also scroll back to the top — a short (non-scrollable) result set should
+  // open at the top, not wherever the previous set left off.
   useEffect(() => {
     const has = (list: TagCount[], v: string) => list.some(t => t.value === v)
     setVibeFilter(prev => prev.filter(v => has(availableTags.vibes, v)))
@@ -620,7 +622,6 @@ export function LibraryScreen() {
     setCountryFilter(prev => prev.filter(v => has(availableTags.countries, v)))
     if (!hasOwned) setShelfFilter('all')
     listRef.current?.scrollTo({ top: 0 })
-    setCollapsed(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prune only on base-control change, not on every availableFilters recompute
   }, [categories, statusFilter, reactionFilter, reviewOnly])
 
@@ -646,23 +647,14 @@ export function LibraryScreen() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
-      {/* Header */}
-      <header style={{
-        padding: '20px 16px 0',
-        background: '#fff',
-        borderBottom: '1px solid #E8E8E8',
-        position: 'sticky', top: 0, zIndex: 50,
-      }}>
-        {/* Title row — folds away on scroll. Holds the view control, search and
-            the overflow menu; the category + status rows below stay pinned. */}
-        <div style={{
-          overflow: 'hidden', transition: 'max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease',
-          maxHeight: collapsed ? 0 : 110, opacity: collapsed ? 0 : 1, marginBottom: collapsed ? 0 : 12,
-        }}>
-          {/* Magazine header — title + search/overflow on top, then count + sort
-              folded into one quiet subline (s84 collapse). The standalone uppercase
-              kicker and the in-title sort button are gone: the title row now holds
-              only the title and the two icons, so the top reads calmer. */}
+      {/* One scroller — title + search live in normal flow and scroll away for
+          free (real native scrolling, no JS height animation); only the
+          category/status/filter row below is sticky. Matches ThingsScreen's
+          header, which already solved the same mobile jumpiness this way. */}
+      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? clearStack(94) : clearStack(24) }}>
+        <div style={{ padding: '20px 16px 0' }}>
+          {/* Magazine header — title + search/overflow on top, then count
+              folded into one quiet subline. */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
             <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 0.95, margin: 0, color: '#1C1B19' }}>library</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
@@ -675,106 +667,102 @@ export function LibraryScreen() {
           <div style={{ marginBottom: 10 }}>
             <span style={{ fontSize: 12.5, color: '#ABA69C' }}>{kicker}</span>
           </div>
-          <div style={{ borderBottom: '1.5px solid #1C1B19' }} />
-        </div>
+          <div style={{ borderBottom: '1.5px solid #1C1B19', marginBottom: 12 }} />
 
-        {searchOpen && (
-          <div style={{ position: 'relative', marginBottom: 8 }}>
-            <input
-              autoFocus
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="search titles, creators…"
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                padding: '8px 34px 8px 12px', border: `1.5px solid ${HAIR}`,
-                borderRadius: 8, fontSize: 16, outline: 'none', color: INK,
-              }}
-            />
-            {query && (
-              <button
-                onClick={() => setQuery('')}
-                title="Clear search"
+          {searchOpen && (
+            <div style={{ position: 'relative', marginBottom: 8 }}>
+              <input
+                autoFocus
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="search titles, creators…"
                 style={{
-                  position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-                  width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#ECEAE6',
-                  color: '#6F6B64', fontSize: 13, lineHeight: 1, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '8px 34px 8px 12px', border: `1.5px solid ${HAIR}`,
+                  borderRadius: 8, fontSize: 16, outline: 'none', color: INK,
                 }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Nav row — category tabs + a status dropdown on the left, the view·sort·
-            filter button (and, while collapsed, the search/overflow controls)
-            pinned to the right. Was two rows before s85; merged into one so the
-            header reads tighter. Status (and its done→reaction sub-filter) folds
-            into the dropdown instead of taking a whole row of chips. */}
-        <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 10 }}>
-          {/* category tabs — scroll horizontally when they overflow */}
-          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', flex: '0 1 auto', minWidth: 0 }}>
-            {typeOrder.map(t => (
-              <TabChip
-                key={t}
-                label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
-                // An active search spans all categories (see baseFiltered), so the
-                // tab row reflects "all" while searching — without mutating the
-                // stored category, so clearing the search snaps back to this tab.
-                active={categories.includes(t) && !reviewOnly && !query.trim()}
-                onClick={() => selectCategory(t)}
               />
-            ))}
-            <TabChip label="all" active={(categories.length === 0 || !!query.trim()) && !reviewOnly} onClick={selectAll} />
-            {hasReview && (
-              <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
-            )}
-          </div>
-          {/* divider + status dropdown */}
-          <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0, margin: '0 12px' }} />
-          <StatusDropdown
-            statusFilter={statusFilter}
-            reactionFilter={reactionFilter}
-            onStatus={s => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
-            onReaction={setReactionFilter}
-            showShelf={hasOwned}
-            shelfFilter={shelfFilter}
-            onShelf={v => setShelfFilter(prev => prev === v ? 'all' : v)}
-          />
-          {/* spacer pushes the right-hand controls to the edge */}
-          <div style={{ flex: '1 1 0' }} />
-          {/* View · sort · filter live in one card opened from this button,
-              mirroring the Things board. Always present (it always offers layout +
-              sort), even before there are tag groups to filter on. */}
-          <button
-            onClick={() => setFilterSheetOpen(true)}
-            aria-label={filterCount > 0 ? `view, sort, filter · ${filterCount} filters active` : 'view, sort and filter'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
-              padding: '4px 2px 8px', border: 'none', background: 'none',
-              color: filterCount > 0 ? '#1C1B19' : '#888', cursor: 'pointer',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" fill="#fff" />
-              <line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" fill="#fff" />
-            </svg>
-            {filterCount > 0 && (
-              <span style={{
-                fontSize: 11, fontWeight: 600, fontStyle: 'italic', lineHeight: 1, color: '#1C1B19',
-              }}>{filterCount}</span>
-            )}
-          </button>
-          {/* While scrolled, the line stays pure — just categories · status ·
-              filter. Search + overflow live in the title row above; a small flick
-              up un-collapses it to reach them (and clear now lives in the card). */}
+              {query && (
+                <button
+                  onClick={() => setQuery('')}
+                  title="Clear search"
+                  style={{
+                    position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                    width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#ECEAE6',
+                    color: '#6F6B64', fontSize: 13, lineHeight: 1, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          )}
         </div>
-      </header>
 
-      {/* List */}
-      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? clearStack(94) : clearStack(24) }}>
+        {/* Nav row — category tabs + a status dropdown on the left, the
+            view·sort·filter button pinned to the right. Sticky on its own
+            (not wrapped with the title) so it pins smoothly without any JS
+            driving it. Was two rows before s85; merged into one so the header
+            reads tighter. Status (and its done→reaction sub-filter) folds
+            into the dropdown instead of taking a whole row of chips. */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#fff', borderBottom: '1px solid #E8E8E8', padding: '0 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 10 }}>
+            {/* category tabs — scroll horizontally when they overflow */}
+            <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', flex: '0 1 auto', minWidth: 0 }}>
+              {typeOrder.map(t => (
+                <TabChip
+                  key={t}
+                  label={CATEGORY_LABEL[t] ?? TYPE_COLORS[t]?.label ?? (t.charAt(0).toUpperCase() + t.slice(1))}
+                  // An active search spans all categories (see baseFiltered), so the
+                  // tab row reflects "all" while searching — without mutating the
+                  // stored category, so clearing the search snaps back to this tab.
+                  active={categories.includes(t) && !reviewOnly && !query.trim()}
+                  onClick={() => selectCategory(t)}
+                />
+              ))}
+              <TabChip label="all" active={(categories.length === 0 || !!query.trim()) && !reviewOnly} onClick={selectAll} />
+              {hasReview && (
+                <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
+              )}
+            </div>
+            {/* divider + status dropdown */}
+            <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0, margin: '0 12px' }} />
+            <StatusDropdown
+              statusFilter={statusFilter}
+              reactionFilter={reactionFilter}
+              onStatus={s => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
+              onReaction={setReactionFilter}
+              showShelf={hasOwned}
+              shelfFilter={shelfFilter}
+              onShelf={v => setShelfFilter(prev => prev === v ? 'all' : v)}
+            />
+            {/* spacer pushes the right-hand controls to the edge */}
+            <div style={{ flex: '1 1 0' }} />
+            {/* View · sort · filter live in one card opened from this button,
+                mirroring the Things board. Always present (it always offers layout +
+                sort), even before there are tag groups to filter on. */}
+            <button
+              onClick={() => setFilterSheetOpen(true)}
+              aria-label={filterCount > 0 ? `view, sort, filter · ${filterCount} filters active` : 'view, sort and filter'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                padding: '4px 2px 8px', border: 'none', background: 'none',
+                color: filterCount > 0 ? '#1C1B19' : '#888', cursor: 'pointer',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" fill="#fff" />
+                <line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" fill="#fff" />
+              </svg>
+              {filterCount > 0 && (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, fontStyle: 'italic', lineHeight: 1, color: '#1C1B19',
+                }}>{filterCount}</span>
+              )}
+            </button>
+          </div>
+        </div>
         {/* Shows near you — lives in the music view (it's intrinsically music). */}
         {musicOnly && !reviewOnly && (
           <button
