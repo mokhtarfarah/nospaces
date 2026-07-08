@@ -147,9 +147,28 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
           </button>
         </div>
 
-        {/* Item preview / edit */}
+        {/* Item preview / edit — the type chips only show while editing (s109):
+            it's an editable field like title/creator/year, not a permanent
+            control, and it was duplicating the type/creator/year meta line
+            shown just below it in preview. */}
         {editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {TYPES.map(t => {
+                const c = typeColor(t)
+                const active = item.type === t
+                return (
+                  <button key={t} onClick={() => setItem(v => ({ ...v, type: t }))} style={{
+                    padding: '5px 12px', border: active ? `1.5px solid ${c.border}` : `1.5px solid ${HAIR}`,
+                    borderRadius: 8, background: active ? c.bg : '#fff',
+                    color: active ? c.border : GRAPHITE, fontSize: 13,
+                    fontWeight: active ? 600 : 400, cursor: 'pointer',
+                  }}>
+                    {TYPE_COLORS[t]?.label ?? t}
+                  </button>
+                )
+              })}
+            </div>
             <input
               value={item.title}
               onChange={e => setItem(v => ({ ...v, title: e.target.value }))}
@@ -188,24 +207,6 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
             </div>
           </div>
         )}
-
-        {/* Type chips */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-          {TYPES.map(t => {
-            const c = typeColor(t)
-            const active = item.type === t
-            return (
-              <button key={t} onClick={() => setItem(v => ({ ...v, type: t }))} style={{
-                padding: '5px 12px', border: active ? `1.5px solid ${c.border}` : `1.5px solid ${HAIR}`,
-                borderRadius: 8, background: active ? c.bg : '#fff',
-                color: active ? c.border : GRAPHITE, fontSize: 13,
-                fontWeight: active ? 600 : 400, cursor: 'pointer',
-              }}>
-                {TYPE_COLORS[t]?.label ?? t}
-              </button>
-            )
-          })}
-        </div>
 
         {/* Source — hidden for the default "quick add" (it's noise); shown for real sources. */}
         {source && source !== 'quick add' && (
@@ -270,13 +271,21 @@ export function ConfirmSheet({ result, source, query, onConfirm, onClose }: Prop
           })}
         </div>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', userSelect: 'none' }}>
-          <input type="checkbox" checked={owned} onChange={e => setOwned(e.target.checked)}
-            style={{ width: 16, height: 16, accentColor: color.border, cursor: 'pointer', margin: 0 }} />
-          <span style={{ fontSize: 13, color: GRAPHITE }}>
-            {item.type === 'book' ? 'already on my shelf' : 'already own it'}
-          </span>
-        </label>
+        {/* A pill toggle, not a native checkbox (s109) — matches the chip language
+            used everywhere else in this sheet instead of a bare form control. */}
+        <button
+          onClick={() => setOwned(v => !v)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', padding: '7px 14px',
+            borderRadius: 20, cursor: 'pointer', marginBottom: 16,
+            border: owned ? `1.5px solid ${color.border}` : `1.5px solid ${HAIR}`,
+            background: owned ? color.bg : '#fff',
+            color: owned ? color.border : GRAPHITE,
+            fontSize: 13, fontWeight: owned ? 600 : 400,
+          }}
+        >
+          {item.type === 'book' ? 'already on my shelf' : 'already own it'}
+        </button>
 
         {status === 'done' && (
           <div style={{ marginBottom: 16 }}>

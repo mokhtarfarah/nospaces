@@ -26,6 +26,23 @@ type Stream = 'foryou' | 'further'
 
 const CACHE_TTL_MS = 48 * 60 * 60 * 1000
 
+// The recommend-feeds function caps at 60s server-side (maxDuration). Without a
+// client-side timeout, a hung connection — or a Vercel timeout that doesn't
+// cleanly close the socket — leaves the fetch promise pending forever: the
+// loading spinner never resolves and there's no way out except reloading the
+// page (Farah: "further afield" gets stuck on loading). 70s gives the server's
+// own timeout a chance to respond first; this is the backstop for when it doesn't.
+const FETCH_TIMEOUT_MS = 70_000
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 function isStale(cachedAt: string): boolean {
   return Date.now() - new Date(cachedAt).getTime() > CACHE_TTL_MS
 }
@@ -114,7 +131,7 @@ export function DiscoverScreen() {
     setError(null)
     try {
       const headers = await authHeaders()
-      const res = await fetch('/api/recommend-feeds', {
+      const res = await fetchWithTimeout('/api/recommend-feeds', {
         method: 'POST', headers,
         body: JSON.stringify({ mode, type: 'all', tasteProfile, libraryItems, customFeeds, priorRecs: seenDiscoverTitles }),
       })
@@ -127,7 +144,9 @@ export function DiscoverScreen() {
       } else {
         setDivertResults(recs); setDivertLoaded(true); setDiscoveryCache('divert', recs)
       }
-    } catch { setError('network error — try again') }
+    } catch (err) {
+      setError(err instanceof Error && err.name === 'AbortError' ? 'took too long — try again' : 'network error — try again')
+    }
     finally { mode === 'intaste' ? setIntasteLoading(false) : setDivertLoading(false) }
   }
 
@@ -137,7 +156,7 @@ export function DiscoverScreen() {
     setMoodLoading(true); setMoodActive(true); setError(null)
     try {
       const headers = await authHeaders()
-      const res = await fetch('/api/recommend-feeds', {
+      const res = await fetchWithTimeout('/api/recommend-feeds', {
         method: 'POST', headers,
         body: JSON.stringify({ mood: q, type: 'all', tasteProfile, libraryItems, customFeeds, priorRecs: seenDiscoverTitles }),
       })
@@ -146,7 +165,10 @@ export function DiscoverScreen() {
       const recs = normaliseSources(data.recommendations ?? [])
       addSeenDiscoverTitles(recs.map(r => r.title))
       setMoodResults(recs)
-    } catch { setError('network error — try again'); setMoodActive(false) }
+    } catch (err) {
+      setError(err instanceof Error && err.name === 'AbortError' ? 'took too long — try again' : 'network error — try again')
+      setMoodActive(false)
+    }
     finally { setMoodLoading(false) }
   }
 
