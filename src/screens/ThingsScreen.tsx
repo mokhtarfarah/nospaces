@@ -1095,21 +1095,15 @@ function ThingsNav({ tab, onTab, subNav }: { tab: Tab; onTab: (t: Tab) => void; 
   })
   return (
     <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
-      {subNav && (
-        <div style={{
-          background: NAV_TINT, borderTop: '1px solid #ECE9E2',
-          height: SUBNAV_H, boxSizing: 'border-box',
-          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16,
-          padding: '0 18px',
-        }}>
-          {subNav}
-        </div>
-      )}
+      {/* Main row on top, sub-tab row underneath against the safe-area edge —
+          see BottomNav.tsx for why. */}
       <nav style={{
-        height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom: 'env(safe-area-inset-bottom)',
-        background: NAV_TINT, borderTop: subNav ? 'none' : '1px solid #ECE9E2',
+        height: subNav ? NAV_H : `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
+        paddingTop: 14, paddingLeft: 18, paddingRight: 18,
+        paddingBottom: subNav ? 0 : 'env(safe-area-inset-bottom)',
+        background: NAV_TINT, borderTop: '1px solid #ECE9E2',
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-        padding: '10px 18px 0', boxSizing: 'border-box',
+        boxSizing: 'border-box',
       }}>
         <DomainLinks current="things" />
         <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
@@ -1118,6 +1112,18 @@ function ThingsNav({ tab, onTab, subNav }: { tab: Tab; onTab: (t: Tab) => void; 
           <button onClick={() => onTab('taste')} style={link(tab === 'taste')}>taste</button>
         </div>
       </nav>
+      {subNav && (
+        <div style={{
+          background: NAV_TINT,
+          height: `calc(${SUBNAV_H}px + env(safe-area-inset-bottom))`,
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingLeft: 18, paddingRight: 18,
+          boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16,
+        }}>
+          {subNav}
+        </div>
+      )}
     </div>
   )
 }
