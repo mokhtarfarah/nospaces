@@ -2585,10 +2585,13 @@ function MoodSheet({ item, onClose, onRunTaste, onDelete }: {
         </div>
       )}
 
-      {/* Recovery: an image whose look couldn't be auto-read lands here untagged —
-          offer a one-tap re-read so it can still feed the taste thread. */}
-      {taste.length === 0 && m.image && (
-        <button onClick={onRunTaste} style={{ ...quietLink, marginTop: 16 }}>read taste from this image</button>
+      {/* Always available, not just recovery for an untagged image — re-reading is
+          how an already-tagged image picks up a changed vision prompt (s109: mood
+          images moved off the product-shaped prompt onto their own). */}
+      {m.image && (
+        <button onClick={onRunTaste} style={{ ...quietLink, marginTop: 16 }}>
+          {taste.length > 0 ? 're-read taste from this image' : 'read taste from this image'}
+        </button>
       )}
 
       <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${LINE}`, display: 'flex', alignItems: 'center', gap: 16 }}>
