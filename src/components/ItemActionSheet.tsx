@@ -892,13 +892,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   {activeGenres.length > 0 && row('genre', tagLine('genre', activeGenres))}
                   {(feel.length > 0 || unconfirmedVibes.length > 0) && row('vibe', tagLine('vibe', feel, unconfirmedVibes))}
                   {/* Desert island is the top rung — elevated, not a soft-token chip.
-                      A starred line above the verdict row marks the all-time keepers. */}
-                  {isCanon && (
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, color: '#1C1B19' }}>★</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', letterSpacing: '0.01em' }}>desert island</span>
-                    </div>
-                  )}
+                      Given the same label-column treatment as genre/vibe/verdict (s94 fix:
+                      it used to sit flush-left with no label and broke the grid). */}
+                  {isCanon && row('★', <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19', letterSpacing: '0.01em' }}>desert island</span>)}
                   {/* Verdict is optional now — a highlighter for the special ones, not
                       a slot to fill. Shown only when set; an empty verdict reads as
                       finished, not unfinished (s93 reshape). */}
