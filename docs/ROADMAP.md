@@ -84,6 +84,7 @@ The walled-shop screenshot rescue shipped (all 5 parts — see archive s87). Ope
 - **Paid product search (Google Shopping / SerpApi)** — v1 search-by-name uses AI-suggest (1 Sonnet call → named guesses + approx price, no live images). Real images/prices need a paid metered API. *Add only if AI-suggest proves too thin.*
 
 ### Discovery
+- **Discover recs repeat too often (Farah, s113 — parked).** Traced to `api/recommend-feeds.ts:209`: the exclusion list sent to the prompt only covers the last 40 recommended titles (cut from 150 in s112 to fix a different bug — the model narrating its own filtering into visible text). Anything recommended more than 40 picks back is fair game to resurface. **Recommended fix:** raise the window back up with a bare-titles list (no shouty formatting — that's what caused the s112 leak, not length; the s112 source-whitelist backstop is still there either way) rather than rate-limiting requests, which wouldn't fix repetition, just space it out. Not built — no code changed yet.
 - **Discover mood chips (revisit 2026-06-29)** — quick-pick vibe chips above the Discover search box, pre-filling the "in the mood for…" query, sourced from `VIBES` in `lib/moods.ts` + the user's top tags + 1–2 utility chips ("short", "surprise me"). Parked: auto-picked chips felt arbitrary and the search box alone covers the case. *Trigger: one week of real use of the rebuilt Discover.*
 
 ### Smaller parked ideas (have a trigger)
