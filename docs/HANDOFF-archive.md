@@ -4,6 +4,28 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 111 (2026-07-08) — fill-from-wikipedia consolidation, kill nag counts. Free, no new API calls.
+
+**Farah's ask: "media fill data functions are super disjointed... streamline. Separately, de-emphasize data completion — I get obsessive about filling everything in, don't want it to feel like homework."** Explore agent + manual read turned up **three separate "fill from wikipedia" tools** that had grown independently: `GapsSheet.tsx`'s wiki-link-only fill (`/api/wiki` search), the Library overflow menu's "fill from wikipedia · N" (`lib/regions.ts` `pullFacts` — browser-direct to Wikipedia/Wikidata, deliberately bypassing our server to dodge shared-IP rate-limiting, per its own code comment) pulling creator/year/runtime/pages/region, and `ItemActionSheet.tsx`'s per-item "auto-fill from wikipedia" (`/api/wiki?parse=1`) — the best-built of the three, one button, clear result line, AI fallback. Getting full coverage meant running two of the three batch tools separately.
+
+**Root cause of "213 never clears":** `itemsNeedingFacts()` counted an item as pending if it lacked a **region** (country) — but region had no dismiss path, unlike every other gap (year/creator/genre/runtime, all dismissable via `dismissedGaps`). Any item whose Wikidata entry simply doesn't list a country (common for obscure books/albums) sat in the queue forever — not a lookup bug, a counting bug.
+
+**Fix — merge, then de-emphasize:**
+- `regions.ts`'s `articleResolve`/`resolveFacts`/`pullFacts` now also capture the wiki link + thumbnail + summary in the same Wikipedia query used for the Wikidata facts pull — one pass fills everything the three old tools did between them.
+- Deleted `GapsSheet.tsx`'s standalone wiki-only tool (`needsWiki`/`runWiki`) and the now-dead `fetchWikiInfo` export from `lib/wikipedia.ts`.
+- `itemsNeedingFacts()` now also tracks the wiki-link gap (respecting dismiss), so it's one "what's missing" definition instead of two that quietly disagreed.
+- **Farah chose "kill the raw counts"** (over moving tidy out of the header, or shrinking what counts as a gap) when asked how to de-emphasize completion. Dropped "N missing"/"N items" everywhere in the tidy/fill UI — `genres — 61 missing` → `genres`, `fill from wikipedia · 213` → `fill from wikipedia`, `tidy · N` → `tidy`, the "74 items" DATA GAPS header gone entirely. Kept the `$` cost estimate before an AI spend (real-money transparency, required by `CLAUDE.md`) and the live `X/Y…` progress counters while a batch actually runs (functional, not a nag). Region no longer needs a dismiss mechanism — it just isn't counted as a number anymore, fills silently in the background.
+
+**Verification:** typecheck + lint + all 118 tests clean via the pre-commit hook. Could **not** visually click through the real gap-fill flow — the local preview account's library is empty, no seed data with real gaps to exercise. Farah tested live on her own account after push: **"fill is much better now."**
+
+Committed `314e90f` (the fix) + `165fb19` (docs — see below), pushed to `main`, live.
+
+**Also this session (unrelated, docs-only): logged a new bug.** Farah flagged the Things mood board isn't laying out as masonry — images sit in a fixed CSS grid (`MoodWall`, `ThingsScreen.tsx:2496`, plain `display: grid` with fixed columns) instead of flowing Pinterest-style columns, so a short image leaves a gap under it instead of the next image sliding up. Farah confirmed it used to work and broke in an earlier session — **not bisected or fixed this session**, just logged to `docs/ROADMAP.md` → Things board polish for a later pass.
+
+Saved a standing memory (`nospaces-deemphasize-completion`) so "no raw N-missing counts in tidy UI" doesn't have to be re-decided next time this pattern comes up elsewhere in the app.
+
+---
+
 ### Session 110 (2026-07-08) — add-confirm sheet: real restructure, not another restyle. Free, frontend only.
 
 **Farah's ask, after looking at the s109 restyle: "looks largely the same, not any less form-like... think about a broader restructure."** She was right — s109's pass was cosmetic (type chips moved behind "edit details," the owned checkbox became a pill) but the bones were untouched. Diagnosed why it still read as a form: every single-choice group in `ConfirmSheet.tsx` was its own individually-outlined/colored chip-row (the want-to/already-did toggle, the reaction grid, the type selector), plus a standalone confidence badge, plus an always-visible search+re-run row up top — a stack of bordered bricks, not a page. It also never adopted `SheetHero`, the shared editorial header (ghost cover-art wash + big title + uppercase meta line) that the Discover-pick and Library-item detail sheets already use — it still had its own small bordered thumbnail + plain gray meta line predating that component.
