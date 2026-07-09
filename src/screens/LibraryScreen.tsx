@@ -302,8 +302,13 @@ export function LibraryScreen() {
   // inside the list, and only the category/status/filter row is sticky.
   const listRef = useRef<HTMLDivElement>(null)
   const lastScrollRef = useRef(0)
+  // Jump-to-top: only worth showing once you're a few screens deep. React bails
+  // the re-render itself when the boolean doesn't flip, so no extra throttling needed.
+  const [showJumpTop, setShowJumpTop] = useState(false)
   const onListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    lastScrollRef.current = e.currentTarget.scrollTop
+    const top = e.currentTarget.scrollTop
+    lastScrollRef.current = top
+    setShowJumpTop(top > 700)
   }, [])
   // Persist scroll on background/hide (the moment iOS may kill a standalone PWA),
   // and restore it once the list has loaded after the resulting reload.
@@ -859,6 +864,28 @@ export function LibraryScreen() {
           ))
         )}
       </div>
+
+      {/* Jump to top — only once you've scrolled a few screens deep. Left side
+          so it never collides with the add FAB (right); hidden in select mode,
+          where the bulk action bar already occupies that strip. */}
+      {showJumpTop && !selectMode && (
+        <button
+          onClick={() => listRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="jump to top"
+          style={{
+            position: 'fixed', bottom: clearStack(18), left: 20,
+            width: 44, height: 44, borderRadius: '50%',
+            background: '#fff', color: '#1C1B19', border: '1px solid #E2DED7', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 99, boxShadow: '0 2px 12px rgba(0,0,0,0.14)',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="19" x2="12" y2="6" />
+            <polyline points="6 12 12 6 18 12" />
+          </svg>
+        </button>
+      )}
 
       {/* Bulk-select action bar — floats above the bottom nav while in select mode */}
       {selectMode && (() => {

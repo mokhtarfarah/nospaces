@@ -246,6 +246,10 @@ export function ThingsScreen() {
   // ~5+ on a desktop), so it fills the page like the rest of the app instead of a
   // fixed 2-up locked to a narrow column. Measured off the scroller's own width.
   const listRef = useRef<HTMLDivElement>(null)
+  // Jump-to-top: same pattern as the library list — appears once you're a
+  // few screens deep, on either the wishlist or the mood board.
+  const [showJumpTop, setShowJumpTop] = useState(false)
+  const onListScroll = (e: React.UIEvent<HTMLDivElement>) => setShowJumpTop(e.currentTarget.scrollTop > 700)
   const [cols, setCols] = useState(2)
   const [view, setView] = useState<ViewMode>(loadView)
   useEffect(() => { try { localStorage.setItem(VIEW_KEY, view) } catch { /* private mode */ } }, [view])
@@ -686,7 +690,7 @@ export function ThingsScreen() {
       {/* One scroller. The switcher + title + thread masthead scroll away
           naturally (no JS height animation — that was the jumpy part); only the
           sort + category bar is position:sticky, so it pins smoothly on its own. */}
-      <div ref={listRef} style={{ flex: 1, overflowY: 'auto' }}>
+      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '20px 16px 0' }}>
           {/* Magazine header — title over a quiet lowercase count-subline, matching
               the Library header exactly (s106): same order (title first), same
@@ -1034,6 +1038,27 @@ export function ThingsScreen() {
           onClearOne={async (id) => { if (await clearCapture(id)) setCaptures(cs => cs.filter(c => c.id !== id)) }}
           onClose={() => setCapturesOpen(false)}
         />
+      )}
+
+      {/* Jump to top — mirrors the library list's button. Left side so it never
+          collides with the add FAB (right). */}
+      {showJumpTop && (
+        <button
+          onClick={() => listRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="jump to top"
+          style={{
+            position: 'fixed', left: 20, bottom: clearStack(tab === 'taste' ? 18 + SUBNAV_H : 18),
+            width: 44, height: 44, borderRadius: '50%',
+            background: '#fff', color: INK, border: '1px solid #E2DED7', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 99, boxShadow: '0 2px 12px rgba(0,0,0,0.14)',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="19" x2="12" y2="6" />
+            <polyline points="6 12 12 6 18 12" />
+          </svg>
+        </button>
       )}
 
       {/* Floating + — the app's single add gesture (mirrors the media FAB). The
