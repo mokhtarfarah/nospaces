@@ -296,6 +296,47 @@ async function captureThing(userId: string, urls: string[], strict: boolean): Pr
   return { kind: 'saved', title, price: fields.price ?? null, tagCount: attributes.length, id: row?.id ?? null }
 }
 
+type ArticleCapture =
+  | { kind: 'saved'; title: string; id: string | null }
+  | { kind: 'duplicate'; title: string }
+  | { kind: 'no-link' }
+  | { kind: 'unreadable' }
+  | { kind: 'error'; message: string }
+
+// Scrape the first usable article link and save it to the library as a bare
+// read-later bookmark — title/byline/publication/thumbnail/link only, no full
+// text (paywalled sources won't yield it anyway, and og-tags survive the
+// paywall since they're meant for social previews). No Anthropic call.
+async function captureArticle(userId: string, urls: string[]): Promise<ArticleCapture> {
+  if (urls.length === 0) return { kind: 'no-link' }
+  let fields: ScrapedFields | null = null
+  for (const u of urls) {
+    const r = await scrapeProduct(u)
+    if (r.ok && r.fields.articleLike && r.fields.title) { fields = r.fields; break }
+  }
+  if (!fields) return { kind: 'unreadable' }
+  // Dedup by URL against articles already saved.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase as any)
+    .from('items').select('metadata').eq('user_id', userId).eq('type', 'article')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (((existing ?? []) as any[]).some(a => (a.metadata?.url ?? '') === fields!.url)) {
+    return { kind: 'duplicate', title: fields.title ?? 'That article' }
+  }
+  const title = fields.title ?? 'Untitled'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: row, error } = await (supabase as any).from('items').insert({
+    user_id: userId, title, creator: fields.author ?? null, type: 'article', status: 'want_to', source: 'email',
+    metadata: {
+      title, image: fields.image, siteName: fields.siteName, url: fields.url,
+      publishedTime: fields.publishedTime ?? null,
+      ...(fields.description ? { capturedBlurb: fields.description } : {}),
+    },
+  }).select('id').single()
+  if (error) return { kind: 'error', message: error.message }
+  return { kind: 'saved', title, id: row?.id ?? null }
+}
+
 type Confidence = 'high' | 'medium' | 'low'
 const asConfidence = (v: unknown): Confidence => (v === 'high' || v === 'low' ? v : 'medium')
 
@@ -708,7 +749,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sendReply(fromEmail, replyFrom, 'Nospaces: already on your board', `"${t.title}" is already on your board — nothing new to add.`)
       return res.status(200).json({ saved: 0 })
     }
-    // not a clear product (or unreadable) → fall through to the media reader
+    // Not a clear product — try reading it as an article (read-later bookmark:
+    // title/byline/publication/thumbnail/link, no full text) before falling
+    // through to the media reader.
+    const a = await captureArticle(matchedUser.id, links)
+    if (a.kind === 'saved') {
+      await sendReply(fromEmail, replyFrom, 'Nospaces: saved to read later',
+        `Added to your library to read later:\n\n• ${a.title}${buildUndo([a.id], a.title)}`)
+      return res.status(200).json({ saved: 1, domain: 'article' })
+    }
+    if (a.kind === 'duplicate') {
+      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'duplicates', detail: 'article already saved', snippet })
+      await sendReply(fromEmail, replyFrom, 'Nospaces: already saved', `"${a.title}" is already in your library — nothing new to add.`)
+      return res.status(200).json({ saved: 0 })
+    }
+    // neither a clear product nor an article → fall through to the media reader
   }
 
   // Read any deliberately-attached images. Each gets ONE vision read

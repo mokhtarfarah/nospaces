@@ -22,6 +22,9 @@ interface Props {
   onEdit: (fields: { title: string; creator: string | null; type: string; year: number | null; tags?: string[]; moods?: string[]; source_detail?: string | null; metadata?: Record<string, unknown>; date_added?: string }) => void
   onMarkInProgress?: () => void
   onMarkWantTo?: () => void
+  // Article-only: flip status straight to done, no reaction — articles are a
+  // bare read-later bookmark, not a taste surface.
+  onMarkRead?: () => void
   onMarkDone: (reaction: ItemReaction, note: string, moods: string[]) => void
   onEditReaction: (reaction: ItemReaction | null, note: string, moods: string[]) => void
   onSetSeasons: (seasons: Season[]) => void
@@ -55,7 +58,7 @@ interface Props {
   seriesOptions?: string[]
 }
 
-const TYPES = ['film', 'book', 'music', 'tv', 'other']
+const TYPES = ['film', 'book', 'music', 'tv', 'article', 'other']
 
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
@@ -112,7 +115,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, onFlipToThing, onFilterTag, countWithTag, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext, seriesOptions }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkRead, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, onFlipToThing, onFilterTag, countWithTag, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext, seriesOptions }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -322,15 +325,17 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
     savedWikiUrl ? { url: savedWikiUrl, thumbnail: null, summary: null } : null,
   )
   const resolved = savedWikiUrl ? byUrl : searched
-  const summary = resolved?.summary ?? null
+  // Articles never get a Wikipedia lookup — a title search against an essay/
+  // review headline would just match an unrelated page.
+  const summary = item.type === 'article' ? null : (resolved?.summary ?? null)
   const wikiThumb = resolved?.thumbnail ?? null
-  const wikiUrl = item.type === 'music' ? null : (resolved?.url ?? savedWikiUrl)
+  const wikiUrl = (item.type === 'music' || item.type === 'article') ? null : (resolved?.url ?? savedWikiUrl)
   // Persist resolved wiki data so itemGaps() stops flagging wiki as missing and
   // future opens skip the fetch. Two cases: a search found an article we hadn't
   // saved, or a pinned URL just resolved the summary/thumb that metadata lacked.
   const wikiSavedRef = useRef(false)
   useEffect(() => {
-    if (item.type === 'music' || wikiSavedRef.current) return
+    if (item.type === 'music' || item.type === 'article' || wikiSavedRef.current) return
     if (!savedWikiUrl && resolved?.url) {
       wikiSavedRef.current = true
       onPatchMetadata?.({ wikiUrl: resolved.url, wikiThumb: resolved.thumbnail ?? null, wikiSummary: resolved.summary ?? null })
@@ -630,14 +635,22 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                 // Identity only — type · creator · year · runtime (+ series). The
                 // reaction lives on the footer button, so it's dropped here to keep
                 // the meta line about what the thing IS, not its status.
-                [TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item)].filter(Boolean).join(' · '),
+                [
+                  TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item),
+                  item.type === 'article' ? (item.metadata?.siteName as string | undefined) ?? null : null,
+                ].filter(Boolean).join(' · '),
                 typeof item.metadata?.series === 'string' && item.metadata.series.trim() ? `↳ ${item.metadata.series}` : null,
               ].filter(Boolean).join(' · ')}
             >
               {/* Outward links only — about/via · spotify · wikipedia · watch. Admin
                   (edit / own) moved into the ⋯ menu. */}
-              {!item.metadata?.scratch && (blurb || spotifyUrl || wikiUrl || item.type === 'film' || item.type === 'tv') && (
+              {!item.metadata?.scratch && (blurb || spotifyUrl || wikiUrl || item.type === 'film' || item.type === 'tv' || item.type === 'article') && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  {item.type === 'article' && typeof item.metadata?.url === 'string' && (
+                    <a href={item.metadata.url as string} target="_blank" rel="noopener noreferrer" className="tlink" style={{ flexShrink: 0 }}>
+                      read ↗︎
+                    </a>
+                  )}
                   {blurb && (
                     <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
                       <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource.length > 20 ? blurbSource.slice(0, 19) + '…' : blurbSource}` : 'about this'}</span>
@@ -680,15 +693,17 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   ) : (
                     <>
                       <button style={menuItem()} onClick={() => { setMenuOpen(false); setEditOpenGroups({}); setView('edit') }}>edit details</button>
-                      <button style={menuItem()} onClick={() => { setMenuOpen(false); onToggleOwned(!item.metadata?.owned) }}>
-                        {item.type === 'book'
-                          ? (item.metadata?.owned ? 'on my shelf ✓' : 'mark on my shelf')
-                          : (item.metadata?.owned ? 'own it ✓' : 'mark as owned')}
-                      </button>
-                      {item.status === 'want_to' && onMarkInProgress && (
+                      {item.type !== 'article' && (
+                        <button style={menuItem()} onClick={() => { setMenuOpen(false); onToggleOwned(!item.metadata?.owned) }}>
+                          {item.type === 'book'
+                            ? (item.metadata?.owned ? 'on my shelf ✓' : 'mark on my shelf')
+                            : (item.metadata?.owned ? 'own it ✓' : 'mark as owned')}
+                        </button>
+                      )}
+                      {item.type !== 'article' && item.status === 'want_to' && onMarkInProgress && (
                         <button style={menuItem()} onClick={onMarkInProgress}>mark as in progress</button>
                       )}
-                      {item.status === 'in_progress' && onMarkWantTo && (
+                      {item.type !== 'article' && item.status === 'in_progress' && onMarkWantTo && (
                         <button style={menuItem()} onClick={onMarkWantTo}>move back to want to</button>
                       )}
                       <div style={{ height: 1, background: '#E8E8E8', margin: '5px 8px' }} />
@@ -959,23 +974,45 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               // bordered row — left-aligned, with a trailing affordance — so it reads
               // as state+edit when done and as a real CTA when not yet logged.
               <div style={{ ...footer }}>
-                <button onClick={() => setView('reaction')} style={{
-                  width: '100%', padding: '11px 14px', border: '1px solid #E8E8E8', borderRadius: 10,
-                  background: '#FBFAF8', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>
-                  {item.status === 'done' ? (
-                    <>
-                      <span style={{ fontSize: 13, color: '#333' }}>your reaction · <b style={{ fontWeight: 600, color: '#1C1B19' }}>{item.reaction ? REACTION_LABELS[item.reaction] : 'set'}</b></span>
-                      <span style={{ fontSize: 13, color: '#ABA69C' }}>edit →</span>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>mark as done</span>
-                      <span style={{ fontSize: 13, color: '#ABA69C' }}>→</span>
-                    </>
-                  )}
-                </button>
+                {item.type === 'article' ? (
+                  // Bare read-later toggle — no reaction, no verdict. Saving was
+                  // the taste signal; reading it is just a checkbox.
+                  <button onClick={() => (item.status === 'done' ? onMarkWantTo?.() : onMarkRead?.())} style={{
+                    width: '100%', padding: '11px 14px', border: '1px solid #E8E8E8', borderRadius: 10,
+                    background: '#FBFAF8', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                    {item.status === 'done' ? (
+                      <>
+                        <span style={{ fontSize: 13, color: '#333' }}>read</span>
+                        <span style={{ fontSize: 13, color: '#ABA69C' }}>mark unread</span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>mark as read</span>
+                        <span style={{ fontSize: 13, color: '#ABA69C' }}>→</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button onClick={() => setView('reaction')} style={{
+                    width: '100%', padding: '11px 14px', border: '1px solid #E8E8E8', borderRadius: 10,
+                    background: '#FBFAF8', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                    {item.status === 'done' ? (
+                      <>
+                        <span style={{ fontSize: 13, color: '#333' }}>your reaction · <b style={{ fontWeight: 600, color: '#1C1B19' }}>{item.reaction ? REACTION_LABELS[item.reaction] : 'set'}</b></span>
+                        <span style={{ fontSize: 13, color: '#ABA69C' }}>edit →</span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>mark as done</span>
+                        <span style={{ fontSize: 13, color: '#ABA69C' }}>→</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </>

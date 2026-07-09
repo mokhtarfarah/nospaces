@@ -25,6 +25,14 @@ export type ScrapedFields = {
   /** True when the page looks like a shop page (JSON-LD Product, og:type=product,
    *  or a readable price) — used to gate auto-capture so articles don't become things. */
   productLike?: boolean
+  /** Byline, when the page exposes one (article:author / twitter:creator). */
+  author?: string | null
+  /** ISO publish date, when the page exposes one (article:published_time). */
+  publishedTime?: string | null
+  /** True when the page reads as an article/editorial (og:type=article, or has a
+   *  byline/publish date) AND isn't productLike — used to gate the read-later
+   *  auto-capture so a shop page doesn't become an article. */
+  articleLike?: boolean
 }
 
 export type ScrapeResult =
@@ -240,8 +248,13 @@ export async function scrapeProduct(rawUrl: string): Promise<ScrapeResult> {
     const rating = ld?.rating ?? null
     const ogType = metaContent(html, ['og:type'])
     const productLike = !!ld || (ogType?.toLowerCase().includes('product') ?? false) || !!price
+    const author = metaContent(html, ['article:author', 'author', 'twitter:creator', 'parsely-author'])
+    const publishedTime = metaContent(html, ['article:published_time', 'og:article:published_time', 'parsely-pub-date'])
+    // A page only reads as an article if it isn't already a clear shop page —
+    // some product pages carry a stray og:type=article from a bad template.
+    const articleLike = !productLike && (ogType?.toLowerCase() === 'article' || !!publishedTime || !!author)
 
-    return { ok: true, fields: { url: finalUrl, title, image, price, brand, siteName, description, rating, productLike } }
+    return { ok: true, fields: { url: finalUrl, title, image, price, brand, siteName, description, rating, productLike, author, publishedTime, articleLike } }
   } catch (err) {
     const aborted = err instanceof Error && err.name === 'AbortError'
     console.error('[scrape] error for', trimmed, ':', err instanceof Error ? err.message : err)

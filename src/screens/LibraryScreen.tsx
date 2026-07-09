@@ -851,7 +851,9 @@ export function LibraryScreen() {
                     item={item}
                     showType={categories.length !== 1}
                     onTap={() => (selectMode ? toggleSelect(item.id) : (setActionEdit(false), setActionItem(item)))}
-                    onMarkDone={() => setDoneItem(item)}
+                    onMarkDone={() => (item.type === 'article'
+                      ? editItem(item.id, { status: 'done', date_done: new Date().toISOString() })
+                      : setDoneItem(item))}
                     onMarkWantTo={() => markWantTo(item.id)}
                     onSaveWiki={handleSaveWiki}
                     onSaveArt={handleSaveArt}
@@ -962,6 +964,7 @@ export function LibraryScreen() {
             onPatchTags={tags => editItem(fresh.id, { tags })}
             onMarkInProgress={() => { markInProgress(fresh.id); setActionItem(null) }}
             onMarkWantTo={() => { markWantTo(fresh.id); setActionItem(null) }}
+            onMarkRead={() => { editItem(fresh.id, { status: 'done', date_done: new Date().toISOString() }); setActionItem(null) }}
             onMarkDone={async (reaction, note, moods) => {
               try { await markDone(fresh.id, reaction, note, moods); setActionItem(null) }
               catch { setToast("couldn't save — check your connection"); setTimeout(() => setToast(null), 3000) }
@@ -1630,7 +1633,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
 }
 
 
-const CATEGORY_LABEL: Record<string, string> = { film: 'films', book: 'books', music: 'music', tv: 'tv', other: 'other' }
+const CATEGORY_LABEL: Record<string, string> = { film: 'films', book: 'books', music: 'music', tv: 'tv', article: 'articles', other: 'other' }
 
 // Small cover/poster thumbnail. Falls back to a type-colored tile so rows stay aligned.
 function Thumb({ src, type, color }: { src: string | null; type: string; color: { bg: string; border: string } }) {
