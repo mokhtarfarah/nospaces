@@ -4,6 +4,20 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 114 (2026-07-09) — jump-to-top button on library + things. Free, no Anthropic calls, pure UI.
+
+**Farah's ask: a way to jump back to the top when deep in a long list.** Both `LibraryScreen.tsx` and `ThingsScreen.tsx` already scroll a single `<div ref={listRef} overflowY: 'auto'>` (not the window), so the fix is the same shape in both: track `scrollTop` on that div, show a small round button once it passes 700px, `scrollTo({ top: 0, behavior: 'smooth' })` on tap.
+
+**Placement — bottom-left, deliberately.** Both screens already have a black "+" FAB pinned bottom-right (`clearStack` from `lib/layout.ts`). Putting jump-to-top on the *left* at the same height means it never collides with or crowds the add gesture, and reads as a secondary/quiet action (white bg, thin border) next to the primary one (solid black). Library additionally hides it during multi-select (the bulk action bar already owns that strip); Things offsets it up by `SUBNAV_H` on the `taste` tab so it clears the profile/moodboard sub-row, mirroring how the add FAB already does this.
+
+**Verified in preview, not just typechecked.** Both dev instances (`nospaces`, `nospaces-noauth`) have empty seed data, so real scrolling wasn't possible — confirmed the mechanism instead by injecting a 2000px spacer into the actual scroll container via `preview_eval`, setting `scrollTop`, and dispatching a real `scroll` event: the button correctly appeared/disappeared at the threshold and sat in the right spot (screenshotted) on library, things/moodboard (with sub-nav offset), and things/wishlist (without it). The tap-to-scroll wiring was confirmed with instant scroll (`behavior: 'auto'`) — `behavior: 'smooth'` couldn't be observed completing in this harness because `requestAnimationFrame` doesn't tick in the automation context (a preview-tool limitation, not app code); smooth scroll is a standard, widely-supported browser feature so this will animate normally for Farah on a real device.
+
+`tsc --noEmit` (both configs) + full 118-test suite clean.
+
+Committed `e9bb699`, pushed to `main`, live.
+
+---
+
 ### Session 113 (2026-07-08) — music creator sort fix + Rotten Tomatoes scores. Free, no Anthropic calls.
 
 **Music "by creator" scroll was confusing — band names sorted by last word.** `lastNameKey()` (`LibraryScreen.tsx:147`) split every creator on whitespace and sorted by the last word, correct for "Donna Tartt" → tartt but wrong for bands: "Fleetwood Mac" filed under M, "Talking Heads" under H. Root cause had nothing to do with source variety (Farah's original guess) — it was applying person-name sorting to every type uniformly. Fix: new `creatorSortKey(item)` branches on `item.type === 'music'` — music sorts/groups by the full band/artist name (stripping a leading "The"), everything else keeps last-name sorting. Verified the sort output directly in Node against sample band names (Arctic Monkeys→A, Beatles→B, Fleetwood Mac→F, Radiohead→R, Talking Heads→T; Fincher/Tartt still sort by surname). Deliberately doesn't try to detect "is this a person or a band" from the string — unsolvable in general (Bush, Cake, Sting, Drake) — keys off `type` instead, which also matches how you'd actually browse a shelf (solo artists like "Fiona Apple" file under F, not "Apple").

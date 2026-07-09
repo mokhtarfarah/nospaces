@@ -15,13 +15,15 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
-**Session 113 — music creator-sort fix + Rotten Tomatoes scores. 3 commits, pushed to `main` (live).** Music "by creator" was sorting/grouping band names by *last word* (a person-name convention) — "Fleetwood Mac" filed under M, "Talking Heads" under H. Fixed: music now sorts by the full artist/band name (`LibraryScreen.tsx` `creatorSortKey`), everything else keeps last-name sorting. Separately, added Rotten Tomatoes scores for film/tv — read straight from Wikidata's structured `P444`/`P447` claim (same free, no-Anthropic pattern as runtime/pages), shown in both the Discover recommendation sheet and the library item sheet, film/tv only, never fabricated. Caught and fixed a real parsing bug during verification (qualifier snaks aren't wrapped in `mainsnak`) by testing against live Wikidata data, not just typecheck. Also diagnosed (but parked, not built) why Discover repeats — the exclusion list only covers the last 40 titles since s112's leak fix. Full detail → archive (s113).
+**Session 114 — jump-to-top button on library + things. 1 commit, pushed to `main` (live).** Farah's ask: a fast way back up when deep in a long list. Both screens already scroll one `<div ref={listRef}>` (not the window), so the fix is identical in shape: a small round button appears once you've scrolled ~700px, smooth-scrolls back to top on tap. Deliberately placed bottom-**left** (the black "+" add FAB already owns bottom-right) so the two never collide and the secondary action reads quieter (white/outlined vs. solid black). Library hides it during multi-select; Things offsets it above the taste sub-nav row when present. Verified in preview via a synthetic scroll injection (both dev instances have empty seed data) — button showed/hid at the right threshold and sat correctly in all three spots (library, things/moodboard, things/wishlist); smooth-scroll animation itself couldn't be observed completing in the preview harness (`requestAnimationFrame` doesn't tick there) but instant scroll confirmed the wiring, and smooth scroll is a standard browser feature. Full detail → archive (s114).
 
 **Not touched, flagged for pickup:** `BulkConfirmSheet.tsx` (multi-photo add) still has the old bordered-chip look from pre-s110 — will read inconsistently next to the restyled single-item sheet.
 
-## ▶ Next session (114)
+## ▶ Next session (115)
 
-**Confirm s113 live, on a real film/album:** does "rt 94%" actually render on a real film in the library sheet + Discover sheet (this dev environment can't run `/api/*` locally, so it was never seen live)? Does music "by creator" actually read cleaner now scrolling Farah's real collection?
+**Confirm s114 live:** does the jump-to-top button actually show up and work when scrolling Farah's real (long) library and wishlist/mood board — the preview couldn't test this with real data.
+
+**Carried from s113, still not confirmed live:** does "rt 94%" actually render on a real film in the library sheet + Discover sheet? Does music "by creator" actually read cleaner now scrolling Farah's real collection?
 
 **Carried from s112, still not confirmed live:** does the mood board actually look like a flowing masonry on Farah's real board? Does a real Discover session ever leak "via <garbage>" sources again?
 
