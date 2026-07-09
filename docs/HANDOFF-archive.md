@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 115 (2026-07-09) — magazine articles / read-later bookmarks. Free, no Anthropic calls (reuses the existing free og-tag scraper).
+
+**Farah's ask: a way to mark an article in the New Yorker/Apple News/Atlantic app to come back to later.** Confirmed up front this can't be a real in-app reader — paywalled sources won't yield full text — so it's scoped as a clean bookmark: title/byline/publication/thumbnail/link, tap-through to read, not offline reading. Placement decision (asked, not assumed): Farah chose **fold into the media library as a new `type:'article'`**, over a new top-level "reading" domain or a Things `kind` — articles read as list rows (like film/book/tv), not an image-first board.
+
+**Deliberately minimal — no taste surface.** Articles get NO genres, vibes, verdicts, or data-gaps nagging (`GAP_MEDIA_TYPES` / genre vocab / vibe vocab in `moods.ts` all left untouched — 'article' simply isn't in those lists, so nothing fires). Just `want_to` (saved) → `done` (read), no reaction — same "saving is the signal" spirit as Things, applied to reading instead of buying.
+
+**Capture reuses the free scraper, no new AI cost.** `api/_scrape.ts`'s `scrapeProduct()` (already used for Things product links) gained a sibling `articleLike` check (og:type=article, or an `article:author`/`article:published_time` meta tag present) alongside the existing `productLike` check, plus `author`/`publishedTime` extraction. A shared link forwarded to the universal capture-all address now tries product-like first, then article-like, before falling through to the paid AI media reader — `captureArticle()` in `api/email.ts` mirrors `captureThing()` (dedup by URL, direct insert, undo link in the talkback reply). The page's dek/description is stored as `metadata.capturedBlurb`, which rides the *existing* "about this" collapsible on the item sheet for free — no new UI needed for that part.
+
+**Still needs the iOS Shortcut to actually get used day-to-day.** This capture path fires once a link reaches the inbox — getting a shared link out of the New Yorker/Apple News/Atlantic app on iOS still needs the share→silent-email Shortcut that's already on the roadmap for Things (same mechanism, not yet built). Until then, forwarding a link by hand to the save@ address works today.
+
+**UI changes:** `colors.ts` (new palette entry), `LibraryScreen.tsx` (`CATEGORY_LABEL`, so an "articles" tab appears once one exists — the tab list is already dynamic by count), `ItemActionSheet.tsx` (hides wiki/Spotify/runtime-pages/"own it"/"in progress" for articles — none of them apply; adds a "read ↗" link-out button and swaps the reaction footer for a bare "mark as read" toggle, so opening an article's sheet never routes into the reaction/verdict flow at all).
+
+**Verified: typecheck clean (both configs), full 118-test suite green, dev server HMR reloaded every edit with no console errors.** **Not verified live** — this sandbox has no login to Farah's real Google account, so the actual email → scrape → save round trip on a real shared article link hasn't been seen yet. Flag for next session: forward a real article link to the save@ address (or, once built, use the Shortcut) and confirm it lands as a clean bookmark — title/byline/publication/thumbnail, "read ↗" opens the source, "mark as read" is a plain toggle with no reaction prompt.
+
+---
+
 ### Session 114 (2026-07-09) — jump-to-top button on library + things. Free, no Anthropic calls, pure UI.
 
 **Farah's ask: a way to jump back to the top when deep in a long list.** Both `LibraryScreen.tsx` and `ThingsScreen.tsx` already scroll a single `<div ref={listRef} overflowY: 'auto'>` (not the window), so the fix is the same shape in both: track `scrollTop` on that div, show a small round button once it passes 700px, `scrollTo({ top: 0, behavior: 'smooth' })` on tap.

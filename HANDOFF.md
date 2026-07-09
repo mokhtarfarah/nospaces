@@ -15,11 +15,15 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
+**Session 115 — magazine articles / read-later bookmarks. Code done, typechecked + tested, NOT committed yet (Farah hasn't been asked).** New `type:'article'` in the media library — a bare bookmark (title/byline/publication/thumbnail/link), no genres/vibes/verdicts, just saved→read. Capture reuses the existing free og-tag scraper (`api/_scrape.ts` gained `articleLike`/`author`/`publishedTime`; `captureArticle()` in `api/email.ts` mirrors `captureThing()`) — a shared link to the save@ address now tries product-like, then article-like, before falling to the paid AI reader. Still needs the (not-yet-built) iOS Shortcut to be a real one-tap capture from New Yorker/Apple News/etc — until then, forward the link by hand. **Not live-verified** — this sandbox can't log into Farah's real Google account, so the actual email→save round trip hasn't been seen. Full detail → archive (s115).
+
 **Session 114 — jump-to-top button on library + things. 1 commit, pushed to `main` (live).** Farah's ask: a fast way back up when deep in a long list. Both screens already scroll one `<div ref={listRef}>` (not the window), so the fix is identical in shape: a small round button appears once you've scrolled ~700px, smooth-scrolls back to top on tap. Deliberately placed bottom-**left** (the black "+" add FAB already owns bottom-right) so the two never collide and the secondary action reads quieter (white/outlined vs. solid black). Library hides it during multi-select; Things offsets it above the taste sub-nav row when present. Verified in preview via a synthetic scroll injection (both dev instances have empty seed data) — button showed/hid at the right threshold and sat correctly in all three spots (library, things/moodboard, things/wishlist); smooth-scroll animation itself couldn't be observed completing in the preview harness (`requestAnimationFrame` doesn't tick there) but instant scroll confirmed the wiring, and smooth scroll is a standard browser feature. Full detail → archive (s114).
 
 **Not touched, flagged for pickup:** `BulkConfirmSheet.tsx` (multi-photo add) still has the old bordered-chip look from pre-s110 — will read inconsistently next to the restyled single-item sheet.
 
-## ▶ Next session (115)
+## ▶ Next session (116)
+
+**Confirm s115 live:** forward a real article link to the save@ address and confirm it lands as a clean bookmark (title/byline/publication/thumbnail), "read ↗" opens the source, "mark as read" is a plain toggle with no reaction prompt. If it doesn't land, check `/api/email` logs for whether `articleLike` tripped.
 
 **Confirm s114 live:** does the jump-to-top button actually show up and work when scrolling Farah's real (long) library and wishlist/mood board — the preview couldn't test this with real data.
 
