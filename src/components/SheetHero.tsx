@@ -14,6 +14,7 @@ const NUMERAL = '#E4E1D9'
 export function SheetHero({
   type,
   title,
+  subtitle,
   meta,
   cover,
   numeral,
@@ -23,6 +24,10 @@ export function SheetHero({
 }: {
   type: string
   title: string
+  // A credit line right under the title — e.g. an article's publication. Distinct
+  // from `meta`: this is identity (whose voice this is), meta is bookkeeping
+  // (type/creator/year).
+  subtitle?: string | null
   meta: string
   cover: string | null
   numeral?: number
@@ -34,7 +39,9 @@ export function SheetHero({
   children?: ReactNode
 }) {
   const tint = typeColor(type).bg
-  const square = type === 'music'
+  // Article hero images are landscape (og:image), not portrait covers — square
+  // crops them sanely, same as the grid tiles.
+  const square = type === 'music' || type === 'article'
   const posterW = 66
   const posterH = square ? 66 : 98
 
@@ -94,6 +101,9 @@ export function SheetHero({
             )}
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{ fontSize: 23, fontWeight: 600, color: INK, lineHeight: 1.16, letterSpacing: '-0.4px' }}>{title}</div>
+              {subtitle && (
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#6F6B64', marginTop: 3 }}>{subtitle}</div>
+              )}
               <div style={{ fontSize: 11, color: MUTE, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 7 }}>{meta}</div>
               {children && <div style={{ marginTop: 10 }}>{children}</div>}
             </div>

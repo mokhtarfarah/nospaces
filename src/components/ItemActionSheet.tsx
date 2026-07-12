@@ -336,6 +336,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   const summary = item.type === 'article' ? null : (resolved?.summary ?? null)
   const wikiThumb = resolved?.thumbnail ?? null
   const wikiUrl = (item.type === 'music' || item.type === 'article') ? null : (resolved?.url ?? savedWikiUrl)
+  // Publication credit for the header — same source-first identity as the grid
+  // tiles' masthead band (siteName, falling back to the URL's hostname).
+  const articleSource = item.type === 'article'
+    ? ((item.metadata?.siteName as string | undefined)?.trim()
+        || (() => { try { return new URL((item.metadata?.url as string) ?? '').hostname.replace(/^www\./, '').split('.')[0] } catch { return null } })())
+    : null
   // Persist resolved wiki data so itemGaps() stops flagging wiki as missing and
   // future opens skip the fetch. Two cases: a search found an article we hadn't
   // saved, or a pinned URL just resolved the summary/thumb that metadata lacked.
@@ -631,6 +637,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             <SheetHero
               type={item.type}
               title={item.title}
+              subtitle={articleSource}
               cover={cover}
               onClose={onClose}
               menuButton={!item.metadata?.scratch ? (
@@ -640,11 +647,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               meta={[
                 // Identity only — type · creator · year · runtime (+ series). The
                 // reaction lives on the footer button, so it's dropped here to keep
-                // the meta line about what the thing IS, not its status.
-                [
-                  TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item),
-                  item.type === 'article' ? (item.metadata?.siteName as string | undefined) ?? null : null,
-                ].filter(Boolean).join(' · '),
+                // the meta line about what the thing IS, not its status. An
+                // article's publication rides as the `subtitle` right under the
+                // title instead — it's the byline, not bookkeeping.
+                [TYPE_COLORS[item.type]?.label ?? item.type, item.creator, item.year, formatRuntime(item)].filter(Boolean).join(' · '),
                 typeof item.metadata?.series === 'string' && item.metadata.series.trim() ? `↳ ${item.metadata.series}` : null,
               ].filter(Boolean).join(' · ')}
             >
@@ -657,7 +663,9 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                       read ↗︎
                     </a>
                   )}
-                  {blurb && (
+                  {/* Articles show their description inline below (it's the dek that
+                      sells you on reading, not a spoiler to hide) — no toggle needed. */}
+                  {blurb && item.type !== 'article' && (
                     <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
                       <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource.length > 20 ? blurbSource.slice(0, 19) + '…' : blurbSource}` : 'about this'}</span>
                       <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
@@ -721,9 +729,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             )}
             <div style={{ height: 4 }} />
 
-            {/* Blurb expansion — below the flat link row */}
-            {showBlurb && blurb && (
-              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginBottom: 14, fontStyle: 'italic' }}>
+            {/* Blurb expansion — below the flat link row. Always on for articles
+                (it's the dek, not a spoiler-gated synopsis). */}
+            {(showBlurb || item.type === 'article') && blurb && (
+              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginBottom: 14, fontStyle: item.type === 'article' ? 'normal' : 'italic' }}>
                 {blurb}{' '}
                 {(item.metadata?.recommendationUrl as string | undefined) && (
                   <a
