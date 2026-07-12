@@ -637,6 +637,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             <SheetHero
               type={item.type}
               title={item.title}
+              titleHref={item.type === 'article' && typeof item.metadata?.url === 'string' ? item.metadata.url as string : undefined}
               subtitle={articleSource}
               cover={cover}
               onClose={onClose}
@@ -987,28 +988,27 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               // as state+edit when done and as a real CTA when not yet logged.
               <div style={{ ...footer }}>
                 {item.type === 'article' ? (
-                  // Going to read it IS the point of the item — that's the prominent
-                  // CTA. Marking it read is bookkeeping you do after, so it's a quiet
-                  // secondary control underneath, not competing for the same weight.
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {typeof item.metadata?.url === 'string' && (
-                      <a href={item.metadata.url as string} target="_blank" rel="noopener noreferrer" style={{
-                        width: '100%', padding: '13px 16px', border: '1px solid #E8E8E8', borderRadius: 10,
-                        background: '#FBFAF8', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'none', boxSizing: 'border-box',
-                      }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1B19' }}>read the article</span>
-                        <span style={{ fontSize: 14, color: '#ABA69C' }}>↗</span>
-                      </a>
+                  // The title itself is the read link now (see SheetHero's
+                  // titleHref) — the biggest, earliest tap target on the sheet, so a
+                  // second "read the article" button down here would just be dead
+                  // weight repeating the same action. This row is pure bookkeeping.
+                  <button onClick={() => (item.status === 'done' ? onMarkWantTo?.() : onMarkRead?.())} style={{
+                    width: '100%', padding: '11px 14px', border: '1px solid #E8E8E8', borderRadius: 10,
+                    background: '#FBFAF8', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                    {item.status === 'done' ? (
+                      <>
+                        <span style={{ fontSize: 13, color: '#333' }}>read</span>
+                        <span style={{ fontSize: 13, color: '#ABA69C' }}>mark unread</span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>mark as read</span>
+                        <span style={{ fontSize: 13, color: '#ABA69C' }}>→</span>
+                      </>
                     )}
-                    <button onClick={() => (item.status === 'done' ? onMarkWantTo?.() : onMarkRead?.())} style={{
-                      width: '100%', padding: '4px', border: 'none', background: 'none',
-                      display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 5,
-                      cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, color: '#ABA69C',
-                    }}>
-                      {item.status === 'done' ? '✓ read — mark unread' : 'mark as read'}
-                    </button>
-                  </div>
+                  </button>
                 ) : (
                   <button onClick={() => setView('reaction')} style={{
                     width: '100%', padding: '11px 14px', border: '1px solid #E8E8E8', borderRadius: 10,

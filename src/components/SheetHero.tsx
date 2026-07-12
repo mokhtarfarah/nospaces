@@ -14,6 +14,7 @@ const NUMERAL = '#E4E1D9'
 export function SheetHero({
   type,
   title,
+  titleHref,
   subtitle,
   meta,
   cover,
@@ -24,6 +25,10 @@ export function SheetHero({
 }: {
   type: string
   title: string
+  // When set, the title itself is the primary tap target (e.g. an article's
+  // source URL) — the biggest, earliest thing on the sheet, so it beats a
+  // separate "read" button buried further down.
+  titleHref?: string | null
   // A credit line right under the title — e.g. an article's publication. Distinct
   // from `meta`: this is identity (whose voice this is), meta is bookkeeping
   // (type/creator/year).
@@ -100,7 +105,17 @@ export function SheetHero({
               }}>{numeral}</span>
             )}
             <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ fontSize: 23, fontWeight: 600, color: INK, lineHeight: 1.16, letterSpacing: '-0.4px' }}>{title}</div>
+              {titleHref ? (
+                <a href={titleHref} target="_blank" rel="noopener noreferrer" style={{
+                  fontSize: 23, fontWeight: 600, color: INK, lineHeight: 1.16, letterSpacing: '-0.4px',
+                  textDecoration: 'none', display: 'inline',
+                }}>
+                  {title}
+                  <span style={{ fontSize: 15, fontWeight: 500, color: MUTE, marginLeft: 6 }}>↗</span>
+                </a>
+              ) : (
+                <div style={{ fontSize: 23, fontWeight: 600, color: INK, lineHeight: 1.16, letterSpacing: '-0.4px' }}>{title}</div>
+              )}
               {subtitle && (
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#6F6B64', marginTop: 3 }}>{subtitle}</div>
               )}
