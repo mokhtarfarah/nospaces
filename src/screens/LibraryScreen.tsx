@@ -653,10 +653,14 @@ export function LibraryScreen() {
     return groupByYear(filtered)
   }, [filtered, group, view])
 
-  // Types sorted by item count descending — library reflects the user's actual collection
+  // Types sorted by item count descending — library reflects the user's actual
+  // collection. Articles are deliberately left out: this row already scrolls
+  // sideways once it overflows on a phone, and articles have their own visible
+  // entry point (the unread badge in the masthead) — so they'd only ever add to
+  // that crowding without needing a chip of their own. Still reachable via "all".
   const typeOrder = useMemo(() => {
     const counts = new Map<string, number>()
-    items.filter(i => !inReview(i)).forEach(i => {
+    items.filter(i => !inReview(i) && i.type !== 'article').forEach(i => {
       counts.set(i.type, (counts.get(i.type) ?? 0) + 1)
     })
     return Array.from(counts.keys()).sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0))
