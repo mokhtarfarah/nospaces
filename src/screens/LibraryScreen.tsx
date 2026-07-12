@@ -1700,6 +1700,13 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
   // check for the rest you've finished. Replaces the old undecodable ink-vs-grey dot.
   const loved = item.status === 'done' && item.reaction === 'loved_it'
   const finished = item.status === 'done' && !loved
+  // A bare og:image gives no clue what the piece is or where it's from — unlike a
+  // poster/album cover, it isn't self-identifying — so articles get a source name
+  // (site_name, falling back to the URL's hostname) baked into an overlay band.
+  const articleSource = item.type === 'article'
+    ? ((item.metadata?.siteName as string | undefined)?.trim()
+        || (() => { try { return new URL((item.metadata?.url as string) ?? '').hostname.replace(/^www\./, '').split('.')[0] } catch { return null } })())
+    : null
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
       <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : `1px solid ${HAIR}` }}>
@@ -1713,6 +1720,19 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
               {item.creator && <div style={{ fontSize: 10, color: color.border, opacity: 0.7, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.creator}</div>}
             </div>
           )}
+        {item.type === 'article' && thumbnail && (
+          // Opaque band anchored to the photo, not a gradient scrim — reads as part
+          // of the tile rather than floating text over the image.
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: '#F0EFEC', borderTop: `1px solid ${HAIR}`, padding: '7px 8px 8px', opacity: selectMode && !selected ? 0.55 : 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: INK, lineHeight: 1.25, marginBottom: articleSource ? 4 : 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
+            {articleSource && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: color.border, color: color.bg, fontSize: 7, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{articleSource[0].toUpperCase()}</div>
+                <div style={{ fontSize: 9, color: MUTE, letterSpacing: '0.2px' }}>{articleSource}</div>
+              </div>
+            )}
+          </div>
+        )}
         {selectMode && (
           <div style={{
             position: 'absolute', top: 6, left: 6, width: 20, height: 20, borderRadius: '50%',
@@ -1722,8 +1742,10 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
           }}>{selected ? '✓' : ''}</div>
         )}
         {loved && (
+          // Articles own the bottom-right corner with the source band — reaction
+          // badge moves up top so the two don't collide.
           <div title="loved it" aria-label="loved it" style={{
-            position: 'absolute', bottom: 4, right: 4, width: 22, height: 22, color: INK,
+            position: 'absolute', ...(item.type === 'article' ? { top: 4 } : { bottom: 4 }), right: 4, width: 22, height: 22, color: INK,
             filter: 'drop-shadow(0 0 1.5px #fff) drop-shadow(0 1px 1.5px rgba(0,0,0,0.25))',
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1736,7 +1758,7 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
         )}
         {finished && (
           <div title={item.reaction ? REACTION_LABELS[item.reaction] : 'done'} aria-label="finished" style={{
-            position: 'absolute', bottom: 4, right: 4, width: 22, height: 22, color: INK,
+            position: 'absolute', ...(item.type === 'article' ? { top: 4 } : { bottom: 4 }), right: 4, width: 22, height: 22, color: INK,
             filter: 'drop-shadow(0 0 1.5px #fff) drop-shadow(0 1px 1.5px rgba(0,0,0,0.25))',
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1747,8 +1769,10 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
         )}
       </div>
       {/* Caption density (s84 setting): 'none' = clean wall, the cover speaks for
-          itself; 'title' = just the title; 'full' = title + creator + details. */}
-      {caption !== 'none' && (
+          itself; 'title' = just the title; 'full' = title + creator + details.
+          Articles with a photo skip this — the overlay band already carries the
+          title, and doubling it up here would just repeat the same text. */}
+      {caption !== 'none' && !(item.type === 'article' && thumbnail) && (
         <div style={{ marginTop: 5 }}>
           <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>
             {!!item.metadata?.canon && <span style={{ fontSize: 9, marginRight: 3, color: INK }}>★</span>}

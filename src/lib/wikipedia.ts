@@ -103,6 +103,11 @@ export function useWikipediaInfo(
   const [info, setInfo] = useState<WikiInfo>(seed?.url ? seed : EMPTY)
   useEffect(() => {
     if (seed?.url) return // already cached in DB — no fetch needed
+    // Articles never get a Wikipedia lookup — a title search against an essay/
+    // review headline just matches an unrelated page. Skipped at the source so
+    // every caller (list row, grid card, detail sheet) gets this for free instead
+    // of each having to remember to discard the result.
+    if (type === 'article') return
     let cancelled = false
     resolve(type, title, creator, year).then(i => {
       if (!cancelled) setInfo(i)
