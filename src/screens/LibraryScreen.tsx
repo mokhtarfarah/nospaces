@@ -1512,7 +1512,10 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
       onSaveWiki?.(item.id, { url: wikiUrl, thumbnail: wikiThumb, summary: wikiSummary })
     }
   }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
-  const savedCover = item.metadata?.coverUrl as string | null
+  // Articles have no coverUrl until edited — their only image is the og:image
+  // scraped at capture time (metadata.image).
+  const savedCover = (item.metadata?.coverUrl as string | null)
+    ?? (item.type === 'article' ? (item.metadata?.image as string | null) : null)
   const staleCover = isStaleBookCover(item.type, savedCover)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, staleCover ? null : savedCover)
   const artSaved = useRef(false)
@@ -1651,7 +1654,10 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
 // Grid layout cover card. square=true for music (album covers are 1:1).
 function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWiki, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; caption: CardCaption; onTap: () => void; onSaveArt?: (id: string, url: string) => void; onSaveWiki?: (id: string, wiki: WikiInfo) => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
-  const savedCover = item.metadata?.coverUrl as string | null
+  // Articles have no coverUrl until edited — their only image is the og:image
+  // scraped at capture time (metadata.image).
+  const savedCover = (item.metadata?.coverUrl as string | null)
+    ?? (item.type === 'article' ? (item.metadata?.image as string | null) : null)
   const staleCover = isStaleBookCover(item.type, savedCover)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, staleCover ? null : savedCover)
   const artSaved = useRef(false)
@@ -1678,7 +1684,9 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
     }
   }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
   const thumbnail = artwork ?? wikiThumb
-  const aspect = square ? '1 / 1' : '2 / 3'
+  // Article hero images are landscape (og:image), not portrait covers — square
+  // crops them sanely where the default 2:3 book/poster ratio would butcher them.
+  const aspect = (square || item.type === 'article') ? '1 / 1' : '2 / 3'
   // Same subtitle fields as the list row: type · year · seasons · genre · reaction.
   const topGenre = (item.tags ?? []).find(isGenreTag) ?? null
   const tvSeasons = item.type === 'tv' ? getSeasons(item.metadata) : []
@@ -1696,7 +1704,7 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
       <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : `1px solid ${HAIR}` }}>
         {thumbnail
-          ? <img src={thumbnail} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: square && item.type !== 'music' ? 'top' : 'center', opacity: selectMode && !selected ? 0.55 : 1 }} />
+          ? <img src={thumbnail} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: square && item.type !== 'music' && item.type !== 'article' ? 'top' : 'center', opacity: selectMode && !selected ? 0.55 : 1 }} />
           : (
             // No cover — write the title + creator into the tile so a coverless item
             // stays identifiable even with captions turned off (the clean-wall mode).

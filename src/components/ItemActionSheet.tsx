@@ -145,7 +145,13 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       prev.includes(mood) ? prev.filter(m => m !== mood) : [...prev, mood]
     )
   }
-  const [coverUrl, setCoverUrl] = useState((item.metadata?.coverUrl as string | null) ?? '')
+  // Articles' only image is the og:image scraped at capture (metadata.image) —
+  // there's no coverUrl until the user edits it, so seed from that fallback.
+  const [coverUrl, setCoverUrl] = useState(
+    (item.metadata?.coverUrl as string | null)
+    ?? (item.type === 'article' ? (item.metadata?.image as string | null) : null)
+    ?? ''
+  )
   const [series, setSeries] = useState((item.metadata?.series as string | null) ?? '')
   const [seriesNewMode, setSeriesNewMode] = useState(() => {
     const s = (item.metadata?.series as string | null) ?? ''

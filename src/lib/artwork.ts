@@ -22,6 +22,10 @@ export function useArtwork(type: string, title: string, creator: string | null, 
   const [url, setUrl] = useState<string | null>(overrideUrl ?? null)
   useEffect(() => {
     if (overrideUrl) { setUrl(overrideUrl); return }
+    // Articles have no external art source (no TMDB/iTunes/Open Library
+    // equivalent) — their only image is the og:image scraped at capture time,
+    // passed in as overrideUrl. Skip the /api/art round trip entirely.
+    if (type === 'article') { setUrl(null); return }
     const key = `${type}|${title}|${creator ?? ''}|${year ?? ''}`
     if (cache.has(key)) { setUrl(cache.get(key)!); return }
     let cancelled = false
