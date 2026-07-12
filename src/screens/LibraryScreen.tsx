@@ -665,6 +665,12 @@ export function LibraryScreen() {
 
   const reviewN = useMemo(() => reviewCount(items), [items])
   const hasReview = reviewN > 0
+  // Articles have no reaction/verdict to surface, so "for review" never counts
+  // them — a quiet unread badge in the masthead instead. Lives in the header
+  // (not the type-tab row, which is already tight on a phone) so it stays
+  // visible without adding to that row's width, and jumps straight into the
+  // filtered list on tap — same list, just a more visible door into it.
+  const unreadArticles = useMemo(() => items.filter(i => i.type === 'article' && i.status !== 'done').length, [items])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
@@ -679,6 +685,19 @@ export function LibraryScreen() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
             <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 0.95, margin: 0, color: '#1C1B19' }}>library</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+              {unreadArticles > 0 && (
+                <button
+                  onClick={() => selectCategory('article')}
+                  title={`${unreadArticles} to read`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4, background: '#F0EFEC', border: '1px solid #E3E0D8',
+                    borderRadius: 11, padding: '3px 9px', cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#A8A29A', flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: '#6F6B64', fontWeight: 500 }}>{unreadArticles}</span>
+                </button>
+              )}
               <HeaderControls
                 onSearch={() => setSearchOpen(v => !v)}
                 onMore={() => setOverflowOpen(true)}
