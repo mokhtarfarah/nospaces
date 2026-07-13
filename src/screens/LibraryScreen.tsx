@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef, type CSSProperties } from 'react'
+import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef, type CSSProperties } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
 import { typeColor, TYPE_COLORS } from '../lib/colors'
@@ -1321,6 +1321,26 @@ function FilterMenu({
   const [panel, setPanel] = useState<FilterPanel | null>(null)
   const close = () => { setOpen(false); setPanel(null) }
 
+  // The "filters" button can sit anywhere along the horizontally-scrolling nav
+  // row (far right when every category tab shows, far left on an empty library),
+  // so a fixed left/right anchor either spills past the viewport (widening the
+  // page → the whole app scrolls sideways) or clips off the near edge. Instead we
+  // left-align the panel to the button, then nudge it horizontally by just enough
+  // to keep both edges on-screen. Re-runs on open + panel change (panels differ in
+  // width). Direct DOM write (no state) so there's no measure→render loop.
+  const popRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = popRef.current
+    if (!open || !el) return
+    el.style.transform = 'translateX(0px)'
+    const r = el.getBoundingClientRect()
+    const m = 8 // min gap from either viewport edge
+    let shift = 0
+    if (r.right > window.innerWidth - m) shift = window.innerWidth - m - r.right // pull left to fit
+    if (r.left + shift < m) shift = m - r.left // but never past the left edge
+    el.style.transform = `translateX(${shift}px)`
+  }, [open, panel])
+
   const statusActive = statusFilter !== 'all' || reactionFilter !== 'all'
   const tagCount = genreFilter.length + vibeFilter.length + verdictFilter.length + seriesFilter.length + countryFilter.length
   const activeCount = tagCount + (statusActive ? 1 : 0) + (shelfFilter !== 'all' ? 1 : 0) + (showNewMusic && newMusicOnly ? 1 : 0)
@@ -1373,11 +1393,15 @@ function FilterMenu({
       {open && (
         <>
           <div onClick={close} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
-          <div style={{
+          {/* Left-aligned to the button, then nudged on-screen by the layout effect
+              above (the button roams along the scrolling nav row). maxWidth caps it
+              to the viewport so wide content can't push the page wider than the
+              screen — that's what made the whole app scroll sideways. */}
+          <div ref={popRef} style={{
             position: 'absolute', top: '100%', left: 0, marginTop: 2, zIndex: 61,
             background: '#fff', border: `1px solid ${HAIR}`, borderRadius: 8,
             boxShadow: '0 6px 24px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 190,
-            maxHeight: '60vh', overflowY: 'auto',
+            maxWidth: 'calc(100vw - 24px)', maxHeight: '60vh', overflowY: 'auto',
           }}>
             {panel === null ? (
               <>
