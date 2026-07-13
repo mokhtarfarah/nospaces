@@ -340,6 +340,20 @@ export function useItems() {
     notifyOthers()
   }
 
+  // "classic" (s119) — music-only shelf: an album you keep because it's canon / music
+  // history you're studying, distinct from newer listening. Status-agnostic (set on
+  // want-to OR done), unlike a verdict. NOT metadata.canon — that's the desert island.
+  async function toggleClassic(id: string, classic: boolean) {
+    const item = items.find(i => i.id === id)
+    if (!item) return
+    const metadata = { ...item.metadata }
+    if (classic) metadata.classic = true
+    else delete metadata.classic
+    await db().from('items').update({ metadata }).eq('id', id)
+    await fetch({ silent: true })
+    notifyOthers()
+  }
+
   async function editItem(id: string, fields: {
     title?: string
     creator?: string | null
@@ -361,5 +375,5 @@ export function useItems() {
     notifyOthers()
   }
 
-  return { items, loading, addItem, importItems, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, patchItem, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
+  return { items, loading, addItem, importItems, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, toggleClassic, patchMetadata, patchItem, duplicateCount, duplicateGroups, deleteMany, refetch: fetch }
 }

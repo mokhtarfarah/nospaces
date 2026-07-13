@@ -247,7 +247,7 @@ function ResultCard({ item, onTap }: { item: Item; onTap: () => void }) {
 export function HelpMeDecideScreen() {
   const navigate = useNavigate()
   const { items, markDone, markWantTo, markInProgress, deleteItem, editItem,
-          toggleOwned, toggleCanon, patchMetadata } = useItems()
+          toggleOwned, toggleCanon, toggleClassic, patchMetadata } = useItems()
 
   const [step, setStep] = useState<Step>('seen')
   const [picks, setPicks] = useState<Picks>({ seen: null, type: null, time: null, era: null, vibe: null })
@@ -563,6 +563,7 @@ export function HelpMeDecideScreen() {
             onEdit={fields => { editItem(fresh.id, fields) }}
             onToggleOwned={owned => toggleOwned(fresh.id, owned)}
             onToggleCanon={canon => toggleCanon(fresh.id, canon)}
+            onToggleClassic={classic => toggleClassic(fresh.id, classic)}
             onPatchMetadata={patch => patchMetadata(fresh.id, patch)}
             onPatchTags={tags => editItem(fresh.id, { tags })}
             onMarkInProgress={() => { markInProgress(fresh.id); setActionItem(null) }}
