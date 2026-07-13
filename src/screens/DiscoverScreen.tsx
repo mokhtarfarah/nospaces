@@ -27,6 +27,13 @@ type Stream = 'foryou' | 'further'
 
 const CACHE_TTL_MS = 48 * 60 * 60 * 1000
 
+// How many of her hits (loved/liked) to send the recommender as a taste snapshot +
+// exclusion hint. Capped so a big library doesn't bloat the prompt (slow calls) or
+// anchor DIVERT to her whole back-catalogue. Client-side filterResults still
+// excludes the FULL library, so this only bounds what the model *sees*, not what
+// it's allowed to surface.
+const LIB_SAMPLE = 60
+
 // The recommend-feeds function caps at 60s server-side (maxDuration). Without a
 // client-side timeout, a hung connection — or a Vercel timeout that doesn't
 // cleanly close the socket — leaves the fetch promise pending forever: the
@@ -113,8 +120,19 @@ export function DiscoverScreen() {
     if (tasteProfile && (!cached || isStale(cached.cachedAt))) fetchMode('intaste')
   }, [prefsLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The taste snapshot sent to the recommender: her hits (loved/liked), capped to
+  // the most recent LIB_SAMPLE. Uncapped, a heavy library dumped hundreds of items
+  // into the prompt — slow (the s109 "further afield" stuck-loading) and, worse for
+  // DIVERT, it anchored the model to her whole back-catalogue, blunting the "go
+  // further" ask. The cap is safe for exclusion: filterResults() still drops any
+  // returned pick that's in the FULL library (libraryTitleSet), so a hit that falls
+  // outside the sample can never surface as a "new" recommendation.
   const libraryItems = useMemo(
-    () => items.filter(i => i.reaction === 'loved_it' || i.reaction === 'liked_it').map(i => ({ title: i.title, type: i.type })),
+    () => items
+      .filter(i => i.reaction === 'loved_it' || i.reaction === 'liked_it')
+      .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+      .slice(0, LIB_SAMPLE)
+      .map(i => ({ title: i.title, type: i.type })),
     [items]
   )
 
