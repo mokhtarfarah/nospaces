@@ -8,7 +8,7 @@ import { useArtwork } from '../lib/artwork'
 import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
 import { SheetHero } from '../components/SheetHero'
-import { clearStack, SUBNAV_H } from '../lib/layout'
+import { clearFab, SUBNAV_H } from '../lib/layout'
 import { useSetSubNav } from '../lib/subNav'
 
 const INK = '#1C1B19'
@@ -563,14 +563,14 @@ export function TasteScreen() {
   )
 
   if (!doneWithReaction.length) return (
-    <div style={{ padding: `20px 20px ${clearStack(24)}`, background: '#fff', minHeight: '100dvh', color: INK }}>
+    <div style={{ padding: `20px 20px ${clearFab()}`, background: '#fff', minHeight: '100dvh', color: INK }}>
       <PageHeader title="taste" />
       <TasteLockedPreview />
     </div>
   )
 
   return (
-    <div style={{ padding: `20px 20px ${clearStack(hasIsland ? 24 + SUBNAV_H : 24)}`, background: '#fff', minHeight: '100dvh', color: INK }}>
+    <div style={{ padding: `20px 20px ${clearFab(hasIsland ? SUBNAV_H : 0)}`, background: '#fff', minHeight: '100dvh', color: INK }}>
       {/* "taste" as a small section label, vibe words as the headline. The
           rating count leads in ink-bold weight so the kicker reads as a stat,
           not a caption sentence — same treatment as library's item count. */}

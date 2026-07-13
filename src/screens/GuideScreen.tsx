@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom'
+import { clearFab } from '../lib/layout'
 
 export function GuideScreen() {
   const navigate = useNavigate()
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#fff', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+    <div style={{ minHeight: '100dvh', background: '#fff', paddingBottom: clearFab() }}>
 
       {/* top bar */}
       <div style={{
@@ -74,7 +75,7 @@ export function GuideScreen() {
             { label: 'help me decide', text: 'can\'t choose? tap the link in the library header. it asks 3 questions and picks something from your backlog.' },
           ]} />
           <Extras items={[
-            { label: 'tidy',   text: '"tidy · N" in the header flags items missing info — year, director, runtime, genre. tap to fill them in one by one, or auto-fill in bulk.' },
+            { label: 'tidy',   text: 'open the ⋯ menu in the library header → tidy. it walks you through items missing info — year, director, runtime, genre — to fill one by one, or auto-fill in bulk.' },
             { label: 'series', text: 'tap an item → edit → series field. groups trilogies and book series together in the library.' },
           ]} />
         </Section>

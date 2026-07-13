@@ -19,7 +19,7 @@ import {
 import { uploadMoodImage, moodSrc } from '../lib/mood'
 import { inReview } from '../lib/review'
 import { flipThingToMedia, MEDIA_TYPES, type MediaType } from '../lib/flip'
-import { NAV_H, NAV_TINT, SUBNAV_H, clearStack } from '../lib/layout'
+import { NAV_H, NAV_TINT, SUBNAV_H, clearStack, clearFab } from '../lib/layout'
 import { sampleBoardColors } from '../lib/palette'
 import { usePrefs } from '../hooks/usePrefs'
 
@@ -763,7 +763,7 @@ export function ThingsScreen() {
           </div>
         )}
 
-        <div style={{ padding: `16px 16px ${tab === 'taste' ? 160 + SUBNAV_H : 160}px` }}>
+        <div style={{ padding: `16px 16px ${tab === 'taste' ? clearFab(SUBNAV_H) : clearFab()}` }}>
           {tab === 'taste' ? (
             <>
               {tasteSub === 'moodboard' ? (
@@ -1104,7 +1104,7 @@ export function ThingsScreen() {
       <ThingsNav tab={tab} onTab={setTab} subNav={tab === 'taste' ? (
         <>
           <SubTabChip label="profile" active={tasteSub === 'profile'} onClick={() => setTasteSub('profile')} />
-          <SubTabChip label="moodboard" active={tasteSub === 'moodboard'} onClick={() => setTasteSub('moodboard')} />
+          <SubTabChip label="mood board" active={tasteSub === 'moodboard'} onClick={() => setTasteSub('moodboard')} />
         </>
       ) : undefined} />
     </div>
@@ -1189,12 +1189,6 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [profileEditorOpen, setProfileEditorOpen] = useState(false)
   const tagged = useMemo(() => items.filter(t => itemAttributes(t).length > 0).length, [items])
-  // Split so the caption can show its actual wishlist/mood mix — Farah, s109: the
-  // "wishlist + mood" text read as if both sides carry equal weight, with no way
-  // to tell if mood is actually thin enough to get drowned out in the recurring
-  // counts (boardTasteSummary/readThread just count items, no per-kind weighting).
-  const taggedMood = useMemo(() => items.filter(t => kindOf(t) === 'inspiration' && itemAttributes(t).length > 0).length, [items])
-  const taggedWishlist = tagged - taggedMood
   // Brands you keep reaching for — the makers' echo of the keyword thread.
   const brands = useMemo(() => recurringBrands(items), [items])
   // The keyword thread is the signal gate — it only appears once enough items recur
@@ -1265,17 +1259,17 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
 
   return (
     <div>
-      {/* Kicker — keywords in small caps, the quiet label above the read. */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: '2px', textTransform: 'uppercase' }}>
-            {board.thread.join('   ·   ')}
-          </div>
-          <div style={{ fontSize: 11, color: MUTED, marginTop: 6 }}>
-            read across {tagged} tagged thing{tagged === 1 ? '' : 's'} — {taggedWishlist} wishlist + {taggedMood} mood
-          </div>
+      {/* Kicker — keywords in small caps, with the tally folded onto the same row
+          (was its own subline with a wishlist/mood split — s116: the number alone
+          answers "how much am I reading across"). */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: '2px', textTransform: 'uppercase', minWidth: 0 }}>
+          {board.thread.join('   ·   ')}
         </div>
-        {settingsIcon}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: MUTED, whiteSpace: 'nowrap' }}>· {tagged} thing{tagged === 1 ? '' : 's'}</span>
+          {settingsIcon}
+        </div>
       </div>
 
       {/* Hero — the synthesis as a pull-quote, or the read CTA before it's generated. */}
@@ -1373,7 +1367,7 @@ function StyleProfileEditor({ value, onSave, onClose }: { value: string | null; 
     <Sheet onClose={onClose} maxWidth={420}>
       <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: INK }}>style profile</h2>
       <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 14px', lineHeight: 1.55 }}>
-        your own words on your aesthetic + body type. you won’t see this on your taste page — it quietly feeds <em>compare</em> and a thing’s <em>how it fits</em>, so those reads speak to silhouette and fit, not just price.
+        your own words on your aesthetic + body type. you won’t see this on your taste page — it quietly feeds <em>compare</em> and a thing’s <em>how it lands</em>, so those reads speak to silhouette and fit, not just price.
       </p>
       <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)}
         placeholder="e.g. drawn to quiet, structured tailoring in earth tones. petite with a long torso — high-waisted cuts and cropped jackets flatter; oversized swamps me."
@@ -1635,7 +1629,7 @@ function NoteBlock({ note, onSave }: { note: string | null; onSave: (n: string |
 // you toggle between them. Defaults to your note when you've written one; otherwise
 // it opens on the taste read (shown automatically once generated, dismissable). The
 // read is a paid Haiku call cached on metadata.tasteFit, so the first time you open
-// the "how it fits" tab it generates; after that toggling is free.
+// the "how it lands" tab it generates; after that toggling is free.
 function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleHideFit }: {
   note: string | null
   onSaveNote: (n: string | null) => void | Promise<void>
@@ -1676,7 +1670,7 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
     <div style={{ marginTop: 10 }}>
       <div style={{ display: 'flex', gap: 18, borderBottom: `1px solid ${LINE}`, marginBottom: 9 }}>
         {tabBtn('note', 'your note')}
-        {tabBtn('fit', 'how it fits')}
+        {tabBtn('fit', 'how it lands')}
       </div>
 
       {/* The note is plain text (not a full-area button) so a touch-drag scrolls the
@@ -2026,7 +2020,7 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         </div>
       )}
 
-      {/* The reflection zone — your note and the app's "how it fits" read share one line
+      {/* The reflection zone — your note and the app's "how it lands" read share one line
           of tabs, one shows at a time (see ReflectionBlock). Only offered once the board
           has a read AND this thing is tagged. Otherwise just your note (+ a one-tap photo
           re-read when an untagged item still has a photo to read). */}
@@ -2385,7 +2379,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
                 {isWinner && <div style={{ fontSize: 11, color: INK, fontWeight: 600, marginTop: 4 }}>✓ chose this</div>}
                 {aiNote && (
                   <div style={{ fontSize: 11.5, color: aiLeans ? INK : MUTED, marginTop: 5, lineHeight: 1.4 }}>
-                    {aiLeans && <span style={{ fontWeight: 600 }}>✨ leans here · </span>}{aiNote}
+                    {aiLeans && <span style={{ fontWeight: 600 }}>we’d lean here · </span>}{aiNote}
                   </div>
                 )}
               </div>
@@ -2423,7 +2417,7 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
         <div style={{ marginBottom: 16 }}>
           <button onClick={runCompare} disabled={comparing}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: `1px solid ${LINE}`, background: '#fff', color: INK, fontSize: 12.5, fontWeight: 600, cursor: comparing ? 'default' : 'pointer' }}>
-            ✨ {comparing ? 'thinking…' : compare ? 'compare again' : 'compare these'}
+            {comparing ? 'thinking…' : compare ? 'compare again' : 'compare these'}
           </button>
           {compare && (
             <button onClick={() => { setCompare(null); setCompareErr(null); void onPatch({ ...m, comparison: null }) }}
@@ -2552,7 +2546,7 @@ function MoodEmpty({ onAddUpload, onAddLink }: { onAddUpload: () => void; onAddL
     <div style={{ textAlign: 'center', padding: '48px 20px', color: MUTED }}>
       <div style={{ fontSize: 13, lineHeight: 1.6 }}>
         your mood board is empty.<br />
-        save images that capture the look you're after — they feed your taste, no price or link needed.
+        save images that capture a vibe, an aesthetic, an atmosphere you’re drawn to — they feed your taste, no price or link needed.
       </div>
       <button onClick={onAddUpload} style={{ ...primaryBtn(false), marginTop: 18 }}>upload images</button>
       <div style={{ marginTop: 12 }}>
@@ -3018,7 +3012,7 @@ function PriceLine({ price, wasPrice }: { price: string | null; wasPrice?: strin
     <span style={{ display: 'inline-flex', gap: 5, alignItems: 'baseline', flexWrap: 'wrap' }}>
       {price && <span style={{ color: INK }}>{formatPrice(price)}</span>}
       {wasPrice && <span style={{ textDecoration: 'line-through', color: MUTED, fontSize: '0.92em' }}>{formatPrice(wasPrice)}</span>}
-      {onSale && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', color: '#B4413C', border: '1px solid #E3C3C1', borderRadius: 4, padding: '0 4px', textTransform: 'uppercase' }}>sale</span>}
+      {onSale && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: INK, background: '#ECE9E2', borderRadius: 3, padding: '1px 5px', textTransform: 'uppercase' }}>sale</span>}
     </span>
   )
 }

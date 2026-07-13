@@ -77,7 +77,7 @@ function ResultRow({ item, onToggle, onEdit }: {
           <select
             value={item.result.type}
             onChange={e => onEdit('type', e.target.value)}
-            style={{ fontSize: 11, color: '#777', border: '1px solid #DDD', borderRadius: 4, padding: '1px 4px', background: '#fff', cursor: 'pointer' }}
+            style={{ fontSize: 11, color: '#8A857C', border: 'none', borderRadius: 4, padding: '2px 5px', background: '#F4F2EE', cursor: 'pointer' }}
           >
             {['film', 'tv', 'book', 'music', 'other'].map(t => <option key={t} value={t}>{t}</option>)}
           </select>
@@ -143,10 +143,9 @@ export function BulkConfirmSheet({ items: initialItems, onConfirm, onClose }: {
                 key={s}
                 onClick={() => setStatus(s)}
                 style={{
-                  flex: 1, padding: '8px 8px', borderRadius: 8, cursor: 'pointer',
-                  border: active ? '1.5px solid #111' : '1.5px solid #E0E0E0',
-                  background: active ? '#F4F2EE' : '#fff',
-                  color: active ? '#111' : '#777',
+                  flex: 1, padding: '8px 8px', borderRadius: 8, cursor: 'pointer', border: 'none',
+                  background: active ? '#E6E1D7' : '#F4F2EE',
+                  color: active ? '#1C1B19' : '#8A857C',
                   fontSize: 13, fontWeight: active ? 600 : 400,
                 }}
               >

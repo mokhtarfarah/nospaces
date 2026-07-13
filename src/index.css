@@ -68,3 +68,8 @@ html {
 .page-transition {
   animation: pageFadeIn 180ms ease;
 }
+
+/* Shared spinner rotation — used by inline loading/refresh icons */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

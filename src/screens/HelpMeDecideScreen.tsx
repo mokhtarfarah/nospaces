@@ -5,6 +5,7 @@ import { ItemActionSheet } from '../components/ItemActionSheet'
 import { VIBES } from '../lib/moods'
 import { typeColor } from '../lib/colors'
 import type { Item } from '../lib/database.types'
+import { clearFab } from '../lib/layout'
 
 type SeenChoice = 'new' | 'revisit'
 type TypeChoice = 'film' | 'tv' | 'book' | 'music' | 'any'
@@ -332,7 +333,7 @@ export function HelpMeDecideScreen() {
       background: '#fff',
       display: 'flex',
       flexDirection: 'column',
-      paddingBottom: 'calc(72px + env(safe-area-inset-bottom))',
+      paddingBottom: clearFab(),
     }}>
       {/* top bar */}
       <div style={{

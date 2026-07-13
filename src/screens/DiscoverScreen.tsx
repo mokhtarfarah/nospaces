@@ -9,6 +9,7 @@ import { useWikipediaInfo, useRottenTomatoesScore } from '../lib/wikipedia'
 import { typeColor } from '../lib/colors'
 import { PageHeader } from '../components/PageHeader'
 import { SheetHero } from '../components/SheetHero'
+import { clearFab } from '../lib/layout'
 
 // Editorial palette — matches taste + library pages
 const INK = '#1C1B19'
@@ -249,9 +250,22 @@ export function DiscoverScreen() {
   const streamLabel = moodActive ? 'in the mood' : stream === 'further' ? 'further afield' : 'for you'
 
   return (
-    <div style={{ padding: '20px 20px 140px', fontFamily: 'inherit' }}>
-      {/* Shared magazine header */}
-      <PageHeader kicker={`${streamLabel} · ${dateLabel}`} title="discover" />
+    <div style={{ padding: `20px 20px ${clearFab()}`, fontFamily: 'inherit' }}>
+      {/* Shared magazine header — refresh lives here as a quiet ↻ (was a whole
+          third row under the tabs; the picks count it sat beside was clutter). */}
+      <PageHeader
+        kicker={`${streamLabel} · ${dateLabel}`}
+        title="discover"
+        right={!moodActive && stream === 'foryou' && hasIntaste && (
+          <button onClick={() => fetchMode('intaste', true)} disabled={intasteLoading} aria-label="refresh picks"
+            style={{ background: 'none', border: 'none', color: intasteLoading ? HAIR : GRAPHITE, cursor: intasteLoading ? 'default' : 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: intasteLoading ? 'spin 0.7s linear infinite' : 'none' }}>
+              <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </button>
+        )}
+      />
 
       {error && <p style={{ fontSize: 12, color: '#C0392B', textAlign: 'center', margin: '12px 0 0' }}>{error}</p>}
 
@@ -300,18 +314,6 @@ export function DiscoverScreen() {
           <Chip key={t} label={TYPE_LABEL[t]} active={mediumFilter === t} onClick={() => setMediumFilter(t)} />
         ))}
       </div>
-
-      {/* Count + refresh */}
-      {!isLoadingActive && shown.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
-          <span style={{ fontSize: 11, color: MUTE }}>{shown.length} {shown.length === 1 ? 'pick' : 'picks'}</span>
-          {!moodActive && stream === 'foryou' && hasIntaste && (
-            <button onClick={() => fetchMode('intaste', true)} disabled={intasteLoading} style={{ background: 'none', border: 'none', color: intasteLoading ? MUTE : GRAPHITE, fontSize: 11, cursor: 'pointer', padding: 0 }}>
-              {intasteLoading ? 'loading…' : 'refresh ↺'}
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Editorial explainer — only at true cold start (no taste profile) */}
       {!moodActive && usingEditorial && (

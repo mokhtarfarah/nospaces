@@ -28,3 +28,14 @@ export const clearStack = (extra = 0) =>
 
 export const clearNav = (extra = 0) =>
   `calc(${NAV_H + extra}px + env(safe-area-inset-bottom))`
+
+// The floating "+" (and the Things speed-dial) hovers FAB_GAP above the nav row
+// and is FAB_SIZE tall, so it pokes above the nav into the scroll area. A
+// container padded only with clearStack/clearNav clears the bar but NOT the FAB —
+// its last row hides behind the button (s116 audit: 8 screens). clearFab reserves
+// the whole FAB stack + a breathing margin, so scroll containers that sit under
+// the FAB should pad with this instead. `extra` adds a sub-nav row when present.
+export const FAB_GAP = 18
+export const FAB_SIZE = 50
+export const FAB_MARGIN = 16
+export const clearFab = (extra = 0) => clearStack(FAB_GAP + FAB_SIZE + FAB_MARGIN + extra)

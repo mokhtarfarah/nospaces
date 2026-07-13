@@ -18,7 +18,7 @@ import { isGenreTag } from '../lib/genres'
 import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 import { inReview, reviewCount } from '../lib/review'
 import { flipMediaToThing } from '../lib/flip'
-import { clearStack, clearNav } from '../lib/layout'
+import { clearStack, clearNav, clearFab } from '../lib/layout'
 import { pullFacts, itemsNeedingFacts } from '../lib/regions'
 
 
@@ -550,24 +550,6 @@ export function LibraryScreen() {
     return sortItems(result, sort, dir)
   }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, shelfFilter, sort, dir])
 
-  // Kicker census — counts what's actually on screen, so it tracks every active
-  // filter (status/reaction/tag/shelf), not just the category. "all" → the whole
-  // (filtered) collection; a single type → that type, singularised at 1 ("1 book").
-  // Search spans all categories, so it reads as plain results; review has its own
-  // count. Uses `filtered` (the rendered set), hence it lives below that memo.
-  const kicker = useMemo(() => {
-    const n = filtered.length
-    // Bold ink number leads, quiet label follows — same stat treatment as taste's rating count.
-    const count = <span style={{ color: '#1C1B19', fontWeight: 800 }}>{n}</span>
-    if (reviewOnly) return <>{count} to review</>
-    if (query.trim()) return <>{count} result{n === 1 ? '' : 's'}</>
-    if (categories.length === 1) {
-      const label = CATEGORY_LABEL[categories[0]] ?? categories[0]
-      return <>{count} {n === 1 ? label.replace(/s$/, '') : label}</>
-    }
-    return <>{count} in the collection</>
-  }, [filtered, categories, reviewOnly, query])
-
   // Whether the current base set has anything owned — the shelf filter is only
   // worth offering when there's something on the shelf to narrow to. Computed off
   // baseFiltered (which excludes the owned narrowing) so it stays stable as the
@@ -682,7 +664,7 @@ export function LibraryScreen() {
           free (real native scrolling, no JS height animation); only the
           category/status/filter row below is sticky. Matches ThingsScreen's
           header, which already solved the same mobile jumpiness this way. */}
-      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? clearStack(94) : clearStack(24) }}>
+      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? clearStack(94) : clearFab() }}>
         <div style={{ padding: '20px 16px 0' }}>
           {/* Magazine header — title + search/overflow on top, then count
               folded into one quiet subline. */}
@@ -694,11 +676,11 @@ export function LibraryScreen() {
                   onClick={() => selectCategory('article')}
                   title={`${unreadArticles} to read`}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 4, background: '#F0EFEC', border: '1px solid #E3E0D8',
+                    display: 'flex', alignItems: 'center', gap: 5, background: '#F4F2EE', border: 'none',
                     borderRadius: 11, padding: '3px 9px', cursor: 'pointer', fontFamily: 'inherit',
                   }}
                 >
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#A8A29A', flexShrink: 0 }} />
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1C1B19', flexShrink: 0 }} />
                   <span style={{ fontSize: 11, color: '#6F6B64', fontWeight: 500 }}>{unreadArticles}</span>
                 </button>
               )}
@@ -708,10 +690,7 @@ export function LibraryScreen() {
               />
             </div>
           </div>
-          <div style={{ marginBottom: 10 }}>
-            <span style={{ fontSize: 12.5, color: '#ABA69C' }}>{kicker}</span>
-          </div>
-          <div style={{ borderBottom: '1.5px solid #1C1B19', marginBottom: 12 }} />
+          <div style={{ borderBottom: '1.5px solid #1C1B19', marginBottom: 12, marginTop: 10 }} />
 
           {searchOpen && (
             <div style={{ position: 'relative', marginBottom: 8 }}>
@@ -783,6 +762,10 @@ export function LibraryScreen() {
             />
             {/* spacer pushes the right-hand controls to the edge */}
             <div style={{ flex: '1 1 0' }} />
+            {/* Count of what's on screen — tracks the active tab + every filter, so
+                the number answers "how many of what I'm viewing". Was a whole
+                subtitle row under the title (s116); folded onto this row. */}
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1B19', flexShrink: 0, marginRight: 14, fontVariantNumeric: 'tabular-nums' }}>{filtered.length}</span>
             {/* View · sort · filter live in one card opened from this button,
                 mirroring the Things board. Always present (it always offers layout +
                 sort), even before there are tag groups to filter on. */}
@@ -1674,6 +1657,13 @@ function Thumb({ src, type, color }: { src: string | null; type: string; color: 
   )
 }
 
+// First letter of a publication for the article avatar — skips a leading "The"
+// so "The New Yorker" → N and "The Atlantic" → A instead of both reading "T".
+function sourceInitial(source: string): string {
+  const name = source.replace(/^the\s+/i, '').trim() || source
+  return name.charAt(0).toUpperCase()
+}
+
 // Grid layout cover card. square=true for music (album covers are 1:1).
 function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWiki, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; caption: CardCaption; onTap: () => void; onSaveArt?: (id: string, url: string) => void; onSaveWiki?: (id: string, wiki: WikiInfo) => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
@@ -1750,7 +1740,7 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
             <div style={{ fontSize: 11, fontWeight: 500, color: INK, lineHeight: 1.25, marginBottom: articleSource ? 4 : 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</div>
             {articleSource && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 12, height: 12, borderRadius: '50%', background: color.border, color: color.bg, fontSize: 7, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{articleSource[0].toUpperCase()}</div>
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: color.border, color: color.bg, fontSize: 7, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{sourceInitial(articleSource)}</div>
                 <div style={{ fontSize: 9, color: MUTE, letterSpacing: '0.2px' }}>{articleSource}</div>
               </div>
             )}
