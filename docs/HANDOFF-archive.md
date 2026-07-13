@@ -4,6 +4,23 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 120 (2026-07-13) — library filters → one two-tier "filters" menu. Free (frontend only, no API). Committed + pushed to `main` ([79c5bde]).
+
+**Consolidated the two library filter surfaces into one.** Before: a **"status"** dropdown (status + done→verdict + want-to→shelf) on the left of the category row, AND a separate **view·sort·filter** sheet on the right holding all the tag facets (vibe/verdict/genre/series/region + shelf + new-music). Two things both about filtering, side by side. Farah asked to replace "status" with a **"filters"** dropdown and make the selections a second-order menu; picked scope **"pull in the tag facets too"** (status + all facets in the menu; the right sheet keeps only view + sort).
+
+Built in `src/screens/LibraryScreen.tsx`:
+- **`StatusDropdown` → `FilterMenu`** — a two-tier popover. **Tier 1** is a short list of filter axes (`FilterRow`: label + current-selection summary + `›`); **tier 2** is that axis's options behind a `‹ back` header. Axes are gated by the *same* relevance rules the old sheet used: **status** (always), then **shelf** (`hasOwned`), **genre/vibe/verdict** (single-medium + has-tags), **series** (`seriesRelevant`), **region** (has-countries). **new music tuesday** is a direct top-level toggle (single on/off, no drill). Status keeps its **done→verdict** (loved it/liked it/eh/not for me) and **want-to→shelf** refinements inline in its own panel, exactly as before.
+- **Active-count badge** on the "filters" button (ink pill, e.g. `filters ①`) counting status+shelf+tags+new-music, and a **clear all · N left** footer (calls the existing `clearFilters`) shown only when something's narrowing.
+- **`MenuItem`** extended with an optional tag `count`; new `FilterRow` for tier-1 rows.
+- **Right-hand sheet is now view+sort only** — `FilterSheet` stripped to layout · captions · sort (dropped the filter heading, active-filters tray, all `FilterSection`s). Its trigger button relabeled aria "view and sort" and lost its filter-count badge.
+- **Removed dead code:** `FilterSection` + `FILTER_TOP_N` (only the sheet used them), and the now-unused `filterCount` / `filtersActive` locals.
+
+**Proof:** typecheck clean, **125 tests green**, pre-commit hook (genre-sync + typecheck + tests) passed. **Verified live in the no-auth preview:** the button reads "filters", tier-1 shows `status ›`, drilling opens the `‹ status` panel with all/want to/in progress/done, picking **done** reveals the four verdicts inline + flips the button to `filters ①`, and the right sheet shows only layout/captions/sort. **The tag-facet rows (genre/vibe/verdict/series/region/shelf) couldn't render — the no-auth sandbox has no backend so the library is empty — but they're gated by the identical relevance logic the old sheet used; Farah to eyeball those on real data.**
+
+**Relation to the queued menu-nav pass:** this is the "status folds into the filter" slice of the s119 menu-nav direction, done on its own. The **type-row** and **dual-nav sub-tab** pieces are untouched — menu-nav stays queued (Tier 1) for those.
+
+---
+
 ### Session 119 (2026-07-13) — colour-story skin gate built. Free (browser-side sampling, no API). Committed to `main`.
 
 **Started to open the menu-nav design pass, then pivoted to ship the s118 colour-fix instead.** Pulled up the menu-nav item, read the live nav + filter-bar code (`BottomNav.tsx`, `DomainSwitcher.tsx`, `subNav.tsx`, `LibraryScreen.tsx`), and built a current-vs-proposed mockup: the recommendation is **mirror the Things board** — type-tabs own the sticky row, **status folds into the filter sheet**, and the bare mid-row **count becomes a labeled subline under the title** (`103 want to · music`) — which *is* the "count is wrong" fix (it was never miscounting, just unreadable where it sat). For the sub-tab knot (taste profile/desert-island, things profile/moodboard), proposed **lifting the switch out of the bottom nav into the page as a segmented control** so the nav collapses back to one clean row. Put both to Farah via a question card; **she dismissed it — "let's do this later."** Mockup + reasoning are in the session chat; menu-nav stays queued (Tier 1) with this direction on record. *Note the diagnosis: the count is computationally correct (`filtered.length`), the problem is placement, not math.*
