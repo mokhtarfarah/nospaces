@@ -15,6 +15,15 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 **Proof:** typecheck clean; **full suite 125 green** (was 118); dev server compiled with no errors. **Not visually verified** — the no-auth dev seed board is empty (ribbon correctly hides), and the real leak needs Farah's actual monochrome-with-model-shots board; **Farah to eyeball the ribbon on her phone.** **Known gap (by design, per plan):** a tan item shot *only* on-model — no clean cutout to vouch for it — can still get gated; rare, and the agreed trigger to escalate to real skin/person segmentation later.
 
+**Then two backlog items Farah flagged** (captured to ROADMAP + surfaced in HANDOFF, not built): **(1) library search isn't matching well** — today's `includes()` on title/creator/tags matched independently breaks on multi-word cross-field queries, typos, accents; **get a concrete failing example from Farah before rebuilding**, and clarify "troubleshoot with other input methods" (voice-dictation vs typed vs paste?). **(2) in-app paste-an-article-link** — the composer's paste accepts images only; add a URL path reusing the email extraction pipeline.
+
+**Then built the music "classic" shelf (Farah's ask — new this session).** She wanted to separate albums she's working through *as* canon / music history from newer listening. Worked out the home together: **not a verdict** (verdicts/vibes are set only in the mark-done→ReactionForm flow, so done-only — but this must apply to *want-to* albums too) and **not a vibe**; it's a status-agnostic classification on the album. Farah chose "proper toggle + filter" and the label **"classic."** **Critical catch: `metadata.canon` was already taken — it's the desert-island flag** (TasteScreen canon/canonRank/canonNote/★). Used a new `metadata.classic` field instead.
+- `useItems.ts` — `toggleClassic` (mirrors `toggleOwned`; deletes the key on false).
+- `ItemActionSheet.tsx` — a music-only "mark as classic / a classic ✓" item in the ⋯ menu, beside owned/shelf, available at any status. New `onToggleClassic` prop.
+- `LibraryScreen.tsx` — an **"all · classic · new"** text filter shown only in the music view (new = not-classic), applied in `filtered` (gated to `musicOnly`), reset on leaving music, cleared by clear-all. Not persisted (transient lens, like shelf/new-music). Kept OUT of the filter-sheet badge count since it has its own visible control.
+- `HelpMeDecideScreen.tsx` — passes `onToggleClassic` through (the other `ItemActionSheet` render site).
+- Typecheck clean, 125 tests green. **Not visually verified — the no-auth sandbox has no backend (media can't persist, so the music view is unreachable there); Farah to eyeball on her real library.** Committed + pushed to `main`.
+
 ---
 
 ### Session 118 (2026-07-13) — s118 UI nits sweep. Free (frontend only, no API). Committed + pushed to `main` ([e2a75e3]).
