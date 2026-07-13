@@ -697,13 +697,16 @@ export function ThingsScreen() {
               subline size/colour, no uppercase kicker. */}
           <div style={{ minWidth: 0, marginBottom: 10 }}>
             <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 0.95, margin: '0 0 6px', color: INK }}>things</h1>
-            <span style={{ fontSize: 12.5, color: MUTED }}>
-              {tab === 'taste'
+            {(() => {
+              // The taste PROFILE gets no subline — it's the read itself; a "taste"
+              // label under the "things / taste" nav just says the section twice.
+              const sub = tab === 'taste'
                 ? (tasteSub === 'moodboard'
                     ? (moods.length === 0 ? 'mood board' : `${moods.length} image${moods.length === 1 ? '' : 's'}`)
-                    : 'taste')
-                : (things.length === 0 ? 'wishlist' : `${things.length} on your wishlist`)}
-            </span>
+                    : null)
+                : (things.length === 0 ? 'wishlist' : `${things.length} on your wishlist`)
+              return sub ? <span style={{ fontSize: 12.5, color: MUTED }}>{sub}</span> : null
+            })()}
           </div>
           <div style={{ borderBottom: `1.5px solid ${INK}` }} />
           {/* The wishlist/mood toggle lives in the bottom nav (mirrors the media
@@ -768,14 +771,14 @@ export function ThingsScreen() {
             <>
               {tasteSub === 'moodboard' ? (
                 <>
-                  {moods.length > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                      {untaggedMoods.length > 0
-                        ? <button onClick={tagAllMoods} disabled={taggingMoods} style={quietLink}>
-                            {taggingMoods ? 'reading taste…' : `read taste for ${untaggedMoods.length} untagged`}
-                          </button>
-                        : <span />}
-                      <button onClick={() => setMoodLink(true)} style={quietLink}>paste a link</button>
+                  {/* "paste a link" used to sit here, awkwardly top-right — it now
+                      lives in the + speed-dial (s118). This row is just the
+                      read-taste action, shown only when there's untagged work. */}
+                  {moods.length > 0 && untaggedMoods.length > 0 && (
+                    <div style={{ display: 'flex', marginBottom: 10 }}>
+                      <button onClick={tagAllMoods} disabled={taggingMoods} style={quietLink}>
+                        {taggingMoods ? 'reading taste…' : `read taste for ${untaggedMoods.length} untagged`}
+                      </button>
                     </div>
                   )}
                   <MoodWall moods={sortedMoods} cols={cols} onOpen={setOpenMoodId}
@@ -1062,9 +1065,10 @@ export function ThingsScreen() {
       )}
 
       {/* Floating + — the app's single add gesture (mirrors the media FAB). The
-          board has no bottom nav, so it anchors to the bottom-right on its own. On
-          the wishlist it reveals the two product paths; on the mood board it adds an
-          image straight away (one path, no menu). Tapping the scrim or × closes. */}
+          board has no bottom nav, so it anchors to the bottom-right on its own.
+          Both the wishlist and the mood board reveal a small speed-dial (s118 folded
+          the mood board's old top-right "paste a link" in here, so upload + link
+          share one gesture). Tapping the scrim or × closes. */}
       {addMenu && (
         <div onClick={() => setAddMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 98 }} />
       )}
@@ -1079,14 +1083,20 @@ export function ThingsScreen() {
             <FabAction label="plan a purchase" onClick={() => { setAddMenu(false); setComposer('intent') }} />
           </>
         )}
+        {onMoodboard && addMenu && (
+          <>
+            <FabAction label="upload image" onClick={() => { setAddMenu(false); moodFileRef.current?.click() }} />
+            <FabAction label="paste a link" onClick={() => { setAddMenu(false); setMoodLink(true) }} />
+          </>
+        )}
         <button
-          onClick={() => onMoodboard ? moodFileRef.current?.click() : setAddMenu(m => !m)}
-          aria-label={onMoodboard ? 'add inspiration' : addMenu ? 'close add menu' : 'add'}
+          onClick={() => setAddMenu(m => !m)}
+          aria-label={addMenu ? 'close add menu' : 'add'}
           style={{
             width: 50, height: 50, borderRadius: '50%', background: INK, color: '#fff', border: 'none',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 2px 16px rgba(0,0,0,0.22)', transition: 'transform 0.18s ease',
-            transform: tab === 'wishlist' && addMenu ? 'rotate(45deg)' : 'none', alignSelf: 'flex-end',
+            transform: addMenu ? 'rotate(45deg)' : 'none', alignSelf: 'flex-end',
           }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -1112,8 +1122,8 @@ export function ThingsScreen() {
 }
 
 // Things bottom bar — same merged row as the media BottomNav: media / things on
-// the left, the board's two sections (wishlist / taste) as slash-split text links
-// on the right.
+// the left (slash kept — it's the domain crossing), the board's two sections
+// (wishlist · taste) as spaced text links on the right, no divider (s118).
 function ThingsNav({ tab, onTab, subNav }: { tab: Tab; onTab: (t: Tab) => void; subNav?: React.ReactNode }) {
   const link = (on: boolean): React.CSSProperties => ({
     border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 13,
@@ -1138,9 +1148,8 @@ function ThingsNav({ tab, onTab, subNav }: { tab: Tab; onTab: (t: Tab) => void; 
         padding: '14px 18px 0', boxSizing: 'border-box',
       }}>
         <DomainLinks current="things" />
-        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 14 }}>
           <button onClick={() => onTab('wishlist')} style={link(tab === 'wishlist')}>wishlist</button>
-          <span style={{ color: '#D5D1C9', fontSize: 12 }}>/</span>
           <button onClick={() => onTab('taste')} style={link(tab === 'taste')}>taste</button>
         </div>
       </nav>
@@ -1259,15 +1268,14 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
 
   return (
     <div>
-      {/* Kicker — keywords in small caps, with the tally folded onto the same row
-          (was its own subline with a wishlist/mood split — s116: the number alone
-          answers "how much am I reading across"). */}
+      {/* Kicker — the keyword thread in small caps. The item tally used to ride the
+          same row (s116) but read as a stat on a page that's meant to be a mirror,
+          not a dashboard — dropped s118. Only the settings icon sits opposite now. */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: '2px', textTransform: 'uppercase', minWidth: 0 }}>
           {board.thread.join('   ·   ')}
         </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexShrink: 0 }}>
-          <span style={{ fontSize: 11, color: MUTED, whiteSpace: 'nowrap' }}>· {tagged} thing{tagged === 1 ? '' : 's'}</span>
+        <div style={{ flexShrink: 0 }}>
           {settingsIcon}
         </div>
       </div>

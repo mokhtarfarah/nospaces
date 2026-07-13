@@ -786,31 +786,28 @@ export function LibraryScreen() {
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
               width: 'calc(100% - 32px)', boxSizing: 'border-box', margin: '12px 16px 0',
-              padding: '10px 14px', background: '#1C1B19', border: 'none', borderRadius: 10,
+              padding: '10px 14px', background: '#F4F2EE', border: 'none', borderRadius: 4,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>shows near you</span>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>browse →</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>shows near you</span>
+            <span style={{ fontSize: 12, color: '#9A958B' }}>browse →</span>
           </button>
         )}
         {/* Read-later queue — a quiet door into the unread articles, only in the
-            reading views. Soft-fill (not the dark shows-near-you slab) so a
-            lightweight type stays lightweight. */}
+            reading views. Shares the shows-near-you bar's soft-fill + squared
+            corners so the two entry-point bars read as one calm family. */}
         {unreadArticles > 0 && readingView && !reviewOnly && !query.trim() && (
           <button
             onClick={() => selectCategory('article')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
               width: 'calc(100% - 32px)', boxSizing: 'border-box', margin: '12px 16px 0',
-              padding: '10px 14px', background: '#F4F2EE', border: 'none', borderRadius: 10,
+              padding: '10px 14px', background: '#F4F2EE', border: 'none', borderRadius: 4,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1C1B19', flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>{unreadArticles} to read</span>
-            </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>{unreadArticles} article{unreadArticles === 1 ? '' : 's'}</span>
             <span style={{ fontSize: 12, color: '#9A958B' }}>open →</span>
           </button>
         )}

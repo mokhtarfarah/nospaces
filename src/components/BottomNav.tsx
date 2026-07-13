@@ -4,9 +4,11 @@ import { NAV_H, NAV_TINT, SUBNAV_H, clearStack } from '../lib/layout'
 import { DomainLinks } from './DomainSwitcher'
 
 // The media domain's bottom bar (s85): one editorial row — the domain switcher
-// (media / things) anchored left, the sections (library / taste / discover) as
-// slash-split text links on the right, smaller + quieter so the world outranks
-// the section. Icons + the separate switcher strip are gone.
+// (media / things) anchored left, the sections (library · taste · discover) as
+// text links on the right, smaller + quieter so the world outranks the section.
+// Only the domain toggle keeps its slash (s118); the section links are spaced,
+// not slash-split, so the divider marks the one real crossing (which world) and
+// the sibling sections just sit as quiet options. Icons + switcher strip are gone.
 // The floating + opens the add sheet (s88) — adding is a card over the page now,
 // not a navigation, so the FAB calls onAdd rather than routing to /add.
 //
@@ -19,8 +21,6 @@ export function BottomNav({ onAdd, subNav }: { onAdd: () => void; subNav?: React
     textDecoration: 'none', fontSize: 13,
     color: isActive ? '#1C1B19' : '#A8A39A', fontWeight: isActive ? 600 : 400,
   })
-  const slash = <span style={{ color: '#D5D1C9', fontSize: 12 }}>/</span>
-
   return (
     <>
       {/* Floating add button — opens the add sheet over the current page */}
@@ -60,11 +60,9 @@ export function BottomNav({ onAdd, subNav }: { onAdd: () => void; subNav?: React
           padding: '14px 18px 0', boxSizing: 'border-box',
         }}>
           <DomainLinks current="media" />
-          <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 14 }}>
             <NavLink to="/library" style={({ isActive }) => link(isActive)}>library</NavLink>
-            {slash}
             <NavLink to="/taste" style={({ isActive }) => link(isActive)}>taste</NavLink>
-            {slash}
             <NavLink to="/discover" style={({ isActive }) => link(isActive)}>discover</NavLink>
           </div>
         </nav>
