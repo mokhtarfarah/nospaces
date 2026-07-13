@@ -346,7 +346,7 @@ function DiscoverIllustration() {
               <span style={{ fontSize: 11, color: '#6F6B64' }}> — {creator}</span>
             </div>
             <div style={{ fontSize: 10, color: '#ABA69C', marginBottom: 6 }}>{meta}</div>
-            <div style={{ fontSize: 11, color: '#6F6B64', fontStyle: 'italic' as const, lineHeight: 1.5, marginBottom: 8 }}>{why}</div>
+            <div style={{ fontSize: 11, color: '#6F6B64', lineHeight: 1.5, marginBottom: 8 }}>{why}</div>
             <span style={{ fontSize: 11, color: '#ABA69C', textDecoration: 'underline' }}>+ save</span>
           </div>
         </div>

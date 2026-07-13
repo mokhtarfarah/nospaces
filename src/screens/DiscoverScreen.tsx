@@ -447,17 +447,15 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
   )
 }
 
-// Model blurbs sometimes wrap referenced titles in *markdown emphasis*. The
-// whole blurb is already italic, so the asterisks render literally and
-// italic-on-italic would be invisible. Render those spans upright — but Geist
-// ships no italic face, so the blurb's italic is a *synthetic* slant and
-// upright-vs-faux-italic is too subtle to read at small sizes; a slight weight
-// bump makes the title distinction unmistakable without looking like a link.
+// Model blurbs sometimes wrap referenced titles in *markdown emphasis*. We keep
+// blurbs upright (italic is reserved for Farah's own words), so instead of
+// slanting those titles we bump the weight — a clear, non-linky distinction
+// without leaving the stray asterisks to render literally.
 function renderBlurb(text: string) {
   return text.split(/(\*+[^*]+\*+)/g).map((part, i) => {
     const m = part.match(/^\*+([^*]+)\*+$/)
     return m
-      ? <span key={i} style={{ fontStyle: 'normal', fontWeight: 600 }}>{m[1]}</span>
+      ? <span key={i} style={{ fontWeight: 600 }}>{m[1]}</span>
       : part
   })
 }
@@ -508,7 +506,7 @@ function ResultRow({ result: r, index, savedSource, onOpen, onSave, onDismiss }:
           </div>
           {r.why && (
             <p style={{
-              fontSize: 13, color: '#4A453E', lineHeight: 1.65, margin: '0 0 10px', fontStyle: 'italic',
+              fontSize: 12, color: '#4A453E', lineHeight: 1.6, margin: '0 0 10px',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
             }}>
               {renderBlurb(r.why)}
@@ -571,7 +569,7 @@ function DetailSheet({ result: r, index, savedSource, onSave, onDismiss, onClose
           <div style={{ marginTop: 18, marginBottom: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 8 }}>why this</div>
             <div style={{ borderTop: `1.5px solid ${INK}`, paddingTop: 14 }}>
-              <p style={{ fontSize: 15, color: '#3A352E', lineHeight: 1.75, margin: 0, fontStyle: 'italic' }}>{renderBlurb(r.why)}</p>
+              <p style={{ fontSize: 13, color: '#3A352E', lineHeight: 1.7, margin: 0 }}>{renderBlurb(r.why)}</p>
             </div>
           </div>
         )}

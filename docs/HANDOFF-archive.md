@@ -4,6 +4,20 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 117 (2026-07-12) — italic-rule sweep + article entry-point demote. Free (frontend only, no API).
+
+**Established a general rule (Farah): only Farah's own words are italic; AI-generated prose renders roman.** Saved to memory as `italic-reserved-for-user-words`. Applied it across every AI-prose surface — all typechecked, 118 tests green, verified in the noauth preview where data allowed:
+- **Discover blurbs** (the explicit ask) — feed-card blurb (13→12px) and the detail sheet's "why this" (15→13px) both dropped `fontStyle: italic`. `renderBlurb`'s markdown-emphasis spans no longer need the italic→upright dance; they just bold now.
+- **Guide screen's Discover illustration** — the static demo mirroring the feed went roman to match. *Verified in browser (computed `fontStyle: normal`).*
+- **Things product sheet** — the AI "how it lands" fit-read (rendered via the shared `NoteProse`) + the taste-tag chips went roman. Gave `NoteProse` an `upright` prop so machine prose is roman while Farah's own notes ("your note", library "thoughts", desert-island whys) stay italic. **This closes the parked s93/s94 "Things sheet — too much italic" item** — the rule decided the fork (both prose *and* tags → roman; her note stays italic). The Things synthesis + compare verdict were already roman.
+- **Media taste page — deliberately left untouched.** Its AI read is roman except for occasional `*emphasis*` spans; Farah chose to leave it (it's on the HANDOFF "don't touch" list, and `inlineItalics` is shared with her own notes).
+
+**Article entry-point demote (roadmap: dual-nav s116 addition (a)).** The floating unread-count pill (`cac6391`) was pulled out of the library masthead — it over-elevated a lightweight type above films/music/tv. Replaced with a calm soft-fill (`#F4F2EE`) "• N to read … open →" bar below the header, shown only in the **reading views** (books alone or the `all` view, which already interleaves articles), never on films/music/tv. Tapping filters to the unread queue (`selectCategory('article')`), and the bar hides once you're in that filtered view. *Verified: pill gone from header; bar renders correctly (temp-forced a count for the screenshot, then reverted); hides at 0 unread.*
+
+**Not live-verified** (this local preview has no `/api` backend): the Things-sheet italic changes need a generated fit-read, and the article bar's real count needs actual saved articles — both are pure conditional-render/style, mechanisms verified.
+
+---
+
 ### Session 116 (2026-07-12) — s116 UI polish sweep + discover speed fix. Mostly free (one Anthropic change, and it *lowers* cost).
 
 **Batched the whole s116 aesthetic-audit sweep in one pass (10 decided fixes), all pushed to `main`.** Commit [47eb8f2]. Typechecked, 118 tests green, the visible ones verified in the mobile preview (noauth dev instance):

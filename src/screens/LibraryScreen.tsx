@@ -444,6 +444,9 @@ export function LibraryScreen() {
 
   // "New Music Tuesday" toggle only applies while viewing the Music category alone.
   const musicOnly = categories.length === 1 && categories[0] === 'music'
+  // The "to read" bar shows in the reading views — books alone, or the all view
+  // (which already interleaves articles) — not on films/music/tv.
+  const readingView = categories.length === 0 || (categories.length === 1 && categories[0] === 'book')
   // Clear-all-filters — only offered when something is actually narrowing the list.
   const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
     || vibeFilter.length > 0 || verdictFilter.length > 0 || genreFilter.length > 0 || seriesFilter.length > 0
@@ -652,10 +655,9 @@ export function LibraryScreen() {
   const reviewN = useMemo(() => reviewCount(items), [items])
   const hasReview = reviewN > 0
   // Articles have no reaction/verdict to surface, so "for review" never counts
-  // them — a quiet unread badge in the masthead instead. Lives in the header
-  // (not the type-tab row, which is already tight on a phone) so it stays
-  // visible without adding to that row's width, and jumps straight into the
-  // filtered list on tap — same list, just a more visible door into it.
+  // them. The unread count is a quiet top-of-list bar (below the header) in the
+  // reading views — books + all — not header real estate above films/music/tv,
+  // which over-elevated a lightweight type. Tapping filters to the unread queue.
   const unreadArticles = useMemo(() => items.filter(i => i.type === 'article' && i.status !== 'done').length, [items])
 
   return (
@@ -671,19 +673,6 @@ export function LibraryScreen() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
             <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 0.95, margin: 0, color: '#1C1B19' }}>library</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
-              {unreadArticles > 0 && (
-                <button
-                  onClick={() => selectCategory('article')}
-                  title={`${unreadArticles} to read`}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5, background: '#F4F2EE', border: 'none',
-                    borderRadius: 11, padding: '3px 9px', cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1C1B19', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: '#6F6B64', fontWeight: 500 }}>{unreadArticles}</span>
-                </button>
-              )}
               <HeaderControls
                 onSearch={() => setSearchOpen(v => !v)}
                 onMore={() => setOverflowOpen(true)}
@@ -803,6 +792,26 @@ export function LibraryScreen() {
           >
             <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>shows near you</span>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>browse →</span>
+          </button>
+        )}
+        {/* Read-later queue — a quiet door into the unread articles, only in the
+            reading views. Soft-fill (not the dark shows-near-you slab) so a
+            lightweight type stays lightweight. */}
+        {unreadArticles > 0 && readingView && !reviewOnly && !query.trim() && (
+          <button
+            onClick={() => selectCategory('article')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              width: 'calc(100% - 32px)', boxSizing: 'border-box', margin: '12px 16px 0',
+              padding: '10px 14px', background: '#F4F2EE', border: 'none', borderRadius: 10,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1C1B19', flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>{unreadArticles} to read</span>
+            </span>
+            <span style={{ fontSize: 12, color: '#9A958B' }}>open →</span>
           </button>
         )}
         {dupes > 0 && !loading && (

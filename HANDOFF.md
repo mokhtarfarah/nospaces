@@ -15,13 +15,17 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
+**Session 117 — italic-rule sweep + article entry-point demote. Frontend only, no API. Committed to `main`.** New general rule (Farah): *only her own words are italic; AI prose renders roman* (saved to memory `italic-reserved-for-user-words`). Applied to the Discover blurbs (the ask — also smaller), the Guide's Discover illustration, and the Things product sheet (fit-read + taste tags → roman via a new `NoteProse upright` prop) — **which closes the parked s93/s94 "too much italic" item.** Media taste page left untouched (Farah's call — it's on the don't-touch list). Then the **article entry-point demote**: floating unread pill out of the masthead → a calm "• N to read … open →" bar in the reading views (books + all) only. Typechecked, 118 tests green; verified in preview where data allowed. Full detail → archive (s117).
+
 **Session 116 — s116 UI polish sweep (10 fixes) + discover speed fix. 4 commits, pushed to `main` (live).** The whole aesthetic-audit sweep in one batched pass: FAB overlap (new `clearFab()` in `lib/layout.ts` — the big one, was hiding the last row on 8 screens), "we'd lean here" wording + ✨ dropped, BulkConfirmSheet chips → soft-fill, Discover row-3 cut (refresh → header ↻), counts folded onto their row, badge unified, article initials skip "The", copy nits ("mood board", tidy→⋯ menu, empty state), "HOW IT LANDS", SALE tag de-saturated. Then a real-data review with Farah: dropped the taste count + the discover date kicker, baseline-aligned the library count (+ fixed a stray React key warning). Then **"further afield" speed**: capped the taste snapshot to 60 recent hits (`LIB_SAMPLE`), and — the real bottleneck being model write-time — routed **divert only to Haiku** (`api/recommend-feeds.ts`; ~40s→~10-15s, ~1/3 cost; "for you"/mood stay on Sonnet). All typechecked, 118 tests green; UI verified in preview. **Not live-verified:** the article email round-trip (s115), and the divert speed+quality on Haiku — sandbox has no backend. Full detail → archive (s116).
 
-**Session 115 — magazine articles / read-later bookmarks. Committed + live.** New `type:'article'` in the media library — a bare bookmark (title/byline/publication/thumbnail/link), no genres/vibes/verdicts, just saved→read. Capture reuses the free og-tag scraper. Still needs the (not-yet-built) iOS Shortcut for one-tap capture — until then forward the link by hand. **Article email→save round trip still not live-verified** (sandbox can't reach Farah's real Google account). Full detail → archive (s115).
+**Session 115 — magazine articles / read-later bookmarks (`type:'article'`). Committed + live.** Bare bookmark, capture via the free og-scraper; still needs an iOS Shortcut for one-tap. Email→save round-trip still not live-verified. Full detail → archive (s115).
 
-## ▶ Next session (117)
+## ▶ Next session (118)
 
-**Confirm s116 live (the whole point of this session's judge-half):**
+**Confirm s117 live:** (a) the **article "to read" bar** — with real unread articles, does it show in books + the all view (not films/music/tv), read calm, and jump into the unread queue on tap? (b) the **italic sweep** on real data — Discover blurbs + Things fit-read/tags read as clean roman, and Farah's own notes still italic?
+
+**Confirm s116 live (the whole point of that session's judge-half):**
 - **Further afield on Haiku** — does it load fast now (no spinner-forever)? AND do the picks still feel genuinely *further out*, not dumbed-down? If fast but bland → move divert back to Sonnet (one line in `api/recommend-feeds.ts`), or cut it with evidence. If fast + surprising → it's earned its place.
 - **Library count** — baseline-aligned + non-bold on Farah's real (full) tab row?
 - **FAB clearance** — does the last row/pick actually clear the `+` when scrolling her real long library / wishlist / mood board? (preview only had empty seed data.)

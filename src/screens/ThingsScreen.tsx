@@ -1692,7 +1692,7 @@ function ReflectionBlock({ note, onSaveNote, fit, fitHidden, onRunFit, onToggleH
         )
       ) : (
         fit ? (
-          <NoteProse trailing={
+          <NoteProse upright trailing={
             <>
               <button onClick={generate} disabled={loading} style={quietLink}>{loading ? 'reading…' : 're-read'}</button>
               <span style={{ color: '#C9C4BB' }}>{' · '}</span>
@@ -1926,14 +1926,14 @@ function ProductSheet({ item, onClose, onSave, onToggleGot, onReopenPlan, onRunT
         {/* Taste tags — opt-in (Farah, s107 v3/v4): stays hidden until the toggle
             above is tapped. Still fully reachable, just not imposed on every open. */}
         {tagged && showTags && (
-          <div style={{ marginTop: 6, fontSize: 12, fontStyle: 'italic', color: '#9A958B', lineHeight: 1.5 }}>
+          <div style={{ marginTop: 6, fontSize: 12, color: '#9A958B', lineHeight: 1.5 }}>
             {taste.filter(a => a.facet !== 'category').map((a, i, arr) => {
               const count = countWithTag(a.facet, a.value)
               const tappable = count > 1
               return (
                 <span key={i}>
                   <button disabled={!tappable} onClick={() => tappable && onFilterTag(a.facet, a.value)}
-                    style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, fontStyle: 'italic',
+                    style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12,
                       color: tappable ? '#6E6A60' : '#9A958B', cursor: tappable ? 'pointer' : 'default',
                       textDecoration: tappable ? 'underline' : 'none', textDecorationColor: '#D7D3CC', textUnderlineOffset: 3 }}>
                     {a.value}
