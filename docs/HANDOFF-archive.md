@@ -14,6 +14,8 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 **Article entry-point demote (roadmap: dual-nav s116 addition (a)).** The floating unread-count pill (`cac6391`) was pulled out of the library masthead — it over-elevated a lightweight type above films/music/tv. Replaced with a calm soft-fill (`#F4F2EE`) "• N to read … open →" bar below the header, shown only in the **reading views** (books alone or the `all` view, which already interleaves articles), never on films/music/tv. Tapping filters to the unread queue (`selectCategory('article')`), and the bar hides once you're in that filtered view. *Verified: pill gone from header; bar renders correctly (temp-forced a count for the screenshot, then reverted); hides at 0 unread.*
 
+**"all" tab de-confusion (roadmap, s85 — now closed).** In the cross-category "all" view the filter card pooled film-genres + music-genres + book-vibes into one bloated set. Now the **per-medium facets (genre/vibe/verdict) only render for a single category** — gated on a new `singleMedium` prop (`categories.length === 1`) passed to `FilterSheet`; series was already gated via `seriesRelevant`, region/shelf stay (universal). Part (b) — "all" defaulting to recency sort — was already done in `selectAll` (s85), confirmed. *Verified: opened the filter sheet in "all" with injected test tags → FILTER showed only region, genre/vibe/verdict hidden, sort=recent; reverted the injection.*
+
 **Not live-verified** (this local preview has no `/api` backend): the Things-sheet italic changes need a generated fit-read, and the article bar's real count needs actual saved articles — both are pure conditional-render/style, mechanisms verified.
 
 ---

@@ -1039,6 +1039,7 @@ export function LibraryScreen() {
       {filterSheetOpen && (
         <FilterSheet
           availableTags={availableTags}
+          singleMedium={categories.length === 1}
           seriesRelevant={seriesRelevant}
           vibeFilter={vibeFilter} onToggleVibe={toggleFilter(setVibeFilter)}
           verdictFilter={verdictFilter} onToggleVerdict={toggleFilter(setVerdictFilter)}
@@ -1129,7 +1130,7 @@ export function LibraryScreen() {
 // the tag filters — opened from the slider button next to the categories. Mirrors
 // the Things board's single view sheet (was three separate triggers before s84).
 function FilterSheet({
-  availableTags, seriesRelevant,
+  availableTags, singleMedium, seriesRelevant,
   vibeFilter, onToggleVibe,
   verdictFilter, onToggleVerdict,
   genreFilter, onToggleGenre,
@@ -1142,6 +1143,7 @@ function FilterSheet({
   filtersActive, onClearAll, matchCount, onClose,
 }: {
   availableTags: { vibes: TagCount[]; verdicts: TagCount[]; genres: TagCount[]; series: TagCount[]; countries: TagCount[] }
+  singleMedium: boolean
   seriesRelevant: boolean
   vibeFilter: string[]; onToggleVibe: (v: string) => void
   verdictFilter: string[]; onToggleVerdict: (v: string) => void
@@ -1260,14 +1262,19 @@ function FilterSheet({
         )}
         {/* Order: genre · vibe · verdict · series · region (Farah, s85) — what/how
             it feels/the take, then the structural facets. Music's niche "new music
-            tuesday" toggle trails at the end. */}
-        {availableTags.genres.length > 0 && (
+            tuesday" toggle trails at the end.
+            The per-medium facets (genre/vibe/verdict/series) only show for a single
+            category — in the cross-category "all" view they pool film-genres +
+            music-genres + book-vibes into one bloated, half-irrelevant set, so we
+            leave only the universal facets (region/shelf). Tag-filtering is a
+            per-medium activity (Farah, s85). */}
+        {singleMedium && availableTags.genres.length > 0 && (
           <FilterSection label="genre" options={availableTags.genres} selected={genreFilter} onSelect={onToggleGenre} />
         )}
-        {availableTags.vibes.length > 0 && (
+        {singleMedium && availableTags.vibes.length > 0 && (
           <FilterSection label="vibe" options={availableTags.vibes} selected={vibeFilter} onSelect={onToggleVibe} />
         )}
-        {availableTags.verdicts.length > 0 && (
+        {singleMedium && availableTags.verdicts.length > 0 && (
           <FilterSection label="verdict" options={availableTags.verdicts} selected={verdictFilter} onSelect={onToggleVerdict} />
         )}
         {seriesRelevant && availableTags.series.length > 0 && (
