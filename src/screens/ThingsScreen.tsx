@@ -944,7 +944,15 @@ export function ThingsScreen() {
           onSave={async (f) => {
             // Spread the existing metadata first so a promoted product keeps its
             // fromPlan deliberation history through a manual edit.
-            await editItem(openProduct.id, { title: f.title || 'Untitled', creator: f.brand, metadata: { ...(openProduct.metadata as object), kind: 'product', ...f } })
+            const prevMeta = openProduct.metadata as { image?: string | null }
+            // A new image address makes the cached cutout stale — it was cut from the
+            // OLD photo, and both the tile and the sheet hero render the cutout in
+            // preference to the raw image, so without this the picture never changes.
+            // Drop it (+ its version, and un-hide) so the new photo shows; the free
+            // on-device backfill re-cuts a fresh one if the shot warrants it.
+            const imageChanged = (f.image ?? null) !== (prevMeta.image ?? null)
+            const cutoutReset = imageChanged ? { cutout: null, cutoutV: null, cutoutHidden: false } : {}
+            await editItem(openProduct.id, { title: f.title || 'Untitled', creator: f.brand, metadata: { ...(openProduct.metadata as object), kind: 'product', ...f, ...cutoutReset } })
           }}
           onToggleGot={() => editItem(openProduct.id, { status: openProduct.status === 'done' ? 'want_to' : 'done' })}
           onReopenPlan={async () => {
@@ -2364,7 +2372,11 @@ function IntentSheet({ item, onClose, onPatch, onResolve, onSaveWinner, onRename
                 initial={{ title: c.title, image: c.image, price: c.price, brand: c.brand, siteName: c.siteName, url: c.url, attributes: c.attributes }}
                 onCancel={() => setEditingId(null)}
                 onSave={async (f) => {
-                  await onPatch({ ...m, candidates: m.candidates.map(x => x.id === c.id ? { ...x, ...f } : x) })
+                  // Same stale-cutout drop as the product edit: a new image address
+                  // must not keep showing the cutout cut from the old photo.
+                  const imageChanged = (f.image ?? null) !== (c.image ?? null)
+                  const cutoutReset = imageChanged ? { cutout: null, cutoutV: null, cutoutHidden: false } : {}
+                  await onPatch({ ...m, candidates: m.candidates.map(x => x.id === c.id ? { ...x, ...f, ...cutoutReset } : x) })
                   setEditingId(null)
                 }} />
             )
