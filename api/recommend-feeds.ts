@@ -321,9 +321,16 @@ ${VOICE.terse}
 
 ${HUMANIZER_GUARDRAILS}`
 
+  // "Further afield" (divert) is breadth-first — throw something unexpected —
+  // so it runs on Haiku: several times faster (was ~40s on Sonnet, close to the
+  // 60s server cap, hence the stuck-loading) and ~1/3 the cost. "For you" (intaste)
+  // and mood searches stay on Sonnet, where taste precision matters more (s116,
+  // Farah's call). If divert quality ever feels thin, this is the line to revert.
+  const model = mode === 'divert' && !moodText ? 'claude-haiku-4-5' : 'claude-sonnet-4-5'
+
   try {
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model,
       max_tokens: 2000,
       messages: [{ role: 'user', content: fullPrompt }],
     })
