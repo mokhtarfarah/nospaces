@@ -670,7 +670,12 @@ export function LibraryScreen() {
           free (real native scrolling, no JS height animation); only the
           category/status/filter row below is sticky. Matches ThingsScreen's
           header, which already solved the same mobile jumpiness this way. */}
-      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', paddingBottom: selectMode ? clearStack(94) : clearFab() }}>
+      {/* overflowX hidden: with overflowY:auto the browser promotes the default
+          overflow-x:visible to auto, so this scroll region could itself drift
+          sideways whenever a child overflows right. Clip it so the page can never
+          scroll horizontally (the filters panel is nudged to stay in view above,
+          so nothing legitimate gets clipped). */}
+      <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: selectMode ? clearStack(94) : clearFab() }}>
         <div style={{ padding: '20px 16px 0' }}>
           {/* Magazine header — title + search/overflow on top, then count
               folded into one quiet subline. */}
@@ -1324,21 +1329,25 @@ function FilterMenu({
   // The "filters" button can sit anywhere along the horizontally-scrolling nav
   // row (far right when every category tab shows, far left on an empty library),
   // so a fixed left/right anchor either spills past the viewport (widening the
-  // page → the whole app scrolls sideways) or clips off the near edge. Instead we
+  // page → the app scrolls sideways) or clips off the near edge. Instead we
   // left-align the panel to the button, then nudge it horizontally by just enough
   // to keep both edges on-screen. Re-runs on open + panel change (panels differ in
   // width). Direct DOM write (no state) so there's no measure→render loop.
+  // NB: nudge via real `left`, NOT a CSS transform — iOS Safari still counts a
+  // transformed element's ORIGINAL box in the scrollable width, so a transform
+  // looks aligned but leaves the page able to drift sideways. Moving `left` moves
+  // the actual layout box, which every browser measures for overflow.
   const popRef = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const el = popRef.current
     if (!open || !el) return
-    el.style.transform = 'translateX(0px)'
+    el.style.left = '0px'
     const r = el.getBoundingClientRect()
     const m = 8 // min gap from either viewport edge
     let shift = 0
     if (r.right > window.innerWidth - m) shift = window.innerWidth - m - r.right // pull left to fit
     if (r.left + shift < m) shift = m - r.left // but never past the left edge
-    el.style.transform = `translateX(${shift}px)`
+    el.style.left = `${shift}px`
   }, [open, panel])
 
   const statusActive = statusFilter !== 'all' || reactionFilter !== 'all'
