@@ -450,15 +450,6 @@ export function LibraryScreen() {
   // The "to read" bar shows in the reading views — books alone, or the all view
   // (which already interleaves articles) — not on films/music/tv.
   const readingView = categories.length === 0 || (categories.length === 1 && categories[0] === 'book')
-  // Clear-all-filters — only offered when something is actually narrowing the list.
-  const filtersActive = categories.length > 0 || statusFilter !== 'all' || reactionFilter !== 'all'
-    || vibeFilter.length > 0 || verdictFilter.length > 0 || genreFilter.length > 0 || seriesFilter.length > 0
-    || reviewOnly || newMusicOnly || shelfFilter !== 'all' || (musicOnly && classicFilter !== 'all') || !!query.trim()
-  // Badge counts every selected chip across groups, so "filter · 3" reflects how
-  // many tags are narrowing the list (not just how many groups are touched). The
-  // classic lens has its own visible control (not the sheet), so it stays out of this.
-  const filterCount = vibeFilter.length + verdictFilter.length + genreFilter.length + seriesFilter.length + countryFilter.length
-    + (newMusicOnly && musicOnly ? 1 : 0) + (shelfFilter !== 'all' ? 1 : 0)
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([])
@@ -751,9 +742,9 @@ export function LibraryScreen() {
                 <TabChip label={`for review · ${reviewN}`} active={reviewOnly} onClick={() => { setReviewOnly(v => !v); setCategories([]) }} />
               )}
             </div>
-            {/* divider + status dropdown */}
+            {/* divider + the one filters menu (status + every tag facet) */}
             <div style={{ width: 1, height: 16, background: '#DDD', flexShrink: 0, margin: '0 12px' }} />
-            <StatusDropdown
+            <FilterMenu
               statusFilter={statusFilter}
               reactionFilter={reactionFilter}
               onStatus={s => { setStatusFilter(s); if (s !== 'done') setReactionFilter('all') }}
@@ -761,6 +752,17 @@ export function LibraryScreen() {
               showShelf={hasOwned}
               shelfFilter={shelfFilter}
               onShelf={v => setShelfFilter(prev => prev === v ? 'all' : v)}
+              availableTags={availableTags}
+              singleMedium={categories.length === 1}
+              seriesRelevant={seriesRelevant}
+              vibeFilter={vibeFilter} onToggleVibe={toggleFilter(setVibeFilter)}
+              verdictFilter={verdictFilter} onToggleVerdict={toggleFilter(setVerdictFilter)}
+              genreFilter={genreFilter} onToggleGenre={toggleFilter(setGenreFilter)}
+              seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
+              countryFilter={countryFilter} onToggleCountry={toggleFilter(setCountryFilter)}
+              showNewMusic={musicOnly} newMusicOnly={newMusicOnly} onToggleNewMusic={() => setNewMusicOnly(v => !v)}
+              matchCount={filtered.length}
+              onClearAll={clearFilters}
             />
             {/* spacer pushes the right-hand controls to the edge */}
             <div style={{ flex: '1 1 0' }} />
@@ -768,27 +770,22 @@ export function LibraryScreen() {
                 the number answers "how many of what I'm viewing". Was a whole
                 subtitle row under the title (s116); folded onto this row. */}
             <span style={{ fontSize: 13, fontWeight: 500, color: '#1C1B19', flexShrink: 0, marginRight: 14, padding: '4px 0 8px', fontVariantNumeric: 'tabular-nums' }}>{filtered.length}</span>
-            {/* View · sort · filter live in one card opened from this button,
-                mirroring the Things board. Always present (it always offers layout +
-                sort), even before there are tag groups to filter on. */}
+            {/* View + sort live in one card opened from this button, mirroring the
+                Things board. Filtering moved out to the filters menu (left); this
+                sheet is layout · captions · sort only. */}
             <button
               onClick={() => setFilterSheetOpen(true)}
-              aria-label={filterCount > 0 ? `view, sort, filter · ${filterCount} filters active` : 'view, sort and filter'}
+              aria-label="view and sort"
               style={{
                 display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
                 padding: '4px 2px 8px', border: 'none', background: 'none',
-                color: filterCount > 0 ? '#1C1B19' : '#888', cursor: 'pointer',
+                color: '#888', cursor: 'pointer',
               }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" fill="#fff" />
                 <line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" fill="#fff" />
               </svg>
-              {filterCount > 0 && (
-                <span style={{
-                  fontSize: 11, fontWeight: 600, fontStyle: 'italic', lineHeight: 1, color: '#1C1B19',
-                }}>{filterCount}</span>
-              )}
             </button>
           </div>
         </div>
@@ -1068,21 +1065,10 @@ export function LibraryScreen() {
       {/* View sheet */}
       {filterSheetOpen && (
         <FilterSheet
-          availableTags={availableTags}
-          singleMedium={categories.length === 1}
-          seriesRelevant={seriesRelevant}
-          vibeFilter={vibeFilter} onToggleVibe={toggleFilter(setVibeFilter)}
-          verdictFilter={verdictFilter} onToggleVerdict={toggleFilter(setVerdictFilter)}
-          genreFilter={genreFilter} onToggleGenre={toggleFilter(setGenreFilter)}
-          seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
-          countryFilter={countryFilter} onToggleCountry={toggleFilter(setCountryFilter)}
-          showNewMusic={musicOnly} newMusicOnly={newMusicOnly} onToggleNewMusic={() => setNewMusicOnly(v => !v)}
-          showShelf={hasOwned} shelfFilter={shelfFilter} onShelf={v => setShelfFilter(prev => prev === v ? 'all' : v)}
           view={view} dir={dir} onSelectView={selectView}
           layout={layout} onLayout={l => setLayout(l)}
           gridCols={gridCols} onGridCols={c => setGridCols(c)}
           caption={caption} onCaption={setCaption}
-          filtersActive={filtersActive} onClearAll={clearFilters} matchCount={filtered.length}
           onClose={() => setFilterSheetOpen(false)}
         />
       )}
@@ -1156,56 +1142,21 @@ export function LibraryScreen() {
   )
 }
 
-// One card for the three "how is this list shown" controls — layout, sort, and
-// the tag filters — opened from the slider button next to the categories. Mirrors
-// the Things board's single view sheet (was three separate triggers before s84).
+// One card for "how is this list shown" — layout, captions, sort — opened from
+// the slider button next to the categories. Mirrors the Things board's view sheet.
+// Filtering used to live here too; it moved to the filters menu (left of the
+// categories), so this sheet is view + sort only now.
 function FilterSheet({
-  availableTags, singleMedium, seriesRelevant,
-  vibeFilter, onToggleVibe,
-  verdictFilter, onToggleVerdict,
-  genreFilter, onToggleGenre,
-  seriesFilter, onToggleSeries,
-  countryFilter, onToggleCountry,
-  showNewMusic, newMusicOnly, onToggleNewMusic,
-  showShelf, shelfFilter, onShelf,
   view, dir, onSelectView,
   layout, onLayout, gridCols, onGridCols, caption, onCaption,
-  filtersActive, onClearAll, matchCount, onClose,
+  onClose,
 }: {
-  availableTags: { vibes: TagCount[]; verdicts: TagCount[]; genres: TagCount[]; series: TagCount[]; countries: TagCount[] }
-  singleMedium: boolean
-  seriesRelevant: boolean
-  vibeFilter: string[]; onToggleVibe: (v: string) => void
-  verdictFilter: string[]; onToggleVerdict: (v: string) => void
-  genreFilter: string[]; onToggleGenre: (v: string) => void
-  seriesFilter: string[]; onToggleSeries: (v: string) => void
-  countryFilter: string[]; onToggleCountry: (v: string) => void
-  showNewMusic: boolean; newMusicOnly: boolean; onToggleNewMusic: () => void
-  showShelf: boolean; shelfFilter: 'all' | 'owned' | 'unowned'; onShelf: (v: 'owned' | 'unowned') => void
   view: ViewMode; dir: SortDir; onSelectView: (v: ViewMode) => void
   layout: 'list' | 'grid'; onLayout: (l: 'list' | 'grid') => void
   gridCols: 3 | 4; onGridCols: (c: 3 | 4) => void
   caption: CardCaption; onCaption: (c: CardCaption) => void
-  filtersActive: boolean
-  onClearAll: () => void
-  matchCount: number
   onClose: () => void
 }) {
-  // Everything selected across all axes, flattened into one removable list — the
-  // "active filters" tray. Selected tags live here, not duplicated in their group.
-  const activeFilters: { value: string; remove: () => void }[] = [
-    ...genreFilter.map(v => ({ value: v, remove: () => onToggleGenre(v) })),
-    ...vibeFilter.map(v => ({ value: v, remove: () => onToggleVibe(v) })),
-    ...verdictFilter.map(v => ({ value: v, remove: () => onToggleVerdict(v) })),
-    ...seriesFilter.map(v => ({ value: v, remove: () => onToggleSeries(v) })),
-    ...countryFilter.map(v => ({ value: v, remove: () => onToggleCountry(v) })),
-    ...(showNewMusic && newMusicOnly ? [{ value: 'new music tuesday', remove: onToggleNewMusic }] : []),
-    ...(showShelf && shelfFilter === 'owned' ? [{ value: 'on my shelf', remove: () => onShelf('owned') }] : []),
-    ...(showShelf && shelfFilter === 'unowned' ? [{ value: 'not on my shelf', remove: () => onShelf('unowned') }] : []),
-  ]
-  const hasGroups = showNewMusic || showShelf || availableTags.vibes.length > 0 || availableTags.verdicts.length > 0
-    || availableTags.genres.length > 0 || (seriesRelevant && availableTags.series.length > 0) || availableTags.countries.length > 0
-  const sectionLabel: CSSProperties = { fontSize: 12, fontWeight: 700, color: '#6F6B64', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px', paddingTop: 13, borderTop: '1px solid #F0F0F0' }
   // Soft segmented control: a quiet track with the selected segment lifted as a
   // white chip — gentler than the old hard black/white toggle.
   const segGroup: CSSProperties = { display: 'flex', gap: 3, background: '#F4F2EE', padding: 3, borderRadius: 9 }
@@ -1262,73 +1213,6 @@ function FilterSheet({
             })}
           </div>
         </div>
-        {/* Filter — the tag groups. The heading carries a live result count and a
-            plain-text clear-all on the right; the row below is the "active filters"
-            tray (everything selected across axes, each removable). */}
-        {(hasGroups || filtersActive) && (
-          <div style={{ ...sectionLabel, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>filter</span>
-            {filtersActive && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 12, textTransform: 'none', letterSpacing: 'normal' }}>
-                <span style={{ fontSize: 12, fontWeight: 400, color: '#A8A39A' }}>{matchCount} match</span>
-                <button
-                  onClick={onClearAll}
-                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#8A857C', fontSize: 12, fontWeight: 400, padding: 0, textDecoration: 'underline', textDecorationColor: '#D5D1C9', textUnderlineOffset: 3 }}
-                >clear</button>
-              </span>
-            )}
-          </div>
-        )}
-        {activeFilters.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '2px 0 12px' }}>
-            {activeFilters.map(a => (
-              <button
-                key={a.value}
-                onClick={a.remove}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1C1B19', color: '#fff', fontSize: 12.5, fontWeight: 500, padding: '6px 10px 6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer' }}
-              >{a.value}<span style={{ fontSize: 14, opacity: 0.7, lineHeight: 1 }}>×</span></button>
-            ))}
-          </div>
-        )}
-        {/* Order: genre · vibe · verdict · series · region (Farah, s85) — what/how
-            it feels/the take, then the structural facets. Music's niche "new music
-            tuesday" toggle trails at the end.
-            The per-medium facets (genre/vibe/verdict/series) only show for a single
-            category — in the cross-category "all" view they pool film-genres +
-            music-genres + book-vibes into one bloated, half-irrelevant set, so we
-            leave only the universal facets (region/shelf). Tag-filtering is a
-            per-medium activity (Farah, s85). */}
-        {singleMedium && availableTags.genres.length > 0 && (
-          <FilterSection label="genre" options={availableTags.genres} selected={genreFilter} onSelect={onToggleGenre} />
-        )}
-        {singleMedium && availableTags.vibes.length > 0 && (
-          <FilterSection label="vibe" options={availableTags.vibes} selected={vibeFilter} onSelect={onToggleVibe} />
-        )}
-        {singleMedium && availableTags.verdicts.length > 0 && (
-          <FilterSection label="verdict" options={availableTags.verdicts} selected={verdictFilter} onSelect={onToggleVerdict} />
-        )}
-        {seriesRelevant && availableTags.series.length > 0 && (
-          <FilterSection label="series" options={availableTags.series} selected={seriesFilter} onSelect={onToggleSeries} />
-        )}
-        {availableTags.countries.length > 0 && (
-          <FilterSection label="region" options={availableTags.countries} selected={countryFilter} onSelect={onToggleCountry} />
-        )}
-        {showShelf && (
-          <FilterSection
-            label="shelf"
-            options={[{ value: 'on my shelf' }, { value: 'not on my shelf' }]}
-            selected={shelfFilter === 'owned' ? ['on my shelf'] : shelfFilter === 'unowned' ? ['not on my shelf'] : []}
-            onSelect={v => onShelf(v === 'on my shelf' ? 'owned' : 'unowned')}
-          />
-        )}
-        {showNewMusic && (
-          <FilterSection
-            label="music"
-            options={[{ value: 'new music tuesday' }]}
-            selected={newMusicOnly ? ['new music tuesday'] : []}
-            onSelect={onToggleNewMusic}
-          />
-        )}
         {/* Trailing spacer instead of container padding-bottom: mobile WebKit
             omits a scroll container's own padding-bottom from the scrollable
             area, clipping the last row. A real element is always scrollable to.
@@ -1337,53 +1221,6 @@ function FilterSheet({
         <div style={{ height: clearStack(32) }} />
       </div>
     </>
-  )
-}
-
-// Collapsible group. Collapsed by default so the sheet is a short menu of headers,
-// not a wall of chips — opens on tap, and starts open if it already has a
-// selection. Options are ranked by count and the long tail hides behind "show
-// all"; selected tags aren't repeated here (they sit in the active-filters tray).
-const FILTER_TOP_N = 8
-function FilterSection({ label, options, selected, onSelect }: {
-  label: string; options: TagCount[]; selected: string[]; onSelect: (v: string) => void
-}) {
-  const [open, setOpen] = useState(selected.length > 0)
-  const [showAll, setShowAll] = useState(false)
-  const avail = options.filter(o => !selected.includes(o.value))
-  const shown = showAll ? avail : avail.slice(0, FILTER_TOP_N)
-  return (
-    <div>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-          padding: '10px 0', border: 'none', background: 'none', cursor: 'pointer',
-        }}
-      >
-        {/* Sentence-case regular ink — clearly content beneath the uppercase
-            "filter" header, not competing with it. */}
-        <span style={{ fontSize: 14, fontWeight: 400, color: '#3A3A3A' }}>
-          {label}{selected.length > 0 && <span style={{ color: '#6F6B64', fontWeight: 600 }}> · {selected.length}</span>}
-        </span>
-        <span style={{ fontSize: 10, color: '#ABA69C', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
-      </button>
-      {open && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', padding: '2px 0 11px' }}>
-          {shown.map(o => (
-            <button key={o.value} onClick={() => onSelect(o.value)} style={tagChipStyle(false)}>
-              {o.value}{o.count != null && <span style={{ color: '#A8A39A' }}> {o.count}</span>}
-            </button>
-          ))}
-          {avail.length > FILTER_TOP_N && (
-            <button
-              onClick={() => setShowAll(s => !s)}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#8A857C', fontSize: 12.5, padding: '6px 4px', textDecoration: 'underline', textDecorationColor: '#D5D1C9', textUnderlineOffset: 3 }}
-            >{showAll ? 'show less' : `show all ${avail.length}`}</button>
-          )}
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -1442,10 +1279,25 @@ function TabChip({ label, active, onClick }: { label: string; active: boolean; o
   )
 }
 
-// Status filter as a single dropdown (was a row of chips). The done→reaction
-// sub-filter folds in below a divider: picking a reaction implies "done", so the
-// whole status+reaction choice lives in one short menu instead of two rows.
-function StatusDropdown({ statusFilter, reactionFilter, onStatus, onReaction, showShelf, shelfFilter, onShelf }: {
+// The single "filters" menu (replaced the old "status" dropdown + the tag-filter
+// half of the view sheet — everything that narrows the list now lives here; the
+// sheet keeps only view + sort). A two-tier popover: tier 1 is a short list of
+// filter axes, tapping one drills into tier 2 with that axis's options, and a
+// back header returns to tier 1. Status keeps its done→verdict and want-to→shelf
+// refinements inline in its own panel, as before.
+type FilterPanel = 'status' | 'shelf' | 'genre' | 'vibe' | 'verdict' | 'series' | 'region'
+function FilterMenu({
+  statusFilter, reactionFilter, onStatus, onReaction,
+  showShelf, shelfFilter, onShelf,
+  availableTags, singleMedium, seriesRelevant,
+  vibeFilter, onToggleVibe,
+  verdictFilter, onToggleVerdict,
+  genreFilter, onToggleGenre,
+  seriesFilter, onToggleSeries,
+  countryFilter, onToggleCountry,
+  showNewMusic, newMusicOnly, onToggleNewMusic,
+  matchCount, onClearAll,
+}: {
   statusFilter: StatusFilter
   reactionFilter: ReactionFilter
   onStatus: (s: StatusFilter) => void
@@ -1453,61 +1305,155 @@ function StatusDropdown({ statusFilter, reactionFilter, onStatus, onReaction, sh
   showShelf: boolean
   shelfFilter: 'all' | 'owned' | 'unowned'
   onShelf: (v: 'owned' | 'unowned') => void
+  availableTags: { vibes: TagCount[]; verdicts: TagCount[]; genres: TagCount[]; series: TagCount[]; countries: TagCount[] }
+  singleMedium: boolean
+  seriesRelevant: boolean
+  vibeFilter: string[]; onToggleVibe: (v: string) => void
+  verdictFilter: string[]; onToggleVerdict: (v: string) => void
+  genreFilter: string[]; onToggleGenre: (v: string) => void
+  seriesFilter: string[]; onToggleSeries: (v: string) => void
+  countryFilter: string[]; onToggleCountry: (v: string) => void
+  showNewMusic: boolean; newMusicOnly: boolean; onToggleNewMusic: () => void
+  matchCount: number
+  onClearAll: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const active = statusFilter !== 'all' || reactionFilter !== 'all'
-  const label = reactionFilter !== 'all'
-    ? REACTION_LABELS[reactionFilter as ItemReaction]
-    : statusFilter === 'all' ? 'status'
+  const [panel, setPanel] = useState<FilterPanel | null>(null)
+  const close = () => { setOpen(false); setPanel(null) }
+
+  const statusActive = statusFilter !== 'all' || reactionFilter !== 'all'
+  const tagCount = genreFilter.length + vibeFilter.length + verdictFilter.length + seriesFilter.length + countryFilter.length
+  const activeCount = tagCount + (statusActive ? 1 : 0) + (shelfFilter !== 'all' ? 1 : 0) + (showNewMusic && newMusicOnly ? 1 : 0)
+  const active = activeCount > 0
+
+  const statusSummary = reactionFilter !== 'all' ? REACTION_LABELS[reactionFilter as ItemReaction]
     : statusFilter === 'want_to' ? 'want to'
-    : statusFilter === 'in_progress' ? 'in progress' : 'done'
-  const pick = (s: StatusFilter, r: ReactionFilter = 'all') => { onStatus(s); onReaction(r); setOpen(false) }
-  // Shelf is a global filter (also in the filter sheet); here it's an optional
-  // refinement under "want to" — pick it and stay on want-to, don't force it.
-  const pickShelf = (v: 'owned' | 'unowned') => { onStatus('want_to'); onShelf(v); setOpen(false) }
+    : statusFilter === 'in_progress' ? 'in progress'
+    : statusFilter === 'done' ? 'done' : ''
+  const shelfSummary = shelfFilter === 'owned' ? 'on my shelf' : shelfFilter === 'unowned' ? 'not on my shelf' : ''
+  const countSummary = (n: number) => (n > 0 ? String(n) : '')
+
+  // Tier-1 rows, in the same order the old sheet used: status, shelf, then the
+  // per-medium facets (genre · vibe · verdict · series · region). Only axes that
+  // apply to the current view are listed.
+  const rows: { key: FilterPanel; label: string; summary: string }[] = [
+    { key: 'status', label: 'status', summary: statusSummary },
+  ]
+  if (showShelf) rows.push({ key: 'shelf', label: 'shelf', summary: shelfSummary })
+  if (singleMedium && availableTags.genres.length > 0) rows.push({ key: 'genre', label: 'genre', summary: countSummary(genreFilter.length) })
+  if (singleMedium && availableTags.vibes.length > 0) rows.push({ key: 'vibe', label: 'vibe', summary: countSummary(vibeFilter.length) })
+  if (singleMedium && availableTags.verdicts.length > 0) rows.push({ key: 'verdict', label: 'verdict', summary: countSummary(verdictFilter.length) })
+  if (seriesRelevant && availableTags.series.length > 0) rows.push({ key: 'series', label: 'series', summary: countSummary(seriesFilter.length) })
+  if (availableTags.countries.length > 0) rows.push({ key: 'region', label: 'region', summary: countSummary(countryFilter.length) })
+
   const STATUS_ITEMS: [StatusFilter, string][] = [['all', 'all'], ['want_to', 'want to'], ['in_progress', 'in progress'], ['done', 'done']]
+  const panelTitle = panel === 'region' ? 'region' : panel
+  const tagPanel = (options: TagCount[], selected: string[], onToggle: (v: string) => void) =>
+    options.map(o => (
+      <MenuItem key={o.value} label={o.value} count={o.count} active={selected.includes(o.value)} onClick={() => onToggle(o.value)} />
+    ))
+
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          display: 'flex', alignItems: 'center', gap: 3, padding: '4px 2px 8px',
+          display: 'flex', alignItems: 'center', gap: 4, padding: '4px 2px 8px',
           border: 'none', background: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
           color: active ? '#111' : '#888', fontSize: 13,
           fontWeight: active ? 600 : 400, fontStyle: active ? 'italic' : 'normal',
         }}
       >
-        {label}
+        filters
+        {active && (
+          <span style={{ fontSize: 11, fontWeight: 600, fontStyle: 'normal', color: '#fff', background: '#1C1B19', borderRadius: 8, minWidth: 15, height: 15, lineHeight: '15px', textAlign: 'center', padding: '0 4px' }}>{activeCount}</span>
+        )}
         <span style={{ fontSize: 9, color: active ? '#111' : '#ABA69C', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
       </button>
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+          <div onClick={close} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
           <div style={{
             position: 'absolute', top: '100%', left: 0, marginTop: 2, zIndex: 61,
             background: '#fff', border: `1px solid ${HAIR}`, borderRadius: 8,
-            boxShadow: '0 6px 24px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 150,
+            boxShadow: '0 6px 24px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 190,
+            maxHeight: '60vh', overflowY: 'auto',
           }}>
-            {STATUS_ITEMS.map(([s, lbl]) => (
-              <MenuItem key={s} label={lbl} active={statusFilter === s && reactionFilter === 'all'} onClick={() => pick(s)} />
-            ))}
-            {/* Reactions only make sense on finished items — reveal them once
-                "done" is the active status, not before. */}
-            {statusFilter === 'done' && (
+            {panel === null ? (
               <>
-                <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
-                {REACTION_ORDER.map(r => (
-                  <MenuItem key={r} label={REACTION_LABELS[r]} active={reactionFilter === r} onClick={() => pick('done', r)} />
+                {rows.map(r => (
+                  <FilterRow key={r.key} label={r.label} summary={r.summary} onClick={() => setPanel(r.key)} />
                 ))}
+                {/* "new music tuesday" is a single on/off, so it toggles straight
+                    from the top level rather than drilling into a one-item panel. */}
+                {showNewMusic && (
+                  <MenuItem label="new music tuesday" active={newMusicOnly} onClick={onToggleNewMusic} />
+                )}
+                {active && (
+                  <>
+                    <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
+                    <button
+                      onClick={onClearAll}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                        width: '100%', padding: '8px 14px', border: 'none', background: 'none',
+                        cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap', fontSize: 13, color: '#8A857C',
+                      }}
+                    >
+                      clear all<span style={{ color: '#A8A39A', fontSize: 12 }}>{matchCount} left</span>
+                    </button>
+                  </>
+                )}
               </>
-            )}
-            {/* Shelf refines "want to" — the bookstore case (want-to list minus
-                unread copies already at home). Optional: tap again to clear. */}
-            {statusFilter === 'want_to' && showShelf && (
+            ) : (
               <>
-                <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
-                <MenuItem label="on my shelf" active={shelfFilter === 'owned'} onClick={() => pickShelf('owned')} />
-                <MenuItem label="not on my shelf" active={shelfFilter === 'unowned'} onClick={() => pickShelf('unowned')} />
+                <button
+                  onClick={() => setPanel(null)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+                    padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer',
+                    textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#111',
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>‹</span>{panelTitle}
+                </button>
+                <div style={{ height: 1, background: HAIR, margin: '0 0 4px' }} />
+                {panel === 'status' && (
+                  <>
+                    {STATUS_ITEMS.map(([s, lbl]) => (
+                      <MenuItem key={s} label={lbl} active={statusFilter === s && reactionFilter === 'all'} onClick={() => { onStatus(s); if (s !== 'done') onReaction('all') }} />
+                    ))}
+                    {/* Reactions only make sense on finished items — reveal them
+                        once "done" is the active status, not before. */}
+                    {statusFilter === 'done' && (
+                      <>
+                        <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
+                        {REACTION_ORDER.map(r => (
+                          <MenuItem key={r} label={REACTION_LABELS[r]} active={reactionFilter === r} onClick={() => { onStatus('done'); onReaction(r) }} />
+                        ))}
+                      </>
+                    )}
+                    {/* Shelf refines "want to" — the bookstore case. Optional. */}
+                    {statusFilter === 'want_to' && showShelf && (
+                      <>
+                        <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
+                        <MenuItem label="on my shelf" active={shelfFilter === 'owned'} onClick={() => onShelf('owned')} />
+                        <MenuItem label="not on my shelf" active={shelfFilter === 'unowned'} onClick={() => onShelf('unowned')} />
+                      </>
+                    )}
+                  </>
+                )}
+                {panel === 'shelf' && (
+                  <>
+                    <MenuItem label="on my shelf" active={shelfFilter === 'owned'} onClick={() => onShelf('owned')} />
+                    <MenuItem label="not on my shelf" active={shelfFilter === 'unowned'} onClick={() => onShelf('unowned')} />
+                  </>
+                )}
+                {panel === 'genre' && tagPanel(availableTags.genres, genreFilter, onToggleGenre)}
+                {panel === 'vibe' && tagPanel(availableTags.vibes, vibeFilter, onToggleVibe)}
+                {panel === 'verdict' && tagPanel(availableTags.verdicts, verdictFilter, onToggleVerdict)}
+                {panel === 'series' && tagPanel(availableTags.series, seriesFilter, onToggleSeries)}
+                {panel === 'region' && tagPanel(availableTags.countries, countryFilter, onToggleCountry)}
               </>
             )}
           </div>
@@ -1517,7 +1463,30 @@ function StatusDropdown({ statusFilter, reactionFilter, onStatus, onReaction, sh
   )
 }
 
-function MenuItem({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+// Tier-1 row of the filters menu: axis name on the left, its current selection
+// (a value or a count) plus a chevron on the right. Summary reads ink when the
+// axis is narrowing, so active axes stand out at a glance.
+function FilterRow({ label, summary, onClick }: { label: string; summary: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        width: '100%', padding: '8px 14px', border: 'none', background: 'none',
+        cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap',
+        fontSize: 13, color: '#444', fontWeight: summary ? 600 : 400,
+      }}
+    >
+      {label}
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {summary && <span style={{ fontSize: 12.5, color: '#111' }}>{summary}</span>}
+        <span style={{ fontSize: 13, color: '#ABA69C' }}>›</span>
+      </span>
+    </button>
+  )
+}
+
+function MenuItem({ label, active, onClick, count }: { label: string; active: boolean; onClick: () => void; count?: number }) {
   return (
     <button
       onClick={onClick}
@@ -1528,7 +1497,8 @@ function MenuItem({ label, active, onClick }: { label: string; active: boolean; 
         fontSize: 13, color: active ? '#111' : '#444', fontWeight: active ? 600 : 400,
       }}
     >
-      {label}{active && <span style={{ fontSize: 12 }}>✓</span>}
+      <span>{label}{count != null && <span style={{ color: '#A8A39A' }}> {count}</span>}</span>
+      {active && <span style={{ fontSize: 12 }}>✓</span>}
     </button>
   )
 }
