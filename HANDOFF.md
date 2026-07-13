@@ -29,7 +29,11 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 **The next real design pass — menu-nav (Tier 1) — direction now on record (s119).** Farah: *"we keep coming back to this one."* Do it as ONE decision: the per-medium **type-row** (music/films/books/tv), the **filter-bar** declutter, and the **dual-nav sub-tab** placement. **s119 recommendation (mocked, awaiting Farah's go):** mirror the Things board — type-tabs own the sticky row, **status folds into the filter sheet**, the count becomes a **labeled subline under the title** (that's the "count is wrong" fix — it's placement, not math; `filtered.length` is correct). Sub-tabs **lift out of the bottom nav into a page-level segmented control** so the nav returns to one clean row. Detail → `docs/ROADMAP.md` → "Dual-nav sub-tab row".
 
-**Capture (Tier 1, mostly free) — two threads that now fold together:**
+**New from s119 (Farah flagged, captured to ROADMAP, not yet started):**
+- **Library search isn't matching well — troubleshoot.** Plain substring on title/creator/tags; breaks on multi-word cross-field queries, typos, accents. **Get a concrete failing example from Farah before rebuilding the matcher** — and clarify what "troubleshoot with other input methods" means (voice dictation vs. typed vs. paste?). Detail → ROADMAP → "Library search".
+- **In-app "paste an article link" to add directly** — not only email. The composer's paste accepts images only today. Reuse the email path's extraction. Detail → ROADMAP → Capture.
+
+**Capture (Tier 1, mostly free) — threads that fold together:**
 - **⚠️ Troubleshoot the flaky share-shortcut** — sharing a link *straight from an app* (not email-forward) has failed intermittently; at least one test article didn't land. Diagnostic path in `docs/ROADMAP.md` → Capture. The plain email-in path is confirmed working.
 - **iOS share Shortcut rebuild** — the clean version (auto-send an email to `save@`, no fragile API POST). Spec'd in ROADMAP → Capture. Build + troubleshoot in the same pass.
 
