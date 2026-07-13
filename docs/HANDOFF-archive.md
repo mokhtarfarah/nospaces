@@ -4,6 +4,36 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 116 (2026-07-12) — s116 UI polish sweep + discover speed fix. Mostly free (one Anthropic change, and it *lowers* cost).
+
+**Batched the whole s116 aesthetic-audit sweep in one pass (10 decided fixes), all pushed to `main`.** Commit [47eb8f2]. Typechecked, 118 tests green, the visible ones verified in the mobile preview (noauth dev instance):
+- **FAB overlap (highest-impact)** — the floating `+` reserved no scroll padding, so the last row hid behind it on 8 screens. Added `clearFab()` to `lib/layout.ts` (nav + 18px gap + 50px button + 16px margin, safe-area-aware) and swapped every scroll container's bottom padding to it (Library, Taste, Guide, Discover, Things, HelpMeDecide). Verified: scrolled the guide to the bottom, last row sits clear of the FAB.
+- **Star vs "leans here"** — the AI's per-candidate note now reads first-person **"we'd lean here"** (the user's ★ stays their own lean); dropped the ✨ from that note *and* the compare button — it was the app's only emoji. No ✨ left anywhere.
+- **BulkConfirmSheet chips** — the want-to/done control's "active" bg was literally the *inactive* soft-fill colour (selected read as off). Restyled to the borderless soft-fill system (active taupe `#E6E1D7`), softened the type-select pill too.
+- **Discover row-3 cut** — dropped the "N picks · refresh" row; refresh is now a quiet ↻ in the `PageHeader` `right` slot (hidden for editorial starter picks — correct, nothing to refresh yet). Added a shared `@keyframes spin` to `index.css` for the loading state.
+- **Counts onto their row** — Library count → right-aligned number on the type-tab row (tracks the active tab); removed the whole subtitle row + the now-unused `kicker` memo. Things-taste → `· N things` folded onto the vibe-caps line; dropped the wishlist/mood split (`taggedMood`/`taggedWishlist` removed).
+- **Badge style** — Library's bordered unread-articles pill de-outlier'd to borderless soft-fill with the same ink dot the boolean indicators use.
+- **Article initials** — new `sourceInitial()` skips a leading "The" (New Yorker → N, Atlantic → A, not both "T").
+- **Copy nits** — "mood board" (two words) on the sub-tab chip; guide "tidy" Extra now points to the **⋯ menu** (the "tidy · N" header was removed s111); mood-board empty state broadened to "a vibe, an aesthetic, an atmosphere".
+- **"HOW IT FITS" → "HOW IT LANDS"** — the tab label + the style-profile prose and comments that name it (a bag doesn't "fit").
+- **Red SALE tag** → quiet mono soft-fill chip (was the only saturated colour in the palette).
+
+**Then a real-data review round with Farah — 4 more fixes.** Commit [bd7add5]:
+- **taste (media)** — dropped the "N ratings and counting" kicker (she doesn't want the count on that page).
+- **discover** — dropped the "for you · 12 jul" header kicker (no other page carries the date; the stream is already shown by the active chip). Removed the now-unused `dateLabel`/`streamLabel`.
+- **library count** — was sitting low + bold; added matching tab-row padding so it baseline-aligns, dropped to weight 500. Verified via zoom.
+- **bonus** — fixed a keyless-`<>`-fragment React warning in the guide's `Tips`/`Extras` (spotted while verifying); `<>` → keyed `Fragment`.
+
+**"Further afield" slowness — investigated, then two fixes.** Farah asked whether divert (further afield) actually works / sends too much data. Read the engine: it dumped **every** loved/liked item into the prompt as an uncapped exclusion list — slow (near the 60s cap → the s109 stuck-loading) and, for divert, anchoring the model to her whole back-catalogue.
+- **Fix 1 (cap the data), commit [bdb040a]:** cap the taste snapshot to the 60 most-recent hits (`LIB_SAMPLE` in `DiscoverScreen`). Safe — `filterResults()` already drops any returned pick that's in the *full* library, so a hit outside the sample can never surface as "new". Free, slightly cheaper.
+- **Still slow → Fix 2 (faster model), commit [a5d218d]:** the real bottleneck was the *model writing* 8–10 multi-sentence picks on Sonnet (~40s). Farah chose (menu) to route **divert only** to **Haiku** — several times faster (~10–15s), ~1/3 the cost; "for you" (intaste) + mood searches stay on Sonnet where taste precision matters. `api/recommend-feeds.ts`: `model = mode === 'divert' && !moodText ? 'claude-haiku-4-5' : 'claude-sonnet-4-5'`. One line to revert if divert quality feels thin. **Not live-verified** — the sandbox has no backend; Farah judges speed + quality on the real app.
+
+**Decision recorded:** on the "should we kill further afield?" question, Farah chose **fix-then-judge**, not kill — the concept (serendipity / anti-mirror) is worth keeping; the problems were implementation (bloat + slow model), both now addressed. Kill only later, with evidence, if it's fast but bland.
+
+**Teed up but deliberately NOT done this sweep** (still in ROADMAP): ghost-numerals test, the articles-bar nav move, the Discover-recs-repeat 40-cap fix.
+
+---
+
 ### Session 115 (2026-07-09) — magazine articles / read-later bookmarks. Free, no Anthropic calls (reuses the existing free og-tag scraper).
 
 **Farah's ask: a way to mark an article in the New Yorker/Apple News/Atlantic app to come back to later.** Confirmed up front this can't be a real in-app reader — paywalled sources won't yield full text — so it's scoped as a clean bookmark: title/byline/publication/thumbnail/link, tap-through to read, not offline reading. Placement decision (asked, not assumed): Farah chose **fold into the media library as a new `type:'article'`**, over a new top-level "reading" domain or a Things `kind` — articles read as list rows (like film/book/tv), not an image-first board.

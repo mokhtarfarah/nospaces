@@ -19,19 +19,6 @@ When you finish an item: **delete it from here** (don't leave a ✅ — the sess
 
 ## Short term — next few sessions
 
-### UI polish sweep — s116 aesthetic audit (mostly free, one session)
-Small, decided fixes from the s116 audit (real-data screenshots reviewed with Farah). Batch into one pass:
-- **FAB overlaps content** — the floating `+` reserves no scroll padding, so the last row/line hides behind it. Confirmed on 8 screens (guide, taste, things-taste, library grid, mood board, wishlist, desert island, discover — where it hid a whole pick's title). Fix: bottom padding = FAB height + margin on every scroll container. Highest-impact — actively hiding content.
-- **Star vs. "leans here" is ambiguous** — different owners (star = user's own lean, "leans here" = the AI's pick) that read as the same signal. Fix is wording, not logic: reword the AI one first-person-app (**"we'd lean here"** / **"our pick"**), keep the star as the user's lean. Drop the ✨ at the same time — it's the only emoji in the app; use the typographic voice (bold/caps/italic) used everywhere else.
-- **BulkConfirmSheet still bordered** — the multi-photo add sheet kept pre-s110 bordered chips; everything else is borderless soft-fill (its *active* bg is literally the new system's *inactive* colour, so "selected" reads as "off"). Restyle to match `MoodChips`. (Was flagged in HANDOFF.)
-- **Discover: 3 stacked rows before content** (mode tabs / type tabs / "N picks · refresh"). Cut row 3 — drop the picks count (clutter, not info), move refresh to a small ↻ in the header; keep the two real tab rows. (Library + wishlist are single-row — not offenders; their real issue is the "all" filter-soup item below.)
-- **Counts move off the subtitle onto the row they belong to.** Library count → right-aligned on the **type-tab row, tracking the active tab** ("books → 169", "all → 340") — reclaims the subtitle row and makes the number answer "how many of what I'm viewing". Things-taste breakdown (`read across 33 tagged things — 14 wishlist + 19 mood`) → right-aligned `· 33 things` on the vibe-caps line, drop the wishlist/mood split. Keep every other single-count subtitle (things wishlist/moodboard, media-taste "422 ratings") as-is.
-- **Two badge styles** — library header = numbered pill, things-taste = bare dot. Pick one, use everywhere.
-- **Article avatar initials collide** — "The New Yorker" + "The Atlantic" both render "T". Skip a leading "The" when picking the initial.
-- **Copy nits** — "moodboard" → "mood board" (two words; the holdout is the sub-tab chip label in `ThingsScreen`). Stale guide copy: it still describes "tidy · N in the header" — the raw count was removed s111. Mood-board empty state: broaden "the look you're after" → vibe/aesthetic language (the board holds architecture + still-lifes, not just style).
-- **"HOW IT FITS" tab label** → **"HOW IT LANDS"** — odd on non-clothing (a bag doesn't "fit"); the new label echoes the media side's "how it landed" voice, works for any object, pairs with the "YOUR NOTE" tab.
-- **Red "SALE" tag** — the only saturated colour in an otherwise mono/cream palette. Restyle to the palette (default), unless we deliberately make red a price/time-sensitive accent rule.
-
 ### Ghost-numerals — test, then decide (s116)
 The giant faded rank numerals behind Discover / desert-island / taste cards are distinctive (editorial listicle) but decorative, and they cut contrast over colourful image-bleed cards. Build a real test against busy photo backgrounds before keeping as-is. A look, not a fix.
 
