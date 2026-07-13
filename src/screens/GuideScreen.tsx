@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { clearFab } from '../lib/layout'
 
@@ -128,14 +129,14 @@ function Tips({ items }: { items: { label: string; text: string }[] }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 12, rowGap: 10, alignItems: 'start', marginTop: 16 }}>
       {items.map(({ label, text }) => (
-        <>
-          <span key={`${label}-lbl`} style={{
+        <Fragment key={label}>
+          <span style={{
             fontSize: 11, fontWeight: 600, color: '#1C1B19',
             background: '#F4F2EF', padding: '2px 8px', borderRadius: 4,
             lineHeight: 1.6, whiteSpace: 'nowrap',
           }}>{label}</span>
-          <span key={`${label}-txt`} style={{ fontSize: 13, color: '#6F6B64', lineHeight: 1.6 }}>{text}</span>
-        </>
+          <span style={{ fontSize: 13, color: '#6F6B64', lineHeight: 1.6 }}>{text}</span>
+        </Fragment>
       ))}
     </div>
   )
@@ -146,14 +147,14 @@ function Extras({ items }: { items: { label: string; text: string }[] }) {
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #ECEAE6', display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 12, rowGap: 8, alignItems: 'start' }}>
       {items.map(({ label, text }) => (
-        <>
-          <span key={`${label}-lbl`} style={{
+        <Fragment key={label}>
+          <span style={{
             fontSize: 10, fontWeight: 600, color: '#ABA69C', letterSpacing: '0.03em',
             background: '#F4F2EF', padding: '2px 7px', borderRadius: 3,
             lineHeight: 1.6, whiteSpace: 'nowrap',
           }}>{label}</span>
-          <span key={`${label}-txt`} style={{ fontSize: 12, color: '#ABA69C', lineHeight: 1.6 }}>{text}</span>
-        </>
+          <span style={{ fontSize: 12, color: '#ABA69C', lineHeight: 1.6 }}>{text}</span>
+        </Fragment>
       ))}
     </div>
   )

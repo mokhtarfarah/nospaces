@@ -246,15 +246,12 @@ export function DiscoverScreen() {
   const allFeeds = [...DEFAULT_FEEDS, ...customFeeds]
   const isLoadingActive = moodActive ? moodLoading : (stream === 'further' ? divertLoading : intasteLoading)
 
-  const dateLabel = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-  const streamLabel = moodActive ? 'in the mood' : stream === 'further' ? 'further afield' : 'for you'
-
   return (
     <div style={{ padding: `20px 20px ${clearFab()}`, fontFamily: 'inherit' }}>
-      {/* Shared magazine header — refresh lives here as a quiet ↻ (was a whole
-          third row under the tabs; the picks count it sat beside was clutter). */}
+      {/* Shared magazine header — no kicker (the date read as noise; the stream is
+          already shown by the active chip below). Refresh lives here as a quiet ↻
+          (was a whole third row under the tabs; the picks count was clutter). */}
       <PageHeader
-        kicker={`${streamLabel} · ${dateLabel}`}
         title="discover"
         right={!moodActive && stream === 'foryou' && hasIntaste && (
           <button onClick={() => fetchMode('intaste', true)} disabled={intasteLoading} aria-label="refresh picks"

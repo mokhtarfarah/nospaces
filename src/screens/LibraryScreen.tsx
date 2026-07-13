@@ -765,7 +765,7 @@ export function LibraryScreen() {
             {/* Count of what's on screen — tracks the active tab + every filter, so
                 the number answers "how many of what I'm viewing". Was a whole
                 subtitle row under the title (s116); folded onto this row. */}
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1B19', flexShrink: 0, marginRight: 14, fontVariantNumeric: 'tabular-nums' }}>{filtered.length}</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#1C1B19', flexShrink: 0, marginRight: 14, padding: '4px 0 8px', fontVariantNumeric: 'tabular-nums' }}>{filtered.length}</span>
             {/* View · sort · filter live in one card opened from this button,
                 mirroring the Things board. Always present (it always offers layout +
                 sort), even before there are tag groups to filter on. */}
