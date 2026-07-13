@@ -660,6 +660,11 @@ export function LibraryScreen() {
   // which over-elevated a lightweight type. Tapping filters to the unread queue.
   const unreadArticles = useMemo(() => items.filter(i => i.type === 'article' && i.status !== 'done').length, [items])
 
+  // Horizontal inset of the cover grid — the entry-point bars (shows / articles)
+  // reuse it so their outer edge lines up with the outer edge of the gallery
+  // images, not a few px short. Tightens with the cover-wall ('none') caption.
+  const galleryPadX = caption === 'none' ? 12 : 14
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
       {/* One scroller — title + search live in normal flow and scroll away for
@@ -785,7 +790,7 @@ export function LibraryScreen() {
             onClick={() => navigate('/shows')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-              width: 'calc(100% - 32px)', boxSizing: 'border-box', margin: '12px 16px 0',
+              width: `calc(100% - ${galleryPadX * 2}px)`, boxSizing: 'border-box', margin: `12px ${galleryPadX}px 0`,
               padding: '10px 14px', background: '#F4F2EE', border: 'none', borderRadius: 4,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
@@ -802,7 +807,7 @@ export function LibraryScreen() {
             onClick={() => selectCategory('article')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-              width: 'calc(100% - 32px)', boxSizing: 'border-box', margin: '12px 16px 0',
+              width: `calc(100% - ${galleryPadX * 2}px)`, boxSizing: 'border-box', margin: `12px ${galleryPadX}px 0`,
               padding: '10px 14px', background: '#F4F2EE', border: 'none', borderRadius: 4,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
@@ -840,7 +845,7 @@ export function LibraryScreen() {
                 // Cover-wall: in 'none' caption mode the tiles tighten almost to a
                 // grid of touching covers (more editorial); with captions the looser
                 // 10px gap gives the text room to breathe.
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: caption === 'none' ? 4 : 10, padding: caption === 'none' ? '4px 12px 12px' : '4px 14px 12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: caption === 'none' ? 4 : 10, padding: `4px ${galleryPadX}px 12px` }}>
                   {monthItems.map(item => (
                     <GridCard
                       key={item.id}
