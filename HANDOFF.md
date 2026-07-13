@@ -23,13 +23,15 @@ Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Thing
 
 ## ▶ Next session (116)
 
+**Build focus — UI polish sweep (from the s116 aesthetic audit).** One batched pass of small, decided fixes; full list → `docs/ROADMAP.md` → "UI polish sweep — s116 aesthetic audit". Highest-impact first: the **FAB overlap** (the floating `+` hides the last row/line on 8 screens — reserve bottom scroll padding everywhere). Then star/lean wording + drop ✨, BulkConfirmSheet chips, Discover row-3 cut, counts-on-their-row, badge style, article initials, copy nits, "HOW IT LANDS", SALE restyle. The confirm-live checks below run alongside. (Separately teed up but *not* in this sweep: the articles-bar nav move and ghost-numerals test — both in ROADMAP.)
+
 **Confirm s115 live:** forward a real article link to the save@ address and confirm it lands as a clean bookmark (title/byline/publication/thumbnail), "read ↗" opens the source, "mark as read" is a plain toggle with no reaction prompt. If it doesn't land, check `/api/email` logs for whether `articleLike` tripped.
 
 **Confirm s114 live:** does the jump-to-top button actually show up and work when scrolling Farah's real (long) library and wishlist/mood board — the preview couldn't test this with real data.
 
 **Carried from s113, still not confirmed live:** does "rt 94%" actually render on a real film in the library sheet + Discover sheet? Does music "by creator" actually read cleaner now scrolling Farah's real collection?
 
-**Carried from s112, still not confirmed live:** does the mood board actually look like a flowing masonry on Farah's real board? Does a real Discover session ever leak "via <garbage>" sources again?
+**Carried from s112:** mood-board masonry **looks confirmed** — the s116 audit screenshots show a proper flowing masonry on Farah's real board. Still open: does a real Discover session ever leak "via <garbage>" sources again?
 
 **Carried from s109, still not confirmed live:** the Discover "further afield" stuck-loading timeout fix (hard to force — just watch for it not hanging next time it's slow); the things-taste synthesis tone after its 3rd prompt fix; the mood-board vision split — re-tag a mood image and see if the tags read more like register/atmosphere words now, less like garment-cut.
 
