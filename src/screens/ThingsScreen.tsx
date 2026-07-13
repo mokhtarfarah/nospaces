@@ -20,7 +20,7 @@ import { uploadMoodImage, moodSrc } from '../lib/mood'
 import { inReview } from '../lib/review'
 import { flipThingToMedia, MEDIA_TYPES, type MediaType } from '../lib/flip'
 import { NAV_H, NAV_TINT, SUBNAV_H, clearStack, clearFab } from '../lib/layout'
-import { sampleBoardColors } from '../lib/palette'
+import { sampleBoardColors, type BoardImage } from '../lib/palette'
 import { usePrefs } from '../hooks/usePrefs'
 
 const INK = '#1C1B19'
@@ -1213,18 +1213,26 @@ function TasteTab({ items, board, synthesis, onSave, styleProfile, onSaveProfile
   const hasSignal = board.thread.length > 0
 
   // Every board image's loadable src — mood images from Storage/proxy, product photos
-  // through the same-origin proxy — for the colour story sample.
-  const imageSrcs = useMemo(() => items.map(it => {
-    if (kindOf(it) === 'inspiration') { const m = inspirationMeta(it); return moodSrc(m.image, m.hosted) }
-    const p = productMeta(it); return thingImageRaw(p.image, p.url)
-  }).filter((s): s is string => !!s), [items])
+  // through the same-origin proxy — for the colour story sample. A clean packshot cutout
+  // (transparent, zero skin) is flagged `clean` so it anchors the known-good palette; a
+  // raw on-model/lifestyle photo or a mood shot is worn context and gets skin-gated (s118).
+  const boardImages = useMemo(() => items.map((it): BoardImage | null => {
+    if (kindOf(it) === 'inspiration') {
+      const m = inspirationMeta(it); const src = moodSrc(m.image, m.hosted)
+      return src ? { src, clean: false } : null
+    }
+    const p = productMeta(it)
+    if (p.cutout && !p.cutoutHidden) return { src: p.cutout, clean: true }
+    const src = thingImageRaw(p.image, p.url)
+    return src ? { src, clean: false } : null
+  }).filter((x): x is BoardImage => !!x), [items])
 
   useEffect(() => {
     let cancelled = false
-    if (imageSrcs.length === 0) { setColors([]); return }
-    sampleBoardColors(imageSrcs).then(c => { if (!cancelled) setColors(c) })
+    if (boardImages.length === 0) { setColors([]); return }
+    sampleBoardColors(boardImages).then(c => { if (!cancelled) setColors(c) })
     return () => { cancelled = true }
-  }, [imageSrcs])
+  }, [boardImages])
 
   async function generate() {
     if (generating) return

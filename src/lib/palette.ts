@@ -10,9 +10,25 @@
 // while a cream or grey *product* in the middle survives. Full-bleed shots with no clear
 // border fall back to dropping chromatically neutral pixels.
 
+// Skin gate (s118): on-model / lifestyle / mood-street shots leak a MODEL's skin tone into
+// the ribbon — warm browns/tans that aren't the wardrobe's palette. We can't just filter
+// flesh RGB: this user's signature palette (camel/tan/leather) sits right on top of skin in
+// RGB, so a blunt gate would delete the exact colours she wants. Instead we build a
+// "known-good" palette from the CLEAN packshot cutouts (a cutout is the bare garment on
+// transparent — zero skin), then on the messy worn/mood shots we drop flesh-toned pixels
+// ONLY when their colour isn't confirmed by a clean cutout. Skin (never in a cutout) goes;
+// camel/leather (confirmed by a garment cutout) stays; a worn-only accessory keeps its
+// colour minus the skin around it. Known gap: a tan item shot *only* on-model has no clean
+// cutout to protect it, so it can get gated — rare, and the trigger to escalate.
+
 export type Swatch = string // '#rrggbb'
 
-type Bucket = { r: number; g: number; b: number; n: number }
+// One board image to sample. `clean` marks a bare-garment cutout (transparent, no skin) —
+// these anchor the known-good palette; everything else (worn/lifestyle/mood) is skin-gated.
+export type BoardImage = { src: string; clean: boolean }
+
+export type RGB = { r: number; g: number; b: number }
+type Bucket = RGB & { n: number }
 
 // Quantise an RGB triple into one of 6×6×6 coarse buckets so near-identical pixels
 // collapse together before we count them.
@@ -41,6 +57,21 @@ function hue(r: number, g: number, b: number): number {
   return h < 0 ? h + 360 : h
 }
 
+// Is this pixel a plausible flesh tone? The classic warm-skin rule (Kovac et al.):
+// bright, red-dominant, and not too grey. Deliberately BROAD — it also catches
+// camel/tan/leather, which is fine because the caller only drops a flesh hit when it
+// ISN'T confirmed by a clean garment cutout (see the skin-gate note up top).
+export function isSkin(r: number, g: number, b: number): boolean {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b)
+  return r > 95 && g > 40 && b > 20 && mx - mn > 15 && r - g > 15 && r > b
+}
+
+// Does this colour match one already confirmed by a clean cutout? Manhattan distance,
+// same cheap metric the swatch merge uses.
+export function nearKnownGood(r: number, g: number, b: number, palette: RGB[], thresh = 45): boolean {
+  return palette.some(p => Math.abs(p.r - r) + Math.abs(p.g - g) + Math.abs(p.b - b) < thresh)
+}
+
 // Estimate the backdrop colour by sampling the image's border. A product sits centred,
 // so the frame's edge pixels are almost always background — whatever its colour (white,
 // grey, cream, kraft). Returns the average edge colour only if the edge is *consistent*;
@@ -66,8 +97,10 @@ function borderColor(data: Uint8ClampedArray, S: number): { r: number; g: number
 }
 
 // The dominant colours of one image (averaged per bucket), or [] if it won't load /
-// taints the canvas.
-async function imageColors(src: string, top = 4): Promise<Bucket[]> {
+// taints the canvas. `skinGate` is the known-good palette from clean cutouts: when
+// present (a worn/mood shot), flesh-toned pixels are dropped unless a clean cutout already
+// confirmed that colour. Null (a clean cutout itself) → no gate, nothing to protect against.
+async function imageColors(src: string, skinGate: RGB[] | null = null, top = 4): Promise<Bucket[]> {
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.decoding = 'async'
@@ -100,6 +133,9 @@ async function imageColors(src: string, top = 4): Promise<Bucket[]> {
         const mx = Math.max(r, g, b), mn = Math.min(r, g, b)
         if (mx - mn < 10) continue
       }
+      // Skin gate (worn/mood shots only): drop a flesh-toned pixel unless a clean cutout
+      // already vouched for that colour (protects camel/tan/leather; sheds model skin).
+      if (skinGate && isSkin(r, g, b) && !nearKnownGood(r, g, b, skinGate)) continue
       const key = bucketKey(r, g, b)
       const e = buckets.get(key) ?? { r: 0, g: 0, b: 0, n: 0 }
       e.r += r; e.g += g; e.b += b; e.n++
@@ -118,11 +154,31 @@ async function imageColors(src: string, top = 4): Promise<Bucket[]> {
  * Sample up to `max` recurring colours across a board's images, ordered by hue.
  * Caps the number of images sampled so a big board stays snappy. Returns [] if
  * nothing readable — the caller hides the ribbon rather than show a stub.
+ *
+ * Two passes (see the skin-gate note up top): first the clean cutouts, whose colours
+ * become the known-good palette; then the worn/mood shots, skin-gated against it.
  */
-export async function sampleBoardColors(srcs: string[], max = 6): Promise<Swatch[]> {
-  const uniq = [...new Set(srcs.filter(Boolean))].slice(0, 16)
+export async function sampleBoardColors(images: BoardImage[], max = 6): Promise<Swatch[]> {
+  // De-dupe by src (a src is one image regardless of how it's tagged); if the same src
+  // shows up both clean and worn, trust the clean flag. Cap the set so big boards stay snappy.
+  const bySrc = new Map<string, boolean>()
+  for (const im of images) {
+    if (!im.src) continue
+    bySrc.set(im.src, (bySrc.get(im.src) ?? false) || im.clean)
+  }
+  const uniq = [...bySrc.entries()].map(([src, clean]) => ({ src, clean })).slice(0, 16)
   if (uniq.length === 0) return []
-  const perImage = await Promise.all(uniq.map(s => imageColors(s)))
+
+  // Pass 1 — clean cutouts build the known-good palette (bare garment, zero skin).
+  const cleanImages = uniq.filter(i => i.clean)
+  const cleanColors = await Promise.all(cleanImages.map(i => imageColors(i.src)))
+  const knownGood: RGB[] = cleanColors.flat().map(b => ({ r: b.r, g: b.g, b: b.b }))
+
+  // Pass 2 — worn/mood shots, flesh-gated against that palette.
+  const wornImages = uniq.filter(i => !i.clean)
+  const wornColors = await Promise.all(wornImages.map(i => imageColors(i.src, knownGood)))
+
+  const perImage = [...cleanColors, ...wornColors]
 
   // Aggregate across images, merging colours that are close enough to read as one.
   const agg: Bucket[] = []
