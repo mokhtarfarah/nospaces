@@ -15,34 +15,28 @@
 
 Personal PWA taste library for Farah + Tom (films, books, music, TV) **+ a Things side** (shopping / wishlist). Live at https://nospaces.vercel.app. Phases 1–4 done; **Phase 5 (discovery + taste) in progress.** Things is the active workstream.
 
+**Session 118 — s118 UI nits sweep. Frontend only, no API. Committed + pushed to `main` ([e2a75e3]).** Revisited the full roadmap with Farah + tiered it, then **verified the whole pending stack live — she confirmed all of s115/116/117** (article bar, italic sweep, "all" filter, further-afield-on-Haiku, FAB clearance, article email round-trip). One caveat: the **share-shortcut (sharing a link straight from an app, not email-forward) is flaky** — parked with a diagnostic path under Capture. Then six small nits: articles bar de-inboxed ("N articles", no dot); shows-near-you + articles bars unified (light cream fill, de-pilled radius 10→4, Farah picked "squared"); **nav dividers** — slash kept only on the `media/things` toggle, dropped from the section links; mood-board "paste a link" folded into the **+** speed-dial; Things taste page trimmed (dropped "taste" subtitle + "N things" count). **Deferred: the filter-bar count + declutter** — folded into the menu-nav design pass (the recurring type-row problem), not half-fixed. Typecheck clean, 118 tests green. **Not visually verified — live app is login-gated, Farah to eyeball on phone.** Full detail → archive (s118).
+
 **Session 117 — italic-rule sweep + article entry-point demote. Frontend only, no API. Committed to `main`.** New general rule (Farah): *only her own words are italic; AI prose renders roman* (saved to memory `italic-reserved-for-user-words`). Applied to the Discover blurbs (the ask — also smaller), the Guide's Discover illustration, and the Things product sheet (fit-read + taste tags → roman via a new `NoteProse upright` prop) — **which closes the parked s93/s94 "too much italic" item.** Media taste page left untouched (Farah's call — it's on the don't-touch list). Then the **article entry-point demote**: floating unread pill out of the masthead → a calm "• N to read … open →" bar in the reading views (books + all) only. Then **"all" tab de-confusion** (closes an s85 roadmap item): the per-medium facet filters (genre/vibe/verdict) now hide in the cross-category "all" view — only universal facets (region/shelf) show; recency-default was already in place. Typechecked, 118 tests green; verified in preview where data allowed. Full detail → archive (s117).
 
 **Session 116 — s116 UI polish sweep (10 fixes) + discover speed fix. 4 commits, pushed to `main` (live).** The whole aesthetic-audit sweep in one batched pass: FAB overlap (new `clearFab()` in `lib/layout.ts` — the big one, was hiding the last row on 8 screens), "we'd lean here" wording + ✨ dropped, BulkConfirmSheet chips → soft-fill, Discover row-3 cut (refresh → header ↻), counts folded onto their row, badge unified, article initials skip "The", copy nits ("mood board", tidy→⋯ menu, empty state), "HOW IT LANDS", SALE tag de-saturated. Then a real-data review with Farah: dropped the taste count + the discover date kicker, baseline-aligned the library count (+ fixed a stray React key warning). Then **"further afield" speed**: capped the taste snapshot to 60 recent hits (`LIB_SAMPLE`), and — the real bottleneck being model write-time — routed **divert only to Haiku** (`api/recommend-feeds.ts`; ~40s→~10-15s, ~1/3 cost; "for you"/mood stay on Sonnet). All typechecked, 118 tests green; UI verified in preview. **Not live-verified:** the article email round-trip (s115), and the divert speed+quality on Haiku — sandbox has no backend. Full detail → archive (s116).
 
-**Session 115 — magazine articles / read-later bookmarks (`type:'article'`). Committed + live.** Bare bookmark, capture via the free og-scraper; still needs an iOS Shortcut for one-tap. Email→save round-trip still not live-verified. Full detail → archive (s115).
+## ▶ Next session (119)
 
-## ▶ Next session (118)
+**s115/116/117 all confirmed live (s118, Farah on her phone)** — article "to read" bar, italic sweep, "all" filter, further-afield-on-Haiku (fast *and* still adventurous — it earned its place), FAB clearance, and the s115 article email round-trip. These are done; don't re-queue them.
 
-**Confirm s117 live:** (a) the **article "to read" bar** — with real unread articles, does it show in books + the all view (not films/music/tv), read calm, and jump into the unread queue on tap? (b) the **italic sweep** on real data — Discover blurbs + Things fit-read/tags read as clean roman, and Farah's own notes still italic? (c) **"all" filter** — opening the filter sheet in "all" on the real (tagged) library shows only region/shelf, no genre/vibe/verdict soup?
+**Eyeball the s118 nits on real data (I couldn't — login-gated):** the two entry bars (light + squared + matching), the nav bars (slash only on `media/things`, section links just spaced), the mood-board **+** speed-dial (upload · paste a link), and the Things taste page (no "taste" subtitle, no count).
 
-**Confirm s116 live (the whole point of that session's judge-half):**
-- **Further afield on Haiku** — does it load fast now (no spinner-forever)? AND do the picks still feel genuinely *further out*, not dumbed-down? If fast but bland → move divert back to Sonnet (one line in `api/recommend-feeds.ts`), or cut it with evidence. If fast + surprising → it's earned its place.
-- **Library count** — baseline-aligned + non-bold on Farah's real (full) tab row?
-- **FAB clearance** — does the last row/pick actually clear the `+` when scrolling her real long library / wishlist / mood board? (preview only had empty seed data.)
-- Skim the rest of the sweep on real data: "we'd lean here", the restyled BulkConfirmSheet (multi-photo add), Discover's ↻ refresh, "· N things" on the taste caps line, the mono SALE chip.
+**The next real design pass — menu-nav (Tier 1).** Farah: *"we keep coming back to this one."* Do it as ONE decision, not piecemeal: the per-medium **type-row** (music/films/books/tv), the **filter-bar** (count is still wrong + the bar's too cluttered), and the **dual-nav sub-tab** placement. Detail → `docs/ROADMAP.md` → "Dual-nav sub-tab row".
 
-**Confirm s115 live:** forward a real article link to the save@ address — lands as a clean bookmark, "read ↗" opens the source, "mark as read" is a plain toggle. If not, check `/api/email` logs for whether `articleLike` tripped.
-
-**Confirm s114 live (still open):** does the jump-to-top button show + work scrolling Farah's real long lists — preview couldn't test with real data.
-
-**Carried from s113, still not confirmed live:** does "rt 94%" actually render on a real film in the library sheet + Discover sheet? Does music "by creator" actually read cleaner now scrolling Farah's real collection?
-
-**Carried from s112:** mood-board masonry **looks confirmed** — the s116 audit screenshots show a proper flowing masonry on Farah's real board. Still open: does a real Discover session ever leak "via <garbage>" sources again?
-
-**Carried from s109:** further-afield stuck-loading is now addressed at the root (s116 Haiku move — see the s116 confirm above; the old 70s client timeout is still there as a backstop). Still not confirmed live: the things-taste synthesis tone after its 3rd prompt fix; the mood-board vision split — re-tag a mood image and see if the tags read more like register/atmosphere words now, less like garment-cut.
+**Capture (Tier 1, mostly free) — two threads that now fold together:**
+- **⚠️ Troubleshoot the flaky share-shortcut** — sharing a link *straight from an app* (not email-forward) has failed intermittently; at least one test article didn't land. Diagnostic path in `docs/ROADMAP.md` → Capture. The plain email-in path is confirmed working.
+- **iOS share Shortcut rebuild** — the clean version (auto-send an email to `save@`, no fragile API POST). Spec'd in ROADMAP → Capture. Build + troubleshoot in the same pass.
 
 **Do first (housekeeping):**
 - **Confirm the 10k Postmark plan is bought.** Approval unblocked it; talkback ≈ 2 emails/capture and the free plan is only 100/mo, so real use will blow the cap fast. Detail → `docs/REFERENCE.md` → Postmark plan.
+
+**Still carried, low-priority one-off checks (not yet confirmed live):** s114 jump-to-top on real long lists; s113 "rt 94%" on a real film + music "by creator" reading cleaner; s112 whether Discover ever still leaks "via <garbage>" sources; s109 things-taste synthesis tone + the mood-board vision split (re-tag a mood image → do tags read more like register/atmosphere, less like garment-cut?).
 
 **Still carried, low-priority one-off checks:** the ~8 junk board cards from the old email bug (s100) may still be there — check she deleted them. The s89 **pull-from-link fix** — screenshot a product, add a link, edit → does "pull photo & price" swap the screenshot for the clean shop photo? (Only fires on *newly* screenshot-saved products.)
 

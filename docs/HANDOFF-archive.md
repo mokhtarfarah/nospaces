@@ -4,6 +4,20 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 118 (2026-07-13) — s118 UI nits sweep. Free (frontend only, no API). Committed + pushed to `main` ([e2a75e3]).
+
+**Roadmap review + a batch of six small design nits flagged off real screenshots.** Started by revisiting the full backlog with Farah and tiering it (verify-pending → Tier 1 quick wins/menu-nav/capture → Tier 2 gated taste decisions → Tier 3 code-health). Farah's call: **verify the pending stack first** (s115/116/117) — she confirmed **all of it live** (article "to read" bar, italic sweep, "all"-tab filter, further-afield-on-Haiku, FAB clearance, and the s115 article email round-trip). One caveat logged: **the share-shortcut (sharing a link directly from an app, not just email-forward) has failed intermittently** — at least one test article shared straight from its source app didn't land. Parked with a diagnostic path under Capture in ROADMAP; the email-in path itself is confirmed working.
+
+Then the nits (typecheck clean, 118 tests green — **not visually verified, the live app is Google-login-gated and I can't sign in**; Farah to eyeball on phone post-deploy):
+- **Articles entry-point bar** (`LibraryScreen.tsx`) — the s117 `• N to read … open →` bar read like an inbox. Dropped the dot, relabelled **"N articles"** (pluralized).
+- **Shows-near-you + articles bars — unified.** Shows-near-you was a dark `#1C1B19` slab; matched it to the articles bar's light cream fill (`#F4F2EE`, dark text, muted "browse →"). **De-pilled both** (border-radius 10 → 4, matching the app's dupes-bar token). Showed Farah a 3-option mockup (squared / hairline-band / current) — she picked **squared (A)**.
+- **Bottom-nav dividers** — Farah's call: keep the slash on the **`media / things`** domain toggle (the one real crossing), **remove it from the right-side section links** (library·taste·discover in `BottomNav.tsx`, wishlist·taste in `ThingsNav`). Section links now spaced (gap 8 → 14), no slash. `DomainSwitcher` untouched.
+- **Mood board "paste a link" fold** (`ThingsScreen.tsx`) — pulled the awkward top-right button out; the mood-board **+ FAB** is now a speed-dial (*upload image · paste a link*) mirroring the wishlist FAB. Removed the standalone button on all viewports (the + covers desktop too — Farah confirmed that's fine, no viewport-gate needed). The top row now shows only the "read taste for N untagged" action when there's untagged work.
+- **Things taste page trim** — dropped the redundant **"taste" subtitle** (rendered `null` for the profile sub-tab) and the **"N things" count** off the vibe-caps row (read like a dashboard stat on a mirror page; only the settings icon rides opposite now). `tagged` memo still used by the read CTA + synthesis call, so it stays.
+- **Deferred: filter-bar count + declutter** — folded into the existing "Dual-nav sub-tab row" roadmap item, not half-fixed here. The count is still wrong AND the bar's cluttered — but it's tangled with the recurring **menu-nav problem** (the music/films/books/tv type-row), which Farah noted "we keep coming back to." Kept as one future design pass.
+
+---
+
 ### Session 117 (2026-07-12) — italic-rule sweep + article entry-point demote. Free (frontend only, no API).
 
 **Established a general rule (Farah): only Farah's own words are italic; AI-generated prose renders roman.** Saved to memory as `italic-reserved-for-user-words`. Applied it across every AI-prose surface — all typechecked, 118 tests green, verified in the noauth preview where data allowed:
