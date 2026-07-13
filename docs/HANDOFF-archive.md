@@ -16,6 +16,10 @@ Then the nits (typecheck clean, 118 tests green — **not visually verified, the
 - **Things taste page trim** — dropped the redundant **"taste" subtitle** (rendered `null` for the profile sub-tab) and the **"N things" count** off the vibe-caps row (read like a dashboard stat on a mirror page; only the settings icon rides opposite now). `tagged` memo still used by the read CTA + synthesis call, so it stays.
 - **Deferred: filter-bar count + declutter** — folded into the existing "Dual-nav sub-tab row" roadmap item, not half-fixed here. The count is still wrong AND the bar's cluttered — but it's tangled with the recurring **menu-nav problem** (the music/films/books/tv type-row), which Farah noted "we keep coming back to." Kept as one future design pass.
 
+**Two follow-on fixes after the sweep** (both pushed to `main`, typecheck clean, 118 tests green, not visually verified — login-gated):
+- **Entry bars aligned to the gallery** ([a10a4d4]) — the bars sat at a 16px inset while the cover grid uses 14px (12px in the 'none' cover-wall caption), so they ended a couple px short of the images' outer edge. Derived one `galleryPadX` off the caption and fed it to BOTH the grid padding and the two bars' margin/width, so they line up and can't drift. (Left the dupes bar at 16px — not flagged.)
+- **Things "new image address didn't take"** ([3aab4cc]) — editing a product/candidate and pasting a new image URL appeared to do nothing. Cause: the item caches a `cutout` (a crop of the OLD photo) and both the tile and the sheet hero render the cutout in preference to the raw image; the edit's onSave spread old metadata then overlaid the form fields, but the form has no cutout key, so the stale cutout survived. Fix: when the image address actually changes on save, drop `cutout`/`cutoutV` + un-hide, so the new photo shows; the free on-device backfill re-cuts a fresh one. Applied to both the product edit and the candidate edit. Zero cost (cutout re-cut is on-device, no Anthropic call).
+
 ---
 
 ### Session 117 (2026-07-12) — italic-rule sweep + article entry-point demote. Free (frontend only, no API).
