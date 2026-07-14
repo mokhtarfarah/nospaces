@@ -664,6 +664,15 @@ export function LibraryScreen() {
   // images, not a few px short. Tightens with the cover-wall ('none') caption.
   const galleryPadX = caption === 'none' ? 12 : 14
 
+  // "how many of what you're looking at" — a quiet labeled subline under the
+  // title (was a bare number cramped onto the sticky nav row). Labelled so the
+  // count reads as an answer, not a floating digit.
+  const countLabel = reviewOnly
+    ? `${filtered.length} to review`
+    : query.trim() || categories.length !== 1
+      ? `${filtered.length} ${filtered.length === 1 ? 'item' : 'items'}`
+      : `${filtered.length} ${CATEGORY_LABEL[categories[0]] ?? categories[0]}`
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff' }}>
       {/* One scroller — title + search live in normal flow and scroll away for
@@ -677,8 +686,8 @@ export function LibraryScreen() {
           so nothing legitimate gets clipped). */}
       <div ref={listRef} onScroll={onListScroll} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: selectMode ? clearStack(94) : clearFab() }}>
         <div style={{ padding: '20px 16px 0' }}>
-          {/* Magazine header — title + search/overflow on top, then count
-              folded into one quiet subline. */}
+          {/* Magazine header — title + search/overflow on top, then the count as
+              one quiet labeled subline (moved off the sticky nav row). */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
             <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 0.95, margin: 0, color: '#1C1B19' }}>library</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
@@ -688,6 +697,7 @@ export function LibraryScreen() {
               />
             </div>
           </div>
+          <div style={{ fontSize: 13, color: '#9A958B', marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>{countLabel}</div>
           <div style={{ borderBottom: '1.5px solid #1C1B19', marginBottom: 12, marginTop: 10 }} />
 
           {searchOpen && (
@@ -771,10 +781,7 @@ export function LibraryScreen() {
             />
             {/* spacer pushes the right-hand controls to the edge */}
             <div style={{ flex: '1 1 0' }} />
-            {/* Count of what's on screen — tracks the active tab + every filter, so
-                the number answers "how many of what I'm viewing". Was a whole
-                subtitle row under the title (s116); folded onto this row. */}
-            <span style={{ fontSize: 13, fontWeight: 500, color: '#1C1B19', flexShrink: 0, marginRight: 14, padding: '4px 0 8px', fontVariantNumeric: 'tabular-nums' }}>{filtered.length}</span>
+            {/* Count moved to a labeled subline under the title (s120). */}
             {/* View + sort live in one card opened from this button, mirroring the
                 Things board. Filtering moved out to the filters menu (left); this
                 sheet is layout · captions · sort only. */}
@@ -1394,8 +1401,10 @@ function FilterMenu({
         }}
       >
         filters
+        {/* Quiet muted count, not a filled ink pill — it signals "filters on"
+            without shouting. The italic ink label already carries the active state. */}
         {active && (
-          <span style={{ fontSize: 11, fontWeight: 600, fontStyle: 'normal', color: '#fff', background: '#1C1B19', borderRadius: 8, minWidth: 15, height: 15, lineHeight: '15px', textAlign: 'center', padding: '0 4px' }}>{activeCount}</span>
+          <span style={{ fontSize: 12, fontWeight: 400, fontStyle: 'normal', color: '#ABA69C' }}>{activeCount}</span>
         )}
         <span style={{ fontSize: 9, color: active ? '#111' : '#ABA69C', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
       </button>
