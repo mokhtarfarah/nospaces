@@ -672,17 +672,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Resolve the sender's account up front — both so a failed capture can be logged
   // against the right user, and so an allowlisted-but-unmatched sender fails BEFORE
   // any paid Anthropic call rather than after it.
-  const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
-  console.log('[email] users error:', usersError, 'count:', users?.users?.length)
-  const matchedUser = users?.users?.find(u =>
+  //
+  // PAGINATE. listUsers() defaults to the first 50 accounts only. Any Google
+  // sign-in creates an auth row (even with zero saved data), so as strangers/bots
+  // sign in over time the real owners get pushed off page 1 — and an unpaginated
+  // lookup then can't find them, failing every capture with a bogus "user not
+  // found". Walk all pages so account age / total count can never hide a match.
+  const allAccounts: { id: string; email: string | undefined }[] = []
+  let lookupError: unknown = null
+  try {
+    for (let page = 1; page <= 50; page++) {
+      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 200 })
+      if (error) { lookupError = error; break }
+      const batch = data?.users ?? []
+      allAccounts.push(...batch.map(u => ({ id: u.id, email: u.email })))
+      if (batch.length < 200) break // last page
+    }
+  } catch (err) {
+    lookupError = err
+  }
+
+  // Two failure modes that must NOT be conflated (conflating them is what made
+  // this undiagnosable): (1) the admin lookup itself failed — bad service-role
+  // key or a Supabase hiccup, a retryable SYSTEM error; (2) the lookup worked but
+  // no account matches the sender — a CONFIG problem (ALLOWED_EMAILS vs the email
+  // you actually sign in with). Each gets its own message so the reply names the
+  // real cause instead of sending us hunting.
+  if (lookupError) {
+    const msg = lookupError instanceof Error ? lookupError.message : String(lookupError)
+    console.error('[email] account lookup failed:', msg)
+    await logCapture({ userId: null, fromEmail, subject, outcome: 'error', detail: `account lookup failed: ${msg}`, snippet })
+    await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
+      `I got your email but couldn't reach the account database just now, so nothing was saved. This is usually temporary — try forwarding it again in a minute. (Tech note: account lookup failed.)`)
+    return res.status(200).json({ saved: 0, error: 'account_lookup_failed' })
+  }
+
+  const matchedUser = allAccounts.find(u =>
     ALLOWED_EMAILS.some(e => u.email?.toLowerCase() === e.toLowerCase() &&
       fromEmail.toLowerCase().includes(e.toLowerCase()))
   )
-  console.log('[email] matched user:', matchedUser?.email ?? 'none')
+  // Full account list to the (ephemeral) Vercel log only; the stored capture-feed
+  // detail keeps just a count, so the owner's own address list isn't parked in a row.
+  console.log('[email] matched user:', matchedUser?.email ?? 'none',
+    '· scanned', allAccounts.length, 'accounts:', allAccounts.map(u => u.email).join(', ') || '(none)',
+    '· allowed:', ALLOWED_EMAILS.join(', '))
   if (!matchedUser) {
-    await logCapture({ userId: null, fromEmail, subject, outcome: 'error', detail: 'account not found', snippet })
+    await logCapture({ userId: null, fromEmail, subject, outcome: 'error',
+      detail: `no account matches sender (scanned ${allAccounts.length})`, snippet })
     await sendReply(fromEmail, replyFrom, 'Nospaces: couldn\'t save',
-      `I got your email but couldn't match it to your account, so nothing was saved. (Tech note: user not found.)`)
+      `I got your email but couldn't match ${fromEmail} to a Nospaces account, so nothing was saved. Make sure you're sending from the same email you sign in with. (Tech note: no matching account.)`)
     return res.status(200).json({ saved: 0, error: 'User not found' })
   }
 
