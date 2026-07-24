@@ -30,9 +30,6 @@ interface Props {
   onSetSeasons: (seasons: Season[]) => void
   onToggleOwned: (owned: boolean) => void
   onToggleCanon: (canon: boolean) => void
-  // Music-only: flag/unflag the album as a "classic" (canon you're studying). Separate
-  // shelf from the desert-island canon flag; set from the ⋯ menu at any status.
-  onToggleClassic: (classic: boolean) => void
   onPatchMetadata: (patch: Record<string, unknown>) => void
   onPatchTags: (tags: string[]) => void
   onDelete: () => void
@@ -118,7 +115,7 @@ function formatRuntime(item: Item): string | null {
   return null
 }
 
-export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkRead, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onToggleClassic, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, onFlipToThing, onFilterTag, countWithTag, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext, seriesOptions }: Props) {
+export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, onMarkRead, onMarkDone, onEditReaction, onSetSeasons, onToggleOwned, onToggleCanon, onPatchMetadata, onPatchTags, onDelete, onClose, onKeep, onFlipToThing, onFilterTag, countWithTag, initialEdit, tidyPosition, onSaveNext, onSkipNext, onDismissNext, seriesOptions }: Props) {
   const [view, setView] = useState<View>(initialEdit ? 'edit' : 'main')
   const [title, setTitle] = useState(item.title)
   const [creator, setCreator] = useState(item.creator ?? '')
@@ -716,11 +713,6 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                           {item.type === 'book'
                             ? (item.metadata?.owned ? 'on my shelf ✓' : 'mark on my shelf')
                             : (item.metadata?.owned ? 'own it ✓' : 'mark as owned')}
-                        </button>
-                      )}
-                      {item.type === 'music' && (
-                        <button style={menuItem()} onClick={() => { setMenuOpen(false); onToggleClassic(!item.metadata?.classic) }}>
-                          {item.metadata?.classic ? 'a classic ✓' : 'mark as classic'}
                         </button>
                       )}
                       {!isBookmark(item.type) && item.status === 'want_to' && onMarkInProgress && (

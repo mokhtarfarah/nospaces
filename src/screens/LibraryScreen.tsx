@@ -198,7 +198,7 @@ function itemSource(item: Item): string {
 }
 
 export function LibraryScreen() {
-  const { items: allItems, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, toggleClassic, patchMetadata, patchItem, duplicateCount, duplicateGroups, deleteMany } = useItems()
+  const { items: allItems, loading, markDone, markWantTo, markInProgress, deleteItem, editItem, toggleOwned, toggleCanon, patchMetadata, patchItem, duplicateCount, duplicateGroups, deleteMany } = useItems()
   // Things live in their own domain (the board), never in the media library — so
   // they don't leak in as broken cover-art cards or spawn a stray "Thing" tab.
   const items = useMemo(() => allItems.filter(i => i.type !== 'thing'), [allItems])
@@ -247,9 +247,6 @@ export function LibraryScreen() {
   //               copies already at home, so you don't buy a dupe)
   //   'all'     = don't narrow (default)
   const [shelfFilter, setShelfFilter] = useState<'all' | 'owned' | 'unowned'>('all')
-  // Music-only "classic" filter (s119): all · classic (canon you're studying) · new
-  // (everything else). Not persisted — a transient lens, like shelf/new-music.
-  const [classicFilter, setClassicFilter] = useState<'all' | 'classic' | 'new'>('all')
   // Filter-sheet selections are multi-select: OR within a group, AND across
   // groups (faceted filtering). Empty array = that group isn't narrowing.
   const [vibeFilter, setVibeFilter] = useState<string[]>([])
@@ -455,7 +452,7 @@ export function LibraryScreen() {
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([])
-    setReviewOnly(false); setNewMusicOnly(false); setShelfFilter('all'); setClassicFilter('all'); setQuery('')
+    setReviewOnly(false); setNewMusicOnly(false); setShelfFilter('all'); setQuery('')
     // Note: deliberately does NOT close the filter card — clearing leaves you in
     // the card to re-filter, not bounced back to the list.
   }
@@ -547,11 +544,8 @@ export function LibraryScreen() {
     )
     if (shelfFilter === 'owned')   result = result.filter(item => item.metadata?.owned)
     if (shelfFilter === 'unowned') result = result.filter(item => !item.metadata?.owned)
-    // Classic lens — music only; 'new' = everything that isn't flagged a classic.
-    if (musicOnly && classicFilter === 'classic') result = result.filter(item => !!item.metadata?.classic)
-    if (musicOnly && classicFilter === 'new')     result = result.filter(item => !item.metadata?.classic)
     return sortItems(result, sort, dir)
-  }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, shelfFilter, musicOnly, classicFilter, sort, dir])
+  }, [baseFiltered, vibeFilter, verdictFilter, genreFilter, seriesFilter, countryFilter, shelfFilter, sort, dir])
 
   // Whether the current base set has anything owned — the shelf filter is only
   // worth offering when there's something on the shelf to narrow to. Computed off
@@ -627,7 +621,6 @@ export function LibraryScreen() {
     setSeriesFilter(prev => prev.filter(v => has(availableTags.series, v)))
     setCountryFilter(prev => prev.filter(v => has(availableTags.countries, v)))
     if (!hasOwned) setShelfFilter('all')
-    if (!musicOnly) setClassicFilter('all') // the classic lens is music-only
     listRef.current?.scrollTo({ top: 0 })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prune only on base-control change, not on every availableFilters recompute
   }, [categories, statusFilter, reactionFilter, reviewOnly])
@@ -804,25 +797,6 @@ export function LibraryScreen() {
             </button>
           </div>
         </div>
-        {/* Classic lens (s119) — music only: split the classics you're studying
-            (canon / music history) from newer listening. A quiet text segment, not a
-            bar, so it sits under the header without competing with the shows/grid. */}
-        {musicOnly && !reviewOnly && !query.trim() && (
-          <div style={{ display: 'flex', gap: 16, padding: `12px ${galleryPadX}px 0`, alignItems: 'baseline' }}>
-            {(['all', 'classic', 'new'] as const).map(v => (
-              <button
-                key={v}
-                onClick={() => setClassicFilter(v)}
-                style={{
-                  border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-                  fontSize: 13, letterSpacing: '0.01em',
-                  color: classicFilter === v ? '#1C1B19' : '#A8A39A',
-                  fontWeight: classicFilter === v ? 600 : 400,
-                }}
-              >{v}</button>
-            ))}
-          </div>
-        )}
         {/* Shows near you — lives in the music view (it's intrinsically music). */}
         {musicOnly && !reviewOnly && (
           <button
@@ -1032,7 +1006,6 @@ export function LibraryScreen() {
             onEdit={fields => { editItem(fresh.id, fields) }}
             onToggleOwned={owned => toggleOwned(fresh.id, owned)}
             onToggleCanon={canon => toggleCanon(fresh.id, canon)}
-            onToggleClassic={classic => toggleClassic(fresh.id, classic)}
             onPatchMetadata={patch => patchMetadata(fresh.id, patch)}
             onPatchTags={tags => editItem(fresh.id, { tags })}
             onMarkInProgress={() => { markInProgress(fresh.id); setActionItem(null) }}

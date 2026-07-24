@@ -28,6 +28,8 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 **Follow-on (Farah): put the article bar in the all view too.** For symmetry she asked both queues to live only in the all view, so the article "to read" bar was pulled out of the books view (a shipped s115 behaviour). Collapsed `readingView`/`listeningView` into one `bookmarkBarView = categories.length === 0`. **Worth eyeballing that the article bar no longer showing on the books tab feels right** — it was there since s115.
 
+**Follow-on (Farah): removed the s119 music "classic" shelf.** *"i dont think i thought through that properly."* Ripped out the whole feature: the **"mark as classic"** ⋯-menu item + the music view's **all · classic · new** lens (`classicFilter` state, filter logic, the text-segment UI), the `toggleClassic` hook fn + `metadata.classic` writes, and the `onToggleClassic` prop threaded through `ItemActionSheet` / `LibraryScreen` / `HelpMeDecideScreen`. Left untouched: the **desert-island `canon` ★** (`toggleCanon`, different flag) and the separate **"new music tuesday"** source toggle (older, unrelated — confirmed with her it's not part of "classic/new"). Any albums already flagged `metadata.classic` just keep an inert flag (nothing reads it now; no migration needed). Free, typecheck+lint clean, 125 tests green.
+
 ---
 
 ### Session 121 (2026-07-24) — article list rows show the magazine; email account-lookup hardened. Free (frontend + free lookup path, no API). Pushed to `main` ([82aa33f], [83eea1c]).
