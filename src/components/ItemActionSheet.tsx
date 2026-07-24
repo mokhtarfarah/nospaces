@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Item, ItemReaction } from '../lib/database.types'
-import { typeColor, TYPE_COLORS } from '../lib/colors'
+import { typeColor, TYPE_COLORS, isBookmark } from '../lib/colors'
 import { authHeaders } from '../lib/supabase'
 import { NoteProse } from './NoteProse'
 import { MoodChips } from './MoodChips'
@@ -61,7 +61,7 @@ interface Props {
   seriesOptions?: string[]
 }
 
-const TYPES = ['film', 'book', 'music', 'tv', 'article', 'other']
+const TYPES = ['film', 'book', 'music', 'tv', 'article', 'podcast', 'other']
 
 
 const REACTIONS: { value: ItemReaction; label: string }[] = [
@@ -148,11 +148,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
       prev.includes(mood) ? prev.filter(m => m !== mood) : [...prev, mood]
     )
   }
-  // Articles' only image is the og:image scraped at capture (metadata.image) —
-  // there's no coverUrl until the user edits it, so seed from that fallback.
+  // An article/podcast's only image is the og:image scraped at capture
+  // (metadata.image) — there's no coverUrl until the user edits it, so seed from
+  // that fallback.
   const [coverUrl, setCoverUrl] = useState(
     (item.metadata?.coverUrl as string | null)
-    ?? (item.type === 'article' ? (item.metadata?.image as string | null) : null)
+    ?? (isBookmark(item.type) ? (item.metadata?.image as string | null) : null)
     ?? ''
   )
   const [series, setSeries] = useState((item.metadata?.series as string | null) ?? '')
@@ -334,14 +335,15 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
     savedWikiUrl ? { url: savedWikiUrl, thumbnail: null, summary: null } : null,
   )
   const resolved = savedWikiUrl ? byUrl : searched
-  // Articles never get a Wikipedia lookup — a title search against an essay/
-  // review headline would just match an unrelated page.
-  const summary = item.type === 'article' ? null : (resolved?.summary ?? null)
+  // Articles/podcasts never get a Wikipedia lookup — a title search against an
+  // essay headline or an episode title would just match an unrelated page.
+  const summary = isBookmark(item.type) ? null : (resolved?.summary ?? null)
   const wikiThumb = resolved?.thumbnail ?? null
-  const wikiUrl = (item.type === 'music' || item.type === 'article') ? null : (resolved?.url ?? savedWikiUrl)
-  // Publication credit for the header — same source-first identity as the grid
-  // tiles' masthead band (siteName, falling back to the URL's hostname).
-  const articleSource = item.type === 'article'
+  const wikiUrl = (item.type === 'music' || isBookmark(item.type)) ? null : (resolved?.url ?? savedWikiUrl)
+  // Source credit for the header — same source-first identity as the grid tiles'
+  // masthead band (an article's publication / a podcast's show or platform:
+  // siteName, falling back to the URL's hostname).
+  const articleSource = isBookmark(item.type)
     ? ((item.metadata?.siteName as string | undefined)?.trim()
         || (() => { try { return new URL((item.metadata?.url as string) ?? '').hostname.replace(/^www\./, '').split('.')[0] } catch { return null } })())
     : null
@@ -350,7 +352,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
   // saved, or a pinned URL just resolved the summary/thumb that metadata lacked.
   const wikiSavedRef = useRef(false)
   useEffect(() => {
-    if (item.type === 'music' || item.type === 'article' || wikiSavedRef.current) return
+    if (item.type === 'music' || isBookmark(item.type) || wikiSavedRef.current) return
     if (!savedWikiUrl && resolved?.url) {
       wikiSavedRef.current = true
       onPatchMetadata?.({ wikiUrl: resolved.url, wikiThumb: resolved.thumbnail ?? null, wikiSummary: resolved.summary ?? null })
@@ -640,7 +642,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             <SheetHero
               type={item.type}
               title={item.title}
-              titleHref={item.type === 'article' && typeof item.metadata?.url === 'string' ? item.metadata.url as string : undefined}
+              titleHref={isBookmark(item.type) && typeof item.metadata?.url === 'string' ? item.metadata.url as string : undefined}
               subtitle={articleSource}
               cover={cover}
               onClose={onClose}
@@ -664,9 +666,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   item, not a quiet secondary link, so it doesn't belong up here too. */}
               {!item.metadata?.scratch && (blurb || spotifyUrl || wikiUrl || item.type === 'film' || item.type === 'tv') && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  {/* Articles show their description inline below (it's the dek that
-                      sells you on reading, not a spoiler to hide) — no toggle needed. */}
-                  {blurb && item.type !== 'article' && (
+                  {/* Articles/podcasts show their description inline below (it's the
+                      dek/show notes that sells you on it, not a spoiler to hide) —
+                      no toggle needed. */}
+                  {blurb && !isBookmark(item.type) && (
                     <button onClick={() => setShowBlurb(v => !v)} className="tlink" style={{ flexShrink: 0 }}>
                       <span>{blurbSource && blurbSource !== 'Wikipedia' ? `via ${blurbSource.length > 20 ? blurbSource.slice(0, 19) + '…' : blurbSource}` : 'about this'}</span>
                       <span style={{ fontSize: 10 }}>{showBlurb ? '▴' : '▾'}</span>
@@ -708,7 +711,7 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   ) : (
                     <>
                       <button style={menuItem()} onClick={() => { setMenuOpen(false); setEditOpenGroups({}); setView('edit') }}>edit details</button>
-                      {item.type !== 'article' && (
+                      {!isBookmark(item.type) && (
                         <button style={menuItem()} onClick={() => { setMenuOpen(false); onToggleOwned(!item.metadata?.owned) }}>
                           {item.type === 'book'
                             ? (item.metadata?.owned ? 'on my shelf ✓' : 'mark on my shelf')
@@ -720,10 +723,10 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                           {item.metadata?.classic ? 'a classic ✓' : 'mark as classic'}
                         </button>
                       )}
-                      {item.type !== 'article' && item.status === 'want_to' && onMarkInProgress && (
+                      {!isBookmark(item.type) && item.status === 'want_to' && onMarkInProgress && (
                         <button style={menuItem()} onClick={onMarkInProgress}>mark as in progress</button>
                       )}
-                      {item.type !== 'article' && item.status === 'in_progress' && onMarkWantTo && (
+                      {!isBookmark(item.type) && item.status === 'in_progress' && onMarkWantTo && (
                         <button style={menuItem()} onClick={onMarkWantTo}>move back to want to</button>
                       )}
                       <div style={{ height: 1, background: '#E8E8E8', margin: '5px 8px' }} />
@@ -735,10 +738,11 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
             )}
             <div style={{ height: 4 }} />
 
-            {/* Blurb expansion — below the flat link row. Always on for articles
-                (it's the dek, not a spoiler-gated synopsis). */}
-            {(showBlurb || item.type === 'article') && blurb && (
-              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginBottom: 14, fontStyle: item.type === 'article' ? 'normal' : 'italic' }}>
+            {/* Blurb expansion — below the flat link row. Always on for
+                articles/podcasts (it's the dek/show notes, not a spoiler-gated
+                synopsis). */}
+            {(showBlurb || isBookmark(item.type)) && blurb && (
+              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.5, marginBottom: 14, fontStyle: isBookmark(item.type) ? 'normal' : 'italic' }}>
                 {blurb}{' '}
                 {(item.metadata?.recommendationUrl as string | undefined) && (
                   <a
@@ -995,11 +999,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
               // bordered row — left-aligned, with a trailing affordance — so it reads
               // as state+edit when done and as a real CTA when not yet logged.
               <div style={{ ...footer }}>
-                {item.type === 'article' ? (
-                  // The title itself is the read link now (see SheetHero's
+                {isBookmark(item.type) ? (
+                  // The title itself is the read/listen link now (see SheetHero's
                   // titleHref) — the biggest, earliest tap target on the sheet, so a
-                  // second "read the article" button down here would just be dead
-                  // weight repeating the same action. This row is pure bookkeeping.
+                  // second "open it" button down here would just be dead weight
+                  // repeating the same action. This row is pure bookkeeping. Verb
+                  // tracks the medium: an article is read, a podcast is listened.
                   <button onClick={() => (item.status === 'done' ? onMarkWantTo?.() : onMarkRead?.())} style={{
                     width: '100%', padding: '11px 14px', border: '1px solid #E8E8E8', borderRadius: 10,
                     background: '#FBFAF8', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1007,12 +1012,12 @@ export function ItemActionSheet({ item, onEdit, onMarkInProgress, onMarkWantTo, 
                   }}>
                     {item.status === 'done' ? (
                       <>
-                        <span style={{ fontSize: 13, color: '#333' }}>read</span>
-                        <span style={{ fontSize: 13, color: '#ABA69C' }}>mark unread</span>
+                        <span style={{ fontSize: 13, color: '#333' }}>{item.type === 'podcast' ? 'listened' : 'read'}</span>
+                        <span style={{ fontSize: 13, color: '#ABA69C' }}>{item.type === 'podcast' ? 'mark unplayed' : 'mark unread'}</span>
                       </>
                     ) : (
                       <>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>mark as read</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>{item.type === 'podcast' ? 'mark as listened' : 'mark as read'}</span>
                         <span style={{ fontSize: 13, color: '#ABA69C' }}>→</span>
                       </>
                     )}

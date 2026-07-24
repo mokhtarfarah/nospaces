@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { authHeaders } from './supabase'
+import { isBookmark } from './colors'
 
 // Look up a media item on Wikipedia and return its canonical article URL plus a
 // thumbnail image (poster / cover / album art). Uses full-text search (more forgiving
@@ -103,11 +104,11 @@ export function useWikipediaInfo(
   const [info, setInfo] = useState<WikiInfo>(seed?.url ? seed : EMPTY)
   useEffect(() => {
     if (seed?.url) return // already cached in DB — no fetch needed
-    // Articles never get a Wikipedia lookup — a title search against an essay/
-    // review headline just matches an unrelated page. Skipped at the source so
-    // every caller (list row, grid card, detail sheet) gets this for free instead
-    // of each having to remember to discard the result.
-    if (type === 'article') return
+    // Articles/podcasts never get a Wikipedia lookup — a title search against an
+    // essay/review headline or an episode title just matches an unrelated page.
+    // Skipped at the source so every caller (list row, grid card, detail sheet)
+    // gets this for free instead of each having to remember to discard the result.
+    if (isBookmark(type)) return
     let cancelled = false
     resolve(type, title, creator, year).then(i => {
       if (!cancelled) setInfo(i)

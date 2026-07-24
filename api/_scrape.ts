@@ -11,6 +11,15 @@ import { isSafePublicUrl } from './_ssrf.js'
 const MAX_BYTES = 512 * 1024 // only need <head> + early body; cap the read so a huge page can't blow memory
 const FETCH_TIMEOUT_MS = 13000
 
+// Hosts whose links are podcast pages, not articles or shop pages — used to route
+// a forwarded listen-later link (see api/email.ts capturePodcast). Spotify is
+// handled separately (it also hosts music) by matching only /show/ + /episode/.
+const PODCAST_HOSTS = [
+  'podcasts.apple.com', 'overcast.fm', 'pca.st', 'pocketcasts.com', 'castro.fm',
+  'anchor.fm', 'podcasters.spotify.com', 'podbean.com', 'castbox.fm', 'player.fm',
+  'podcasts.google.com', 'pod.link',
+]
+
 export type ScrapedFields = {
   url: string
   title: string | null
@@ -33,6 +42,10 @@ export type ScrapedFields = {
    *  byline/publish date) AND isn't productLike — used to gate the read-later
    *  auto-capture so a shop page doesn't become an article. */
   articleLike?: boolean
+  /** True when the link points at a podcast (a known podcast host, a Spotify
+   *  show/episode path, or an audio og:type) AND isn't productLike — gates the
+   *  listen-later auto-capture, same shape as articleLike. */
+  podcastLike?: boolean
 }
 
 export type ScrapeResult =
@@ -250,11 +263,21 @@ export async function scrapeProduct(rawUrl: string): Promise<ScrapeResult> {
     const productLike = !!ld || (ogType?.toLowerCase().includes('product') ?? false) || !!price
     const author = metaContent(html, ['article:author', 'author', 'twitter:creator', 'parsely-author'])
     const publishedTime = metaContent(html, ['article:published_time', 'og:article:published_time', 'parsely-pub-date'])
-    // A page only reads as an article if it isn't already a clear shop page —
-    // some product pages carry a stray og:type=article from a bad template.
-    const articleLike = !productLike && (ogType?.toLowerCase() === 'article' || !!publishedTime || !!author)
+    const host = (() => { try { return new URL(finalUrl).hostname.replace(/^www\./, '') } catch { return '' } })()
+    const path = (() => { try { return new URL(finalUrl).pathname } catch { return '' } })()
+    // A link reads as a podcast when it's on a known podcast host, a Spotify
+    // show/episode path, or the page declares an audio og:type. Same "not a shop
+    // page" guard as articles.
+    const podcastLike = !productLike && (
+      PODCAST_HOSTS.some(h => host === h || host.endsWith('.' + h))
+      || (host === 'open.spotify.com' && /^\/(show|episode)\//.test(path))
+      || (ogType ? /podcast|music\.(episode|show|radio)/.test(ogType.toLowerCase()) : false)
+    )
+    // A page only reads as an article if it isn't already a clear shop page or a
+    // podcast — some product/podcast pages carry a stray og:type=article or byline.
+    const articleLike = !productLike && !podcastLike && (ogType?.toLowerCase() === 'article' || !!publishedTime || !!author)
 
-    return { ok: true, fields: { url: finalUrl, title, image, price, brand, siteName, description, rating, productLike, author, publishedTime, articleLike } }
+    return { ok: true, fields: { url: finalUrl, title, image, price, brand, siteName, description, rating, productLike, author, publishedTime, articleLike, podcastLike } }
   } catch (err) {
     const aborted = err instanceof Error && err.name === 'AbortError'
     console.error('[scrape] error for', trimmed, ':', err instanceof Error ? err.message : err)

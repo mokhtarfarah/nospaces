@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef, type CSSProperties } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Item, ItemStatus, ItemReaction } from '../lib/database.types'
-import { typeColor, TYPE_COLORS } from '../lib/colors'
+import { typeColor, TYPE_COLORS, isBookmark } from '../lib/colors'
 import { useItems } from '../hooks/useItems'
 import { MarkDoneSheet } from '../components/MarkDoneSheet'
 import { VIEW_CONFIG, ORDER, type ViewMode, type SortOption, type SortDir, type ReactionFilter } from '../components/ViewSheet'
@@ -447,9 +447,11 @@ export function LibraryScreen() {
 
   // "New Music Tuesday" toggle only applies while viewing the Music category alone.
   const musicOnly = categories.length === 1 && categories[0] === 'music'
-  // The "to read" bar shows in the reading views — books alone, or the all view
-  // (which already interleaves articles) — not on films/music/tv.
-  const readingView = categories.length === 0 || (categories.length === 1 && categories[0] === 'book')
+  // Both bookmark queues — "to read" (articles) and "to listen" (podcasts) — live
+  // only in the all view. They're link-saved reading-list items, not a shelf of
+  // their own, and neither belongs in a medium view (an article isn't a book, a
+  // podcast isn't an album); the all view already interleaves both anyway.
+  const bookmarkBarView = categories.length === 0
   function clearFilters() {
     setCategories([]); setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([])
@@ -638,13 +640,13 @@ export function LibraryScreen() {
   }, [filtered, group, view])
 
   // Types sorted by item count descending — library reflects the user's actual
-  // collection. Articles are deliberately left out: this row already scrolls
-  // sideways once it overflows on a phone, and articles have their own visible
-  // entry point (the unread badge in the masthead) — so they'd only ever add to
-  // that crowding without needing a chip of their own. Still reachable via "all".
+  // collection. Articles + podcasts are deliberately left out: this row already
+  // scrolls sideways once it overflows on a phone, and both have their own quiet
+  // entry-point bar — so they'd only ever add to that crowding without needing a
+  // chip of their own. Still reachable via "all".
   const typeOrder = useMemo(() => {
     const counts = new Map<string, number>()
-    items.filter(i => !inReview(i) && i.type !== 'article').forEach(i => {
+    items.filter(i => !inReview(i) && !isBookmark(i.type)).forEach(i => {
       counts.set(i.type, (counts.get(i.type) ?? 0) + 1)
     })
     return Array.from(counts.keys()).sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0))
@@ -658,6 +660,7 @@ export function LibraryScreen() {
   // reading views — books + all — not header real estate above films/music/tv,
   // which over-elevated a lightweight type. Tapping filters to the unread queue.
   const unreadArticles = useMemo(() => items.filter(i => i.type === 'article' && i.status !== 'done').length, [items])
+  const unheardPodcasts = useMemo(() => items.filter(i => i.type === 'podcast' && i.status !== 'done').length, [items])
 
   // Horizontal inset of the cover grid — the entry-point bars (shows / articles)
   // reuse it so their outer edge lines up with the outer edge of the gallery
@@ -835,10 +838,10 @@ export function LibraryScreen() {
             <span style={{ fontSize: 12, color: '#9A958B' }}>browse →</span>
           </button>
         )}
-        {/* Read-later queue — a quiet door into the unread articles, only in the
-            reading views. Shares the shows-near-you bar's soft-fill + squared
-            corners so the two entry-point bars read as one calm family. */}
-        {unreadArticles > 0 && readingView && !reviewOnly && !query.trim() && (
+        {/* Read-later queue — a quiet door into the unread articles (all view
+            only, see bookmarkBarView). Shares the shows-near-you bar's soft-fill +
+            squared corners so the entry-point bars read as one calm family. */}
+        {unreadArticles > 0 && bookmarkBarView && !reviewOnly && !query.trim() && (
           <button
             onClick={() => selectCategory('article')}
             style={{
@@ -849,6 +852,22 @@ export function LibraryScreen() {
             }}
           >
             <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>{unreadArticles} article{unreadArticles === 1 ? '' : 's'}</span>
+            <span style={{ fontSize: 12, color: '#9A958B' }}>open →</span>
+          </button>
+        )}
+        {/* Listen-later queue — the audio twin of the read-later bar, same all-view
+            home. Same soft-fill family as the bars above. */}
+        {unheardPodcasts > 0 && bookmarkBarView && !reviewOnly && !query.trim() && (
+          <button
+            onClick={() => selectCategory('podcast')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              width: `calc(100% - ${galleryPadX * 2}px)`, boxSizing: 'border-box', margin: `12px ${galleryPadX}px 0`,
+              padding: '10px 14px', background: '#F4F2EE', border: 'none', borderRadius: 4,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1B19' }}>{unheardPodcasts} podcast{unheardPodcasts === 1 ? '' : 's'}</span>
             <span style={{ fontSize: 12, color: '#9A958B' }}>open →</span>
           </button>
         )}
@@ -904,7 +923,7 @@ export function LibraryScreen() {
                     item={item}
                     showType={categories.length !== 1}
                     onTap={() => (selectMode ? toggleSelect(item.id) : (setActionEdit(false), setActionItem(item)))}
-                    onMarkDone={() => (item.type === 'article'
+                    onMarkDone={() => (isBookmark(item.type)
                       ? editItem(item.id, { status: 'done', date_done: new Date().toISOString() })
                       : setDoneItem(item))}
                     onMarkWantTo={() => markWantTo(item.id)}
@@ -1576,10 +1595,10 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
       onSaveWiki?.(item.id, { url: wikiUrl, thumbnail: wikiThumb, summary: wikiSummary })
     }
   }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
-  // Articles have no coverUrl until edited — their only image is the og:image
-  // scraped at capture time (metadata.image).
+  // Articles/podcasts have no coverUrl until edited — their only image is the
+  // og:image scraped at capture time (metadata.image).
   const savedCover = (item.metadata?.coverUrl as string | null)
-    ?? (item.type === 'article' ? (item.metadata?.image as string | null) : null)
+    ?? (isBookmark(item.type) ? (item.metadata?.image as string | null) : null)
   const staleCover = isStaleBookCover(item.type, savedCover)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, staleCover ? null : savedCover)
   const artSaved = useRef(false)
@@ -1621,7 +1640,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
       <div style={{ flex: 1, minWidth: 0, alignSelf: 'center' }}>
         <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
           <span style={{ fontWeight: 500 }}>{item.title}</span>
-          {articleSourceName(item) && <span style={{ fontWeight: 400, color: MUTE }}>{'  ·  '}{articleSourceName(item)}</span>}
+          {bookmarkSourceName(item) && <span style={{ fontWeight: 400, color: MUTE }}>{'  ·  '}{bookmarkSourceName(item)}</span>}
           {item.creator && <span style={{ fontWeight: 400, color: MUTE }}>{'  ·  '}{item.creator}</span>}
           {!!item.metadata?.canon && <span title="Desert island" style={{ fontWeight: 400, color: MUTE, fontSize: 10 }}>{'  '}★</span>}
           {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: MUTE, fontSize: 11 }}>{'  '}⌂</span>}
@@ -1701,7 +1720,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
 }
 
 
-const CATEGORY_LABEL: Record<string, string> = { film: 'films', book: 'books', music: 'music', tv: 'tv', article: 'articles', other: 'other' }
+const CATEGORY_LABEL: Record<string, string> = { film: 'films', book: 'books', music: 'music', tv: 'tv', article: 'articles', podcast: 'podcasts', other: 'other' }
 
 // Small cover/poster thumbnail. Falls back to a type-colored tile so rows stay aligned.
 function Thumb({ src, type, color }: { src: string | null; type: string; color: { bg: string; border: string } }) {
@@ -1723,11 +1742,12 @@ function sourceInitial(source: string): string {
   return name.charAt(0).toUpperCase()
 }
 
-// The publication an article ran in — site_name (e.g. "The Atlantic"), falling
+// Where a bookmark is from — an article's publication (e.g. "The Atlantic") or a
+// podcast's show/platform (e.g. "Apple Podcasts") — read from site_name, falling
 // back to the URL's hostname. This is the "where it's from" an og:image can't
 // convey, so it's shown alongside the author in both grid tiles and list rows.
-function articleSourceName(item: Item): string | null {
-  if (item.type !== 'article') return null
+function bookmarkSourceName(item: Item): string | null {
+  if (!isBookmark(item.type)) return null
   return (item.metadata?.siteName as string | undefined)?.trim()
     || (() => { try { return new URL((item.metadata?.url as string) ?? '').hostname.replace(/^www\./, '').split('.')[0] } catch { return null } })()
 }
@@ -1735,10 +1755,10 @@ function articleSourceName(item: Item): string | null {
 // Grid layout cover card. square=true for music (album covers are 1:1).
 function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWiki, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; caption: CardCaption; onTap: () => void; onSaveArt?: (id: string, url: string) => void; onSaveWiki?: (id: string, wiki: WikiInfo) => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
-  // Articles have no coverUrl until edited — their only image is the og:image
-  // scraped at capture time (metadata.image).
+  // Articles/podcasts have no coverUrl until edited — their only image is the
+  // og:image scraped at capture time (metadata.image).
   const savedCover = (item.metadata?.coverUrl as string | null)
-    ?? (item.type === 'article' ? (item.metadata?.image as string | null) : null)
+    ?? (isBookmark(item.type) ? (item.metadata?.image as string | null) : null)
   const staleCover = isStaleBookCover(item.type, savedCover)
   const artwork = useArtwork(item.type, item.title, item.creator, item.year, staleCover ? null : savedCover)
   const artSaved = useRef(false)
@@ -1765,9 +1785,10 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
     }
   }, [wikiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
   const thumbnail = artwork ?? wikiThumb
-  // Article hero images are landscape (og:image), not portrait covers — square
-  // crops them sanely where the default 2:3 book/poster ratio would butcher them.
-  const aspect = (square || item.type === 'article') ? '1 / 1' : '2 / 3'
+  // Article/podcast hero images are landscape (og:image) or square (episode art),
+  // not portrait covers — square crops them sanely where the default 2:3
+  // book/poster ratio would butcher them.
+  const aspect = (square || isBookmark(item.type)) ? '1 / 1' : '2 / 3'
   // Same subtitle fields as the list row: type · year · seasons · genre · reaction.
   const topGenre = (item.tags ?? []).find(isGenreTag) ?? null
   const tvSeasons = item.type === 'tv' ? getSeasons(item.metadata) : []
@@ -1782,14 +1803,14 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
   const loved = item.status === 'done' && item.reaction === 'loved_it'
   const finished = item.status === 'done' && !loved
   // A bare og:image gives no clue what the piece is or where it's from — unlike a
-  // poster/album cover, it isn't self-identifying — so articles get a source name
-  // (site_name, falling back to the URL's hostname) baked into an overlay band.
-  const articleSource = articleSourceName(item)
+  // poster/album cover, it isn't self-identifying — so articles/podcasts get a
+  // source name (site_name, falling back to the hostname) baked into an overlay band.
+  const articleSource = bookmarkSourceName(item)
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
       <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : `1px solid ${HAIR}` }}>
         {thumbnail
-          ? <img src={thumbnail} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: square && item.type !== 'music' && item.type !== 'article' ? 'top' : 'center', opacity: selectMode && !selected ? 0.55 : 1 }} />
+          ? <img src={thumbnail} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: square && item.type !== 'music' && !isBookmark(item.type) ? 'top' : 'center', opacity: selectMode && !selected ? 0.55 : 1 }} />
           : (
             // No cover — write the title + creator into the tile so a coverless item
             // stays identifiable even with captions turned off (the clean-wall mode).
@@ -1798,7 +1819,7 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
               {item.creator && <div style={{ fontSize: 10, color: color.border, opacity: 0.7, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.creator}</div>}
             </div>
           )}
-        {item.type === 'article' && thumbnail && (
+        {isBookmark(item.type) && thumbnail && (
           // Opaque band anchored to the photo, not a gradient scrim — reads as part
           // of the tile rather than floating text over the image.
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: '#F0EFEC', borderTop: `1px solid ${HAIR}`, padding: '7px 8px 8px', opacity: selectMode && !selected ? 0.55 : 1 }}>
@@ -1823,7 +1844,7 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
           // Articles own the bottom-right corner with the source band — reaction
           // badge moves up top so the two don't collide.
           <div title="loved it" aria-label="loved it" style={{
-            position: 'absolute', ...(item.type === 'article' ? { top: 4 } : { bottom: 4 }), right: 4, width: 22, height: 22, color: INK,
+            position: 'absolute', ...(isBookmark(item.type) ? { top: 4 } : { bottom: 4 }), right: 4, width: 22, height: 22, color: INK,
             filter: 'drop-shadow(0 0 1.5px #fff) drop-shadow(0 1px 1.5px rgba(0,0,0,0.25))',
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1836,7 +1857,7 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
         )}
         {finished && (
           <div title={item.reaction ? REACTION_LABELS[item.reaction] : 'done'} aria-label="finished" style={{
-            position: 'absolute', ...(item.type === 'article' ? { top: 4 } : { bottom: 4 }), right: 4, width: 22, height: 22, color: INK,
+            position: 'absolute', ...(isBookmark(item.type) ? { top: 4 } : { bottom: 4 }), right: 4, width: 22, height: 22, color: INK,
             filter: 'drop-shadow(0 0 1.5px #fff) drop-shadow(0 1px 1.5px rgba(0,0,0,0.25))',
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1848,9 +1869,9 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
       </div>
       {/* Caption density (s84 setting): 'none' = clean wall, the cover speaks for
           itself; 'title' = just the title; 'full' = title + creator + details.
-          Articles with a photo skip this — the overlay band already carries the
-          title, and doubling it up here would just repeat the same text. */}
-      {caption !== 'none' && !(item.type === 'article' && thumbnail) && (
+          Articles/podcasts with a photo skip this — the overlay band already carries
+          the title, and doubling it up here would just repeat the same text. */}
+      {caption !== 'none' && !(isBookmark(item.type) && thumbnail) && (
         <div style={{ marginTop: 5 }}>
           <div style={{ fontSize: 12, color: '#111', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.1px' }}>
             {!!item.metadata?.canon && <span style={{ fontSize: 9, marginRight: 3, color: INK }}>★</span>}

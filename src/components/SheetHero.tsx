@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { typeColor } from '../lib/colors'
+import { typeColor, isBookmark } from '../lib/colors'
 
 // Shared editorial header for the bottom-sheet detail views (Discover pick +
 // Library item). One language everywhere: a ghosted cover wash bleeding to the
@@ -44,9 +44,9 @@ export function SheetHero({
   children?: ReactNode
 }) {
   const tint = typeColor(type).bg
-  // Article hero images are landscape (og:image), not portrait covers — square
-  // crops them sanely, same as the grid tiles.
-  const square = type === 'music' || type === 'article'
+  // Article/podcast hero images are landscape (og:image) or square (episode art),
+  // not portrait covers — square crops them sanely, same as the grid tiles.
+  const square = type === 'music' || isBookmark(type)
   const posterW = 66
   const posterH = square ? 66 : 98
 

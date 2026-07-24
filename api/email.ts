@@ -337,6 +337,46 @@ async function captureArticle(userId: string, urls: string[]): Promise<ArticleCa
   return { kind: 'saved', title, id: row?.id ?? null }
 }
 
+type PodcastCapture =
+  | { kind: 'saved'; title: string; id: string | null }
+  | { kind: 'duplicate'; title: string }
+  | { kind: 'no-link' }
+  | { kind: 'unreadable' }
+  | { kind: 'error'; message: string }
+
+// Scrape the first usable podcast link and save it as a bare listen-later
+// bookmark — title/show/artwork/link only, no audio. Mirrors captureArticle; the
+// only differences are the podcastLike gate and type:'podcast'. No Anthropic call.
+async function capturePodcast(userId: string, urls: string[]): Promise<PodcastCapture> {
+  if (urls.length === 0) return { kind: 'no-link' }
+  let fields: ScrapedFields | null = null
+  for (const u of urls) {
+    const r = await scrapeProduct(u)
+    if (r.ok && r.fields.podcastLike && r.fields.title) { fields = r.fields; break }
+  }
+  if (!fields) return { kind: 'unreadable' }
+  // Dedup by URL against podcasts already saved.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase as any)
+    .from('items').select('metadata').eq('user_id', userId).eq('type', 'podcast')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (((existing ?? []) as any[]).some(a => (a.metadata?.url ?? '') === fields!.url)) {
+    return { kind: 'duplicate', title: fields.title ?? 'That podcast' }
+  }
+  const title = fields.title ?? 'Untitled'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: row, error } = await (supabase as any).from('items').insert({
+    user_id: userId, title, creator: fields.author ?? null, type: 'podcast', status: 'want_to', source: 'email',
+    metadata: {
+      title, image: fields.image, siteName: fields.siteName, url: fields.url,
+      publishedTime: fields.publishedTime ?? null,
+      ...(fields.description ? { capturedBlurb: fields.description } : {}),
+    },
+  }).select('id').single()
+  if (error) return { kind: 'error', message: error.message }
+  return { kind: 'saved', title, id: row?.id ?? null }
+}
+
 type Confidence = 'high' | 'medium' | 'low'
 const asConfidence = (v: unknown): Confidence => (v === 'high' || v === 'low' ? v : 'medium')
 
@@ -787,7 +827,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sendReply(fromEmail, replyFrom, 'Nospaces: already on your board', `"${t.title}" is already on your board — nothing new to add.`)
       return res.status(200).json({ saved: 0 })
     }
-    // Not a clear product — try reading it as an article (read-later bookmark:
+    // Not a clear product — a podcast link (Apple/Spotify/Overcast/…) saves as a
+    // listen-later bookmark. Tried before the article path since a podcast page
+    // can also carry a stray byline that would read as articleLike.
+    const p = await capturePodcast(matchedUser.id, links)
+    if (p.kind === 'saved') {
+      await sendReply(fromEmail, replyFrom, 'Nospaces: saved to listen later',
+        `Added to your library to listen later:\n\n• ${p.title}${buildUndo([p.id], p.title)}`)
+      return res.status(200).json({ saved: 1, domain: 'podcast' })
+    }
+    if (p.kind === 'duplicate') {
+      await logCapture({ userId: matchedUser.id, fromEmail, subject, outcome: 'duplicates', detail: 'podcast already saved', snippet })
+      await sendReply(fromEmail, replyFrom, 'Nospaces: already saved', `"${p.title}" is already in your library — nothing new to add.`)
+      return res.status(200).json({ saved: 0 })
+    }
+    // Not a podcast either — try reading it as an article (read-later bookmark:
     // title/byline/publication/thumbnail/link, no full text) before falling
     // through to the media reader.
     const a = await captureArticle(matchedUser.id, links)
