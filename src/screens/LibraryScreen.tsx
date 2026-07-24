@@ -1621,6 +1621,7 @@ function ItemRow({ item, showType, onTap, onMarkDone, onMarkWantTo, onSaveWiki, 
       <div style={{ flex: 1, minWidth: 0, alignSelf: 'center' }}>
         <div style={{ fontSize: 14, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px' }}>
           <span style={{ fontWeight: 500 }}>{item.title}</span>
+          {articleSourceName(item) && <span style={{ fontWeight: 400, color: MUTE }}>{'  ·  '}{articleSourceName(item)}</span>}
           {item.creator && <span style={{ fontWeight: 400, color: MUTE }}>{'  ·  '}{item.creator}</span>}
           {!!item.metadata?.canon && <span title="Desert island" style={{ fontWeight: 400, color: MUTE, fontSize: 10 }}>{'  '}★</span>}
           {!!item.metadata?.owned && <span title="Owned" style={{ fontWeight: 400, color: MUTE, fontSize: 11 }}>{'  '}⌂</span>}
@@ -1722,6 +1723,15 @@ function sourceInitial(source: string): string {
   return name.charAt(0).toUpperCase()
 }
 
+// The publication an article ran in — site_name (e.g. "The Atlantic"), falling
+// back to the URL's hostname. This is the "where it's from" an og:image can't
+// convey, so it's shown alongside the author in both grid tiles and list rows.
+function articleSourceName(item: Item): string | null {
+  if (item.type !== 'article') return null
+  return (item.metadata?.siteName as string | undefined)?.trim()
+    || (() => { try { return new URL((item.metadata?.url as string) ?? '').hostname.replace(/^www\./, '').split('.')[0] } catch { return null } })()
+}
+
 // Grid layout cover card. square=true for music (album covers are 1:1).
 function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWiki, selectMode = false, selected = false }: { item: Item; square: boolean; showType: boolean; caption: CardCaption; onTap: () => void; onSaveArt?: (id: string, url: string) => void; onSaveWiki?: (id: string, wiki: WikiInfo) => void; selectMode?: boolean; selected?: boolean }) {
   const color = typeColor(item.type)
@@ -1774,10 +1784,7 @@ function GridCard({ item, square, showType, caption, onTap, onSaveArt, onSaveWik
   // A bare og:image gives no clue what the piece is or where it's from — unlike a
   // poster/album cover, it isn't self-identifying — so articles get a source name
   // (site_name, falling back to the URL's hostname) baked into an overlay band.
-  const articleSource = item.type === 'article'
-    ? ((item.metadata?.siteName as string | undefined)?.trim()
-        || (() => { try { return new URL((item.metadata?.url as string) ?? '').hostname.replace(/^www\./, '').split('.')[0] } catch { return null } })())
-    : null
+  const articleSource = articleSourceName(item)
   return (
     <div onClick={onTap} style={{ cursor: 'pointer', minWidth: 0 }}>
       <div style={{ position: 'relative', width: '100%', aspectRatio: aspect, overflow: 'hidden', background: color.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: selected ? '1.5px solid #111' : `1px solid ${HAIR}` }}>
