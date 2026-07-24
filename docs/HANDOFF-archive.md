@@ -4,7 +4,7 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
-### Session 122 (2026-07-24) — podcasts, mirrored on the article path. Free (og-scrape only, no API). Not yet pushed.
+### Session 122 (2026-07-24) — podcasts (mirrored on the article path) + removed the s119 music "classic" shelf. Free (og-scrape only, no API). Pushed to `main` ([f824723] podcasts, [3a28790] classic removal, [b586b66] roadmap).
 
 **Farah: "add podcasts in a similar fashion as articles."** Articles are a link-saved, email-only, listen/read-later bookmark: og-tag scrape → save with `status:'want_to'`, an og:image cover, a source-name band, mark-done with **no reaction**, kept **out of taste/genre/vibe/recs**, hidden from the tab row and surfaced by a quiet entry-point bar. Podcasts now do all of the same.
 
@@ -20,7 +20,7 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 - `ItemActionSheet.tsx` — `podcast` added to the type dropdown; all article branches → `isBookmark` (cover seed, no-wiki, `titleHref`=listen link, source subtitle, inline dek/no "about this" toggle, hide own/in-progress, footer). Footer verb tracks medium: **listened / mark as listened / mark unplayed** for podcasts vs read/read/unread for articles.
 - `SheetHero.tsx`, `artwork.ts`, `wikipedia.ts` — square hero + skip external art/wiki lookup, now via `isBookmark`.
 
-**Proof:** typecheck (src + api) clean, lint clean, **125 tests green**. No-auth preview **boots with zero console errors** (empty sandbox → no podcast to render, same limitation as every recent library build). The novel bit — podcast **detection** — I sanity-checked with a 12-case node harness (Apple/Spotify-episode/Overcast/etc. → true; Spotify album/track, articles, ambiguous YouTube, productLike → false): **all pass**. **Left unverified for Farah on real data:** email a real Apple/Spotify/Overcast link → does it land as a podcast (reply "saved to listen later"), render the show/platform as the source, and the "to listen" bar appear in the music/all views? Kept `isBookmark` behaviour identical to articles, which are proven in prod.
+**Proof:** typecheck (src + api) clean, lint clean, **125 tests green**. No-auth preview **boots with zero console errors** (empty sandbox → no podcast to render, same limitation as every recent library build). The novel bit — podcast **detection** — I sanity-checked with a 12-case node harness (Apple/Spotify-episode/Overcast/etc. → true; Spotify album/track, articles, ambiguous YouTube, productLike → false): **all pass**. **Left unverified for Farah on real data:** email a real Apple/Spotify/Overcast link → does it land as a podcast (reply "saved to listen later"), render the show/platform as the source, and the "to listen" bar appear in the all view? Kept `isBookmark` behaviour identical to articles, which are proven in prod.
 
 **Scope kept tight (matches the article precedent):** no in-app "add a podcast" composer (email-only, like articles); podcasts deliberately stay out of taste/genre/vibe/discover/help-me-decide (not added to `GENRE_TYPES` or the taste arrays); source name is the **platform** (reliable og:site_name), not a parsed show name — a possible later refinement if "Apple Podcasts" reads too generic vs the actual show.
 
