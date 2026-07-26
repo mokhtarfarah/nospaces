@@ -4,6 +4,22 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 124 (2026-07-26) — genre filter A→Z + "non-fiction" book shortcut. Free (frontend only, no API). Not pushed yet.
+
+**Farah brought four roadmap ideas; built the two cheap/free ones this session, captured the other two.**
+
+**(1, shipped) Genre filter now sorts A→Z, not biggest-first.** Every filter facet was ranked by hit-count (`ranked()`, `LibraryScreen.tsx:590`). Genre is the one facet you *look up* (you know the genre you want) rather than *browse*, so it now sorts alphabetically via a new `alpha()` sorter; `genres: alpha(genre)` (was `ranked`). The other facets (vibe/verdict/series/region) stay ranked — you browse those by what's worth tapping. Counts still show, just A→Z order.
+
+**(2, shipped) "Non-fiction" shortcut at the top of the book genre filter.** Book genres are a flat vocab with no fiction/non-fiction structure. Added a display-only grouping (NOT a new tag, no re-tagging): `NONFICTION_GENRES` + `isNonfictionGenre()` in `src/lib/genres.ts` (biography, business, cookbook, essay, history, memoir, philosophy, self-help, travel — deliberately excludes `classics`/`poetry`). In `LibraryScreen.tsx`: a `nonfictionGenres` memo (present non-fiction genres in the current set) + `toggleNonfiction` handler (selects/clears them all at once via the existing OR-within-genre filter), passed into `FilterMenu`, which renders a "non-fiction" `MenuItem` above the genre list when books are showing. Tap it → every non-fiction book, without hunting biography/memoir/history one by one. Only appears for books (only book vocab has non-fiction genres). Added 2 tests for the taxonomy (`genres.test.ts`).
+
+**Gate green: typecheck + lint clean, genre-sync passes, 127 tests (was 125, +2).** **NOT eyeballed — sandbox has empty library / no backend, so the genre filter has no data to render.** Farah to confirm on real data: (a) open the genre filter on books → list reads A→Z; (b) the "non-fiction" shortcut appears at the top and selecting it shows all non-fiction books.
+
+**(3, captured to ROADMAP not built) De-emphasize the media/things domain switcher** — folded into the existing "Dual-nav sub-tab row" nav pass as an s124 addition (it's the loudest thing in the bar at 21px bold; one-file change but should be solved inside that one nav decision, not bolted on).
+
+**(4, captured to ROADMAP, reframed, likely won't build) "Add my own categories."** Corrected the premise: articles/podcasts were *code* additions (hard-coded across ≥4 spots + ingest heuristics), not user actions — there's no type registry. A real self-serve category system is a big refactor against the opinionated-by-design soul. Rec: Farah names a specific type she wants and it gets added in code (~20 min, like podcasts). New ROADMAP item under "User-added categories". Open Q back to her: any specific type missing right now?
+
+---
+
 ### Session 123 (2026-07-26) — photo identification: read the title, don't recognize it + clear-filters keeps the tab. Free (prompt-only, no cost change). Pushed to `main` ([3ce41e1]).
 
 **Farah: "a lot of photos I email end up not being able to be read."** She sent six examples — all clearly-printed covers/pages of brand-new 2025/26 books (*The Plunge*, *The Compound*, *Star Shipped*, *The Simp*, *The Infamous Gilberts*). Root cause (exactly what s105 predicted would still bite, line ~411): the vision prompt was framed around **recognizing** the work ("exact canonical title", "NOTHING identifiable → none"), so a legible-but-unrecognized cover got dropped instead of read.
