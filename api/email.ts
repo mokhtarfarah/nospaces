@@ -418,14 +418,18 @@ async function classifyEmailImage(prepped: { mediaType: string; data: string }):
           { type: 'text', text: `This image was emailed to be saved. Decide what it is, then extract its fields.
 
 If it shows something to BUY — clothing, an accessory, a bag, shoes, an object, or a screenshot of a shop / product page — it's a PRODUCT.
-If it shows a film, book, music album, or TV show (a poster, cover, still, or shop/streaming page for one) — it's MEDIA.
+If it shows a film, book, music album, or TV show — a cover, poster, still, or a book / Goodreads / streaming / review page (or a photo of any of those) — it's MEDIA.
 
 Return JSON only.
 - PRODUCT: {"kind":"product","title":"the product name, no marketing fluff","brand":"the label/maker or null","price":"display price with currency symbol e.g. £240, or null","confidence":"high|medium|low","attributes":[{"facet":"material|palette|vibe|category","value":"one or two words, lowercase"}]}. For attributes, read the LOOK only (never the brand/logo) on these facets — ${FACET_HINT}. Only tag a facet you can genuinely see; fewer honest tags beat padding.
-- MEDIA: {"kind":"media","title":"exact canonical title","creator":"director/author/artist/showrunner or null","type":"film|book|music|tv|other","year":1234,"confidence":"high|medium|low","blurb":"any visible caption/note/review text about it, verbatim or close, else null"}
-- NOTHING identifiable: {"kind":"none","title":null}
+- MEDIA: {"kind":"media","title":"the title","creator":"director/author/artist/showrunner or null","type":"film|book|music|tv|other","year":1234,"confidence":"high|medium|low","blurb":"any visible description/caption/review text about it, verbatim or close, else null"}
+- NOTHING: only when the image contains NO film/book/music/TV at all — {"kind":"none","title":null}.
 
-Set confidence to how sure you are of the identification. If the image is blurry, ambiguous, or you're guessing, say "low".` },
+READING THE TITLE — most of these images are book covers, or a book/film page where the title and author are PRINTED right there. READ them off the image as text; you do NOT need to recognize the work. A brand-new or obscure book you've never heard of still has its title and author on the cover — transcribe exactly what you see (only normalise obvious all-caps styling to normal case). "creator" is the author printed on a book cover/page, the director for a film, the artist for music, the show's creator for TV. Use a year only if one is shown, else null.
+
+NEVER return "none" just because you don't recognise the title — if you can READ a title off the image, return it as MEDIA. Only use "none" when there is genuinely no book/film/music/TV in the picture.
+
+CONFIDENCE is about how clearly you can READ the title/author, NOT whether you recognise the work: a sharply printed cover you've never heard of is "high". Set "low" only when the text is blurry, cut off, or you're guessing at the letters.` },
         ],
       }],
     })

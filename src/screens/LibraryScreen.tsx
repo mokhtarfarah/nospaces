@@ -450,7 +450,11 @@ export function LibraryScreen() {
   // podcast isn't an album); the all view already interleaves both anyway.
   const bookmarkBarView = categories.length === 0
   function clearFilters() {
-    setCategories([]); setStatusFilter('all'); setReactionFilter('all')
+    // Clear the FILTERS only — deliberately leaves `categories` (the medium tab)
+    // alone, so "clear all" doesn't bounce you out of film/book/etc back to "all".
+    // The active-count badge never counted the category either, so this stays
+    // consistent (a category is the tab you're in, not a filter you added).
+    setStatusFilter('all'); setReactionFilter('all')
     setVibeFilter([]); setVerdictFilter([]); setGenreFilter([]); setSeriesFilter([]); setCountryFilter([])
     setReviewOnly(false); setNewMusicOnly(false); setShelfFilter('all'); setQuery('')
     // Note: deliberately does NOT close the filter card — clearing leaves you in
