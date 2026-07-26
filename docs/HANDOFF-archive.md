@@ -4,6 +4,20 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 123 (2026-07-26) — photo identification: read the title, don't recognize it + clear-filters keeps the tab. Free (prompt-only, no cost change). Pushed to `main` ([3ce41e1]).
+
+**Farah: "a lot of photos I email end up not being able to be read."** She sent six examples — all clearly-printed covers/pages of brand-new 2025/26 books (*The Plunge*, *The Compound*, *Star Shipped*, *The Simp*, *The Infamous Gilberts*). Root cause (exactly what s105 predicted would still bite, line ~411): the vision prompt was framed around **recognizing** the work ("exact canonical title", "NOTHING identifiable → none"), so a legible-but-unrecognized cover got dropped instead of read.
+
+**Farah's own insight drove the framing:** she asked "isn't ID a simple non-AI search first, AI later? why does newness matter?" — right for *typed text* (`catalogLookup` → iTunes/Deezer/TMDB/Open Library first, AI fallback), but a **photo is AI-first by necessity**: a raw image has no words to catalog-search until something reads it, so the vision call *is* the first step. And she's right that newness shouldn't matter even there — the title is printed on the cover; reading it needs zero knowledge of the book. The bug was recognize-vs-read.
+
+**Fix — reframe both photo prompts to TRANSCRIBE the printed title/author off the image** (`classifyEmailImage` in `api/email.ts` + the image branch in `api/identify.ts`): "you do NOT need to recognise the work… never return 'none'/'other' just because you don't recognise the title… confidence tracks how clearly you can READ it, not recognition (a sharp unknown cover is 'high')." Same single Sonnet vision call — **no cost change**. The MAX_DELIBERATE_IMAGES=5 batch cap was ruled out as a cause (Farah confirmed she sends 1–2 photos/email, so the cap isn't biting).
+
+**Also — "clear filters" no longer resets the medium tab** (`clearFilters` in `src/screens/LibraryScreen.tsx`). Was calling `setCategories([])` → bounced you back to "all". Now it clears status/shelf/genre/vibe/verdict/series/region/search but **leaves you in film/book/etc.** The active-count badge never counted the category (line ~1354), so this stays consistent — a category is the tab you're in, not a filter you added.
+
+**Gate green** (genre-sync + typecheck src+api + lint + **125 tests**). **Not eyeballed live — sandbox has no email backend and an empty library.** Next-session confirmation is real re-sends (see HANDOFF → Next session).
+
+---
+
 ### Session 122 (2026-07-24) — podcasts (mirrored on the article path) + removed the s119 music "classic" shelf. Free (og-scrape only, no API). Pushed to `main` ([f824723] podcasts, [3a28790] classic removal, [b586b66] roadmap).
 
 **Farah: "add podcasts in a similar fashion as articles."** Articles are a link-saved, email-only, listen/read-later bookmark: og-tag scrape → save with `status:'want_to'`, an og:image cover, a source-name band, mark-done with **no reaction**, kept **out of taste/genre/vibe/recs**, hidden from the tab row and surfaced by a quiet entry-point bar. Podcasts now do all of the same.
