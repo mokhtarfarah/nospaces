@@ -43,12 +43,17 @@ export function isGenreTag(tag: string): boolean {
   return ALL_GENRE_SET.has(tag.toLowerCase())
 }
 
-// Book genres that are non-fiction. Used only to offer a "non-fiction" shortcut
-// in the book genre filter (selects all of these at once) — it's a display
-// grouping over the flat genre tags, NOT a new tag or parent category, so no
-// re-tagging is needed. Deliberately conservative: 'classics'/'poetry' are left
-// out (canon is mostly fiction; poetry isn't non-fiction prose), 'essay' is in
-// (overwhelmingly non-fiction). If a genre isn't here, it reads as fiction.
+// The genre value for the derived "non-fiction" category. It's not in the flat
+// vocab above and isn't stored on any item — it's synthesized in the filter so
+// every non-fiction book reads as its specific genre (memoir) AND "non-fiction",
+// clickable like any other genre. No re-tagging, always in sync with the tags.
+export const NONFICTION_GENRE = 'non-fiction'
+
+// Book genres that roll up into "non-fiction". A book carrying any of these is
+// counted under the derived NONFICTION_GENRE chip and matched when it's filtered
+// on. Deliberately conservative: 'classics'/'poetry' are left out (canon is
+// mostly fiction; poetry isn't non-fiction prose), 'essay' is in (overwhelmingly
+// non-fiction). If a genre isn't here, it reads as fiction.
 const NONFICTION_GENRES = new Set<string>([
   'biography', 'business', 'cookbook', 'essay', 'history', 'memoir',
   'philosophy', 'self-help', 'travel',
@@ -56,4 +61,10 @@ const NONFICTION_GENRES = new Set<string>([
 
 export function isNonfictionGenre(tag: string): boolean {
   return NONFICTION_GENRES.has(tag.toLowerCase())
+}
+
+// True if any of an item's tags is a non-fiction genre — i.e. the item belongs
+// under the derived "non-fiction" category.
+export function hasNonfictionGenre(tags?: string[] | null): boolean {
+  return (tags ?? []).some(isNonfictionGenre)
 }

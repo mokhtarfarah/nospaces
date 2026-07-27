@@ -4,6 +4,21 @@ Append-only history. The live `HANDOFF.md` keeps only the latest session; everyt
 
 ---
 
+### Session 125 (2026-07-27) — "non-fiction" reframed from a shortcut into a real derived genre chip. Free (frontend only, no API). Not pushed yet.
+
+**Farah on the s124 build:** "instead of an OVERARCHING category, I want it to be another category you can click on like any other genre — so memoirs get tagged memoir + nonfiction, history + nonfiction, etc."
+
+**The change:** s124 made "non-fiction" a *shortcut button* above the genre list that ticked on every individual non-fiction genre (memoir, history, …) at once. Farah wanted it to just *be a genre in the list*, clickable like any other, where a non-fiction book reads as its specific genre AND "non-fiction". Reframed it as a **derived genre** — no stored tag, no re-tagging, always in sync:
+- `src/lib/genres.ts`: added `export const NONFICTION_GENRE = 'non-fiction'` (the derived value; not in the flat vocab, so `isGenreTag('non-fiction')` is false) + `hasNonfictionGenre(tags)` helper. Kept `NONFICTION_GENRES` + `isNonfictionGenre` (now roll-up membership, not a "shortcut"); updated the comments.
+- `LibraryScreen.tsx` facet build: any book with a non-fiction genre bumps the `NONFICTION_GENRE` count **once**, so it appears as a normal chip in the alpha-sorted genre list (lands under "n", books-only — only book vocab has non-fiction genres).
+- Filter application: `g === NONFICTION_GENRE ? hasNonfictionGenre(item.tags) : item.tags?.includes(g)` — a book matches "non-fiction" when any tag is a non-fiction genre.
+- **Removed** the whole shortcut machinery: `nonfictionGenres` memo, `toggleNonfiction`, the two `FilterMenu` props, and the special-cased `MenuItem`+hairline block in the genre panel (now a plain `tagPanel`). Smart-persist "just works" — the chip is in `availableTags.genres`.
+- Tests: `isNonfictionGenre` tests kept; added `hasNonfictionGenre` + `NONFICTION_GENRE`-isn't-vocab tests. **130 total (was 127, +3).**
+
+**Gate green: typecheck + lint clean, genre-sync passes, 130 tests.** **NOT eyeballed — empty sandbox, no data in the genre filter.** Farah to confirm on real books: open filters → genre on books, "non-fiction" sits alphabetically in the list (not pinned on top), tapping it shows all non-fiction, tapping "memoir" still narrows to memoirs, and it only shows on books.
+
+---
+
 ### Session 124 (2026-07-26) — genre filter A→Z + "non-fiction" book shortcut. Free (frontend only, no API). Not pushed yet.
 
 **Farah brought four roadmap ideas; built the two cheap/free ones this session, captured the other two.**

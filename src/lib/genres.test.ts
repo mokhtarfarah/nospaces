@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { genresForType, isGenreTag, isNonfictionGenre } from './genres'
+import { genresForType, isGenreTag, isNonfictionGenre, hasNonfictionGenre, NONFICTION_GENRE } from './genres'
 
 describe('genresForType', () => {
   it('returns the vocab for a known type', () => {
@@ -39,5 +39,24 @@ describe('isNonfictionGenre', () => {
     // deliberately excluded: canon is mostly fiction, poetry isn't nf prose
     expect(isNonfictionGenre('classics')).toBe(false)
     expect(isNonfictionGenre('poetry')).toBe(false)
+  })
+
+  it('is not itself a real vocab genre — the derived category is synthesized', () => {
+    expect(isGenreTag(NONFICTION_GENRE)).toBe(false)
+    expect(NONFICTION_GENRE).toBe('non-fiction')
+  })
+})
+
+describe('hasNonfictionGenre', () => {
+  it('is true when any tag is a non-fiction genre', () => {
+    expect(hasNonfictionGenre(['memoir'])).toBe(true)
+    expect(hasNonfictionGenre(['literary fiction', 'New York', 'history'])).toBe(true)
+  })
+
+  it('is false for all-fiction or empty/missing tags', () => {
+    expect(hasNonfictionGenre(['sci-fi', 'thriller'])).toBe(false)
+    expect(hasNonfictionGenre([])).toBe(false)
+    expect(hasNonfictionGenre(undefined)).toBe(false)
+    expect(hasNonfictionGenre(null)).toBe(false)
   })
 })

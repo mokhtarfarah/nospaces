@@ -14,7 +14,7 @@ import { useWikipediaInfo, type WikiInfo } from '../lib/wikipedia'
 import { useArtwork, isStaleBookCover } from '../lib/artwork'
 import { getSeasons } from '../lib/seasons'
 import { VIBES, VERDICTS } from '../lib/moods'
-import { isGenreTag, isNonfictionGenre } from '../lib/genres'
+import { isGenreTag, hasNonfictionGenre, NONFICTION_GENRE } from '../lib/genres'
 import { gapQueue, dismissGaps, itemGaps } from '../lib/gaps'
 import { inReview, reviewCount } from '../lib/review'
 import { flipMediaToThing } from '../lib/flip'
@@ -540,7 +540,10 @@ export function LibraryScreen() {
       )
     )
     if (verdictFilter.length > 0) result = result.filter(item => verdictFilter.some(v => item.moods?.includes(v)))
-    if (genreFilter.length > 0) result = result.filter(item => genreFilter.some(g => item.tags?.includes(g)))
+    if (genreFilter.length > 0) result = result.filter(item => genreFilter.some(g =>
+      // "non-fiction" is a derived genre (see genres.ts) — a book matches it when
+      // any of its tags is a non-fiction genre, not by carrying the literal tag.
+      g === NONFICTION_GENRE ? hasNonfictionGenre(item.tags) : item.tags?.includes(g)))
     if (seriesFilter.length > 0) result = result.filter(item => seriesFilter.some(s => item.metadata?.series === s))
     if (countryFilter.length > 0) result = result.filter(item =>
       Array.isArray(item.metadata?.countries) &&
@@ -581,6 +584,10 @@ export function LibraryScreen() {
         (i.metadata.unconfirmedVibes as string[]).forEach(v => { if (VIBES.includes(v) && !vibesSeen.has(v)) bump(vibe, v) })
       }
       i.tags?.forEach(t => { if (isGenreTag(t)) bump(genre, t) })
+      // "non-fiction" is a derived genre: any book with a non-fiction genre also
+      // counts under it (once), so it shows as a normal, clickable chip alongside
+      // memoir/history/… — only ever appears when books are present. (Farah, s125.)
+      if (hasNonfictionGenre(i.tags)) bump(genre, NONFICTION_GENRE)
       const s = i.metadata?.series
       if (typeof s === 'string' && s.trim()) bump(series, s)
       if (Array.isArray(i.metadata?.countries)) {
@@ -611,24 +618,6 @@ export function LibraryScreen() {
       countries: ranked(country),
     }
   }, [baseFiltered, categories])
-
-  // The non-fiction genres actually present in the current set — powers the
-  // "non-fiction" shortcut at the top of the book genre filter (see it all at
-  // once without hunting biography/memoir/history one by one). Empty unless
-  // books are showing, since only book vocab has non-fiction genres.
-  const nonfictionGenres = useMemo(
-    () => availableTags.genres.filter(g => isNonfictionGenre(g.value)).map(g => g.value),
-    [availableTags.genres],
-  )
-  // Toggle all present non-fiction genres on/off together. OR-within-genre means
-  // selecting them all shows every non-fiction book; deselecting clears just them
-  // (leaving any hand-picked fiction genres intact).
-  const toggleNonfiction = () => setGenreFilter(prev => {
-    const allOn = nonfictionGenres.length > 0 && nonfictionGenres.every(v => prev.includes(v))
-    return allOn
-      ? prev.filter(v => !nonfictionGenres.includes(v))
-      : [...new Set([...prev, ...nonfictionGenres])]
-  })
 
   // When base filters change, keep the vibe/verdict/genre/series selections that
   // still apply and drop only the ones that don't exist in the new set ("smart
@@ -797,7 +786,6 @@ export function LibraryScreen() {
               vibeFilter={vibeFilter} onToggleVibe={toggleFilter(setVibeFilter)}
               verdictFilter={verdictFilter} onToggleVerdict={toggleFilter(setVerdictFilter)}
               genreFilter={genreFilter} onToggleGenre={toggleFilter(setGenreFilter)}
-              nonfictionGenres={nonfictionGenres} onToggleNonfiction={toggleNonfiction}
               seriesFilter={seriesFilter} onToggleSeries={toggleFilter(setSeriesFilter)}
               countryFilter={countryFilter} onToggleCountry={toggleFilter(setCountryFilter)}
               showNewMusic={musicOnly} newMusicOnly={newMusicOnly} onToggleNewMusic={() => setNewMusicOnly(v => !v)}
@@ -1326,7 +1314,6 @@ function FilterMenu({
   vibeFilter, onToggleVibe,
   verdictFilter, onToggleVerdict,
   genreFilter, onToggleGenre,
-  nonfictionGenres, onToggleNonfiction,
   seriesFilter, onToggleSeries,
   countryFilter, onToggleCountry,
   showNewMusic, newMusicOnly, onToggleNewMusic,
@@ -1345,7 +1332,6 @@ function FilterMenu({
   vibeFilter: string[]; onToggleVibe: (v: string) => void
   verdictFilter: string[]; onToggleVerdict: (v: string) => void
   genreFilter: string[]; onToggleGenre: (v: string) => void
-  nonfictionGenres: string[]; onToggleNonfiction: () => void
   seriesFilter: string[]; onToggleSeries: (v: string) => void
   countryFilter: string[]; onToggleCountry: (v: string) => void
   showNewMusic: boolean; newMusicOnly: boolean; onToggleNewMusic: () => void
@@ -1514,24 +1500,10 @@ function FilterMenu({
                     <MenuItem label="not on my shelf" active={shelfFilter === 'unowned'} onClick={() => onShelf('unowned')} />
                   </>
                 )}
-                {panel === 'genre' && (
-                  <>
-                    {/* Books get a "non-fiction" shortcut that selects every
-                        non-fiction genre at once — see all your non-fiction
-                        without tapping biography/memoir/history one by one. */}
-                    {nonfictionGenres.length > 0 && (
-                      <>
-                        <MenuItem
-                          label="non-fiction"
-                          active={nonfictionGenres.every(v => genreFilter.includes(v))}
-                          onClick={onToggleNonfiction}
-                        />
-                        <div style={{ height: 1, background: HAIR, margin: '4px 0' }} />
-                      </>
-                    )}
-                    {tagPanel(availableTags.genres, genreFilter, onToggleGenre)}
-                  </>
-                )}
+                {/* "non-fiction" is a derived genre (genres.ts) — it flows through
+                    the normal list as a clickable chip alongside memoir/history/…,
+                    sorted A→Z, books-only. No special-casing needed here. */}
+                {panel === 'genre' && tagPanel(availableTags.genres, genreFilter, onToggleGenre)}
                 {panel === 'vibe' && tagPanel(availableTags.vibes, vibeFilter, onToggleVibe)}
                 {panel === 'verdict' && tagPanel(availableTags.verdicts, verdictFilter, onToggleVerdict)}
                 {panel === 'series' && tagPanel(availableTags.series, seriesFilter, onToggleSeries)}
