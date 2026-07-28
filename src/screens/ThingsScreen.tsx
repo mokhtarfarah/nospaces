@@ -717,9 +717,8 @@ export function ThingsScreen() {
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
                 border: `1px solid ${captureFailures > 0 ? INK : LINE}`, borderRadius: 10, background: captureFailures > 0 ? '#FBFAF8' : '#fff',
-                padding: '9px 12px', margin: '0 0 18px', cursor: 'pointer', color: INK,
+                padding: '9px 12px', margin: '16px 0 18px', cursor: 'pointer', color: INK,
               }}>
-              <span style={{ flexShrink: 0, width: 6, height: 6, borderRadius: 3, background: captureFailures > 0 ? INK : MUTED }} />
               <span style={{ fontSize: 12, fontWeight: 500, flex: 1, minWidth: 0 }}>
                 {captureFailures > 0
                   ? `${captureFailures} forward${captureFailures === 1 ? '' : 's'} didn’t land`
